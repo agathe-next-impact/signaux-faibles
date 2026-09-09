@@ -198,7 +198,15 @@ Vérifié le 9 septembre 2026, même miroir de la doc officielle.
 - **Connecteur Notion MCP** (celui qu'utilise Cowork) : les outils sont listés sur tous les plans et `notion-fetch` avec l'id `self` renvoie `current_tool_access` par outil. Création, lecture, mise à jour de pages et de bases : disponibles sans plan payant. `query_data_sources` : « View mode is available on every plan without a tool-specific quota » ; le mode SQL est mesuré puis payant. `notion-ai-search` exige Notion AI ; certains filtres de recherche exigent Business. Débit : 180 requêtes par minute par utilisateur, plus la limite par workspace. **[officiel]**
 - Source : https://developers.notion.com/reference/workspace-block-limits, https://developers.notion.com/reference/file-upload, https://developers.notion.com/guides/mcp/mcp-supported-tools.
 
-Conséquence : **l'espace de travail Notion doit rester à un seul membre** (l'opérateur). Les clients ne sont jamais membres ni invités de Notion, le portail est leur seule interface. Toute invitation d'un second membre déclencherait le plafond de 1 000 blocs et bloquerait les tâches Cowork au bout de trois jours.
+**Constaté en direct le 9 septembre 2026.** Le quota du mode SQL de `query_data_sources` est atteignable en une session de travail ordinaire : après une quinzaine de requêtes SQL sur l'espace, l'outil a refusé avec « Your workspace has reached the usage limit for Query Data Source », assorti d'une proposition d'essai payant. Le quota est **par espace de travail**, pas par session, et rien n'annonce son approche avant le refus. Le mode `view` et l'outil `fetch` ont continué de répondre normalement. **[officiel pour la mesure du mode SQL ; constaté pour le seuil]**
+
+Conséquences :
+
+- La règle du CLAUDE.md « les tâches Cowork n'utilisent ni la recherche IA ni le mode SQL du connecteur » n'est pas une précaution théorique : une tâche planifiée qui interroge en SQL finirait par échouer, et par épuiser le quota des autres tâches du même espace.
+- Pour l'exploration interactive, préférer `fetch` sur un identifiant connu et le mode `view` ; garder le mode SQL pour les questions qu'aucun des deux ne permet.
+- Cette limite ne concerne **pas** le portail, qui n'utilise pas le connecteur MCP mais l'API REST avec son propre jeton d'intégration.
+
+Conséquence sur les membres : **l'espace de travail Notion doit rester à un seul membre** (l'opérateur). Les clients ne sont jamais membres ni invités de Notion, le portail est leur seule interface. Toute invitation d'un second membre déclencherait le plafond de 1 000 blocs et bloquerait les tâches Cowork au bout de trois jours.
 
 ---
 

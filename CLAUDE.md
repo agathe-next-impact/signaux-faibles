@@ -85,8 +85,12 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
    globale puis filtrage en mémoire, jamais de filtre par nom. Cet
    identifiant vient de la ligne « Accès » de la personne connectée et de
    nulle part ailleurs : le portail n'a pas accès au registre et ne sait
-   pas résoudre un nom d'organisation. Chaque nouvelle requête Notion est
-   relue sous cet angle avant commit.
+   pas résoudre un nom d'organisation. `Organisation` est une **liste** :
+   ne jamais lire `Organisation[0]` pour décider à qui appartient une
+   édition ; filtrer par `contains`, et traiter une édition portant
+   plusieurs organisations comme une anomalie remontée au monitoring,
+   jamais comme une donnée à interpréter. Chaque nouvelle requête Notion
+   est relue sous cet angle avant commit.
 3. **Seules les éditions en statut « Envoyé » sont demandées à Notion**
    (filtre `select.equals` dans la requête, combiné au filtre
    `relation.contains` de l'organisation).

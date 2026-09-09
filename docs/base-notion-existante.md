@@ -245,20 +245,31 @@ grouper sur `Famille` quand il faut un regroupement stable entre clients.
 | Infralliance | `infralliance` | `3d5fe829ce718145a186fc32423a922b` | Écosystème, Positionnement | mardi |
 | Pays de Mauriac | `ccpm` | `3d6fe829ce718131b6e6feca050b8890` | Écosystème, Attractivité | mercredi |
 
-**Anomalie à corriger côté Notion, hors portail.** Le registre contient deux
-lignes pour le Pays de Mauriac. L'une, « Communauté de communes du Pays de
-Mauriac » (`3d5fe829ce7181dfaf34f754d7298f2c`), est **à la corbeille** mais
-reste la cible de la relation des deux brouillons du 9 septembre. L'autre,
-« Pays de Mauriac » (`3d6fe829ce718131b6e6feca050b8890`), est vivante et
-n'a aucune édition rattachée. Une page mise à la corbeille reste une cible
-de relation valide pour l'API : le lien ne casse pas, il devient
-silencieusement faux. Il faut rattacher les deux brouillons à la ligne
-vivante avant d'ouvrir un accès à cette organisation, et l'onboarding doit
-cesser de créer des doublons.
+**Anomalie constatée puis corrigée le 9 septembre 2026.** Le registre
+contenait deux lignes pour le Pays de Mauriac. L'une, « Communauté de
+communes du Pays de Mauriac » (`3d5fe829ce7181dfaf34f754d7298f2c`), a été
+mise à la corbeille mais restait la cible de la relation des deux éditions
+du 9 septembre. L'autre, « Pays de Mauriac »
+(`3d6fe829ce718131b6e6feca050b8890`), était vivante et n'avait aucune
+édition rattachée. Les deux éditions ne portent plus que la ligne vivante.
 
-C'est aussi la démonstration du risque de la règle 2 : le cloisonnement
-tient à une donnée que le portail ne peut pas vérifier lui-même. D'où le
-contrôle de démarrage et l'alerte décrits plus haut.
+Trois enseignements à retenir dans le code du portail :
+
+1. **Une page à la corbeille reste une cible de relation valide pour
+   l'API.** Le lien ne casse pas, il devient silencieusement faux. Rien
+   dans la réponse Notion ne signale qu'une cible est supprimée.
+2. **Une relation est une liste, pas une valeur.** Pendant la réparation,
+   les deux éditions ont porté les deux lignes à la fois. Le portail ne
+   doit donc jamais lire `Organisation[0]` pour décider à qui appartient
+   une édition : il filtre par `contains` sur l'identifiant attendu, et
+   traite une édition portant plusieurs organisations comme une anomalie à
+   remonter au monitoring, jamais comme une donnée à interpréter.
+3. **L'onboarding ne doit pas créer de doublon de registre.** À vérifier
+   dans la tâche Cowork avant le prochain intake.
+
+C'est la démonstration du risque de la règle 2 : le cloisonnement tient à
+une donnée que le portail ne peut pas vérifier lui-même. D'où le contrôle
+de démarrage et l'alerte décrits plus haut.
 
 ## Décisions 6 et 7 prises le 9 septembre 2026
 
@@ -322,12 +333,10 @@ Points à connaître :
 - Le corps est la note telle qu'envoyée, sans callout « Livraison » et avec
   la convention de suffixe d'impact de la décision 1.
 
-**À faire manuellement par l'opérateur.** Une page de test technique reste
-dans la base : « À SUPPRIMER — page de test technique (import archives) »
-(`3d6fe829ce7181aeb23ff441de9968b6`). Elle est vide, en `Brouillon`, sans
-organisation, donc invisible du portail. Le connecteur Notion utilisé ici ne
-sait pas mettre une page à la corbeille ; il faut la supprimer d'un clic
-dans l'interface.
+La page de test technique créée pendant l'import pour isoler une erreur
+d'écriture a été mise à la corbeille par l'opérateur le 9 septembre. Le
+connecteur Notion utilisé ici sait créer et modifier des pages, mais pas en
+mettre une à la corbeille : cette opération reste manuelle.
 
 ## Conséquences sur la lecture Notion du portail
 
