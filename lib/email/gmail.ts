@@ -95,7 +95,6 @@ async function obtenirJetonGoogle(): Promise<string> {
 
 /** Encode un en-tête non ASCII selon la RFC 2047. */
 function entêteEncodé(valeur: string): string {
-  // eslint-disable-next-line no-control-regex
   return /^[\x20-\x7E]*$/.test(valeur)
     ? valeur
     : `=?UTF-8?B?${Buffer.from(valeur, 'utf8').toString('base64')}?=`

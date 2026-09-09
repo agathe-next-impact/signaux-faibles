@@ -16,6 +16,15 @@ const nextConfig: NextConfig = {
       revalidate: 60 * 60,
       expire: 60 * 60 * 24 * 30,
     },
+
+    // Les URL de fichiers Notion expirent en une heure. Ce profil garde une
+    // marge confortable sous cette limite : jamais d'URL périmée servie depuis
+    // le cache. Il ne s'applique qu'à la résolution des médias, pas au contenu.
+    media: {
+      stale: 60,
+      revalidate: 60 * 10,
+      expire: 60 * 50,
+    },
   },
 
   // Aucune image distante : les médias Notion passent par /api/media/[block_id]

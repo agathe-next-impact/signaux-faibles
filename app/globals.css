@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   TOKENS PROVISOIRES — À REMPLACER PAR LA CHARTE
+
+   docs/charte-design.md et docs/charte-design.pdf n'existent pas encore au
+   dépôt. Le CLAUDE.md interdit de réinventer les tokens : ceux-ci ne
+   prétendent donc pas être la charte, ils lui réservent sa place. Ils sont
+   volontairement pauvres — une échelle neutre et une seule teinte d'accent —
+   pour qu'aucun écran ne s'appuie sur une couleur inventée.
+
+   Quand la charte arrive, seules les valeurs de ce bloc changent. Aucun
+   composant ne porte de couleur en dur : c'est le point de bascule unique.
+   ========================================================================== */
+
+@theme {
+  --color-encre: oklch(0.22 0.012 260);
+  --color-encre-douce: oklch(0.45 0.012 260);
+  --color-encre-tenue: oklch(0.62 0.01 260);
+
+  --color-papier: oklch(0.99 0.003 90);
+  --color-papier-creux: oklch(0.965 0.004 90);
+  --color-trait: oklch(0.9 0.005 260);
+  --color-trait-tenu: oklch(0.94 0.004 260);
+
+  --color-accent: oklch(0.48 0.13 250);
+  --color-accent-douce: oklch(0.95 0.03 250);
+
+  /* Les trois niveaux d'impact, et eux seuls. Ne pas en ajouter : c'est une
+     règle de la charte, pas un choix d'implémentation. */
+  --color-impact-fort: oklch(0.52 0.17 25);
+  --color-impact-fort-fond: oklch(0.96 0.03 25);
+  --color-impact-moyen: oklch(0.52 0.12 75);
+  --color-impact-moyen-fond: oklch(0.96 0.04 75);
+  --color-impact-ras: oklch(0.5 0.02 260);
+  --color-impact-ras-fond: oklch(0.96 0.004 260);
+
+  --radius-douce: 0.375rem;
+  --radius-carte: 0.625rem;
+}
+
+/* `inline` est obligatoire : sans lui, les utilitaires de police se
+   résoudraient à des valeurs inattendues, les variables de next/font étant
+   définies sur <html> et non sur :root. */
+@theme inline {
+  --font-titre: var(--font-lora);
+  --font-corps: var(--font-public-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+  --font-sans: var(--font-public-sans);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-papier);
+  color: var(--color-encre);
+  font-family: var(--font-corps), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sentence case partout (règle 9). Aucun composant ne doit réintroduire de
+   capitales ; les seules majuscules admises sont les libellés en mono, posés
+   explicitement avec `uppercase`. */

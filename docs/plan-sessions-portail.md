@@ -27,7 +27,7 @@ teinte d'accent. Ils ne prétendent pas être la charte, ils lui réservent sa
 place. Le fichier est le point de bascule unique : quand la charte arrive,
 seules ses valeurs changent, aucun composant.
 
-## Session 1 — socle et garde de schéma
+## Session 1 — socle et garde de schéma ✅
 
 - Squelette Next.js 16 : App Router, TypeScript strict, `cacheComponents`,
   Tailwind v4, les trois polices en `next/font/google`.
@@ -43,7 +43,7 @@ seules ses valeurs changent, aucun composant.
 Fait quand : `pnpm build` passe et la garde de schéma est testée sur des
 schémas factices, complets et amputés.
 
-## Session 2 — domaine, sans réseau
+## Session 2 — domaine, sans réseau ✅
 
 Fonctions pures, testées unitairement, sans aucun appel Notion :
 
@@ -59,7 +59,7 @@ Fonctions pures, testées unitairement, sans aucun appel Notion :
 
 Fait quand : la couverture des cas tordus est écrite avant le code.
 
-## Session 3 — lectures Notion cachées
+## Session 3 — lectures Notion cachées ✅
 
 - `lib/notion/acces.ts` : lecture de la base « Accès — portail » par
   identifiant d'accès, en `'use cache: remote'`, tag
@@ -73,7 +73,7 @@ Fait quand : la couverture des cas tordus est écrite avant le code.
 Fait quand : chaque lecture est dans une fonction cachée, et un test le
 vérifie en lisant le code source des modules.
 
-## Session 4 — accès par lien magique persistant
+## Session 4 — accès par lien magique persistant ✅
 
 - `lib/auth/jeton.ts` : signature HMAC-SHA256, encodage base64url,
   comparaison en temps constant.
@@ -86,7 +86,7 @@ vérifie en lisant le code source des modules.
 Fait quand : un jeton falsifié, un jeton révoqué et un cookie absent
 mènent tous les trois où il faut, et sont testés.
 
-## Session 5 — écrans, structure avant apparence
+## Session 5 — écrans, structure avant apparence ✅
 
 - `/[slug]` : la semaine la plus récente, qui rassemble les notes de la
   semaine (décision 6).
@@ -98,7 +98,7 @@ mènent tous les trois où il faut, et sont testés.
 La structure et la sémantique sont définitives à l'issue de cette session ;
 l'apparence ne l'est pas.
 
-## Session 6 — webhook, médias, mode dégradé
+## Session 6 — webhook, médias, mode dégradé ◐
 
 - `app/api/webhooks/notion/route.ts` : signature vérifiée avec
   `verifyWebhookSignature`, réponse 2xx immédiate, puis `revalidateTag`.
@@ -107,7 +107,8 @@ l'apparence ne l'est pas.
   de fichiers Notion expirent en une heure.
 - Recette du mode dégradé : couper l'accès à Notion et vérifier que la
   dernière version connue est servie. C'est le point noté « non vérifié »
-  dans `docs/etat-des-api.md`, et il ne se vérifie qu'ici.
+  dans `docs/etat-des-api.md`. **Reste à faire** : il ne se vérifie que sur un
+  déploiement réel, le cache distant n'existant pas en local.
 
 ## Session 7 — charte et maquette *(bloquée)*
 
@@ -122,3 +123,38 @@ Playwright, **un compte par client**. Vérifier qu'aucune donnée d'un client
 n'apparaît dans le HTML d'un autre, y compris dans les charges JSON non
 affichées. C'est la règle 7, et elle ne se vérifie qu'avec des comptes
 réels sur un déploiement réel.
+
+## Journal
+
+**9 septembre 2026.** Sessions 1 à 5 faites, session 6 faite sauf la recette du
+mode dégradé, qui demande un déploiement. 84 tests unitaires, 8 parcours de
+recette sur les chemins de refus, `pnpm build` vert avec pré-rendu partiel sur
+les trois écrans clients.
+
+Trois choix méritent d'être retenus, parce qu'ils s'écartent de la lettre du
+CLAUDE.md ou du plan initial.
+
+**Le contrôle d'appartenance est en deux temps, pas un.** Le proxy ne vérifie
+que la signature du cookie : `use cache` n'y est pas disponible, et une lecture
+Notion non cachée y serait un bug bloquant. La lecture de la base « Accès » et
+le contrôle du slug vivent dans `exigerAccès`, appelé par le layout **et** par
+chaque page. Cette redite est voulue : sans RLS derrière, un écran qui
+oublierait le contrôle servirait les éditions d'un autre client.
+
+**Le proxy ne garde pas `/api/`.** Chaque route d'API porte un contrôle plus
+strict que le sien — le proxy des médias vérifie en plus que le bloc demandé
+appartient aux éditions du client. Rediriger une requête d'API vers le
+formulaire lui répondrait 200 avec une page HTML, là où 404 est la bonne
+réponse. C'est une recette qui l'a montré.
+
+**Un second profil de cache, `media`.** Le profil `notion` régénère à l'heure,
+or une URL de fichier Notion expire au bout d'une heure : servir depuis le
+cache une URL à la limite donnerait une image cassée. Le profil `media` expire
+à cinquante minutes, sous la limite. Il ne s'applique qu'à la résolution des
+médias, jamais au contenu.
+
+**Deux versions ont dû être choisies contre le dernier publié.** TypeScript 7
+est sorti ; le portail reste sur la ligne 5.9, contre laquelle Next.js 16 est
+construit. ESLint 10 casse `eslint-plugin-react`, tiré par la configuration
+Next : la ligne 9 est la seule qui fonctionne aujourd'hui. À revoir quand
+l'écosystème aura suivi.

@@ -153,3 +153,40 @@ async function listerEnfants(blocId: string): Promise<BlocNotion[]> {
 
   return blocs
 }
+
+export type MédiaDeBloc = {
+  /** Page qui porte le bloc : c'est elle qui décide de l'autorisation. */
+  readonly pageParenteId: string
+  readonly url: string
+}
+
+/**
+ * Résout l'URL d'un bloc image, et la page qui le porte.
+ *
+ * Le profil de cache est court, et volontairement : une URL signée par Notion
+ * expire en une heure, et servir depuis le cache une URL périmée donnerait une
+ * image cassée. La page parente, elle, sert à vérifier que le demandeur a le
+ * droit de voir ce média.
+ */
+export async function lireMédiaDeBloc(blocId: string): Promise<MédiaDeBloc | null> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('media')
+  cacheTag(`page:${blocId}`)
+
+  const bloc = (await notion().blocks.retrieve({ block_id: blocId })) as {
+    type?: string
+    parent?: { type?: string; page_id?: string }
+    image?: { type?: string; file?: { url?: string }; external?: { url?: string } }
+  }
+
+  if (bloc.type !== 'image') return null
+
+  const url = bloc.image?.file?.url ?? bloc.image?.external?.url
+  const pageParenteId = bloc.parent?.page_id
+
+  if (!url || !pageParenteId) return null
+
+  return { pageParenteId, url }
+}
