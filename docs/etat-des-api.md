@@ -375,11 +375,19 @@ Vérifié le 9 septembre 2026 sur `docs/01-app/03-api-reference` du dépôt
 - **Non vérifié** : le comportement quand la régénération en arrière-plan échoue (Notion injoignable). La doc ne dit pas explicitement que l'ancienne valeur est conservée jusqu'à `expire` ; c'est le comportement historique de l'ISR, à **tester en recette** en coupant l'accès à Notion. **[non vérifié]**
 - Source : https://nextjs.org/docs/app/api-reference/directives/use-cache, https://nextjs.org/docs/app/api-reference/directives/use-cache-remote, https://nextjs.org/docs/app/api-reference/functions/cacheLife, https://nextjs.org/docs/app/api-reference/functions/revalidateTag.
 
-### 5.6 Resend (envoi des liens d'accès)
+### 5.6 Envoi des liens d'accès par Google Workspace (Gmail)
 
-- Plan gratuit : 3 000 emails par mois, 100 par jour, jusqu'à trois domaines vérifiés, rétention 30 jours. **[secondaire, recoupé sur plusieurs sources ; resend.com inaccessible depuis l'environnement]**
-- Suffisant par construction : quelques dizaines de personnes, un email par demande de lien.
-- Source : https://resend.com/pricing (à recouper), https://resend.com/blog/new-free-tier.
+Vérifié le 9 septembre 2026. Les pages officielles Google (support.google.com,
+developers.google.com, knowledge.workspace.google.com) sont inaccessibles
+depuis l'environnement ; les faits ci-dessous viennent des extraits de ces
+pages remontés par la recherche et de sources secondaires concordantes.
+
+- **Authentification basique SMTP arrêtée pour Workspace** : « Starting March 14, 2025, you and your users must use OAuth with third-party apps to access Gmail… This restriction includes third-party apps that still use basic authentication, such as CalDAV, CardDAV, IMAP, SMTP, and POP. » Les mots de passe d'application (« App passwords, which are a separate feature, still work ») restent une exception liée à un compte humain avec validation en deux étapes. **[officiel, extrait de support.google.com/a/answer/14114704]**
+- **Voie recommandée : API Gmail**, méthode `users.messages.send`, message RFC 2822 encodé base64url, portée `https://www.googleapis.com/auth/gmail.send` seule. Appel HTTPS, adapté au serverless (pas de connexion SMTP longue). **[officiel, structure connue de l'API ; page de référence inaccessible]**
+- **Identité serveur : compte de service avec délégation à l'échelle du domaine**, autorisé dans la console d'administration Workspace pour la seule portée `gmail.send`, et impersonnant une boîte dédiée (par exemple `acces@` sur le domaine du portail). « Domain-wide delegation is not deprecated as of 2026 » ; depuis août 2024, une approbation par un second super-administrateur peut être exigée. **[secondaire]**
+- **Quotas** : 2 000 messages par jour et par utilisateur Workspace ; 100 destinataires par message ; fenêtre glissante de 24 h. API Gmail : 250 unités de quota par seconde et par utilisateur, un envoi coûtant 100 unités, soit environ 2 envois par seconde. **[secondaire pour l'API ; officiel pour les 2 000/jour, extrait de knowledge.workspace.google.com]**
+- **Délivrabilité** : SPF, DKIM et DMARC sont gérés par Workspace pour le domaine ; rien à configurer côté portail si la boîte émettrice est sur le domaine Workspace. **[secondaire]**
+- Source : https://support.google.com/a/answer/14114704, https://developers.google.com/workspace/gmail/api/guides/sending, https://developers.google.com/workspace/gmail/api/reference/quota, https://knowledge.workspace.google.com/kb/gmail-sending-limits-in-google-workspace-000007247. À recouper quand ces pages seront accessibles.
 
 ---
 

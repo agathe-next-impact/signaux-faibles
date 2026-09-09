@@ -142,8 +142,8 @@ Conception proposée :
    valide.
 5. **Obtenir ou retrouver son lien** : page « recevoir mon lien » où la
    personne saisit son email ; si l'email figure dans « Accès » et est
-   actif, le portail lui envoie le lien par Resend. Réponse identique que
-   l'email existe ou non.
+   actif, le portail lui envoie le lien par l'API Gmail. Réponse identique
+   que l'email existe ou non.
 
 Décisions prises le 9 septembre 2026 :
 
@@ -158,11 +158,17 @@ HMAC :
 - **Cowork tient la base « Accès »** : création de la ligne (email, client,
   identifiant aléatoire, actif), révocation, régénération. Cowork ne
   connaît pas le secret et ne fabrique jamais de lien.
-- **Le portail est le seul émetteur d'emails**, via Resend (plan gratuit :
-  3 000 emails par mois, 100 par jour). Il détient le secret, lit « Accès »
-  en cache et recompose le lien à la demande. Premier envoi et renvoi
-  passent par le même flux : la page « recevoir mon lien ». L'opérateur dit
-  simplement à la personne « saisissez votre email sur signal-faible.fr ».
+- **Le portail est le seul émetteur d'emails**, via **Google Workspace**
+  (décision du 9 septembre 2026) : API Gmail `users.messages.send`, compte
+  de service avec délégation à l'échelle du domaine limitée à la portée
+  `gmail.send`, boîte émettrice dédiée sur le domaine Workspace. Pas de
+  SMTP : l'authentification basique est arrêtée pour Workspace depuis le
+  14 mars 2025 (voir `docs/etat-des-api.md` §5.6). Quota de 2 000 messages
+  par jour, sans rapport avec le besoin. Le portail détient le secret, lit
+  « Accès » en cache et recompose le lien à la demande. Premier envoi et
+  renvoi passent par le même flux : la page « recevoir mon lien ».
+  L'opérateur dit simplement à la personne « saisissez votre email sur
+  signal-faible.fr ».
 - Ce choix évite deux écueils : faire sortir le secret vers Cowork, et
   envoyer un email depuis le handler de webhook (huit tentatives Notion
   possibles, donc doublons).
@@ -252,32 +258,35 @@ servir la dernière version (la doc ne l'affirme pas explicitement).
 
 ### Le contrat des bases Notion, expliqué simplement
 
-Le portail et les tâches Cowork ne se parlent jamais directement. Ils ne
-partagent qu'une chose : les bases Notion. Cowork y écrit, le portail y
-lit. Pour que ça marche, les deux doivent être d'accord, à la lettre, sur :
+Le portail et les tâches Cowork ne se parlent jamais et **ne partagent
+aucun fichier** (décision du 9 septembre 2026). La seule chose qu'ils ont
+en commun, ce sont les bases Notion elles-mêmes : Cowork y écrit, le
+portail y lit. Les bases **sont** le contrat.
 
-- **quelles bases existent** (« Éditions », « Items », « Dossiers »,
-  « Événements de dossier », « Clients », « Accès ») ;
-- **quelles propriétés chaque base contient**, avec leur type Notion exact
-  (titre, date, sélection, statut, relation, case à cocher, URL) ;
-- **quelles valeurs sont permises** là où c'est une liste fermée : l'impact
-  est `fort`, `moyen` ou `RAS`, rien d'autre ; le statut d'une édition est
-  `brouillon`, `relue` ou `publiée` ;
-- **qui remplit quoi** : Cowork remplit tout ; le portail ne remplit rien.
+Concrètement :
 
-C'est un formulaire dont les deux côtés ont la même copie. Si Cowork écrit
-« Fort » avec une majuscule et que le portail attend `fort`, l'item
-disparaît du tri par impact. Si Cowork oublie la relation « Client » sur
-une édition, elle n'apparaît chez personne. Si l'opérateur renomme une
-propriété dans Notion, le portail ne la trouve plus.
+- **Les bases sont créées une fois dans Notion, à la main**, avec leurs
+  propriétés typées (titre, date, statut, sélection, relation, case à
+  cocher, URL) et leurs valeurs fermées (impact `fort` / `moyen` / `RAS`,
+  statut `brouillon` / `relue` / `publiée`). C'est la référence, et la seule.
+- **Cowork découvre le schéma dans Notion** à chaque exécution (le
+  connecteur lit les propriétés de la base) et écrit avec les noms et les
+  valeurs qu'il y trouve. Ses instructions ne recopient pas le schéma.
+- **Le portail garde, dans son propre code, la liste de ce qu'il attend**
+  (noms de propriétés, types, valeurs). Au démarrage, il lit le schéma réel
+  de chaque base via l'API et le compare à cette liste ; si une propriété
+  manque ou a changé de type, il refuse de démarrer avec un message clair.
+  Cette liste n'est pas partagée avec Cowork : c'est la vérification du
+  portail, pas un document commun.
 
-Concrètement, le contrat est un fichier `docs/contrat-bases-notion.md`
-avec, pour chaque base, un tableau « propriété, type, valeurs permises,
-obligatoire, qui la remplit ». Il est écrit une fois, avant la première
-session de code, et toute modification passe par lui. Les tâches Cowork le
-citent dans leurs instructions ; le portail le vérifie au démarrage en
-comparant le schéma réel de chaque base (lu via l'API) au contrat, et
-refuse de démarrer si une propriété manque.
+Ce qui casse, et comment on le voit : si l'opérateur renomme une propriété
+dans Notion, le portail le dit au démarrage. Si Cowork écrit « Fort » avec
+une majuscule là où la base attend `fort`, Notion refuse la valeur, car une
+propriété « sélection » ou « statut » n'accepte que ses options ; c'est
+Notion qui tient la ligne, pas un document. Si Cowork oublie la relation
+« Client » sur une édition, elle n'apparaît chez personne : c'est le seul
+cas silencieux, à couvrir par une vue Notion « éditions sans client » que
+l'opérateur consulte.
 
 ## CLAUDE.md : réécriture proposée des sections touchées
 
@@ -323,7 +332,10 @@ règle 6 ; (4) contrat des bases Notion partagé avec les tâches Cowork.
 1. Que Vercel fournit le gestionnaire de cache distant pour
    `'use cache: remote'` sans configuration, et que l'ancienne valeur est
    servie quand la régénération échoue (test « Notion coupé »).
-2. Écrire `docs/contrat-bases-notion.md` et le faire relire par les tâches
-   Cowork.
+2. Créer les bases Notion à la main, avec leurs options fermées, avant la
+   première session de code ; le portail y confrontera ses attentes.
+3. Autorisation de la délégation à l'échelle du domaine dans la console
+   Workspace (portée `gmail.send` seule) et recoupement des quotas Gmail
+   sur les pages officielles.
 3. Ce que le connecteur Notion de Cowork sait écrire (relations, statut,
    blocs) pour figer le schéma des bases.

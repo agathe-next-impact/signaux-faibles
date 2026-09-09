@@ -40,9 +40,12 @@ session.
   **un lien par personne**, cookie de session 12 mois, appartenance lue dans
   la base Notion « Accès ». Pas de fournisseur d'auth tiers, pas de mot de
   passe. Une **tâche Cowork** tient la base « Accès » (création,
-  révocation) ; le **portail** recompose et envoie le lien par Resend
-  (plan gratuit) depuis la page « recevoir mon lien », premier envoi et
-  renvoi confondus. Le secret HMAC ne quitte jamais le portail
+  révocation) ; le **portail** recompose et envoie le lien par l'**API
+  Gmail de Google Workspace** (compte de service, délégation à l'échelle du
+  domaine limitée à la portée `gmail.send`, boîte émettrice dédiée ; pas de
+  SMTP, l'authentification basique est arrêtée pour Workspace) depuis la
+  page « recevoir mon lien », premier envoi et renvoi confondus. Le secret
+  HMAC ne quitte jamais le portail
 - Lectures Notion en `'use cache: remote'` (le cache mémoire ne survit pas
   en serverless), profil unique `notion` : `stale` 5 min, `revalidate` 1 h,
   `expire` 30 jours. Tags `page:<page_id>` et `liste:<data_source_id>`
@@ -108,10 +111,12 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
 
 ## Modèle de données (bases Notion)
 
-Contrat partagé avec les tâches Cowork qui les alimentent, à figer dans
-`docs/contrat-bases-notion.md` avant la première session de code (par
-base : propriété, type Notion, valeurs permises, obligatoire, qui la
-remplit). Le portail compare le schéma réel au contrat au démarrage.
+Les bases Notion **sont** le contrat ; aucun fichier n'est partagé entre le
+portail et les tâches Cowork. Elles sont créées à la main dans Notion avec
+leurs propriétés typées et leurs options fermées, avant la première session
+de code. Cowork découvre le schéma dans Notion à chaque exécution. Le
+portail garde dans son code la liste de ce qu'il attend, la confronte au
+schéma réel au démarrage et refuse de démarrer si une propriété manque.
 
 - **Clients** : nom, slug (URL du portail), actif
 - **Accès** : email, relation Client, identifiant d'accès (aléatoire, généré
