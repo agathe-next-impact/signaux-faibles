@@ -129,23 +129,46 @@ conformément au CLAUDE.md.
    « — FORT », « — MOYEN » ou « — RAS ». Un passage ultérieur à une base
    « Items » resterait possible sans casser le portail.
 
+## Décisions 3, 4 et 5 appliquées dans Notion le 9 septembre 2026
+
+Appliquées via le connecteur Notion, à la demande de l'opérateur :
+
+3. **Bloc « Livraison » sorti du corps.** Propriété texte `Livraison`
+   ajoutée à « Éditions de veille » (description : interne, jamais affichée
+   par le portail). Le prompt général « Tâche — Lettres de veille » et le
+   prompt propre à Infralliance renseignent désormais cette propriété à
+   l'étape de livraison et ne créent plus de bloc dans le corps ; le mode
+   dégradé écrit aussi dans la propriété. Les deux éditions existantes
+   (Infralliance, 8 septembre) ont été migrées : callout retiré du corps,
+   texte reporté dans la propriété.
+4. **Format des dossiers ouverts figé** dans les deux prompts : une seule
+   ligne, `nom (compteur, précision)`, dossiers séparés par « · ». C'est le
+   format déjà produit par les éditions existantes.
+5. **Base « Accès — portail » créée** sous la page racine « Veilles
+   clients » : `collection://4d3d7403-35d7-4815-884b-877d17423842`.
+   Propriétés : `Nom` (titre, prénom et nom), `Email`, `Organisation`
+   (texte, nom exact de l'option de sélection des éditions), `Slug`,
+   `Identifiant d'accès` (texte, aléatoire, généré par l'onboarding),
+   `Actif` (case). Aucune ligne pour l'instant ; l'onboarding Cowork la
+   remplira. Seule base partagée avec le portail avec « Éditions de veille ».
+
+Décision 1 appliquée dans le même temps : lignes **FAIBLE** retirées des
+tables du §1 des deux référentiels de L'Hermitage et du référentiel
+Écosystème d'Infralliance ; §6 des quatre référentiels (L'Hermitage
+Écosystème et Séjours, Infralliance Écosystème et Positionnement) porte la
+convention « titre H2 de famille terminé par — FORT / — MOYEN / — RAS » et
+la règle « FAIBLE n'existe pas » ; ligne datée ajoutée à chaque journal des
+révisions ; étape 3 du prompt général et étape 2 du prompt Infralliance
+alignées. Dans l'édition Infralliance Écosystème du 8 septembre, le titre
+« ⑤ Filière et financement — FAIBLE » est passé à « — RAS », son contenu
+étant un RAS motivé.
+
+À vérifier par l'opérateur : la tâche « Revue mensuelle des référentiels »
+et les prompts d'onboarding (A et B) n'ont pas été modifiés ; s'ils
+génèrent des lignes FAIBLE, les corriger à la prochaine exécution.
+
 ## Décisions restant à prendre
 
-3. **Bloc « Livraison ».** Le sortir du corps de la page et le mettre dans
-   une propriété texte « Livraison » (interne), pour que le portail n'ait
-   rien à filtrer dans le contenu. Une ligne à changer dans le prompt,
-   étape 6. Tant que ce n'est pas fait, le portail ignore tout callout
-   situé avant le premier titre H1.
-4. **Format des dossiers ouverts.** Fixer dans le prompt le format réellement
-   produit, `nom (compteur, précision)` séparés par ` · `, à la place du
-   « nom — statut — compteur, une ligne par dossier » qui n'est pas suivi.
-   Le portail analysera ce format ; toute ligne non conforme sera affichée
-   brute, sans casser la page.
-5. **Base « Accès »** à créer, seule autre base partagée avec le portail :
-   Email, Organisation (texte, **identique** à l'option de sélection des
-   éditions), Slug, Identifiant d'accès, Actif. Elle porte la
-   correspondance nom → slug, ce qui évite de partager le registre.
-   L'onboarding Cowork y copie le slug et le nom.
 6. **Deux notes par semaine.** Choisir la présentation : deux documents
    dans l'édition de la semaine, ou un onglet par veille. La maquette est à
    compléter dans les deux cas.
@@ -160,10 +183,10 @@ conformément au CLAUDE.md.
 - Requête page : `blocks.children.list` sur le `page_id`, une passe.
 - Rendu : titres H1/H2, paragraphes avec gras et liens, puces, tableaux,
   citations. Titres H2 repliables, badge d'impact lu dans le suffixe
-  « — FORT / MOYEN / RAS ». Callouts placés avant le premier H1 ignorés
-  tant que la décision 3 n'est pas appliquée.
+  « — FORT / MOYEN / RAS ». Aucun bloc interne à filtrer : le corps est
+  intégralement client depuis le 9 septembre 2026.
 - Propriétés à exposer : Titre, Veille, Date d'édition, Numéro, Période
   couverte, Fenêtre élargie, Action de la semaine, Dossiers ouverts suivis.
-  Jamais « Amendements au référentiel », jamais « Livraison ».
+  Jamais « Amendements au référentiel », jamais « Livraison » (propriétés internes).
 - Cloisonnement : le nom d'organisation vient de la ligne « Accès » de la
   personne connectée, jamais de l'URL seule.

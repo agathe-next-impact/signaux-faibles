@@ -128,13 +128,15 @@ Bases partagées avec l'intégration du portail, et elles seules :
   Concurrentiel) · Date d'édition · Numéro · Statut (Brouillon / Relu /
   **Envoyé** = publié) · Période couverte · Fenêtre élargie · Dossiers
   ouverts suivis (texte « nom (compteur, précision) · … ») · Action de la
-  semaine · Amendements au référentiel (**interne, jamais affiché**).
+  semaine · Amendements au référentiel et Livraison (**internes, jamais
+  affichés**).
   Le corps de la page est la note, **rendue comme un document** (décision
   du 9 septembre 2026, pas de base « Items ») : H1 de rubriques, H2
   « Famille — FORT / MOYEN / RAS » repliables avec badge d'impact lu dans
   le suffixe, paragraphes, puces, tableaux. Le tri par impact se fait au
-  niveau des familles. Le callout « Livraison » en tête est interne.
-- **Accès** (à créer) : Email · Organisation (texte identique à l'option de
+  niveau des familles. Le corps ne contient aucun bloc interne.
+- **Accès — portail** (existe, `collection://4d3d7403-35d7-4815-884b-877d17423842`) :
+  Nom (titre) · Email · Organisation (texte identique à l'option de
   sélection des éditions) · Slug · Identifiant d'accès · Actif.
 
 Jamais partagés : le registre « Organisations — pipeline et activation »
