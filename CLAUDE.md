@@ -33,9 +33,9 @@ session.
   réinventés ; polices raccordées avec `@theme inline`
 - API Notion version `2025-09-03` minimum, SDK `@notionhq/client` v5
   (`dataSources.query`, `data_source_id` résolu au démarrage). Intégration
-  interne partagée UNIQUEMENT sur les bases « Éditions », « Items »,
-  « Dossiers », « Clients », « Accès » — jamais sur le référentiel ni sur les
-  pages de travail des tâches Cowork
+  interne partagée UNIQUEMENT sur les bases « Éditions de veille » et
+  « Accès » — jamais sur le registre des organisations, les validations,
+  les référentiels ni les pages de travail des tâches Cowork
 - Accès par **lien magique persistant** signé HMAC (secret d'environnement),
   **un lien par personne**, cookie de session 12 mois, appartenance lue dans
   la base Notion « Accès ». Pas de fournisseur d'auth tiers, pas de mot de
@@ -83,10 +83,10 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
    « Éditions », « Items » ou « Dossiers » porte le filtre `Client = X` ;
    jamais de requête globale puis filtrage en mémoire. Chaque nouvelle
    requête Notion est relue sous cet angle avant commit.
-3. **Seules les pages en statut « publiée » sont demandées à Notion**
-   (filtre `status.equals` dans la requête). Une dépublication ou une mise
-   à la corbeille invalide le cache par webhook ; le portail ne conserve
-   aucune copie.
+3. **Seules les éditions en statut « Envoyé » sont demandées à Notion**
+   (filtre `select.equals` dans la requête, avec le filtre Organisation).
+   Un retour en Brouillon ou une mise à la corbeille invalide le cache par
+   webhook ; le portail ne conserve aucune copie.
 4. **Mode dégradé obligatoire** : profil `cacheLife` à expiration longue,
    pour que Next.js serve la dernière version connue si Notion ne répond
    pas ; aucune page d'erreur côté client ; l'opérateur est alerté par le
@@ -112,29 +112,33 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
 ## Modèle de données (bases Notion)
 
 Les bases Notion **sont** le contrat ; aucun fichier n'est partagé entre le
-portail et les tâches Cowork. Elles sont créées à la main dans Notion avec
-leurs propriétés typées et leurs options fermées, avant la première session
-de code. Cowork découvre le schéma dans Notion à chaque exécution. Le
-portail garde dans son code la liste de ce qu'il attend, la confronte au
-schéma réel au démarrage et refuse de démarrer si une propriété manque.
+portail et les tâches Cowork. Cowork découvre le schéma dans Notion à chaque
+exécution. Le portail garde dans son code la liste de ce qu'il attend, la
+confronte au schéma réel au démarrage et refuse de démarrer si une propriété
+manque. État des lieux et écarts : `docs/base-notion-existante.md`.
 
-- **Clients** : nom, slug (URL du portail), actif
-- **Accès** : email, relation Client, identifiant d'accès (aléatoire, généré
-  par la tâche Cowork ou l'opérateur), actif
-- **Éditions** : titre, date, relation Client, statut (brouillon / relue /
-  publiée), résumé de la semaine
-- **Items** : relation Édition, rubrique, impact (fort / moyen / RAS),
-  changement, fait, URL source, date source, déclaratif (case), relation
-  Dossier
-- **Dossiers** : nom, relation Client, compteur, dernière mise à jour
-- **Événements de dossier** : relation Dossier, relation Édition, résumé,
-  date
+Bases partagées avec l'intégration du portail, et elles seules :
 
-Le point clé : **un item = une ligne structurée**, avec des propriétés
-typées, jamais un bloc de texte libre par édition. C'est ce qui permet le
-repli/dépli par rubrique, le tri par impact et le lien vers un dossier
-depuis la maquette. Le `page_id` Notion est l'identifiant stable des URL du
-portail.
+- **Éditions de veille** (existe, `collection://f3e703c8-3178-4f70-946b-72be0c2f6db1`) :
+  Titre · Organisation (sélection, nom exact) · Veille (Écosystème /
+  Concurrentiel) · Date d'édition · Numéro · Statut (Brouillon / Relu /
+  **Envoyé** = publié) · Période couverte · Fenêtre élargie · Dossiers
+  ouverts suivis (texte « nom (compteur, précision) · … ») · Action de la
+  semaine · Amendements au référentiel (**interne, jamais affiché**).
+  Le corps de la page est la note : H1 de rubriques, H2 « Famille — FORT /
+  MOYEN / FAIBLE », paragraphes, puces, tableaux. Le callout « Livraison »
+  en tête est interne.
+- **Accès** (à créer) : Email · Organisation (texte identique à l'option de
+  sélection des éditions) · Slug · Identifiant d'accès · Actif.
+
+Jamais partagés : le registre « Organisations — pipeline et activation »
+(intake confidentiel), « Validations », les pages organisation, les
+référentiels, les prompts.
+
+Deux lettres par parution et par organisation (une par veille), numérotées
+séparément. Le `page_id` Notion est l'identifiant stable des URL du portail.
+Ne jamais raisonner sur le titre d'une édition : il est fixé par chaque
+référentiel et varie d'une organisation à l'autre.
 
 ## Commandes
 
