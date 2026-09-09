@@ -16,7 +16,7 @@ synchronisation vers une base Postgres.
 
 | Élément du CLAUDE.md actuel | Sort | Motif |
 |---|---|---|
-| Supabase Postgres, tables `editions`, `items`, `dossiers`, `dossier_evenements`, `sync_runs`, `notion_page_map` | **supprimé** | Notion porte les données ; plus de copie. |
+| Supabase (Postgres, Auth), tables `editions`, `items`, `dossiers`, `dossier_evenements`, `sync_runs`, `notion_page_map` | **supprimé** | Notion porte les données ; l'accès se fait par lien persistant maison (voir « Authentification »). |
 | RLS multi-tenant sur `memberships` (règle 1) | **remplacé** | Le cloisonnement se fait dans le code du portail, sur une appartenance lue dans Notion (voir « Cloisonnement »). |
 | Trigger.dev (webhook + cron de rattrapage) | **supprimé** | Plus de tâche longue : le webhook Notion sert seulement à invalider le cache Next.js ; le rattrapage est la revalidation temporelle. Trigger.dev v3 était de toute façon arrêtée. |
 | Règle 2 « le portail n'appelle jamais l'API Notion à la requête » | **inversée, avec garde-fou** | Le portail appelle Notion, mais **jamais sans cache** : toute lecture passe par `use cache` avec revalidation par tag. |
@@ -50,7 +50,8 @@ Notion
    │     → POST /api/notion/webhook (vérif. signature SDK) → revalidateTag(...)
    └─ API 2025-09-03, lue uniquement depuis des fonctions `use cache`
 Next.js 16 (Vercel)
-   ├─ proxy.ts : session (Supabase Auth, lien magique en invitation seule)
+   ├─ /acces/[jeton] : lien magique persistant → cookie de session 12 mois
+   ├─ proxy.ts : cookie → identifiant d'accès → client (base « Accès », cachée)
    ├─ /[client]/editions/[page_id] : rendu depuis le cache, contrôle d'accès
    │     AVANT l'appel à la fonction cachée
    └─ /api/media/[block_id] : proxy d'images (URL Notion expirant en 1 h)
@@ -103,18 +104,60 @@ Ce schéma est plus fragile qu'une RLS (une seule ligne oubliée suffit).
 C'est le coût du pivot ; il doit être compensé par les tests de recette de
 la règle 6 et par une revue systématique de chaque nouvelle requête.
 
-### Authentification : décision à prendre
+### Authentification : lien magique persistant (décision prise)
 
-Le lien magique en invitation seule reste souhaitable. Sans Postgres, deux
-options :
+Décision : chaque personne autorisée reçoit un **lien d'accès persistant**,
+qu'elle peut mettre en favori et rouvrir sans limite. Pas de mot de passe,
+pas de lien à usage unique.
 
-| Option | Principe | Pour | Contre |
-|---|---|---|---|
-| **A. Supabase Auth seul** (recommandée) | Projet Supabase utilisé uniquement pour Auth : inscriptions désactivées, `shouldCreateUser: false`, comptes créés par `inviteUserByEmail` depuis un script opérateur, appartenance lue dans Notion. Aucune table applicative. | Flux vérifié ce matin (lien `token_hash` + `verifyOtp` serveur, SMTP personnalisé). `@supabase/ssr` + `proxy.ts` documentés. | Une dépendance de plus pour un seul usage ; deux listes d'emails à tenir cohérentes (Supabase et Notion « Clients »). |
-| **B. Auth.js (next-auth) avec fournisseur email** | Sessions JWT sans base ; emails envoyés par Resend ; liste des emails autorisés lue dans Notion au moment de l'envoi. | Une seule source d'accès (Notion). Pas de Supabase. | Non vérifié dans les docs ce matin ; Auth.js exige normalement un adaptateur pour le fournisseur email (stockage des jetons de vérification), à confirmer. |
+Ce que les vérifications imposent :
 
-Une troisième voie (URL non devinables par client, sans authentification)
-est **écartée** : incompatible avec la confidentialité d'une veille payante.
+- **Supabase Auth ne convient pas.** Ses liens magiques sont « one-time use
+  only », expirent après 1 h par défaut, et la doc déconseille fortement
+  toute expiration au-delà de 24 h. Un lien persistant est donc un
+  mécanisme propre au portail. **Supabase sort de la stack.**
+- **Le lien est une capacité** : qui le détient entre. C'est accepté par
+  conception (comme un lien de partage), et compensé par la révocation
+  individuelle et par une hygiène d'URL stricte.
+
+Conception proposée :
+
+1. **Base Notion « Accès »** : une ligne par personne, avec `email`,
+   relation `Client`, `identifiant d'accès` (aléatoire, généré par la tâche
+   Cowork ou l'opérateur), case `actif`. Le portail la lit en cache,
+   invalidée par webhook. Aucune écriture du portail dans Notion.
+2. **Jeton** : `identifiant d'accès` signé HMAC-SHA256 avec un secret
+   d'environnement, encodé en base64url. Le lien est
+   `https://signal-faible.fr/acces/<jeton>`. Notion ne stocke jamais le
+   secret ; révoquer = décocher `actif` ou régénérer l'identifiant.
+3. **Route `/acces/[jeton]`** : vérifie la signature en temps constant,
+   cherche l'identifiant dans « Accès » (cache), pose un cookie de session
+   `httpOnly`, `Secure`, `SameSite=Lax`, durée 12 mois, contenant le seul
+   identifiant d'accès signé, puis **redirige immédiatement** vers
+   `/[client]` : le jeton ne reste ni dans l'historique de navigation ni
+   dans un `Referer`. `Referrer-Policy: same-origin` sur tout le portail.
+4. **`proxy.ts`** : lit le cookie, revalide l'identifiant contre « Accès »
+   à chaque requête (lecture cachée, donc gratuite) ; un accès désactivé
+   dans Notion coupe la session à la requête suivante, même avec un cookie
+   valide.
+5. **Perte du lien** : page « recevoir mon lien » où la personne saisit son
+   email ; si l'email figure dans « Accès », le lien lui est renvoyé (via
+   Resend, ou par une tâche Cowork déclenchée par l'opérateur). Réponse
+   identique que l'email existe ou non.
+
+Choix par défaut, à confirmer : **un lien par personne**, pas par client.
+Un lien par client est plus simple à distribuer mais impossible à révoquer
+pour une seule personne qui quitte l'entreprise cliente.
+
+Risques assumés et parades :
+
+| Risque | Parade |
+|---|---|
+| Lien transféré à un tiers | révocation individuelle dans Notion ; journal des accès côté Vercel |
+| Jeton deviné | identifiant de 256 bits + signature HMAC ; comparaison en temps constant |
+| Jeton dans les journaux ou l'historique | redirection immédiate ; `Referrer-Policy` ; pas de jeton dans les URL après connexion |
+| Cookie volé | `httpOnly`, `Secure` ; durée 12 mois ; révocation par Notion effective à la requête suivante |
+| Secret HMAC compromis | rotation du secret invalide tous les liens ; renvoi automatique des nouveaux liens |
 
 ## CLAUDE.md : réécriture proposée des sections touchées
 
@@ -126,7 +169,7 @@ est **écartée** : incompatible avec la confidentialité d'une veille payante.
 - Next.js 16, App Router, TypeScript strict, Tailwind v4, `cacheComponents`
 - API Notion `2025-09-03`, SDK `@notionhq/client` v5, intégration interne
   partagée sur « Éditions », « Dossiers », « Clients » uniquement
-- Auth : option A ou B ci-dessus (à trancher)
+- Accès par lien magique persistant signé (pas de Supabase), appartenance lue dans Notion « Accès »
 - Polices via `next/font` (inchangé), Vitest, Playwright
 
 **« Règles non négociables »** (remplace 1, 2, 3, 4) :
@@ -159,7 +202,7 @@ règle 6 ; (4) contrat des bases Notion partagé avec les tâches Cowork.
 
 1. Sémantique exacte de `cacheLife` (`stale`, `revalidate`, `expire`) et
    comportement quand l'origine est injoignable après `expire`.
-2. Si l'option B est retenue : contrainte d'adaptateur du fournisseur
-   email d'Auth.js.
+2. Choix du canal d'envoi des liens (Resend depuis le portail, ou tâche
+   Cowork) et « un lien par personne » vs « un lien par client ».
 3. Ce que le connecteur Notion de Cowork sait écrire (relations, statut,
    blocs) pour figer le schéma des bases.

@@ -350,6 +350,13 @@ avec les variables posées sur `<html className={`${lora.variable} ${publicSans.
 
 ## 6. Ajustements proposés (rien n'est codé)
 
+> **Note du 9 septembre 2026, après-midi** : l'architecture a été réorientée
+> vers un Notion headless alimenté par des tâches Cowork, avec accès par lien
+> magique persistant (voir `docs/architecture-notion-headless.md`). Les
+> ajustements ci-dessous décrivent l'architecture initiale (Postgres, RLS,
+> Trigger.dev) et sont conservés pour mémoire ; seuls les points Notion,
+> Next.js et Tailwind restent applicables.
+
 ### 6.1 CLAUDE.md, section « Stack »
 
 | Ligne actuelle | Ajustement proposé | Motif |
