@@ -39,11 +39,17 @@ session.
 - Accès par **lien magique persistant** signé HMAC (secret d'environnement),
   **un lien par personne**, cookie de session 12 mois, appartenance lue dans
   la base Notion « Accès ». Pas de fournisseur d'auth tiers, pas de mot de
-  passe. Les liens sont générés et envoyés par une **tâche Cowork**, jamais
-  par le portail
+  passe. Une **tâche Cowork** tient la base « Accès » (création,
+  révocation) ; le **portail** recompose et envoie le lien par Resend
+  (plan gratuit) depuis la page « recevoir mon lien », premier envoi et
+  renvoi confondus. Le secret HMAC ne quitte jamais le portail
+- Lectures Notion en `'use cache: remote'` (le cache mémoire ne survit pas
+  en serverless), profil unique `notion` : `stale` 5 min, `revalidate` 1 h,
+  `expire` 30 jours. Tags `page:<page_id>` et `liste:<data_source_id>`
 - Webhook Notion reçu par un route handler Next.js, signature vérifiée avec
   `verifyWebhookSignature` du SDK, réponse 2xx immédiate, puis
-  `revalidateTag`. Le handler ne relit jamais Notion
+  `revalidateTag(tag, 'max')`. Le handler ne relit jamais Notion et
+  n'envoie jamais d'email
 - **Notion sur le plan gratuit** : l'espace de travail reste à **un seul
   membre** (l'opérateur). Un espace gratuit à plusieurs membres est plafonné
   à 1 000 blocs à vie et l'API refuse ensuite toute création. Les clients ne
@@ -102,8 +108,10 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
 
 ## Modèle de données (bases Notion)
 
-Contrat partagé avec les tâches Cowork qui les alimentent ; à figer avec
-elles avant la première session de code.
+Contrat partagé avec les tâches Cowork qui les alimentent, à figer dans
+`docs/contrat-bases-notion.md` avant la première session de code (par
+base : propriété, type Notion, valeurs permises, obligatoire, qui la
+remplit). Le portail compare le schéma réel au contrat au démarrage.
 
 - **Clients** : nom, slug (URL du portail), actif
 - **Accès** : email, relation Client, identifiant d'accès (aléatoire, généré

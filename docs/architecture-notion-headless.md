@@ -140,27 +140,37 @@ Conception proposée :
    à chaque requête (lecture cachée, donc gratuite) ; un accès désactivé
    dans Notion coupe la session à la requête suivante, même avec un cookie
    valide.
-5. **Perte du lien** : page « recevoir mon lien » où la personne saisit son
-   email ; la demande est transmise à l'opérateur et une tâche Cowork
-   renvoie le lien si l'email figure dans « Accès ». Réponse identique que
+5. **Obtenir ou retrouver son lien** : page « recevoir mon lien » où la
+   personne saisit son email ; si l'email figure dans « Accès » et est
+   actif, le portail lui envoie le lien par Resend. Réponse identique que
    l'email existe ou non.
 
 Décisions prises le 9 septembre 2026 :
 
 - **Un lien par personne**, pas par client : révocable individuellement
   quand une personne quitte l'entreprise cliente.
-- **Envoi des liens par une tâche Cowork**, pas par le portail : le portail
-  n'envoie aucun email et n'a pas de fournisseur d'envoi. La page « recevoir
-  mon lien » se limite à enregistrer la demande (voir ci-dessous) ; la tâche
-  Cowork génère l'identifiant, l'écrit dans « Accès » et envoie le lien.
 - **Notion sur le plan gratuit** (voir « Contraintes du plan gratuit »).
+- **Lien perdu : email automatisé**, sans intervention de l'opérateur.
 
-Conséquence sur le point 5 : sans envoi d'email par le portail, la demande
-de renvoi d'un lien doit atteindre l'opérateur autrement. Le portail ne
-pouvant pas écrire dans Notion, la solution la plus simple est un email
-transactionnel vers l'opérateur (Resend, quota gratuit) ou un simple
-formulaire vers une adresse de l'opérateur ; la tâche Cowork renvoie ensuite
-le lien. À trancher, sans incidence sur l'architecture.
+Répartition recommandée entre Cowork et le portail, qui découle du secret
+HMAC :
+
+- **Cowork tient la base « Accès »** : création de la ligne (email, client,
+  identifiant aléatoire, actif), révocation, régénération. Cowork ne
+  connaît pas le secret et ne fabrique jamais de lien.
+- **Le portail est le seul émetteur d'emails**, via Resend (plan gratuit :
+  3 000 emails par mois, 100 par jour). Il détient le secret, lit « Accès »
+  en cache et recompose le lien à la demande. Premier envoi et renvoi
+  passent par le même flux : la page « recevoir mon lien ». L'opérateur dit
+  simplement à la personne « saisissez votre email sur signal-faible.fr ».
+- Ce choix évite deux écueils : faire sortir le secret vers Cowork, et
+  envoyer un email depuis le handler de webhook (huit tentatives Notion
+  possibles, donc doublons).
+
+Garde-fous de la page « recevoir mon lien » : réponse identique que
+l'email soit connu ou non ; un envoi au plus par email toutes les dix
+minutes et par adresse IP ; journal côté Vercel ; pas de lien dans les
+journaux.
 
 Risques assumés et parades :
 
@@ -199,6 +209,75 @@ sources dans `docs/etat-des-api.md`, §2.5) :
 - Historique de page limité à 7 jours sur le plan gratuit : sans incidence
   pour le portail, mais l'opérateur n'a pas de filet long en cas de
   suppression accidentelle dans Notion.
+
+### Profil de cache recommandé
+
+Sémantique de `cacheLife` (vérifiée, voir `docs/etat-des-api.md` §5.5) :
+`stale` = durée pendant laquelle le navigateur réutilise sans demander au
+serveur ; `revalidate` = au-delà, la requête suivante est servie depuis le
+cache et déclenche une régénération en arrière-plan ; `expire` = au-delà,
+la requête suivante attend Notion.
+
+Recommandation, un seul profil nommé `notion` dans `next.config.ts` :
+
+| Durée | Valeur | Pourquoi |
+|---|---|---|
+| `stale` | 5 min | navigation instantanée entre éditions ; une publication n'attend jamais plus de 5 min côté navigateur |
+| `revalidate` | 1 h | filet de rattrapage si un webhook est perdu : au pire, une heure de retard, sans cron ni infrastructure |
+| `expire` | 30 jours | mode dégradé : Notion peut être injoignable un mois avant qu'une page tombe en erreur |
+
+Avec le webhook, le contenu est en pratique à jour dans la minute. Le
+profil `revalidate` ne sert qu'en secours.
+
+Trois règles d'accompagnement :
+
+1. **`'use cache: remote'`** pour toutes les lectures Notion, pas
+   `'use cache'` seul : en serverless le cache mémoire ne survit pas entre
+   requêtes, et il est vidé à chaque déploiement. La doc Next.js cite
+   précisément « rate-limited APIs » et « flaky or unreliable services ».
+   Vérifier à la première session que Vercel fournit bien le gestionnaire
+   distant sans configuration.
+2. **Tags** posés dans les fonctions cachées et invalidés par le webhook
+   sans relire Notion : `page:<page_id>` (la page modifiée) et
+   `liste:<data_source_id>` (la base parente, fournie dans
+   `data.parent` du webhook). Un client n'a donc jamais à connaître le
+   client d'une page pour l'invalider.
+3. **`revalidateTag(tag, 'max')`** dans le handler, jamais `{ expire: 0 }` :
+   le lecteur est servi depuis le cache pendant que Notion est relu. Une
+   édition publiée apparaît au deuxième chargement, ce qui est acceptable
+   pour une veille hebdomadaire.
+
+À tester en recette : couper Notion et vérifier que le portail continue de
+servir la dernière version (la doc ne l'affirme pas explicitement).
+
+### Le contrat des bases Notion, expliqué simplement
+
+Le portail et les tâches Cowork ne se parlent jamais directement. Ils ne
+partagent qu'une chose : les bases Notion. Cowork y écrit, le portail y
+lit. Pour que ça marche, les deux doivent être d'accord, à la lettre, sur :
+
+- **quelles bases existent** (« Éditions », « Items », « Dossiers »,
+  « Événements de dossier », « Clients », « Accès ») ;
+- **quelles propriétés chaque base contient**, avec leur type Notion exact
+  (titre, date, sélection, statut, relation, case à cocher, URL) ;
+- **quelles valeurs sont permises** là où c'est une liste fermée : l'impact
+  est `fort`, `moyen` ou `RAS`, rien d'autre ; le statut d'une édition est
+  `brouillon`, `relue` ou `publiée` ;
+- **qui remplit quoi** : Cowork remplit tout ; le portail ne remplit rien.
+
+C'est un formulaire dont les deux côtés ont la même copie. Si Cowork écrit
+« Fort » avec une majuscule et que le portail attend `fort`, l'item
+disparaît du tri par impact. Si Cowork oublie la relation « Client » sur
+une édition, elle n'apparaît chez personne. Si l'opérateur renomme une
+propriété dans Notion, le portail ne la trouve plus.
+
+Concrètement, le contrat est un fichier `docs/contrat-bases-notion.md`
+avec, pour chaque base, un tableau « propriété, type, valeurs permises,
+obligatoire, qui la remplit ». Il est écrit une fois, avant la première
+session de code, et toute modification passe par lui. Les tâches Cowork le
+citent dans leurs instructions ; le portail le vérifie au démarrage en
+comparant le schéma réel de chaque base (lu via l'API) au contrat, et
+refuse de démarrer si une propriété manque.
 
 ## CLAUDE.md : réécriture proposée des sections touchées
 
@@ -241,9 +320,10 @@ règle 6 ; (4) contrat des bases Notion partagé avec les tâches Cowork.
 
 ## À vérifier avant la première session
 
-1. Sémantique exacte de `cacheLife` (`stale`, `revalidate`, `expire`) et
-   comportement quand l'origine est injoignable après `expire`.
-2. Canal de la demande « recevoir mon lien » vers l'opérateur (email
-   transactionnel ou formulaire), l'envoi lui-même étant fait par Cowork.
+1. Que Vercel fournit le gestionnaire de cache distant pour
+   `'use cache: remote'` sans configuration, et que l'ancienne valeur est
+   servie quand la régénération échoue (test « Notion coupé »).
+2. Écrire `docs/contrat-bases-notion.md` et le faire relire par les tâches
+   Cowork.
 3. Ce que le connecteur Notion de Cowork sait écrire (relations, statut,
    blocs) pour figer le schéma des bases.

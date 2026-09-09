@@ -359,6 +359,28 @@ avec les variables posées sur `<html className={`${lora.variable} ${publicSans.
 - Codemod : `npx @next/codemod@canary upgrade latest`, ou `npx next upgrade` depuis 16.1. **[officiel]**
 - Source : https://nextjs.org/docs/app/guides/upgrading/version-16, https://nextjs.org/support-policy, discussion `vercel/next.js#85289`.
 
+### 5.5 Cache de Next.js 16 : `use cache`, `cacheLife`, `revalidateTag`
+
+Vérifié le 9 septembre 2026 sur `docs/01-app/03-api-reference` du dépôt
+`vercel/next.js` (canary), pages `use-cache`, `use-cache-remote`,
+`cacheLife` (fonction et config), `cacheHandlers`, `revalidateTag`,
+`updateTag`.
+
+- **Trois durées** par profil : `stale` (« How long the client can use cached data without checking the server », minimum 30 s imposé par le routeur client), `revalidate` (« After this time, the next request will trigger a background refresh » ; la requête est servie depuis le cache, la régénération se fait en arrière-plan), `expire` (« After this time with no requests, the next one waits for fresh content » ; doit être supérieur à `revalidate`, sinon erreur au build). **[officiel]**
+- **Profils prédéfinis** : `default` 5 min / 15 min / jamais ; `hours` 5 min / 1 h / 1 jour ; `days` 5 min / 1 jour / 1 semaine ; `weeks` 5 min / 1 semaine / 30 jours ; `max` 5 min / 30 jours / 1 an. Profils personnalisés dans `next.config.ts` sous `cacheLife`, avec `cacheComponents: true`. **[officiel]**
+- **Serverless** : « With the default in-memory handler, serverless instances are ephemeral, so entries may not be reused between requests. » Et : « Neither caching directive carries over to a new deploy, because the cache key includes the build ID. » La doc recommande `'use cache: remote'` pour « Rate-limited APIs », « Flaky or unreliable services » et « a rate-limited CMS », le gestionnaire distant étant fourni par l'hébergeur (« hosting providers should typically provide this automatically »). **[officiel]**
+- **Interdit dans une fonction cachée** : `cookies()`, `headers()`, `searchParams`, y compris via une fonction appelée (erreur `next-request-in-use-cache`). Les valeurs de requête se lisent dehors et se passent en argument. Confirme la règle 1 du CLAUDE.md. **[officiel]**
+- **`revalidateTag(tag, profil)`** : « marks the tagged data as stale. The next request for that data kicks off a revalidation and is served stale content while it runs. » Avec `'max'` (recommandé par la doc), le contenu périmé est servi pendant la régénération ; avec `{ expire: 0 }`, la requête suivante bloque. Utilisable depuis un route handler (webhook). **[officiel]**
+- **`updateTag`** : expiration immédiate, réservée aux Server Actions ; sans objet pour un webhook. **[officiel]**
+- **Non vérifié** : le comportement quand la régénération en arrière-plan échoue (Notion injoignable). La doc ne dit pas explicitement que l'ancienne valeur est conservée jusqu'à `expire` ; c'est le comportement historique de l'ISR, à **tester en recette** en coupant l'accès à Notion. **[non vérifié]**
+- Source : https://nextjs.org/docs/app/api-reference/directives/use-cache, https://nextjs.org/docs/app/api-reference/directives/use-cache-remote, https://nextjs.org/docs/app/api-reference/functions/cacheLife, https://nextjs.org/docs/app/api-reference/functions/revalidateTag.
+
+### 5.6 Resend (envoi des liens d'accès)
+
+- Plan gratuit : 3 000 emails par mois, 100 par jour, jusqu'à trois domaines vérifiés, rétention 30 jours. **[secondaire, recoupé sur plusieurs sources ; resend.com inaccessible depuis l'environnement]**
+- Suffisant par construction : quelques dizaines de personnes, un email par demande de lien.
+- Source : https://resend.com/pricing (à recouper), https://resend.com/blog/new-free-tier.
+
 ---
 
 ## 6. Ajustements proposés (rien n'est codé)
