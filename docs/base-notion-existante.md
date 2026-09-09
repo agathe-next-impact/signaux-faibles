@@ -81,7 +81,7 @@ conformément au CLAUDE.md.
 |---|---|---|
 | Statut « publiée » | `Envoyé` | le filtre de publication devient `Statut = Envoyé` ; `Relu` n'est pas publié |
 | Un item = une ligne structurée (rubrique, impact, fait, source, date, déclaratif, dossier) | la note est un document ; l'impact est un suffixe de titre H2 ; les sources sont des liens dans le texte | le tri par impact et le repli par rubrique ne peuvent se faire qu'au niveau des **familles** (titres H2), pas des items |
-| Trois niveaux d'impact : fort / moyen / RAS | les référentiels scorent **FORT / MOYEN / FAIBLE**, et « RAS » désigne une rubrique sans signal | **tension avec la charte** (règle 6) : quatre états dans le contenu, trois dans la charte |
+| Trois niveaux d'impact : fort / moyen / RAS | les référentiels scorent **FORT / MOYEN / FAIBLE**, et « RAS » désigne une rubrique sans signal | tranché le 9 septembre : la charte reste, FAIBLE disparaît des référentiels (décision 1) |
 | Une édition par semaine et par client | **deux lettres** par parution (Écosystème et Concurrentiel), numérotées séparément | l'écran « édition de la semaine » doit présenter deux notes, ou un onglet par veille |
 | Relation vers un client | sélection « Organisation » par nom | le filtre de cloisonnement porte sur le nom exact de l'option ; la correspondance nom → slug doit vivre ailleurs |
 | Base « Dossiers » avec compteur et historique | texte « nom (compteur, précision) » séparé par « · » | le panneau des dossiers se reconstruit en analysant cette propriété d'édition en édition, si le format reste stable |
@@ -100,26 +100,42 @@ conformément au CLAUDE.md.
   panneaux de la maquette autour de la note.
 - Le slug existe déjà dans le registre.
 
-## Décisions à prendre
+## Décisions prises le 9 septembre 2026
 
-1. **Niveaux d'impact.** Trois options : (a) la charte s'aligne sur le
-   contenu, quatre badges FORT / MOYEN / FAIBLE et un état RAS ; (b) les
-   référentiels et le prompt passent à fort / moyen / RAS, FAIBLE
-   disparaissant ; (c) le portail affiche FAIBLE comme RAS, ce qui ment
-   sur le contenu. Recommandation : **(a)**, en amendant la règle 6 : trois
-   niveaux d'impact **plus** un état « rien à signaler » qui n'est pas un
-   niveau. C'est ce que disent déjà les référentiels.
-2. **Items ou document.** (a) Rendre la note comme un document, avec
-   repli par famille (H2) et badge d'impact lu dans le suffixe du titre ;
-   (b) ajouter une base « Items » alimentée par la tâche des lettres, une
-   ligne par fait, ce qui modifie le prompt (étape 4) et double les
-   écritures. Recommandation : **(a) pour la première version**, avec une
-   convention de titres H2 « Famille — IMPACT » inscrite dans les §6. Le
-   passage à (b) reste possible plus tard sans casser le portail.
+1. **Trois niveaux d'impact, la charte ne bouge pas** : fort / moyen / RAS.
+   Le niveau FAIBLE, présent aujourd'hui dans les référentiels, disparaît :
+   un fait qui n'atteindrait que FAIBLE n'est pas retenu, ou la famille
+   passe en RAS motivé. Le portail lit le suffixe du titre H2 et n'accepte
+   que FORT, MOYEN, RAS ; tout autre suffixe s'affiche sans badge, jamais
+   converti. Modifications à porter **côté Notion et Cowork** (hors dépôt) :
+   - référentiels L'Hermitage « Écosystème des tiers-lieux » et « Séjours
+     B2B/B2C », référentiel(s) Infralliance : dans chaque table du §1,
+     supprimer la ligne **FAIBLE** ; dans le §6, remplacer
+     « FORT/MOYEN/FAIBLE » par « FORT/MOYEN, RAS pour une rubrique sans
+     signal » ; pour le §6 concurrentiel de L'Hermitage, le préfixe
+     `[Impact FORT/MOYEN/FAIBLE]` par item devient un suffixe de titre H2
+     de famille, comme pour l'écosystème ;
+   - prompt « Tâche — Lettres de veille », étape 3 : « seuls les libellés
+     d'impact FORT/MOYEN/FAIBLE prévus par le §6 sont client-facing »
+     devient « seuls les libellés FORT, MOYEN et RAS… » ;
+   - prompt « Tâche — Onboarding » (prompts A et B), à vérifier : les
+     référentiels générés ne doivent plus produire de ligne FAIBLE ;
+   - revue mensuelle : vérifier qu'elle ne réintroduit pas FAIBLE.
+2. **La note est un document.** Pas de base « Items ». Le portail rend le
+   corps de la page : H1 de rubriques, H2 de familles repliables avec badge
+   d'impact, paragraphes, puces, tableaux. Le tri par impact opère sur les
+   familles. Convention à inscrire dans chaque §6 : tout titre H2 sous
+   « Actualités par famille » (ou « Voix concurrentes ») se termine par
+   « — FORT », « — MOYEN » ou « — RAS ». Un passage ultérieur à une base
+   « Items » resterait possible sans casser le portail.
+
+## Décisions restant à prendre
+
 3. **Bloc « Livraison ».** Le sortir du corps de la page et le mettre dans
    une propriété texte « Livraison » (interne), pour que le portail n'ait
    rien à filtrer dans le contenu. Une ligne à changer dans le prompt,
-   étape 6.
+   étape 6. Tant que ce n'est pas fait, le portail ignore tout callout
+   situé avant le premier titre H1.
 4. **Format des dossiers ouverts.** Fixer dans le prompt le format réellement
    produit, `nom (compteur, précision)` séparés par ` · `, à la place du
    « nom — statut — compteur, une ligne par dossier » qui n'est pas suivi.
@@ -143,8 +159,9 @@ conformément au CLAUDE.md.
   `Date d'édition` décroissant, puis `Veille`.
 - Requête page : `blocks.children.list` sur le `page_id`, une passe.
 - Rendu : titres H1/H2, paragraphes avec gras et liens, puces, tableaux,
-  citations. Callouts ignorés tant que la décision 3 n'est pas appliquée,
-  puis rendus.
+  citations. Titres H2 repliables, badge d'impact lu dans le suffixe
+  « — FORT / MOYEN / RAS ». Callouts placés avant le premier H1 ignorés
+  tant que la décision 3 n'est pas appliquée.
 - Propriétés à exposer : Titre, Veille, Date d'édition, Numéro, Période
   couverte, Fenêtre élargie, Action de la semaine, Dossiers ouverts suivis.
   Jamais « Amendements au référentiel », jamais « Livraison ».

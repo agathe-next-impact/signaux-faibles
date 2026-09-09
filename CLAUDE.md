@@ -96,7 +96,11 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
    route proxy `/api/media/[block_id]`, ou sont des liens externes.
 6. Impact scoré à trois niveaux seulement (fort / moyen / RAS). Ne pas
    ajouter de niveau ni de couleur d'impact supplémentaire — c'est une
-   règle de la charte, pas un choix d'implémentation.
+   règle de la charte, pas un choix d'implémentation. Dans Notion, le
+   niveau est le suffixe du titre H2 d'une famille (« Famille — FORT »,
+   « — MOYEN », « — RAS ») ; **FAIBLE n'existe pas** et doit disparaître des
+   référentiels. Un suffixe inconnu s'affiche sans badge, jamais converti
+   en un autre niveau.
 7. Aucune donnée d'un client n'apparaît dans le HTML envoyé au navigateur
    d'un autre client, y compris dans les payloads JSON non affichés (props
    Next.js sérialisées). Vérifier explicitement à la recette avec un compte
@@ -125,9 +129,11 @@ Bases partagées avec l'intégration du portail, et elles seules :
   **Envoyé** = publié) · Période couverte · Fenêtre élargie · Dossiers
   ouverts suivis (texte « nom (compteur, précision) · … ») · Action de la
   semaine · Amendements au référentiel (**interne, jamais affiché**).
-  Le corps de la page est la note : H1 de rubriques, H2 « Famille — FORT /
-  MOYEN / FAIBLE », paragraphes, puces, tableaux. Le callout « Livraison »
-  en tête est interne.
+  Le corps de la page est la note, **rendue comme un document** (décision
+  du 9 septembre 2026, pas de base « Items ») : H1 de rubriques, H2
+  « Famille — FORT / MOYEN / RAS » repliables avec badge d'impact lu dans
+  le suffixe, paragraphes, puces, tableaux. Le tri par impact se fait au
+  niveau des familles. Le callout « Livraison » en tête est interne.
 - **Accès** (à créer) : Email · Organisation (texte identique à l'option de
   sélection des éditions) · Slug · Identifiant d'accès · Actif.
 
