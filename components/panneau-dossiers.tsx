@@ -12,25 +12,25 @@ export function PanneauDossiers({ brut }: { brut: string }) {
   if (dossiers.length === 0) return null
 
   return (
-    <section className="rounded-carte border border-trait-tenu bg-papier-creux p-4">
-      <h3 className="font-mono text-xs uppercase tracking-wide text-encre-tenue">
+    <section className="rounded-carte border border-gris-ligne bg-fond-neutre p-4">
+      <h3 className="label-mono text-ardoise">
         Dossiers ouverts
       </h3>
 
       <ul className="mt-3 flex flex-col gap-2">
         {dossiers.map((dossier, index) => (
-          <li key={index} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+          <li key={index} className="flex flex-wrap items-baseline gap-x-2 text-corps">
             <span className="text-encre">{dossier.nom}</span>
             {dossier.compteur !== null ? (
               <span
-                className="font-mono text-xs text-encre-tenue"
+                className="font-mono text-label text-ardoise"
                 title={`${dossier.compteur} semaine(s) sans mouvement`}
               >
                 {dossier.compteur}
               </span>
             ) : null}
             {dossier.précision ? (
-              <span className="text-encre-douce">— {dossier.précision}</span>
+              <span className="text-ardoise">— {dossier.précision}</span>
             ) : null}
           </li>
         ))}

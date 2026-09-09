@@ -45,7 +45,7 @@ test('un cookie fabriqué ne franchit pas le proxy', async ({ context, page }) =
 test('le formulaire répond la même chose à une adresse inconnue', async ({ page }) => {
   await page.goto('/recevoir-mon-lien')
   await page.getByLabel('Votre adresse professionnelle').fill('inconnu@exemple.test')
-  await page.getByRole('button', { name: 'Recevoir mon lien' }).click()
+  await page.getByRole('button', { name: 'Recevoir', exact: true }).click()
 
   // Ni « adresse inconnue », ni « accès révoqué » : une seule réponse.
   await expect(page.getByText(/le lien vient d’y être envoyé|n’a pas abouti/)).toBeVisible()

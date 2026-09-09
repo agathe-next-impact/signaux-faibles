@@ -26,7 +26,7 @@ function Texte({ segments }: { segments: readonly Segment[] }) {
               href={segment.lien}
               rel="noreferrer noopener"
               target="_blank"
-              className="text-accent underline decoration-trait underline-offset-2"
+              className="text-encre underline decoration-gris-ligne underline-offset-2"
             >
               {contenu}
             </a>
@@ -50,7 +50,7 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
 
     case 'titre':
       return (
-        <h4 className="font-titre text-base text-encre">
+        <h4 className="font-titre text-h3 font-semibold text-encre">
           <Texte segments={bloc.segments} />
         </h4>
       )
@@ -72,27 +72,27 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
 
     case 'citation':
       return (
-        <blockquote className="border-l-2 border-trait pl-4 text-encre-douce">
+        <blockquote className="border-l-2 border-gris-ligne pl-4 text-ardoise">
           <Texte segments={bloc.segments} />
         </blockquote>
       )
 
     case 'encadré':
       return (
-        <aside className="rounded-carte bg-papier-creux px-4 py-3 text-encre">
+        <aside className="rounded-carte bg-fond-neutre px-4 py-3 text-encre">
           <Texte segments={bloc.segments} />
         </aside>
       )
 
     case 'code':
       return (
-        <pre className="overflow-x-auto rounded-carte bg-papier-creux p-4">
-          <code className="font-mono text-sm">{bloc.texte}</code>
+        <pre className="overflow-x-auto rounded-carte bg-fond-neutre p-4">
+          <code className="font-mono text-label">{bloc.texte}</code>
         </pre>
       )
 
     case 'séparateur':
-      return <hr className="border-trait-tenu" />
+      return <hr className="border-gris-ligne" />
 
     case 'image':
       return (
@@ -106,7 +106,7 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
             className="rounded-carte"
           />
           {bloc.légende ? (
-            <figcaption className="font-mono text-xs text-encre-tenue">
+            <figcaption className="font-mono text-label text-ardoise">
               {bloc.légende}
             </figcaption>
           ) : null}
@@ -118,19 +118,19 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
         // Un tableau large défile dans son propre cadre : la page, elle, ne
         // défile jamais horizontalement.
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-corps">
             <tbody>
               {bloc.lignes.map((ligne, indexLigne) => {
                 const enTête = bloc.enTête && indexLigne === 0
                 const Cellule = enTête ? 'th' : 'td'
                 return (
-                  <tr key={indexLigne} className="border-b border-trait-tenu">
+                  <tr key={indexLigne} className="border-b border-gris-ligne">
                     {ligne.map((cellule, indexCellule) => (
                       <Cellule
                         key={indexCellule}
                         scope={enTête ? 'col' : undefined}
                         className={`px-3 py-2 text-left align-top ${
-                          enTête ? 'font-medium text-encre-douce' : 'text-encre'
+                          enTête ? 'font-medium text-ardoise' : 'text-encre'
                         }`}
                       >
                         <Texte segments={cellule} />
@@ -160,12 +160,15 @@ function Blocs({ blocs }: { blocs: readonly Bloc[] }) {
 function RenduFamille({ famille }: { famille: Famille }) {
   return (
     <details
-      // Les familles fortes s'ouvrent d'elles-mêmes : c'est ce qu'on vient lire.
-      open={famille.niveau === 'FORT'}
-      className="rounded-carte border border-trait-tenu"
+      // Ouvertes par défaut, toutes. La charte pose que « RAS » est un état à
+      // part entière : il se montre, il ne se cache pas — une famille repliée
+      // d'office le cacherait. Le pli reste offert au lecteur, il n'est pas
+      // imposé. C'est aussi ce qui fait une lettre plutôt qu'un tableau de bord.
+      open
+      className="rounded-carte border border-gris-ligne"
     >
       <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-4 py-3">
-        <span className="font-titre text-lg text-encre">{famille.titre}</span>
+        <span className="font-titre text-h3 font-semibold text-encre">{famille.titre}</span>
         <BadgeImpact niveau={famille.niveau} />
       </summary>
       <div className="px-4 pb-4">
@@ -183,7 +186,7 @@ export function RenduDocument({ document }: { document: Document }) {
       {document.rubriques.map((rubrique, index) => (
         <section key={index} className="flex flex-col gap-4">
           {rubrique.titre ? (
-            <h3 className="font-titre text-xl text-encre">{rubrique.titre}</h3>
+            <h3 className="font-titre text-h2 font-bold text-encre">{rubrique.titre}</h3>
           ) : null}
 
           <Blocs blocs={rubrique.introduction} />

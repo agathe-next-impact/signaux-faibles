@@ -26,7 +26,7 @@ export default async function UneSemaine({
 
   return (
     <>
-      <h1 className="font-titre text-2xl text-encre">{semaine.libellé}</h1>
+      <h1 className="font-titre text-h1 font-bold text-encre">{semaine.libellé}</h1>
       {semaine.éditions.map((édition) => (
         <Note key={édition.pageId} édition={édition} />
       ))}

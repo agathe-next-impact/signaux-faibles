@@ -82,13 +82,30 @@ ligne de registre vivante et son doublon mis à la corbeille ; lire le premier
 L'arbre de document ne conserve que l'identifiant du bloc, et un test le
 vérifie.
 
+## L'apparence
+
+Les tokens de `app/globals.css` sont ceux de la charte graphique v1.0
+(`docs/charte-design.pdf`, transcrite dans `docs/charte-design.md`). Aucun
+composant ne porte de couleur ni de taille en dur : ce fichier reste le point
+de bascule unique.
+
+Trois règles de la charte se tiennent dans le code plutôt que dans un
+commentaire. Le rose ne porte jamais de texte courant, il ne sert qu'aux
+badges, au curseur du logo et aux impulsions du motif. L'italique Lora est
+réservé à la voix éditoriale, jamais à l'insistance. Et il n'y a qu'un seul
+bouton primaire par écran.
+
 ## Ce qui n'est pas fait
 
-L'apparence. `docs/charte-design.md` et `docs/maquette-edition.html` n'existent
-pas encore, et le CLAUDE.md interdit de réinventer les tokens. `app/globals.css`
-porte donc un jeu **provisoire**, explicitement marqué : une échelle neutre et
-une teinte d'accent. Aucun composant ne porte de couleur en dur, ce fichier est
-le point de bascule unique.
+`docs/maquette-edition.html` n'existe pas. La charte donne les briques, la
+maquette donnerait la hiérarchie visuelle de la page d'édition et du panneau
+des dossiers ; la mise en page actuelle en découle mais n'a été comparée à
+aucune maquette.
+
+Le domaine reste à trancher : la charte porte `signauxfaibles.io`, le
+`CLAUDE.md` porte `signal-faible.fr`. Rien n'est codé en dur, `PORTAIL_URL`
+est une variable d'environnement, mais c'est ce domaine qui apparaîtra dans
+les courriers.
 
 La recette de cloisonnement avec un compte par client demande un déploiement
 réel ; elle est décrite en session 8 de `docs/plan-sessions-portail.md`.

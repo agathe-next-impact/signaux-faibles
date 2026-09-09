@@ -110,12 +110,21 @@ l'apparence ne l'est pas.
   dans `docs/etat-des-api.md`. **Reste à faire** : il ne se vérifie que sur un
   déploiement réel, le cache distant n'existant pas en local.
 
-## Session 7 — charte et maquette *(bloquée)*
+## Session 7 — charte ✅, maquette ◐
 
-Ouvrir `docs/maquette-edition.html` dans un navigateur, remplacer les
-tokens provisoires par ceux de `docs/charte-design.md`, comparer chaque
-écran à la maquette, corriger les écarts. Rien de cette session ne peut
-commencer avant que les deux fichiers existent.
+La charte est arrivée le 9 septembre : `docs/charte-design.pdf`, v1.0, cinq
+pages. Le PDF est en images, sans texte extractible ; sa transcription est
+dans `docs/charte-design.md`, et c'est elle qui rend les règles citables.
+
+Fait : les tokens provisoires ont été remplacés par ceux de la charte,
+couleurs, échelle typographique et rayons ; le mot-symbole et le motif
+signature sont devenus des composants ; les badges portent les libellés de
+la charte ; les écrans ont été capturés et comparés à ses pages.
+
+**Reste bloqué** : `docs/maquette-edition.html` n'existe toujours pas. La
+charte donne les briques, la maquette donnerait la hiérarchie visuelle de la
+page d'édition et du panneau des dossiers. La mise en page actuelle découle
+des briques et de la structure ; elle n'a été comparée à aucune maquette.
 
 ## Session 8 — recette de cloisonnement
 

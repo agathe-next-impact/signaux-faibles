@@ -72,3 +72,22 @@ export function trierParImpact<T extends { readonly niveau: NiveauImpact | null 
     })
     .map((entrée) => entrée.famille)
 }
+
+/**
+ * Le libellé d'affichage d'un niveau.
+ *
+ * La charte nomme les badges autrement que Notion ne nomme les niveaux :
+ * Notion écrit le suffixe `MOYEN`, la charte affiche « à surveiller ». C'est
+ * une correspondance d'affichage, pas une conversion — les trois niveaux
+ * restent trois, et « RAS » est un état à part entière qui se montre.
+ */
+export function libelléDImpact(niveau: NiveauImpact): string {
+  switch (niveau) {
+    case 'FORT':
+      return 'signal fort'
+    case 'MOYEN':
+      return 'à surveiller'
+    case 'RAS':
+      return 'RAS'
+  }
+}

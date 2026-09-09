@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  libelléDImpact,
   lireTitreDeFamille,
   rangDImpact,
   trierParImpact,
@@ -79,5 +80,18 @@ describe('trierParImpact', () => {
 
   it('range un niveau inconnu après les trois niveaux connus', () => {
     expect(rangDImpact(null)).toBeGreaterThan(rangDImpact('RAS'))
+  })
+})
+
+describe('libelléDImpact', () => {
+  it('affiche les libellés de la charte, pas les suffixes de Notion', () => {
+    expect(libelléDImpact('FORT')).toBe('signal fort')
+    expect(libelléDImpact('MOYEN')).toBe('à surveiller')
+    expect(libelléDImpact('RAS')).toBe('RAS')
+  })
+
+  it('couvre les trois niveaux et rien d’autre', () => {
+    const niveaux = ['FORT', 'MOYEN', 'RAS'] as const
+    expect(new Set(niveaux.map(libelléDImpact)).size).toBe(3)
   })
 })

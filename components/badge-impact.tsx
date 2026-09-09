@@ -1,34 +1,29 @@
-import type { NiveauImpact } from '@/lib/domaine/impact'
+import { libelléDImpact, type NiveauImpact } from '@/lib/domaine/impact'
 
 /**
- * Trois niveaux, pas quatre.
+ * Les badges d'impact de la charte.
  *
- * Un suffixe inconnu — FAIBLE le premier — ne reçoit aucun badge et n'est
- * jamais converti : le composant rend `null`, il ne choisit pas un niveau par
- * défaut.
+ * Trois niveaux, pas plus. « RAS » est un état à part entière : il se montre,
+ * il ne se cache pas — d'où une pastille pleine et non une absence.
+ *
+ * Un suffixe inconnu, FAIBLE le premier, ne reçoit aucun badge et n'est jamais
+ * converti : le composant rend `null` plutôt que de choisir un niveau.
+ *
+ * Le texte est en capitales, seule exception admise par la charte au sentence
+ * case, parce que ce sont des labels mono.
  */
-const LIBELLÉS: Record<NiveauImpact, string> = {
-  FORT: 'fort',
-  MOYEN: 'moyen',
-  RAS: 'RAS',
-}
-
 const STYLES: Record<NiveauImpact, string> = {
-  FORT: 'bg-impact-fort-fond text-impact-fort',
-  MOYEN: 'bg-impact-moyen-fond text-impact-moyen',
-  RAS: 'bg-impact-ras-fond text-impact-ras',
+  FORT: 'bg-fond-rose text-rose',
+  MOYEN: 'bg-fond-ardoise text-ardoise',
+  RAS: 'bg-fond-neutre text-ardoise',
 }
 
 export function BadgeImpact({ niveau }: { niveau: NiveauImpact | null }) {
   if (!niveau) return null
 
   return (
-    <span
-      className={`rounded-douce px-2 py-0.5 font-mono text-xs ${STYLES[niveau]}`}
-      // Le badge répète une information déjà portée par le titre pour qui voit
-      // les couleurs ; l'intitulé reste lisible pour qui ne les voit pas.
-    >
-      impact {LIBELLÉS[niveau]}
+    <span className={`label-mono rounded-full px-2.5 py-1 ${STYLES[niveau]}`}>
+      {libelléDImpact(niveau)}
     </span>
   )
 }

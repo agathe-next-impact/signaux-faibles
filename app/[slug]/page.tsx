@@ -26,8 +26,8 @@ export default async function CetteSemaine({
   if (!dernière) {
     return (
       <section className="flex flex-col gap-3">
-        <h1 className="font-titre text-2xl text-encre">Pas encore d’édition</h1>
-        <p className="text-encre-douce">
+        <h1 className="font-titre text-h1 font-bold text-encre">Pas encore d’édition</h1>
+        <p className="text-ardoise">
           Dès que la première lettre sera envoyée, elle apparaîtra ici.
         </p>
       </section>
@@ -37,11 +37,11 @@ export default async function CetteSemaine({
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="font-titre text-2xl text-encre">{dernière.libellé}</h1>
+        <h1 className="font-titre text-h1 font-bold text-encre">{dernière.libellé}</h1>
         {semaines.length > 1 ? (
           <Link
             href={`/${accès.slug}/semaines`}
-            className="text-sm text-encre-douce hover:text-encre"
+            className="text-corps text-ardoise hover:text-encre"
           >
             {semaines.length - 1} semaine
             {semaines.length - 1 > 1 ? 's' : ''} en archive

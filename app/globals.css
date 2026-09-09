@@ -1,47 +1,48 @@
 @import 'tailwindcss';
 
 /* ==========================================================================
-   TOKENS PROVISOIRES — À REMPLACER PAR LA CHARTE
+   Tokens de la charte graphique signauxfaibles v1.0, août 2026.
 
-   docs/charte-design.md et docs/charte-design.pdf n'existent pas encore au
-   dépôt. Le CLAUDE.md interdit de réinventer les tokens : ceux-ci ne
-   prétendent donc pas être la charte, ils lui réservent sa place. Ils sont
-   volontairement pauvres — une échelle neutre et une seule teinte d'accent —
-   pour qu'aucun écran ne s'appuie sur une couleur inventée.
-
-   Quand la charte arrive, seules les valeurs de ce bloc changent. Aucun
-   composant ne porte de couleur en dur : c'est le point de bascule unique.
+   Générés depuis docs/charte-design.pdf et sa transcription
+   docs/charte-design.md, jamais réinventés. Toute valeur ajoutée ici doit
+   pouvoir être citée dans la charte ; les noms reprennent les siens.
    ========================================================================== */
 
 @theme {
-  --color-encre: oklch(0.22 0.012 260);
-  --color-encre-douce: oklch(0.45 0.012 260);
-  --color-encre-tenue: oklch(0.62 0.01 260);
+  /* 02 · Couleurs. « La couleur est un signal, jamais un décor. »
+     Proportions visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
+     rose 3 %. Le rose ne porte jamais de texte courant. */
+  --color-encre: #111418;
+  --color-rose: #dd768a;
+  --color-ardoise: #5d6b7f;
+  --color-gris-ligne: #dee3e6;
+  --color-blanc: #ffffff;
 
-  --color-papier: oklch(0.99 0.003 90);
-  --color-papier-creux: oklch(0.965 0.004 90);
-  --color-trait: oklch(0.9 0.005 260);
-  --color-trait-tenu: oklch(0.94 0.004 260);
+  /* Teintes dérivées : fonds de cartes et surlignages, jamais du texte. */
+  --color-fond-rose: #fbeef1;
+  --color-fond-ardoise: #eef1f4;
+  --color-fond-neutre: #f7f8f9;
 
-  --color-accent: oklch(0.48 0.13 250);
-  --color-accent-douce: oklch(0.95 0.03 250);
+  /* 03 · Typographie. Trois familles, trois rôles. */
+  --text-h1: 2.5rem; /* 40 px */
+  --text-h1--line-height: 1.15;
+  --text-h2: 1.75rem; /* 28 px */
+  --text-h2--line-height: 1.2;
+  --text-h3: 1.25rem; /* 20 px */
+  --text-h3--line-height: 1.3;
+  --text-corps: 1rem; /* 16 px */
+  --text-corps--line-height: 1.65;
+  --text-label: 0.75rem; /* 12 px */
+  --text-label--line-height: 1.4;
 
-  /* Les trois niveaux d'impact, et eux seuls. Ne pas en ajouter : c'est une
-     règle de la charte, pas un choix d'implémentation. */
-  --color-impact-fort: oklch(0.52 0.17 25);
-  --color-impact-fort-fond: oklch(0.96 0.03 25);
-  --color-impact-moyen: oklch(0.52 0.12 75);
-  --color-impact-moyen-fond: oklch(0.96 0.04 75);
-  --color-impact-ras: oklch(0.5 0.02 260);
-  --color-impact-ras-fond: oklch(0.96 0.004 260);
-
-  --radius-douce: 0.375rem;
-  --radius-carte: 0.625rem;
+  /* 04 · Composants. « Rayons de 8 à 10 px, aucune ombre portée forte. » */
+  --radius-douce: 8px;
+  --radius-carte: 10px;
 }
 
-/* `inline` est obligatoire : sans lui, les utilitaires de police se
-   résoudraient à des valeurs inattendues, les variables de next/font étant
-   définies sur <html> et non sur :root. */
+/* `inline` est obligatoire : les variables de next/font sont posées sur
+   <html>, pas sur :root, et sans lui les utilitaires de police se
+   résoudraient à des valeurs inattendues. */
 @theme inline {
   --font-titre: var(--font-lora);
   --font-corps: var(--font-public-sans);
@@ -54,12 +55,36 @@
 }
 
 body {
-  background-color: var(--color-papier);
+  /* « Blanc — fond unique du site. » Pas de blanc cassé. */
+  background-color: var(--color-blanc);
   color: var(--color-encre);
   font-family: var(--font-corps), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--text-corps);
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Sentence case partout (règle 9). Aucun composant ne doit réintroduire de
-   capitales ; les seules majuscules admises sont les libellés en mono, posés
-   explicitement avec `uppercase`. */
+/* Sentence case partout : ni titres en capitales, ni Title Case. Les seules
+   capitales admises sont celles des labels mono, espacées, posées par
+   l'utilitaire `.label-mono` ci-dessous et nulle part ailleurs. */
+.label-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* La voix éditoriale. « L'italique Lora est réservé à la voix éditoriale :
+   taglines, citations, RAS. Jamais pour insister. » */
+.voix {
+  font-family: var(--font-titre), ui-serif, serif;
+  font-style: italic;
+  color: var(--color-ardoise);
+}
+
+/* Focus visible : bordure ardoise, comme les champs de la charte. */
+:where(a, button, input, summary):focus-visible {
+  outline: 2px solid var(--color-ardoise);
+  outline-offset: 2px;
+}

@@ -23,12 +23,12 @@ export default async function Archives({
 
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="font-titre text-2xl text-encre">Archives</h1>
+      <h1 className="font-titre text-h1 font-bold text-encre">Archives</h1>
 
       {semaines.length === 0 ? (
-        <p className="text-encre-douce">Aucune édition archivée pour l’instant.</p>
+        <p className="text-ardoise">Aucune édition archivée pour l’instant.</p>
       ) : (
-        <ul className="flex flex-col divide-y divide-trait-tenu">
+        <ul className="flex flex-col divide-y divide-gris-ligne">
           {semaines.map((semaine) => (
             <li key={semaine.clé} className="py-3">
               <Link
@@ -36,7 +36,7 @@ export default async function Archives({
                 className="flex flex-col gap-1"
               >
                 <span className="text-encre">{semaine.libellé}</span>
-                <span className="font-mono text-xs text-encre-tenue">
+                <span className="font-mono text-label text-ardoise">
                   {semaine.éditions
                     .map((édition) => édition.veille ?? 'veille')
                     .join(' · ')}

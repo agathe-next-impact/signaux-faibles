@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { exigerAccès } from '@/lib/auth/appartenance'
+import { Logo } from '@/components/logo'
 
 /**
  * Le cadre du portail d'un client.
@@ -43,21 +44,19 @@ async function Garde({
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-trait pb-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-gris-ligne pb-4">
         <Link href={`/${accès.slug}`} className="flex flex-col gap-1">
-          <span className="font-mono text-xs uppercase tracking-wide text-encre-tenue">
-            signauxfaibles
-          </span>
-          <span className="font-titre text-lg text-encre">
-            {accès.organisationLibellé || 'Votre veille'}
+          <Logo />
+          <span className="label-mono text-ardoise">
+            {accès.organisationLibellé || 'votre veille'}
           </span>
         </Link>
 
-        <nav className="flex gap-4 text-sm">
-          <Link href={`/${accès.slug}`} className="text-encre-douce hover:text-encre">
+        <nav className="flex gap-4 text-corps">
+          <Link href={`/${accès.slug}`} className="text-ardoise hover:text-encre">
             Cette semaine
           </Link>
-          <Link href={`/${accès.slug}/semaines`} className="text-encre-douce hover:text-encre">
+          <Link href={`/${accès.slug}/semaines`} className="text-ardoise hover:text-encre">
             Archives
           </Link>
         </nav>
@@ -65,8 +64,8 @@ async function Garde({
 
       <main className="flex flex-col gap-10">{children}</main>
 
-      <footer className="mt-auto border-t border-trait pt-4 font-mono text-xs text-encre-tenue">
-        Accès personnel, à ne pas transférer.
+      <footer className="mt-auto border-t border-gris-ligne pt-4 font-mono text-label text-ardoise">
+        Accès personnel, à ne pas transférer
       </footer>
     </div>
   )
@@ -74,7 +73,7 @@ async function Garde({
 
 function Chargement() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10 text-encre-tenue">
+    <div className="mx-auto max-w-3xl px-6 py-10 text-ardoise">
       <p>Chargement…</p>
     </div>
   )
