@@ -37,12 +37,18 @@ session.
   « Dossiers », « Clients », « Accès » — jamais sur le référentiel ni sur les
   pages de travail des tâches Cowork
 - Accès par **lien magique persistant** signé HMAC (secret d'environnement),
-  cookie de session 12 mois, appartenance lue dans la base Notion « Accès ».
-  Pas de fournisseur d'auth tiers, pas de mot de passe
+  **un lien par personne**, cookie de session 12 mois, appartenance lue dans
+  la base Notion « Accès ». Pas de fournisseur d'auth tiers, pas de mot de
+  passe. Les liens sont générés et envoyés par une **tâche Cowork**, jamais
+  par le portail
 - Webhook Notion reçu par un route handler Next.js, signature vérifiée avec
   `verifyWebhookSignature` du SDK, réponse 2xx immédiate, puis
   `revalidateTag`. Le handler ne relit jamais Notion
-- Envoi des liens d'accès : Resend (ou tâche Cowork), à trancher
+- **Notion sur le plan gratuit** : l'espace de travail reste à **un seul
+  membre** (l'opérateur). Un espace gratuit à plusieurs membres est plafonné
+  à 1 000 blocs à vie et l'API refuse ensuite toute création. Les clients ne
+  sont jamais membres ni invités de Notion. Fichiers limités à 5 Mio. Les
+  tâches Cowork n'utilisent ni la recherche IA ni le mode SQL du connecteur
 - Polices via `next/font/google` : Lora (titres), Public Sans
   (corps/interface), IBM Plex Mono (dates, sources, métadonnées) — jamais
   interverties. IBM Plex Mono n'a pas de version variable : `weight`

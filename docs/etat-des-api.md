@@ -187,6 +187,19 @@ L'option 1 est la seule robuste ; l'option 2 est une contrainte rédactionnelle 
 
 Conséquence : la synchronisation doit **résoudre le `data_source_id` à partir de l'identifiant de la base « Éditions »** au démarrage (`GET /v1/databases/{id}` → `data_sources[0].id`) et ne travailler qu'avec lui.
 
+### 2.5 Contraintes du plan gratuit Notion
+
+Vérifié le 9 septembre 2026, même miroir de la doc officielle.
+
+- **Limite de blocs** : « Free workspaces with more than one member have a limit of 1,000 lifetime blocks. Paid workspaces and single-member Free workspaces have unlimited blocks. Guests do not count as members. Deleting blocks does not restore capacity. » L'API applique cette limite aux intégrations internes : après une période de grâce de trois jours, toute création (page, bloc, base) échoue en HTTP 403 `restricted_resource` avec `additional_data.block_limit: "block_creation"`. Les lectures, modifications de propriétés et suppressions restent possibles. **[officiel]**
+- **Fichiers** : 5 Mio par fichier sur espace gratuit (API File Upload et téléchargements par URL du connecteur MCP), 5 Gio sur espace payant. **[officiel]**
+- **Limite de débit par workspace** : « scaled to the workspace's plan » ; la valeur pour le plan gratuit n'est pas publiée. **[non vérifié]**
+- **Webhooks d'intégration** : aucune restriction de plan dans la référence. À ne pas confondre avec les « webhook actions » des automatisations Notion (boutons, automatisations de base), réservées aux plans payants. **[officiel pour l'absence de mention ; secondaire pour les automatisations]**
+- **Connecteur Notion MCP** (celui qu'utilise Cowork) : les outils sont listés sur tous les plans et `notion-fetch` avec l'id `self` renvoie `current_tool_access` par outil. Création, lecture, mise à jour de pages et de bases : disponibles sans plan payant. `query_data_sources` : « View mode is available on every plan without a tool-specific quota » ; le mode SQL est mesuré puis payant. `notion-ai-search` exige Notion AI ; certains filtres de recherche exigent Business. Débit : 180 requêtes par minute par utilisateur, plus la limite par workspace. **[officiel]**
+- Source : https://developers.notion.com/reference/workspace-block-limits, https://developers.notion.com/reference/file-upload, https://developers.notion.com/guides/mcp/mcp-supported-tools.
+
+Conséquence : **l'espace de travail Notion doit rester à un seul membre** (l'opérateur). Les clients ne sont jamais membres ni invités de Notion, le portail est leur seule interface. Toute invitation d'un second membre déclencherait le plafond de 1 000 blocs et bloquerait les tâches Cowork au bout de trois jours.
+
 ---
 
 ## 3. Trigger.dev : webhook entrant, cron, durée, reprise

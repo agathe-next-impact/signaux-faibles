@@ -141,13 +141,26 @@ Conception proposée :
    dans Notion coupe la session à la requête suivante, même avec un cookie
    valide.
 5. **Perte du lien** : page « recevoir mon lien » où la personne saisit son
-   email ; si l'email figure dans « Accès », le lien lui est renvoyé (via
-   Resend, ou par une tâche Cowork déclenchée par l'opérateur). Réponse
-   identique que l'email existe ou non.
+   email ; la demande est transmise à l'opérateur et une tâche Cowork
+   renvoie le lien si l'email figure dans « Accès ». Réponse identique que
+   l'email existe ou non.
 
-Choix par défaut, à confirmer : **un lien par personne**, pas par client.
-Un lien par client est plus simple à distribuer mais impossible à révoquer
-pour une seule personne qui quitte l'entreprise cliente.
+Décisions prises le 9 septembre 2026 :
+
+- **Un lien par personne**, pas par client : révocable individuellement
+  quand une personne quitte l'entreprise cliente.
+- **Envoi des liens par une tâche Cowork**, pas par le portail : le portail
+  n'envoie aucun email et n'a pas de fournisseur d'envoi. La page « recevoir
+  mon lien » se limite à enregistrer la demande (voir ci-dessous) ; la tâche
+  Cowork génère l'identifiant, l'écrit dans « Accès » et envoie le lien.
+- **Notion sur le plan gratuit** (voir « Contraintes du plan gratuit »).
+
+Conséquence sur le point 5 : sans envoi d'email par le portail, la demande
+de renvoi d'un lien doit atteindre l'opérateur autrement. Le portail ne
+pouvant pas écrire dans Notion, la solution la plus simple est un email
+transactionnel vers l'opérateur (Resend, quota gratuit) ou un simple
+formulaire vers une adresse de l'opérateur ; la tâche Cowork renvoie ensuite
+le lien. À trancher, sans incidence sur l'architecture.
 
 Risques assumés et parades :
 
@@ -158,6 +171,34 @@ Risques assumés et parades :
 | Jeton dans les journaux ou l'historique | redirection immédiate ; `Referrer-Policy` ; pas de jeton dans les URL après connexion |
 | Cookie volé | `httpOnly`, `Secure` ; durée 12 mois ; révocation par Notion effective à la requête suivante |
 | Secret HMAC compromis | rotation du secret invalide tous les liens ; renvoi automatique des nouveaux liens |
+
+### Contraintes du plan gratuit Notion
+
+Décision : pas d'utilisation payante de Notion. Faits vérifiés (détail et
+sources dans `docs/etat-des-api.md`, §2.5) :
+
+- **L'espace de travail doit rester à un seul membre.** Un espace gratuit à
+  plusieurs membres est plafonné à 1 000 blocs à vie, et l'API refuse toute
+  création trois jours après le dépassement (HTTP 403 `restricted_resource`).
+  Un espace à un seul membre n'a pas de limite. Les clients ne sont jamais
+  membres ni invités : le portail est leur seule interface, ce qui est
+  précisément le sens du pivot.
+- **Fichiers limités à 5 Mio** ; sans objet si les médias sont des liens
+  externes, à surveiller si les tâches Cowork téléversent des images.
+- **Le connecteur Notion de Cowork fonctionne sans plan payant** pour créer,
+  lire et mettre à jour pages et bases. Les tâches Cowork ne doivent pas
+  dépendre de la recherche IA ni du mode SQL de `query_data_sources`
+  (payants) ; la lecture en mode « vue » est gratuite.
+- **Webhooks d'intégration** : aucune restriction de plan documentée. Ne pas
+  confondre avec les « webhook actions » des automatisations Notion, qui
+  sont payantes et que le projet n'utilise pas.
+- **Limite de débit par workspace** « scaled to the workspace's plan » :
+  valeur non publiée pour le plan gratuit ; le cache Next.js la rend
+  indolore pour le portail, mais les tâches Cowork doivent écrire par
+  petits lots.
+- Historique de page limité à 7 jours sur le plan gratuit : sans incidence
+  pour le portail, mais l'opérateur n'a pas de filet long en cas de
+  suppression accidentelle dans Notion.
 
 ## CLAUDE.md : réécriture proposée des sections touchées
 
@@ -202,7 +243,7 @@ règle 6 ; (4) contrat des bases Notion partagé avec les tâches Cowork.
 
 1. Sémantique exacte de `cacheLife` (`stale`, `revalidate`, `expire`) et
    comportement quand l'origine est injoignable après `expire`.
-2. Choix du canal d'envoi des liens (Resend depuis le portail, ou tâche
-   Cowork) et « un lien par personne » vs « un lien par client ».
+2. Canal de la demande « recevoir mon lien » vers l'opérateur (email
+   transactionnel ou formulaire), l'envoi lui-même étant fait par Cowork.
 3. Ce que le connecteur Notion de Cowork sait écrire (relations, statut,
    blocs) pour figer le schéma des bases.
