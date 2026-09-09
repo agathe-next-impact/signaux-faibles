@@ -1,0 +1,90 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   Tokens de la charte graphique signauxfaibles v1.0, août 2026.
+
+   Générés depuis docs/charte-design.pdf et sa transcription
+   docs/charte-design.md, jamais réinventés. Toute valeur ajoutée ici doit
+   pouvoir être citée dans la charte ; les noms reprennent les siens.
+   ========================================================================== */
+
+@theme {
+  /* 02 · Couleurs. « La couleur est un signal, jamais un décor. »
+     Proportions visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
+     rose 3 %. Le rose ne porte jamais de texte courant. */
+  --color-encre: #111418;
+  --color-rose: #dd768a;
+  --color-ardoise: #5d6b7f;
+  --color-gris-ligne: #dee3e6;
+  --color-blanc: #ffffff;
+
+  /* Teintes dérivées : fonds de cartes et surlignages, jamais du texte. */
+  --color-fond-rose: #fbeef1;
+  --color-fond-ardoise: #eef1f4;
+  --color-fond-neutre: #f7f8f9;
+
+  /* 03 · Typographie. Trois familles, trois rôles. */
+  --text-h1: 2.5rem; /* 40 px */
+  --text-h1--line-height: 1.15;
+  --text-h2: 1.75rem; /* 28 px */
+  --text-h2--line-height: 1.2;
+  --text-h3: 1.25rem; /* 20 px */
+  --text-h3--line-height: 1.3;
+  --text-corps: 1rem; /* 16 px */
+  --text-corps--line-height: 1.65;
+  --text-label: 0.75rem; /* 12 px */
+  --text-label--line-height: 1.4;
+
+  /* 04 · Composants. « Rayons de 8 à 10 px, aucune ombre portée forte. » */
+  --radius-douce: 8px;
+  --radius-carte: 10px;
+}
+
+/* `inline` est obligatoire : les variables de next/font sont posées sur
+   <html>, pas sur :root, et sans lui les utilitaires de police se
+   résoudraient à des valeurs inattendues. */
+@theme inline {
+  --font-titre: var(--font-lora);
+  --font-corps: var(--font-public-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+  --font-sans: var(--font-public-sans);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  /* « Blanc — fond unique du site. » Pas de blanc cassé. */
+  background-color: var(--color-blanc);
+  color: var(--color-encre);
+  font-family: var(--font-corps), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--text-corps);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sentence case partout : ni titres en capitales, ni Title Case. Les seules
+   capitales admises sont celles des labels mono, espacées, posées par
+   l'utilitaire `.label-mono` ci-dessous et nulle part ailleurs. */
+.label-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* La voix éditoriale. « L'italique Lora est réservé à la voix éditoriale :
+   taglines, citations, RAS. Jamais pour insister. » */
+.voix {
+  font-family: var(--font-titre), ui-serif, serif;
+  font-style: italic;
+  color: var(--color-ardoise);
+}
+
+/* Focus visible : bordure ardoise, comme les champs de la charte. */
+:where(a, button, input, summary):focus-visible {
+  outline: 2px solid var(--color-ardoise);
+  outline-offset: 2px;
+}
