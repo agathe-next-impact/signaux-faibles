@@ -29,7 +29,7 @@ voulu — les secrets n'ont pas à être présents au build.
 | `NOTION_TOKEN` | jeton de l'intégration interne, partagée sur les deux seules bases du portail |
 | `NOTION_BASE_EDITIONS` | identifiant de la base « Éditions de veille » |
 | `NOTION_BASE_ACCES` | identifiant de la base « Accès — portail » |
-| `NOTION_WEBHOOK_SECRET` | jeton de vérification, copié depuis la page de l'intégration après la poignée de main |
+| `NOTION_WEBHOOK_SECRET` | jeton de vérification, lu dans les journaux à la poignée de main — voir `docs/webhook-notion.md` |
 | `ACCES_SECRET_HMAC` | à générer : `openssl rand -base64 48`. Ne jamais le régénérer sans prévenir : tous les liens en circulation deviendraient invalides |
 | `PORTAIL_URL` | l'adresse publique retenue, celle qui apparaîtra dans les courriers |
 | `GOOGLE_COMPTE_SERVICE_EMAIL` | compte de service Workspace |
