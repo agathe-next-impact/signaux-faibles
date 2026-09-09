@@ -80,11 +80,16 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
 2. **Cloisonnement par client dans le code, sans filet.** Il n'y a plus de
    RLS. Le contrôle « cette personne appartient à ce client » se fait dans
    `proxy.ts` et dans le layout, AVANT tout appel caché. Toute requête sur
-   « Éditions », « Items » ou « Dossiers » porte le filtre `Client = X` ;
-   jamais de requête globale puis filtrage en mémoire. Chaque nouvelle
-   requête Notion est relue sous cet angle avant commit.
+   « Éditions » porte le filtre
+   `Organisation contains <page_id de l'organisation>` ; jamais de requête
+   globale puis filtrage en mémoire, jamais de filtre par nom. Cet
+   identifiant vient de la ligne « Accès » de la personne connectée et de
+   nulle part ailleurs : le portail n'a pas accès au registre et ne sait
+   pas résoudre un nom d'organisation. Chaque nouvelle requête Notion est
+   relue sous cet angle avant commit.
 3. **Seules les éditions en statut « Envoyé » sont demandées à Notion**
-   (filtre `select.equals` dans la requête, avec le filtre Organisation).
+   (filtre `select.equals` dans la requête, combiné au filtre
+   `relation.contains` de l'organisation).
    Un retour en Brouillon ou une mise à la corbeille invalide le cache par
    webhook ; le portail ne conserve aucune copie.
 4. **Mode dégradé obligatoire** : profil `cacheLife` à expiration longue,
@@ -124,29 +129,40 @@ manque. État des lieux et écarts : `docs/base-notion-existante.md`.
 Bases partagées avec l'intégration du portail, et elles seules :
 
 - **Éditions de veille** (existe, `collection://f3e703c8-3178-4f70-946b-72be0c2f6db1`) :
-  Titre · Organisation (sélection, nom exact) · Veille (Écosystème /
-  Concurrentiel) · Date d'édition · Numéro · Statut (Brouillon / Relu /
-  **Envoyé** = publié) · Période couverte · Fenêtre élargie · Dossiers
-  ouverts suivis (texte « nom (compteur, précision) · … ») · Action de la
-  semaine · Amendements au référentiel et Livraison (**internes, jamais
-  affichés**).
+  Titre · Organisation (**relation** vers le registre, depuis le 9
+  septembre 2026 ; l'API ne renvoie que des identifiants de page, jamais de
+  nom) · Veille (Écosystème / Concurrentiel / Positionnement / Attractivité,
+  nom client de la veille, affiché) · Date d'édition · Numéro (par
+  organisation et par famille) · Statut (Brouillon / Relu / **Envoyé** =
+  publié) · Période couverte · Fenêtre élargie · Dossiers ouverts suivis
+  (texte « nom (compteur, précision) · … ») · Action de la semaine ·
+  Famille, Amendements au référentiel et Livraison (**internes, jamais
+  affichés** ; `Famille` est une clé de gestion à deux valeurs, Écosystème
+  et Concurrentiel, qui sert au comptage des numéros et à l'anti-doublon).
   Le corps de la page est la note, **rendue comme un document** (décision
   du 9 septembre 2026, pas de base « Items ») : H1 de rubriques, H2
   « Famille — FORT / MOYEN / RAS » repliables avec badge d'impact lu dans
   le suffixe, paragraphes, puces, tableaux. Le tri par impact se fait au
   niveau des familles. Le corps ne contient aucun bloc interne.
 - **Accès — portail** (existe, `collection://4d3d7403-35d7-4815-884b-877d17423842`) :
-  Nom (titre) · Email · Organisation (texte identique à l'option de
-  sélection des éditions) · Slug · Identifiant d'accès · Actif.
+  Nom (titre) · Email · Organisation (libellé) (texte, affichage
+  seulement) · **Identifiant Notion de l'organisation** (texte, `page_id`
+  de la ligne du registre, écrit par l'onboarding Cowork — c'est la seule
+  clé de cloisonnement) · Slug · Identifiant d'accès · Actif.
 
 Jamais partagés : le registre « Organisations — pipeline et activation »
 (intake confidentiel), « Validations », les pages organisation, les
 référentiels, les prompts.
 
 Deux lettres par parution et par organisation (une par veille), numérotées
-séparément. Le `page_id` Notion est l'identifiant stable des URL du portail.
-Ne jamais raisonner sur le titre d'une édition : il est fixé par chaque
-référentiel et varie d'une organisation à l'autre.
+séparément par famille. Le portail n'en fait pas deux entrées concurrentes :
+**une entrée par semaine**, qui rassemble les notes de la semaine, et une
+archive listant les semaines (décision du 9 septembre 2026). Le regroupement
+se fait côté portail, sur le lundi de la semaine ISO de `Date d'édition`,
+après la requête filtrée ; jamais une requête Notion par semaine. Le
+`page_id` Notion est l'identifiant stable des URL du portail. Ne jamais
+raisonner sur le titre d'une édition : il est fixé par chaque référentiel et
+varie d'une organisation à l'autre.
 
 ## Commandes
 

@@ -87,18 +87,33 @@ Next.js 16 (Vercel)
 Le cloisonnement était garanti par Postgres. Il repose désormais sur trois
 règles de code, à tester explicitement (Playwright, un compte par client) :
 
-1. **Appartenance lue dans Notion** : base « Clients » avec une propriété
-   « emails autorisés » (ou une relation vers une base « Accès »). Chaque
-   édition et chaque dossier portent une relation « Client ». Lecture
-   cachée, invalidée par webhook sur la base « Clients ».
+1. **Appartenance lue dans Notion** : base « Accès — portail », une ligne
+   par personne, qui porte l'email, l'identifiant d'accès et le `page_id`
+   de l'organisation dans le registre. Chaque édition porte une relation
+   `Organisation` vers ce même registre. Lecture cachée, invalidée par
+   webhook sur la base « Accès — portail ».
 2. **Contrôle d'accès hors du cache** : la vérification « cet utilisateur
    appartient à ce client » se fait dans le layout ou la page, **avant**
    d'appeler la fonction `use cache`. Une fonction cachée ne reçoit jamais
    l'identité de l'utilisateur en argument, seulement l'identifiant du
    client, et son résultat est servi à tous les membres du client.
 3. **Requête Notion filtrée par client** : toute requête sur « Éditions »
-   ou « Dossiers » porte le filtre `Client = X` ; jamais de requête globale
-   puis filtrage en mémoire.
+   porte le filtre `Organisation contains <page_id>` ; jamais de requête
+   globale puis filtrage en mémoire, jamais de filtre par nom.
+
+Depuis le 9 septembre 2026, `Organisation` est une **relation** vers le
+registre et non plus une sélection par nom. Cela renforce le cloisonnement
+sur deux points : un identifiant de page ne se confond pas avec un autre et
+ne change pas quand on renomme un client ; et l'API ne renvoie que cet
+identifiant, jamais le nom, donc aucun nom de client ne transite par le
+portail depuis Notion. En contrepartie, le portail ne peut pas résoudre un
+nom en identifiant — le registre ne lui est pas partagé et ne doit pas
+l'être. L'identifiant doit donc être écrit dans la base « Accès — portail »
+par l'onboarding Cowork. Un identifiant absent ou périmé donne un portail
+vide, jamais une fuite ; le portail le vérifie au démarrage et le monitoring
+alerte si une organisation active ne renvoie aucune édition. Le détail, dont
+un doublon de registre déjà constaté, est dans
+`docs/base-notion-existante.md`.
 
 Ce schéma est plus fragile qu'une RLS (une seule ligne oubliée suffit).
 C'est le coût du pivot ; il doit être compensé par les tests de recette de
@@ -122,9 +137,13 @@ Ce que les vérifications imposent :
 
 Conception proposée :
 
-1. **Base Notion « Accès »** : une ligne par personne, avec `email`,
-   relation `Client`, `identifiant d'accès` (aléatoire, généré par la tâche
-   Cowork ou l'opérateur), case `actif`. Le portail la lit en cache,
+1. **Base Notion « Accès — portail »** : une ligne par personne, avec
+   `Email`, `Organisation (libellé)` (affichage seulement),
+   **`Identifiant Notion de l'organisation`** (le `page_id` de la ligne du
+   registre, écrit par
+   l'onboarding Cowork — c'est lui, et lui seul, qui sert à filtrer les
+   éditions), `Slug`, `Identifiant d'accès` (aléatoire, généré par la tâche
+   Cowork ou l'opérateur), case `Actif`. Le portail la lit en cache,
    invalidée par webhook. Aucune écriture du portail dans Notion.
 2. **Jeton** : `identifiant d'accès` signé HMAC-SHA256 avec un secret
    d'environnement, encodé en base64url. Le lien est
