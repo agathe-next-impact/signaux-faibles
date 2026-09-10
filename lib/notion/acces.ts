@@ -50,8 +50,23 @@ export async function lireAccèsParIdentifiant(
   })
 
   // Deux lignes pour un même identifiant : la base est incohérente, et un
-  // choix arbitraire rattacherait peut-être la personne au mauvais client.
-  if (réponse.results.length !== 1) return null
+  // choix arbitraire rattacherait peut-être la personne au mauvais client. On
+  // refuse — mais sans le dire, ce refus était indiscernable d'un lien inconnu.
+  //
+  // Le cas a une cause banale : dupliquer une ligne dans Notion pour ajouter un
+  // second lecteur recopie « Identifiant d'accès » avec le reste. Les deux
+  // liens cessent alors de fonctionner d'un coup, sans erreur visible.
+  if (réponse.results.length > 1) {
+    console.warn(
+      '[accès] plusieurs lignes portent le même identifiant d’accès : les liens ' +
+        'concernés sont refusés. Cause habituelle : une ligne dupliquée dans ' +
+        '« Accès — portail » dont l’identifiant n’a pas été régénéré. Tirer un ' +
+        'nouvel identifiant (openssl rand -hex 16) pour chaque personne.',
+    )
+    return null
+  }
+
+  if (réponse.results.length === 0) return null
 
   const page = réponse.results[0]
   const organisationId = lireTexte(page, "Identifiant Notion de l'organisation")
