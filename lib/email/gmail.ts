@@ -51,63 +51,124 @@ export function composerRevendications(
 }
 
 /**
- * Remet la clé privée du compte de service dans une forme que Node accepte.
+ * Le compte de service, quelle que soit la façon dont il a été fourni.
+ *
+ * Trois voies, de la plus sûre à la plus fragile. `GOOGLE_COMPTE_SERVICE_JSON`
+ * porte le fichier de clé entier : il tient sur une ligne, ses retours à la
+ * ligne y sont déjà échappés par le format JSON, et rien ne peut se perdre au
+ * collage. C'est la voie à préférer. Les deux variables séparées restent
+ * acceptées, mais elles exposent la clé aux mutilations d'un copier-coller.
+ */
+export function compteDeService(): { email: string; clePrivée: string } {
+  const configuration = env()
+
+  if (configuration.GOOGLE_COMPTE_SERVICE_JSON) {
+    let fichier: { client_email?: unknown; private_key?: unknown }
+    try {
+      fichier = JSON.parse(configuration.GOOGLE_COMPTE_SERVICE_JSON) as typeof fichier
+    } catch {
+      throw new Error(
+        "GOOGLE_COMPTE_SERVICE_JSON n'est pas du JSON valide. Y coller le contenu " +
+          'entier du fichier de clé téléchargé depuis Google Cloud, accolades comprises.',
+      )
+    }
+
+    if (typeof fichier.client_email !== 'string' || typeof fichier.private_key !== 'string') {
+      throw new Error(
+        'GOOGLE_COMPTE_SERVICE_JSON ne porte pas les champs client_email et ' +
+          "private_key. Ce n'est pas un fichier de clé de compte de service.",
+      )
+    }
+
+    return {
+      email: fichier.client_email,
+      clePrivée: normaliserClePrivée(fichier.private_key),
+    }
+  }
+
+  const email = configuration.GOOGLE_COMPTE_SERVICE_EMAIL
+  const clé = configuration.GOOGLE_COMPTE_SERVICE_CLE_PRIVEE
+  if (!email || !clé) {
+    throw new Error(
+      'Aucun compte de service configuré : renseigner GOOGLE_COMPTE_SERVICE_JSON, ' +
+        'ou GOOGLE_COMPTE_SERVICE_EMAIL et GOOGLE_COMPTE_SERVICE_CLE_PRIVEE.',
+    )
+  }
+
+  return { email, clePrivée: normaliserClePrivée(clé) }
+}
+
+/** Alphabet du base64, plus le remplissage. */
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/
+
+/**
+ * Reconstruit un PEM canonique à partir d'une valeur abîmée.
  *
  * La valeur traverse une console d'hébergement avant d'arriver ici, et elle en
- * ressort abîmée de plusieurs façons connues. Chacune produit la même erreur
- * OpenSSL, `DECODER routines::unsupported`, qui ne dit rien de la cause :
+ * ressort mutilée de plusieurs façons qui produisent toutes la même erreur
+ * OpenSSL, `DECODER routines::unsupported`, laquelle ne dit rien de la cause.
  *
- * - les retours à la ligne sont échappés en `\n` littéraux ;
- * - la valeur a été collée avec les guillemets qui l'entouraient dans le JSON ;
- * - elle a été ré-encodée en base64 pour éviter la question des retours à la
- *   ligne ;
- * - elle porte des fins de ligne Windows.
- *
- * Cette fonction rattrape les quatre, et lève un message explicite plutôt que
- * de laisser OpenSSL parler quand la valeur n'est pas récupérable.
+ * Plutôt que de rattraper chaque mutilation une à une, on extrait les deux
+ * seules choses qui comptent — l'intitulé de l'armure et le corps en base64 —
+ * et on réécrit un PEM propre. Cela absorbe d'un coup les guillemets copiés
+ * avec la valeur, les `\n` littéraux, les fins de ligne Windows, la marque
+ * d'ordre des octets, les espaces insécables, les retours à la ligne remplacés
+ * par des espaces, et les longueurs de ligne fantaisistes.
  */
 export function normaliserClePrivée(brute: string): string {
-  let clé = brute.trim()
+  // Marque d'ordre des octets, invisible mais fatale à OpenSSL.
+  let clé = brute.replace(/^\uFEFF/, '').trim()
 
-  // Guillemets conservés au copier-coller depuis le fichier JSON.
-  const guillemets = ['"', "'"]
-  for (const guillemet of guillemets) {
+  for (const guillemet of ['"', "'"]) {
     if (clé.startsWith(guillemet) && clé.endsWith(guillemet) && clé.length > 1) {
       clé = clé.slice(1, -1).trim()
       break
     }
   }
 
-  // Retours à la ligne échappés. Sans effet si la valeur en porte déjà de vrais.
-  clé = clé.replaceAll('\\n', '\n').replaceAll('\r\n', '\n')
+  clé = clé.replaceAll('\\n', '\n').replaceAll('\r', '')
 
-  // Valeur entièrement ré-encodée en base64 : elle ne contient alors ni tiret
-  // ni espace, seulement l'alphabet base64.
-  if (!clé.includes('-----') && /^[A-Za-z0-9+/=\s]+$/.test(clé)) {
-    const décodée = Buffer.from(clé, 'base64').toString('utf8')
+  // Valeur entièrement ré-encodée en base64, pour esquiver la question des
+  // retours à la ligne.
+  if (!clé.includes('-----')) {
+    const décodée = Buffer.from(clé.replace(/\s/g, ''), 'base64').toString('utf8')
     if (décodée.includes('-----BEGIN')) clé = décodée.trim()
   }
 
-  if (!clé.includes('-----BEGIN') || !clé.includes('-----END')) {
+  const armure = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/.exec(clé)
+  if (!armure) {
     throw new Error(
-      "La clé privée du compte de service ne ressemble pas à un PEM : les lignes " +
-        '« -----BEGIN … ----- » et « -----END … ----- » sont introuvables. ' +
-        'Recopier la valeur du champ private_key du fichier JSON, sans les ' +
-        'guillemets qui l\'entourent.',
+      "La clé privée du compte de service ne ressemble pas à un PEM : aucune paire " +
+        '« -----BEGIN … ----- » / « -----END … ----- » cohérente. Coller le contenu ' +
+        'du champ private_key du fichier JSON, sans les guillemets, ou mieux : ' +
+        'renseigner GOOGLE_COMPTE_SERVICE_JSON avec le fichier entier.',
     )
   }
 
-  if (!clé.includes('\n')) {
+  const intitulé = armure[1] ?? ''
+  // Tout ce qui n'est pas du base64 saute : espaces ordinaires ou insécables,
+  // retours à la ligne, tabulations.
+  const corps = (armure[2] ?? '').replace(/[^A-Za-z0-9+/=]/g, '')
+
+  if (corps.length === 0 || !BASE64.test(corps)) {
     throw new Error(
-      'La clé privée du compte de service tient sur une seule ligne : ses ' +
-        'retours à la ligne ont été perdus. OpenSSL ne peut pas la lire. ' +
-        'Recopier la valeur telle quelle depuis le fichier JSON, retours à la ' +
-        'ligne compris ou échappés en \\n.',
+      `La clé privée porte bien une armure « ${intitulé} », mais son corps n'est pas ` +
+        `du base64 exploitable (${corps.length} caractères retenus). La valeur a été ` +
+        'tronquée ou altérée au collage. Renseigner plutôt GOOGLE_COMPTE_SERVICE_JSON ' +
+        'avec le fichier de clé entier.',
     )
   }
 
-  // OpenSSL veut une fin de ligne après la dernière ligne d'armure.
-  return clé.endsWith('\n') ? clé : `${clé}\n`
+  // Réécriture canonique : lignes de 64 caractères, fin de ligne finale.
+  const lignes = corps.match(/.{1,64}/g) ?? []
+  return `-----BEGIN ${intitulé}-----\n${lignes.join('\n')}\n-----END ${intitulé}-----\n`
+}
+
+/** Décrit la forme d'une clé sans en révéler le contenu, pour le diagnostic. */
+export function décrireClePrivée(clé: string): string {
+  const armure = /-----BEGIN ([A-Z0-9 ]+)-----/.exec(clé)
+  const corps = clé.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')
+  return `armure « ${armure?.[1] ?? 'absente'} », ${corps.length} caractères de corps`
 }
 
 function signerJWT(revendications: RevendicationsJWT, clésPrivée: string): string {
@@ -115,18 +176,27 @@ function signerJWT(revendications: RevendicationsJWT, clésPrivée: string): str
   const corps = base64url(JSON.stringify(revendications))
   const àSigner = `${entête}.${corps}`
 
-  const signature = createSign('RSA-SHA256').update(àSigner).end().sign(clésPrivée)
+  let signature: Buffer
+  try {
+    signature = createSign('RSA-SHA256').update(àSigner).end().sign(clésPrivée)
+  } catch (erreur) {
+    // OpenSSL ne dit que « DECODER routines::unsupported ». On y ajoute ce que
+    // l'on peut observer sans divulguer la clé : son armure et sa longueur.
+    throw new Error(
+      `OpenSSL refuse la clé privée du compte de service (${décrireClePrivée(clésPrivée)}). ` +
+        'Le plus sûr est de renseigner GOOGLE_COMPTE_SERVICE_JSON avec le fichier de ' +
+        "clé entier, plutôt que de recopier private_key. Cause d'origine : " +
+        (erreur instanceof Error ? erreur.message : String(erreur)),
+    )
+  }
   return `${àSigner}.${base64url(signature)}`
 }
 
 async function obtenirJetonGoogle(): Promise<string> {
-  const configuration = env()
+  const compte = compteDeService()
   const jwt = signerJWT(
-    composerRevendications(
-      configuration.GOOGLE_COMPTE_SERVICE_EMAIL,
-      configuration.GMAIL_EXPEDITEUR,
-    ),
-    configuration.GOOGLE_COMPTE_SERVICE_CLE_PRIVEE,
+    composerRevendications(compte.email, env().GMAIL_EXPEDITEUR),
+    compte.clePrivée,
   )
 
   const réponse = await fetch(AUDIENCE, {

@@ -63,7 +63,25 @@ La boîte empruntée (`GMAIL_EXPEDITEUR`) doit exister sur le domaine. Une boît
 dédiée, `acces@` par exemple, plutôt qu'une boîte de personne : le jour où
 quelqu'un part, les liens continuent de partir.
 
-## 3. Poser la clé privée dans l'environnement
+## 3. Poser la clé dans l'environnement
+
+**Coller le fichier JSON entier dans `GOOGLE_COMPTE_SERVICE_JSON`.** C'est la
+voie à préférer, et de loin. Le format JSON échappe déjà les retours à la ligne
+de la clé privée : la valeur tient sur une seule ligne, aucune console
+d'hébergement ne peut la mutiler, et le portail en extrait lui-même
+`client_email` et `private_key`.
+
+```bash
+# le fichier entier, accolades comprises, tel qu'il a été téléchargé
+cat cle-service.json
+```
+
+Les deux variables séparées, `GOOGLE_COMPTE_SERVICE_EMAIL` et
+`GOOGLE_COMPTE_SERVICE_CLE_PRIVEE`, restent acceptées. Elles sont plus
+fragiles : la clé privée porte des retours à la ligne, et c'est là que tout se
+perd.
+
+### Si l'on tient à séparer les deux variables
 
 La valeur de `private_key` est une clé PKCS#8 encadrée par
 `-----BEGIN PRIVATE KEY-----` et `-----END PRIVATE KEY-----`. Selon la façon
@@ -115,7 +133,7 @@ secret, et nomme généralement la cause.
 | `access_denied` sur la portée | une portée autre que `gmail.send` est demandée, ou `gmail.send` n'est pas dans la liste autorisée |
 | `invalid_grant` | la boîte de `sub` n'existe pas sur le domaine, ou l'horloge du serveur dérive |
 | API désactivée | l'API Gmail n'a pas été activée sur le projet Cloud |
-| `DECODER routines::unsupported` | la clé privée est illisible : retours à la ligne perdus au collage, ou valeur tronquée. Recopier `private_key` telle quelle depuis le JSON |
+| `DECODER routines::unsupported` | OpenSSL n'a pas su lire la clé. Le portail réécrit désormais un PEM canonique et devrait absorber la plupart des mutilations ; si l'erreur persiste, la valeur est tronquée ou altérée — basculer sur `GOOGLE_COMPTE_SERVICE_JSON` |
 
 Quotas à connaître : 2 000 messages par jour et par utilisateur Workspace, et
 environ deux envois par seconde. Sans objet pour un envoi de lien à la demande.
