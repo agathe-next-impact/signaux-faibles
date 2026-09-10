@@ -367,3 +367,26 @@ la lettre qui les nomme — calculée par le filtre d'actualité, qui la jetait.
 
 **Une page d'acteur sans citation n'est plus un cul-de-sac** : elle ouvre les
 lettres de la période.
+
+**10 septembre 2026, huitième passe.** Le cadrage sort des lettres.
+
+Les ajustements de cadrage — « deux dates à corriger », « trois sources à
+ajouter » — appellent une décision du client. Mêlés aux faits de la semaine, ils
+se lisaient comme de l'information de veille. Ils ont désormais leur écran, et
+ne figurent plus dans aucune lettre.
+
+**Détachés à la construction, pas masqués à l'affichage.**
+`construireDocument` les sort de `rubriques` et les pose dans
+`document.cadrage`. Aucun écran ne peut donc les faire réapparaître par
+mégarde ; c'est une propriété du document, pas une discipline de rendu.
+
+**Le trait horizontal a failli coûter cher.** Dans la vraie lettre, la rubrique
+de cadrage est suivie d'un `---` puis du pied — dossiers ouverts, sources
+vérifiées, prochaine parution. Retirer la rubrique entière l'aurait emporté, or
+c'est lui qui nomme la plupart des dossiers suivis : les mentions d'acteurs
+seraient tombées de neuf sur dix à presque rien. La fixture de la vraie lettre a
+été complétée pour porter cette structure, et un test vérifie qu'aucune mention
+n'est perdue au passage. Sans elle, la régression serait passée.
+
+**Six écrans, et le menu de pied tient.** Vérifié à 360 px : pas de débordement,
+les six libellés lisibles.

@@ -92,7 +92,7 @@ export async function dernièresNotes(
       })),
   )
 }
-/** Les cinq écrans de l'espace client, dans l'ordre du rail. */
+/** Les écrans de l'espace client, dans l'ordre du rail. */
 export function ongletsDe(
   slug: string,
   comptes: { lettres: number; recommandations: number; archives: number },
@@ -113,5 +113,6 @@ export function ongletsDe(
       libelléCourt: 'Archives',
       compte: comptes.archives,
     },
+    { href: `/${slug}/cadrage`, libellé: 'Cadrage', libelléCourt: 'Cadrage' },
   ]
 }

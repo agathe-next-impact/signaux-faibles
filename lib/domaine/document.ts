@@ -64,6 +64,14 @@ export type Document = {
   /** Ce qui précède la première rubrique : chapeau, note de méthode. */
   readonly préambule: readonly Bloc[]
   readonly rubriques: readonly Rubrique[]
+  /**
+   * Les ajustements de cadrage, retirés de la lecture.
+   *
+   * Ce sont des propositions de modification du périmètre de la veille, à
+   * valider par le client. Elles ne relèvent pas de la lettre de la semaine et
+   * ont leur écran ; les laisser dans le corps les mêlerait aux faits.
+   */
+  readonly cadrage: readonly Bloc[]
 }
 
 /** Forme minimale d'un bloc Notion, enfants éventuellement rattachés. */
@@ -270,7 +278,65 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
 
   clore()
 
-  return { préambule: préambule.vider(), rubriques }
+  return { préambule: préambule.vider(), ...détacherLeCadrage(rubriques) }
+}
+
+/**
+ * Reconnaît la rubrique d'ajustements du cadrage à son titre.
+ *
+ * C'est le seul signal disponible : le cadrage vit dans le corps de la note, et
+ * aucune propriété Notion ne le marque. La reconnaissance est donc une
+ * convention avec les tâches Cowork, tenue lâche — accents et casse ignorés,
+ * le mot « cadrage » suffit. Si le titre était reformulé au point de ne plus le
+ * contenir, la section **réapparaîtrait dans la lettre** : une panne visible,
+ * pas une disparition silencieuse.
+ */
+function estRubriqueDeCadrage(titre: string): boolean {
+  return titre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .includes('cadrage')
+}
+
+/**
+ * Sort les ajustements de cadrage des rubriques de lecture.
+ *
+ * **Le trait horizontal ferme la section.** Dans les lettres, la rubrique de
+ * cadrage est suivie d'un `---` puis du pied de la lettre — dossiers ouverts,
+ * sources vérifiées, prochaine parution. Retirer la rubrique entière
+ * emporterait ce pied, qui est du contenu de veille et nomme la plupart des
+ * dossiers suivis. Seul ce qui précède le trait est donc du cadrage ; ce qui
+ * suit revient à la lettre, dans une rubrique sans titre.
+ *
+ * Une rubrique de cadrage n'est pas censée porter de H2. Si elle en portait,
+ * ses axes resteraient dans la lettre — un titre apparaîtrait, ce qui se voit.
+ */
+function détacherLeCadrage(rubriques: readonly Rubrique[]): {
+  rubriques: Rubrique[]
+  cadrage: Bloc[]
+} {
+  const cadrage: Bloc[] = []
+  const gardées: Rubrique[] = []
+
+  for (const rubrique of rubriques) {
+    if (!estRubriqueDeCadrage(rubrique.titre)) {
+      gardées.push(rubrique)
+      continue
+    }
+
+    const trait = rubrique.introduction.findIndex((bloc) => bloc.type === 'séparateur')
+    const avant = trait === -1 ? rubrique.introduction : rubrique.introduction.slice(0, trait)
+    const après = trait === -1 ? [] : rubrique.introduction.slice(trait + 1)
+
+    cadrage.push(...avant)
+
+    if (après.length > 0 || rubrique.axes.length > 0) {
+      gardées.push({ titre: '', introduction: après, axes: rubrique.axes })
+    }
+  }
+
+  return { rubriques: gardées, cadrage }
 }
 
 /** Tous les axes du document, à plat, pour un tri global par impact. */

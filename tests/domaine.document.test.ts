@@ -171,7 +171,7 @@ describe('construireDocument', () => {
   })
 
   it('rend un document vide sans broncher', () => {
-    expect(construireDocument([])).toEqual({ préambule: [], rubriques: [] })
+    expect(construireDocument([])).toEqual({ préambule: [], rubriques: [], cadrage: [] })
   })
 })
 
@@ -261,5 +261,43 @@ describe('fusionnerLesAxes', () => {
     ])
 
     expect(axes[0]?.numéro).toBe(2)
+  })
+})
+
+describe('détachement du cadrage', () => {
+  it('reconnaît la rubrique quel que soit l’habillage du titre', () => {
+    for (const titre of [
+      'Ajustements du cadrage de cette veille',
+      'CADRAGE',
+      'Le cadrage, à ajuster',
+    ]) {
+      const doc = construireDocument([h1(titre), p('Une proposition.')])
+      expect(doc.cadrage).toHaveLength(1)
+      expect(doc.rubriques).toHaveLength(0)
+    }
+  })
+
+  it('laisse la lettre intacte quand aucune rubrique ne parle de cadrage', () => {
+    const doc = construireDocument([h1('Analyse'), p('Un fait.')])
+    expect(doc.cadrage).toEqual([])
+    expect(doc.rubriques.map((r) => r.titre)).toEqual(['Analyse'])
+  })
+
+  it('prend tout quand la rubrique ne porte pas de trait de séparation', () => {
+    const doc = construireDocument([h1('Cadrage'), p('Une proposition.'), p('Une autre.')])
+    expect(doc.cadrage).toHaveLength(2)
+    expect(doc.rubriques).toHaveLength(0)
+  })
+
+  it('coupe au premier trait, et rend la suite à la lettre', () => {
+    const doc = construireDocument([
+      h1('Cadrage'),
+      p('Une proposition.'),
+      { id: 'd', type: 'divider', divider: {} },
+      p('Le pied de la lettre.'),
+    ])
+    expect(doc.cadrage).toHaveLength(1)
+    expect(doc.rubriques).toHaveLength(1)
+    expect(doc.rubriques[0]?.titre).toBe('')
   })
 })

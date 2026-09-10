@@ -174,15 +174,38 @@ après la requête filtrée ; jamais une requête Notion par semaine. Le
 raisonner sur le titre d'une édition : il est fixé par chaque référentiel et
 varie d'une organisation à l'autre.
 
-## Les cinq écrans de l'espace client
+## Les six écrans de l'espace client
 
 Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, puis **deux
 sections** : « Les acteurs » et « L'écosystème ») · Lettres
 (`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
 `/[slug]/lettres/[edition]` pour la lire) · Tendances (`/[slug]/tendances`,
 grille des axes avec leur mouvement, puis le suivi des dossiers) ·
-Recommandations · Archives (une entrée par semaine). Pas d'autre écran sans
+Recommandations · Archives (une entrée par semaine) · **Cadrage**
+(`/[slug]/cadrage`, décidé le 10 septembre 2026). Pas d'autre écran sans
 discussion.
+
+**Les ajustements de cadrage ne figurent jamais dans une lettre.** Ce sont des
+propositions de modification du périmètre de la veille, qui appellent une
+décision du client ; mêlées aux faits de la semaine, elles se lisaient comme de
+l'information de veille. Elles sont **détachées à la construction du document**
+(`construireDocument` les sort de `rubriques` et les pose dans `document.cadrage`),
+et non masquées à l'affichage : aucun écran ne peut donc les faire réapparaître
+par mégarde.
+
+La rubrique est reconnue au mot « cadrage » dans son titre H1, accents et casse
+ignorés — c'est le seul signal disponible, aucune propriété Notion ne la marque.
+Convention avec les tâches Cowork : si le titre était reformulé au point de ne
+plus contenir ce mot, la section **réapparaîtrait dans la lettre**, panne
+visible plutôt que disparition silencieuse.
+
+**Le trait horizontal ferme la section, et ce détail n'est pas cosmétique.**
+Dans les lettres, la rubrique de cadrage est suivie d'un `---` puis du pied de
+la lettre — dossiers ouverts, sources vérifiées, prochaine parution. Retirer la
+rubrique entière emporterait ce pied, qui est du contenu de veille et **nomme la
+plupart des dossiers suivis** : les mentions d'acteurs s'effondreraient. Seul ce
+qui précède le trait est du cadrage ; ce qui suit revient à la lettre, dans une
+rubrique sans titre.
 
 Les tendances ont deux pages de détail, sous des segments **explicites** :
 `/[slug]/tendances/axes/[axe]` (l'axe sur les quatre dernières lettres) et

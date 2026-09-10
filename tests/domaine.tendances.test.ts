@@ -61,6 +61,7 @@ describe('suivreLesDossiers', () => {
 /** Un document réduit à ses axes : le reste n'entre pas dans le calcul. */
 const doc = (...axes: readonly (readonly [string, 'FORT' | 'MOYEN' | 'RAS' | null])[]) => ({
   préambule: [],
+  cadrage: [],
   rubriques: [
     {
       titre: 'Rubrique',
