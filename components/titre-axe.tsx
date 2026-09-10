@@ -29,3 +29,35 @@ export function TitreAxe({
     </span>
   )
 }
+
+/**
+ * Le surtitre d'une case d'axe : son numéro, puis son nom.
+ *
+ * Ici le numéro n'est pas mis en indice, contrairement au titre d'une note.
+ * L'indice existe parce que Lora ne dessine pas les chiffres cerclés ; en mono,
+ * un chiffre ordinaire se compose très bien, et un indice à cette taille ne
+ * serait plus lisible.
+ *
+ * Encre plutôt qu'ardoise, à l'inverse des autres surtitres : c'est ici
+ * l'identité de la case, pas une mention de service — elle doit rester lue en
+ * premier.
+ */
+export function SurtitreAxe({
+  axe,
+}: {
+  axe: { readonly titre: string; readonly numéro: number | null }
+}) {
+  return (
+    <p className="label-mono text-encre">
+      {axe.numéro !== null ? (
+        <>
+          {axe.numéro}
+          <span aria-hidden="true" className="mx-1.5 text-ardoise">
+            ·
+          </span>
+        </>
+      ) : null}
+      {axe.titre}
+    </p>
+  )
+}

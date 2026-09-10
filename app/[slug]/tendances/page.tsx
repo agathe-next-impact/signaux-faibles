@@ -1,7 +1,6 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
-import { BadgeImpact } from '@/components/badge-impact'
-import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
-import { TitreAxe } from '@/components/titre-axe'
+import { CaseAxe } from '@/components/case-axe'
+import { EntêteÉcran, Grille } from '@/components/coquille'
 import { slugDAxe } from '@/lib/domaine/document'
 import { libelléDeMouvement, suivreLesAxes, suivreLesDossiers } from '@/lib/domaine/tendances'
 import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
@@ -56,22 +55,22 @@ export default async function Tendances({ params }: { params: Promise<{ slug: st
         ) : (
           <Grille étiquette="Axes de la semaine">
             {axes.map((axe) => (
-              <Case key={axe.titre} accent={axe.mouvement === 'monté'}>
-                <h3 className="font-titre text-h3 font-semibold text-encre">
-                  <TitreAxe axe={axe} />
-                </h3>
-                {/* Sans semaine précédente, tout serait « nouveau » : on se
-                    tait plutôt que d'annoncer un mouvement qui n'existe pas. */}
-                {comparable ? (
-                  <p className="label-mono text-ardoise">{libelléDeMouvement(axe.mouvement)}</p>
-                ) : null}
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
-                  <BadgeImpact niveau={axe.niveau} />
-                  <LienFlèche href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}>
-                    Suivre
-                  </LienFlèche>
-                </div>
-              </Case>
+              <CaseAxe
+                key={axe.titre}
+                axe={axe}
+                points={axe.points}
+                // Sans semaine précédente, tout serait « nouveau » : on se tait
+                // plutôt que d'annoncer un mouvement qui n'existe pas.
+                mention={
+                  comparable
+                    ? {
+                        texte: libelléDeMouvement(axe.mouvement),
+                        accentuée: axe.mouvement === 'monté',
+                      }
+                    : null
+                }
+                href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}
+              />
             ))}
           </Grille>
         )}

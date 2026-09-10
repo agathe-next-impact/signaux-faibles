@@ -279,19 +279,49 @@ export function axesDuDocument(document: Document): Axe[] {
 }
 
 /**
- * Les premiers mots d'un axe, pour une carte de synthèse.
+ * Les éléments importants d'un axe, pour une case de grille.
  *
- * On prend le premier bloc qui porte du texte suivi — un paragraphe ou une
- * citation — et non un titre, qui ne dirait que ce que la carte affiche déjà.
+ * Les puces de la note passent d'abord : quand l'auteur en a écrit, ce sont
+ * elles les éléments importants, et les reformuler n'apporterait rien. Sans
+ * puces, on retombe sur les paragraphes, une phrase chacun.
+ *
+ * Le texte est coupé au mot, jamais au milieu d'un : une case n'a pas la place
+ * d'un paragraphe, et la page de l'axe porte le texte entier.
  */
-export function extraitDAxe(axe: Axe, longueur = 150): string {
+export function pointsDAxe(axe: Axe, combien = 3, longueur = 110): string[] {
+  const puces: string[] = []
+  const phrases: string[] = []
+
   for (const bloc of axe.blocs) {
-    if (bloc.type !== 'paragraphe' && bloc.type !== 'citation') continue
-    const texte = bloc.segments.map((segment) => segment.texte).join('').trim()
-    if (texte.length === 0) continue
-    return texte.length <= longueur ? texte : `${texte.slice(0, longueur).trimEnd()}…`
+    if (bloc.type === 'liste') {
+      for (const élément of bloc.éléments) {
+        const texte = texteDeSegments(élément).trim()
+        if (texte.length > 0) puces.push(écourter(texte, longueur))
+      }
+      continue
+    }
+
+    if (bloc.type === 'paragraphe' || bloc.type === 'citation') {
+      const texte = texteDeSegments(bloc.segments).trim()
+      if (texte.length > 0) phrases.push(écourter(premièrePhrase(texte), longueur))
+    }
   }
-  return ''
+
+  return (puces.length > 0 ? puces : phrases).slice(0, combien)
+}
+
+/** La première phrase d'un texte, ou le texte entier s'il n'en porte qu'une. */
+function premièrePhrase(texte: string): string {
+  const fin = /[.!?…]\s/.exec(texte)
+  return fin ? texte.slice(0, fin.index + 1) : texte
+}
+
+/** Coupe au dernier mot entier, et ne coupe pas si ce n'est pas nécessaire. */
+function écourter(texte: string, longueur: number): string {
+  if (texte.length <= longueur) return texte
+  const tronqué = texte.slice(0, longueur)
+  const dernierEspace = tronqué.lastIndexOf(' ')
+  return `${(dernierEspace > longueur / 2 ? tronqué.slice(0, dernierEspace) : tronqué).trimEnd()}…`
 }
 
 /**

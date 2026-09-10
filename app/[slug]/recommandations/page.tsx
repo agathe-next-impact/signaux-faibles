@@ -50,7 +50,12 @@ export default async function Recommandations({
                   <h2 className="font-titre text-h3 font-semibold text-encre">
                     {semaine.libellé}
                   </h2>
-                  {rang === 0 ? <span className="label-mono text-rose">cette semaine</span> : null}
+                  {/* En encre et non en rose : le fond de la case est déjà
+                      rose, et rose sur rose est le contraste que la charte
+                      signale elle-même comme limite. */}
+                  {rang === 0 ? (
+                    <span className="label-mono text-encre">cette semaine</span>
+                  ) : null}
                 </div>
 
                 {actions.map(({ veille, action }) => (
@@ -61,7 +66,7 @@ export default async function Recommandations({
                 ))}
 
                 <div className="mt-auto pt-1">
-                  <LienFlèche href={`/${accès.slug}/archives/${semaine.clé}`}>
+                  <LienFlèche href={`/${accès.slug}/archives/${semaine.clé}`} étendu>
                     Relire cette semaine
                   </LienFlèche>
                 </div>

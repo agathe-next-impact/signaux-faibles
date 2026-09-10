@@ -145,6 +145,11 @@ export function Grille({
  *
  * L'accent passe par le fond seul, jamais par un trait de couleur : les cases
  * partagent leurs filets, un trait rose sur l'une déborderait sur sa voisine.
+ *
+ * Une case qui mène quelque part est cliquable en entier : c'est son lien
+ * `LienFlèche étendu` qui s'étale sur toute la surface (voir plus bas). D'où le
+ * `relative` ici, et le `group` qui permet à la flèche de réagir au survol de
+ * la case et non du seul lien.
  */
 export function Case({
   accent = false,
@@ -155,7 +160,7 @@ export function Case({
 }) {
   return (
     <li
-      className={`flex flex-col gap-3 border-r border-b border-gris-ligne p-5 ${
+      className={`group relative flex flex-col gap-3 border-r border-b border-gris-ligne p-5 ${
         accent ? 'bg-fond-rose' : 'bg-blanc'
       }`}
     >
@@ -201,12 +206,36 @@ export function Panneau({
   return <section className={`border border-gris-ligne p-5 ${fond}`}>{children}</section>
 }
 
-/** Un lien d'action, flèche rose : la seule forme de lien accentué de la charte. */
-export function LienFlèche({ href, children }: { href: string; children: React.ReactNode }) {
+/**
+ * Un lien d'action, flèche rose : la seule forme de lien accentué de la charte.
+ *
+ * `étendu` étale la zone cliquable sur toute la case qui le contient, par un
+ * pseudo-élément. La boîte entière devient cliquable sans que le lien avale son
+ * contenu : le nom accessible reste « Détail », et non le paragraphe complet
+ * qu'un lien enveloppant ferait lire. Un seul lien étendu par case, et rien
+ * d'autre de cliquable dedans — deux se recouvriraient.
+ */
+export function LienFlèche({
+  href,
+  étendu = false,
+  children,
+}: {
+  href: string
+  étendu?: boolean
+  children: React.ReactNode
+}) {
   return (
-    <Link href={href} className="inline-flex items-center gap-1 text-corps text-encre">
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-1 text-corps text-encre ${
+        étendu ? 'after:absolute after:inset-0 after:content-[""]' : ''
+      }`}
+    >
       {children}
-      <span aria-hidden="true" className="text-rose">
+      <span
+        aria-hidden="true"
+        className="text-rose transition-transform group-hover:translate-x-0.5"
+      >
         →
       </span>
     </Link>
