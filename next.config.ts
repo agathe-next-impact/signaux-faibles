@@ -17,6 +17,20 @@ const nextConfig: NextConfig = {
       expire: 60 * 60 * 24 * 30,
     },
 
+    // Les lectures de la base « Accès — portail ». Volontairement court, pour
+    // deux raisons. La révocation doit être effective à la requête suivante
+    // (règle 8) : avec le profil `notion`, une case décochée resterait sans
+    // effet jusqu'à une heure, sauf webhook. Et une ligne d'accès qui vient
+    // d'être créée doit fonctionner tout de suite, sans quoi l'installation
+    // d'un client paraît cassée alors qu'elle a réussi.
+    // Le coût est nul : cette base tient en quelques lignes, et le débit
+    // Notion reste très en deçà des trois requêtes par seconde.
+    acces: {
+      stale: 30,
+      revalidate: 60,
+      expire: 60 * 5,
+    },
+
     // Les URL de fichiers Notion expirent en une heure. Ce profil garde une
     // marge confortable sous cette limite : jamais d'URL périmée servie depuis
     // le cache. Il ne s'applique qu'à la résolution des médias, pas au contenu.

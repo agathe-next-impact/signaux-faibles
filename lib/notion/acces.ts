@@ -35,7 +35,7 @@ export async function lireAccèsParIdentifiant(
   'use cache: remote'
 
   const { cacheLife, cacheTag } = await import('next/cache')
-  cacheLife('notion')
+  cacheLife('acces')
 
   const { accès: sourceId } = await sourcesDeDonnées()
   cacheTag(`liste:${sourceId}`)
@@ -59,8 +59,14 @@ export async function lireAccèsParIdentifiant(
     .toLowerCase()
 
   // Sans identifiant d'organisation il n'y a pas de filtre possible : refuser
-  // vaut mieux que servir une requête non cloisonnée.
-  if (organisationId.length === 0) return null
+  // vaut mieux que servir une requête non cloisonnée. Le dire, sinon ce refus
+  // est indiscernable d'un identifiant inconnu.
+  if (organisationId.length === 0) {
+    console.warn(
+      "[accès] ligne trouvée mais « Identifiant Notion de l'organisation » vide : accès refusé.",
+    )
+    return null
+  }
 
   return {
     nom: lireTitre(page, 'Nom'),
@@ -85,7 +91,7 @@ export async function lireAccèsActifParEmail(email: string): Promise<
   'use cache: remote'
 
   const { cacheLife, cacheTag } = await import('next/cache')
-  cacheLife('notion')
+  cacheLife('acces')
 
   const { accès: sourceId } = await sourcesDeDonnées()
   cacheTag(`liste:${sourceId}`)
@@ -101,7 +107,14 @@ export async function lireAccèsActifParEmail(email: string): Promise<
     page_size: 2,
   })
 
-  if (réponse.results.length !== 1) return null
+  if (réponse.results.length !== 1) {
+    console.warn(
+      `[accès] ${réponse.results.length} ligne(s) active(s) pour ${email}, il en faut ` +
+        'exactement une. Vérifier la base « Accès — portail » : adresse absente, ' +
+        'case Actif décochée, ou doublon.',
+    )
+    return null
+  }
 
   const page = réponse.results[0]
   const identifiant = lireTexte(page, "Identifiant d'accès")
@@ -109,7 +122,14 @@ export async function lireAccèsActifParEmail(email: string): Promise<
     .replaceAll('-', '')
     .toLowerCase()
 
-  if (identifiant.length === 0 || organisationId.length === 0) return null
+  if (identifiant.length === 0 || organisationId.length === 0) {
+    console.warn(
+      `[accès] ligne trouvée pour ${email} mais incomplète : ` +
+        `${identifiant.length === 0 ? "« Identifiant d'accès » vide" : ''}` +
+        `${organisationId.length === 0 ? " « Identifiant Notion de l'organisation » vide" : ''}`.trim(),
+    )
+    return null
+  }
 
   return {
     identifiant,

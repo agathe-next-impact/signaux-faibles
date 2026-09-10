@@ -30,20 +30,32 @@ export async function envoyerMonLien(
   try {
     const accès = await lireAccèsActifParEmail(email)
 
-    if (accès?.email) {
-      const lien = composerLienDAccès(
-        accès.identifiant,
-        env().ACCES_SECRET_HMAC,
-        env().PORTAIL_URL,
-      )
-      const courrier = composerCourrierDAccès(accès.nom, lien)
-      await envoyerMessage({ ...courrier, destinataire: accès.email })
+    if (!accès?.email) {
+      // Le visiteur ne doit pas savoir si l'adresse est connue. L'opérateur,
+      // lui, doit pouvoir distinguer « personne n'a demandé de lien » de
+      // « la demande a échoué en silence » : sans cette ligne, une base mal
+      // renseignée est indiscernable d'un envoi réussi.
+      console.warn(`[lien] aucun accès actif pour ${email} : rien envoyé.`)
+      return { état: 'envoyé' }
     }
 
+    const lien = composerLienDAccès(
+      accès.identifiant,
+      env().ACCES_SECRET_HMAC,
+      env().PORTAIL_URL,
+    )
+    const courrier = composerCourrierDAccès(accès.nom, lien)
+    await envoyerMessage({ ...courrier, destinataire: accès.email })
+
+    console.info(`[lien] envoyé à ${accès.email} (${accès.slug}).`)
     return { état: 'envoyé' }
-  } catch {
-    // Ni l'adresse ni la cause ne sont journalisées ici : le monitoring de la
-    // plateforme voit l'exception, le visiteur voit qu'il peut réessayer.
+  } catch (erreur) {
+    // Le visiteur voit qu'il peut réessayer ; l'opérateur voit ce que Google
+    // ou Notion a répondu. Le lien lui-même n'est jamais journalisé.
+    console.error(
+      `[lien] échec de la demande pour ${email} : ` +
+        (erreur instanceof Error ? erreur.message : String(erreur)),
+    )
     return { état: 'erreur' }
   }
 }
