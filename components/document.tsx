@@ -1,6 +1,7 @@
 import type { Axe, Bloc, Document, Segment } from '@/lib/domaine/document'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { BadgeImpact } from '@/components/badge-impact'
+import { TitreAxe } from '@/components/titre-axe'
 
 /**
  * Rendu de la note comme un document.
@@ -145,6 +146,10 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
   }
 }
 
+export function RenduBlocs({ blocs }: { blocs: readonly Bloc[] }) {
+  return <Blocs blocs={blocs} />
+}
+
 function Blocs({ blocs }: { blocs: readonly Bloc[] }) {
   if (blocs.length === 0) return null
   return (
@@ -167,7 +172,9 @@ function RenduAxe({ axe }: { axe: Axe }) {
       className="border border-gris-ligne"
     >
       <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-4 py-3">
-        <span className="font-titre text-h3 font-semibold text-encre">{axe.titre}</span>
+        <span className="font-titre text-h3 font-semibold text-encre">
+          <TitreAxe axe={axe} />
+        </span>
         <BadgeImpact niveau={axe.niveau} />
       </summary>
       <div className="px-4 pb-4">

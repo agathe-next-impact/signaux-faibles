@@ -74,6 +74,9 @@ export function Coquille({
 
 /**
  * L'en-tête d'un écran : surtitre mono, titre, et à droite l'état de la veille.
+ *
+ * Le titre est un nœud et non une chaîne : un axe y porte son numéro en indice,
+ * et le composer autrement obligerait à le répéter dans une phrase.
  */
 export function EntêteÉcran({
   surtitre,
@@ -81,7 +84,7 @@ export function EntêteÉcran({
   état,
 }: {
   surtitre: string
-  titre: string
+  titre: React.ReactNode
   état?: string
 }) {
   return (

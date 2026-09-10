@@ -1,11 +1,16 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { BadgeImpact } from '@/components/badge-impact'
-import { Case, EntêteÉcran, Grille } from '@/components/coquille'
+import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
+import { TitreAxe } from '@/components/titre-axe'
+import { slugDAxe } from '@/lib/domaine/document'
 import { libelléDeMouvement, suivreLesAxes, suivreLesDossiers } from '@/lib/domaine/tendances'
 import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
 
 /**
  * Tendances : où en est chaque axe, et ce qui bouge dans les dossiers.
+ *
+ * Chaque case de la grille ouvre le suivi de son axe sur les dernières
+ * lettres.
  *
  * Deux lectures, deux coûts très différents. La grille des axes demande les
  * corps de la semaine courante et de la précédente — les mêmes que la vue
@@ -52,16 +57,19 @@ export default async function Tendances({ params }: { params: Promise<{ slug: st
           <Grille étiquette="Axes de la semaine">
             {axes.map((axe) => (
               <Case key={axe.titre} accent={axe.mouvement === 'monté'}>
-                <h3 className="font-titre text-h3 font-semibold text-encre">{axe.titre}</h3>
+                <h3 className="font-titre text-h3 font-semibold text-encre">
+                  <TitreAxe axe={axe} />
+                </h3>
+                {/* Sans semaine précédente, tout serait « nouveau » : on se
+                    tait plutôt que d'annoncer un mouvement qui n'existe pas. */}
+                {comparable ? (
+                  <p className="label-mono text-ardoise">{libelléDeMouvement(axe.mouvement)}</p>
+                ) : null}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
                   <BadgeImpact niveau={axe.niveau} />
-                  {/* Sans semaine précédente, tout serait « nouveau » : on se
-                      tait plutôt que d'annoncer un mouvement qui n'existe pas. */}
-                  {comparable ? (
-                    <p className="label-mono text-ardoise">
-                      {libelléDeMouvement(axe.mouvement)}
-                    </p>
-                  ) : null}
+                  <LienFlèche href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}>
+                    Suivre
+                  </LienFlèche>
                 </div>
               </Case>
             ))}

@@ -237,3 +237,33 @@ les deux mêmes semaines que la vue d'ensemble, donc les mêmes entrées de cach
 **Le domaine est tranché : `signauxfaibles.io`**, conforme à la charte. Rien
 n'était codé en dur ; `PORTAIL_URL` porte la valeur, et les documents qui
 laissaient l'arbitrage ouvert ne le laissent plus.
+
+**10 septembre 2026, troisième passe.** Indices, suivi d'axe, vue concurrents.
+
+**Les chiffres cerclés des référentiels sortent du texte.** Les titres d'axes
+arrivent de Notion sous la forme « ② Cadre français — FORT ». Ni Lora ni Public
+Sans ne dessinent ①-⑳ : le navigateur allait les chercher dans une police de
+secours, et le titre se composait en deux fontes, avec un chiffre trop lourd et
+mal aligné. Le rang est désormais détaché à la lecture et recomposé en indice
+mono. La reconnaissance est volontairement étroite — chiffres cerclés, ou
+chiffre suivi d'un point ou d'une parenthèse — pour qu'un axe nommé « 5G et
+réseaux » garde son nom.
+
+**Un axe s'ouvre et se suit sur quatre lettres.** C'est le seul écran qui lit
+plusieurs corps d'affilée, et le plafond est explicite (`LETTRES_SUIVIES`) :
+remonter toute l'archive serait une requête Notion par édition. L'axe est
+retrouvé par un segment dérivé de son nom, jamais de son numéro — un
+référentiel réordonné casserait sinon toutes les adresses. Une lettre qui
+n'ouvre pas l'axe n'est pas une absence de signal, et l'écran le dit plutôt que
+de laisser un trou.
+
+**La vue concurrents ne relit rien.** Elle montre les dossiers ouverts de la
+lettre concurrentielle de la semaine — déjà chargée pour les axes. Unité
+différente des axes (des dossiers, pas des thèmes), question différente (qui
+bouge, et depuis quand), donc pas de doublon avec la grille voisine. Si la
+propriété `Veille` est renommée dans Notion, la section disparaît en le disant,
+plutôt que de montrer la mauvaise lettre.
+
+**`EntêteÉcran` prend un nœud et non une chaîne.** Sans quoi la page d'un axe
+devait répéter son numéro dans une phrase, faute de pouvoir le mettre dans le
+titre.

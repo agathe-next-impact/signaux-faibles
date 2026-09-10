@@ -9,22 +9,28 @@ import {
 describe('lireTitreDAxe', () => {
   it('lit les trois niveaux de la charte', () => {
     expect(lireTitreDAxe('② Cadre français — FORT')).toEqual({
-      axe: '② Cadre français',
+      axe: 'Cadre français',
+      numéro: 2,
       niveau: 'FORT',
     })
     expect(lireTitreDAxe('③ Financements — MOYEN')).toEqual({
-      axe: '③ Financements',
+      axe: 'Financements',
+      numéro: 3,
       niveau: 'MOYEN',
     })
     expect(lireTitreDAxe('⑤ Filière et financement — RAS')).toEqual({
-      axe: '⑤ Filière et financement',
+      axe: 'Filière et financement',
+      numéro: 5,
       niveau: 'RAS',
     })
   })
 
   it('ne convertit jamais FAIBLE : suffixe inconnu, titre intact, aucun badge', () => {
+    // Le numéro se détache quand même : c'est de la mise en forme, elle ne
+    // dépend pas de la reconnaissance du suffixe.
     expect(lireTitreDAxe('⑤ Filière — FAIBLE')).toEqual({
-      axe: '⑤ Filière — FAIBLE',
+      axe: 'Filière — FAIBLE',
+      numéro: 5,
       niveau: null,
     })
   })
@@ -32,8 +38,24 @@ describe('lireTitreDAxe', () => {
   it('laisse intact un titre sans suffixe', () => {
     expect(lireTitreDAxe('Actualités par axe')).toEqual({
       axe: 'Actualités par axe',
+      numéro: null,
       niveau: null,
     })
+  })
+
+  it('détache les numérotations écrites exprès, jamais un chiffre nu', () => {
+    expect(lireTitreDAxe('❸ Recrutement — FORT')).toMatchObject({ axe: 'Recrutement', numéro: 3 })
+    expect(lireTitreDAxe('4. Financements — RAS')).toMatchObject({ axe: 'Financements', numéro: 4 })
+    expect(lireTitreDAxe('12) Territoires — RAS')).toMatchObject({ axe: 'Territoires', numéro: 12 })
+    // « 5G » n'est pas un axe numéroté : le titre reste entier.
+    expect(lireTitreDAxe('5G et réseaux — MOYEN')).toMatchObject({
+      axe: '5G et réseaux',
+      numéro: null,
+    })
+  })
+
+  it('garde le titre entier quand il se réduit à son numéro', () => {
+    expect(lireTitreDAxe('②')).toEqual({ axe: '②', numéro: null, niveau: null })
   })
 
   it('tolère le tiret demi-cadratin et le trait d’union', () => {
@@ -44,12 +66,13 @@ describe('lireTitreDAxe', () => {
   it('ne coupe que sur le dernier séparateur', () => {
     expect(lireTitreDAxe('Emploi — formation — FORT')).toEqual({
       axe: 'Emploi — formation',
+      numéro: null,
       niveau: 'FORT',
     })
   })
 
   it('ne produit pas d’axe anonyme quand le titre se réduit au suffixe', () => {
-    expect(lireTitreDAxe('— FORT')).toEqual({ axe: '— FORT', niveau: null })
+    expect(lireTitreDAxe('— FORT')).toEqual({ axe: '— FORT', numéro: null, niveau: null })
   })
 
   it('accepte une casse relâchée sur le mot, jamais un autre mot', () => {

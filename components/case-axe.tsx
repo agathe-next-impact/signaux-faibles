@@ -1,5 +1,6 @@
 import { BadgeImpact } from '@/components/badge-impact'
 import { Case, LienFlèche } from '@/components/coquille'
+import { TitreAxe } from '@/components/titre-axe'
 import { extraitDAxe, type Axe } from '@/lib/domaine/document'
 
 /**
@@ -13,7 +14,9 @@ export function CaseAxe({ axe, href }: { axe: Axe; href: string }) {
 
   return (
     <Case>
-      <h3 className="font-titre text-h3 font-semibold text-encre">{axe.titre}</h3>
+      <h3 className="font-titre text-h3 font-semibold text-encre">
+        <TitreAxe axe={axe} />
+      </h3>
       {extrait ? <p className="text-ardoise">{extrait}</p> : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
         <BadgeImpact niveau={axe.niveau} />

@@ -47,6 +47,8 @@ export type Bloc =
 
 export type Axe = {
   readonly titre: string
+  /** Le rang dans le référentiel, détaché du titre pour être composé en indice. */
+  readonly numéro: number | null
   readonly niveau: NiveauImpact | null
   readonly blocs: readonly Bloc[]
 }
@@ -211,7 +213,12 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
   let rubriqueCourante: {
     titre: string
     introduction: Pile
-    axes: Array<{ titre: string; niveau: NiveauImpact | null; blocs: Pile }>
+    axes: Array<{
+      titre: string
+      numéro: number | null
+      niveau: NiveauImpact | null
+      blocs: Pile
+    }>
   } | null = null
 
   const clore = (): void => {
@@ -221,6 +228,7 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
       introduction: rubriqueCourante.introduction.vider(),
       axes: rubriqueCourante.axes.map((axe) => ({
         titre: axe.titre,
+        numéro: axe.numéro,
         niveau: axe.niveau,
         blocs: axe.blocs.vider(),
       })),
@@ -241,12 +249,12 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
 
     if (bloc.type === 'heading_2') {
       const brut = texteDeSegments(lireSegments(contenu(bloc)['rich_text']))
-      const { axe, niveau } = lireTitreDAxe(brut)
+      const { axe, numéro, niveau } = lireTitreDAxe(brut)
 
       // Un H2 avant tout H1 : on ouvre une rubrique sans titre plutôt que de
       // laisser l'axe orphelin.
       rubriqueCourante ??= { titre: '', introduction: new Pile(), axes: [] }
-      rubriqueCourante.axes.push({ titre: axe, niveau, blocs: new Pile() })
+      rubriqueCourante.axes.push({ titre: axe, numéro, niveau, blocs: new Pile() })
       continue
     }
 
@@ -284,4 +292,22 @@ export function extraitDAxe(axe: Axe, longueur = 150): string {
     return texte.length <= longueur ? texte : `${texte.slice(0, longueur).trimEnd()}…`
   }
   return ''
+}
+
+/**
+ * L'adresse d'un axe dans une URL.
+ *
+ * Dérivée du titre, sans accents ni ponctuation. Le numéro du référentiel n'y
+ * entre pas : il change quand le référentiel est réordonné, alors que le nom
+ * de l'axe, lui, est ce que le client reconnaît. Deux axes qui se réduiraient
+ * au même segment seraient indiscernables — le cas ne s'est pas présenté, et
+ * la page prend alors le premier, plutôt que d'échouer devant le lecteur.
+ */
+export function slugDAxe(titre: string): string {
+  return titre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }

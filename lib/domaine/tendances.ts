@@ -109,23 +109,26 @@ export type Mouvement = 'nouveau' | 'monté' | 'redescendu' | 'stable'
 
 export type AxeSuivi = {
   readonly titre: string
+  readonly numéro: number | null
   readonly niveau: NiveauImpact | null
   readonly mouvement: Mouvement
   /** Le niveau de la semaine précédente, `null` si l'axe n'y figurait pas. */
   readonly niveauPrécédent: NiveauImpact | null
 }
 
+type AxeRetenu = { readonly numéro: number | null; readonly niveau: NiveauImpact | null }
+
 /** Le niveau le plus fort retenu par nom d'axe, les deux notes confondues. */
-function niveauxParAxe(documents: readonly Document[]): Map<string, NiveauImpact | null> {
-  const parTitre = new Map<string, NiveauImpact | null>()
+function axesParTitre(documents: readonly Document[]): Map<string, AxeRetenu> {
+  const parTitre = new Map<string, AxeRetenu>()
 
   for (const document of documents) {
     for (const axe of axesDuDocument(document)) {
       const connu = parTitre.get(axe.titre)
       // Un même axe peut figurer dans les deux notes de la semaine : on garde
       // le niveau le plus fort, jamais le dernier rencontré.
-      if (connu === undefined || rangDImpact(axe.niveau) < rangDImpact(connu)) {
-        parTitre.set(axe.titre, axe.niveau)
+      if (connu === undefined || rangDImpact(axe.niveau) < rangDImpact(connu.niveau)) {
+        parTitre.set(axe.titre, { numéro: axe.numéro, niveau: axe.niveau })
       }
     }
   }
@@ -143,20 +146,20 @@ export function suivreLesAxes(
   documents: readonly Document[],
   documentsPrécédents: readonly Document[],
 ): AxeSuivi[] {
-  const précédents = niveauxParAxe(documentsPrécédents)
+  const précédents = axesParTitre(documentsPrécédents)
 
-  const suivis = [...niveauxParAxe(documents)].map(([titre, niveau]) => {
-    const niveauPrécédent = précédents.get(titre)
+  const suivis = [...axesParTitre(documents)].map(([titre, { numéro, niveau }]) => {
+    const avant = précédents.get(titre)
 
-    if (niveauPrécédent === undefined) {
-      return { titre, niveau, mouvement: 'nouveau' as const, niveauPrécédent: null }
+    if (avant === undefined) {
+      return { titre, numéro, niveau, mouvement: 'nouveau' as const, niveauPrécédent: null }
     }
 
     // Le rang croît quand l'impact décroît : FORT vaut 0, RAS vaut 2.
-    const écart = rangDImpact(niveau) - rangDImpact(niveauPrécédent)
+    const écart = rangDImpact(niveau) - rangDImpact(avant.niveau)
     const mouvement: Mouvement = écart < 0 ? 'monté' : écart > 0 ? 'redescendu' : 'stable'
 
-    return { titre, niveau, mouvement, niveauPrécédent }
+    return { titre, numéro, niveau, mouvement, niveauPrécédent: avant.niveau }
   })
 
   return trierParImpact(suivis)
