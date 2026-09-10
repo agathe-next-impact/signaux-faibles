@@ -1,7 +1,7 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { CaseAxe } from '@/components/case-axe'
-import { EntêteÉcran, Grille } from '@/components/coquille'
-import { slugDAxe } from '@/lib/domaine/document'
+import { EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
+import { enSlug } from '@/lib/domaine/slug'
 import { libelléDeMouvement, suivreLesAxes, suivreLesDossiers } from '@/lib/domaine/tendances'
 import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
 
@@ -69,7 +69,7 @@ export default async function Tendances({ params }: { params: Promise<{ slug: st
                       }
                     : null
                 }
-                href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}
+                href={`/${accès.slug}/tendances/axes/${enSlug(axe.titre)}`}
               />
             ))}
           </Grille>
@@ -89,7 +89,11 @@ export default async function Tendances({ params }: { params: Promise<{ slug: st
             {suivis.map((dossier) => (
               <li key={dossier.nom} className="flex flex-col gap-3 py-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <h3 className="font-titre text-h3 font-semibold text-encre">{dossier.nom}</h3>
+                  <h3 className="font-titre text-h3 font-semibold text-encre">
+                    <LienFlèche href={`/${accès.slug}/tendances/acteurs/${enSlug(dossier.nom)}`}>
+                      {dossier.nom}
+                    </LienFlèche>
+                  </h3>
                   <p className="label-mono text-ardoise">
                     {dossier.aBougé
                       ? 'a bougé cette semaine'

@@ -289,3 +289,26 @@ par nom, l'accueil non : deux lettres ouvrant le même axe y auraient produit
 deux cases au même surtitre. `fusionnerLesAxes` sert désormais les deux écrans —
 niveau le plus fort retenu, éléments importants réunis sans répéter un fait
 relevé deux fois.
+
+**10 septembre 2026, cinquième passe.** Les acteurs ont une page.
+
+**Un acteur n'a pas de contenu dans Notion.** C'est une entrée texte de
+« Dossiers ouverts suivis » : un nom, un compteur, une précision. Sa page
+l'assemble donc à partir de deux sources de coûts opposés. Le suivi — chaque
+semaine où le dossier a été rouvert, et son état alors — ne lit aucun corps de
+note et couvre toute l'archive pour la seule requête de liste. Les mentions —
+les passages des quatre dernières lettres qui nomment l'acteur — demandent les
+mêmes quatre corps que la page d'un axe, donc les mêmes entrées de cache.
+
+**La recherche de mentions est bornée aux mots.** « CADA » ne doit pas se
+déclencher sur « cadastre » ; accents et casse sont ignorés, le reste ne l'est
+pas. Un nom est aussi échappé avant d'entrer dans le motif : un dossier nommé
+« (a) » ne doit pas devenir une expression régulière.
+
+**Les détails des tendances passent sous des segments explicites**,
+`axes/[axe]` et `acteurs/[acteur]`. L'axe était directement sous
+`tendances/[axe]` ; un axe nommé « Acteurs » aurait masqué la route des acteurs.
+Le coût de la correction était nul, la branche n'étant pas déployée.
+
+**`slugDAxe` devient `enSlug`**, dans son propre module : la règle d'adressage
+est la même pour un axe et pour un acteur, elle n'a pas à être écrite deux fois.

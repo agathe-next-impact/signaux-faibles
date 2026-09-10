@@ -180,10 +180,24 @@ Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, puis **deux
 sections** : « Les acteurs » et « L'écosystème ») · Lettres
 (`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
 `/[slug]/lettres/[edition]` pour la lire) · Tendances (`/[slug]/tendances`,
-grille des axes avec leur mouvement, puis le suivi des dossiers ; chaque case
-ouvre `/[slug]/tendances/[axe]`, l'axe suivi sur les quatre dernières lettres)
-· Recommandations · Archives (une entrée par semaine). Pas d'autre écran sans
+grille des axes avec leur mouvement, puis le suivi des dossiers) ·
+Recommandations · Archives (une entrée par semaine). Pas d'autre écran sans
 discussion.
+
+Les tendances ont deux pages de détail, sous des segments **explicites** :
+`/[slug]/tendances/axes/[axe]` (l'axe sur les quatre dernières lettres) et
+`/[slug]/tendances/acteurs/[acteur]`. Ne pas remettre l'axe directement sous
+`/tendances/[axe]` : un axe nommé « Acteurs » masquerait alors la route des
+acteurs. Les deux segments sont adressés par `enSlug` du **nom**, jamais d'un
+numéro ni d'un identifiant Notion.
+
+**Un acteur n'a pas de contenu propre dans Notion** — c'est une entrée texte de
+`Dossiers ouverts suivis`, un nom et un compteur. Sa page l'assemble : le
+**suivi** (toute l'archive, sans lire aucun corps) et les **mentions**, c'est-à-
+dire les passages des quatre dernières lettres qui le nomment (`mentionsDe`).
+La recherche est bornée aux mots — « CADA » ne doit pas se déclencher sur
+« cadastre » — accents et casse ignorés, le reste non : on ne rapproche pas deux
+noms voisins.
 
 **L'accueil réunit les deux lettres, il ne les sépare pas.** Le lecteur n'a pas
 à savoir laquelle a relevé quoi. La coupure se fait par nature de ce qui est
