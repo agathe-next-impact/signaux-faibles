@@ -161,8 +161,42 @@ individuelle.
 | `Organisation (libellé)` | affichage seulement, en en-tête du portail |
 | **`Identifiant Notion de l'organisation`** | le `page_id` de la ligne du registre |
 | `Slug` | **identique** à celui du registre |
-| `Identifiant d'accès` | aléatoire, par exemple `openssl rand -hex 16` |
+| `Identifiant d'accès` | aléatoire, 32 caractères hexadécimaux (voir ci-dessous) |
 | `Actif` | coché |
+
+### Tirer l'identifiant d'accès
+
+Cet identifiant est un secret : c'est lui que le portail signe pour fabriquer
+le lien. Il doit venir d'un générateur **cryptographique**, jamais d'un
+compteur, d'une date ni d'un nom.
+
+Sur macOS, Linux, ou un terminal Git Bash :
+
+```bash
+openssl rand -hex 16
+```
+
+Sur Windows, en PowerShell 7 :
+
+```powershell
+[System.Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(16)).ToLower()
+```
+
+En Windows PowerShell 5.1, celui installé par défaut, la méthode statique
+`GetBytes` n'existe pas encore. La forme suivante marche partout, 5.1 comprise :
+
+```powershell
+$octets = [byte[]]::new(16)
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($octets)
+-join ($octets | ForEach-Object { $_.ToString("x2") })
+```
+
+Les trois produisent la même chose : trente-deux caractères hexadécimaux en
+minuscules, soit seize octets d'entropie.
+
+**Ne pas utiliser `Get-Random`.** C'est un générateur pseudo-aléatoire ordinaire,
+prévu pour tirer au sort, pas pour produire un secret. Un identifiant issu de
+`Get-Random` serait devinable.
 
 **L'identifiant d'organisation est la seule clé de cloisonnement.** Le portail
 n'a pas accès au registre — il ne peut donc pas résoudre un nom en identifiant,
