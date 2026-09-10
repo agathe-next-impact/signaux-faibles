@@ -317,7 +317,7 @@ function premièrePhrase(texte: string): string {
 }
 
 /** Coupe au dernier mot entier, et ne coupe pas si ce n'est pas nécessaire. */
-function écourter(texte: string, longueur: number): string {
+export function écourter(texte: string, longueur: number): string {
   if (texte.length <= longueur) return texte
   const tronqué = texte.slice(0, longueur)
   const dernierEspace = tronqué.lastIndexOf(' ')

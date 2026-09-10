@@ -78,10 +78,26 @@ export default async function UnActeur({
         </p>
 
         {lettres.length === 0 ? (
-          <p className="text-ardoise">
-            Les dernières lettres ne le nomment pas. Le dossier reste ouvert : il est suivi
-            sans avoir donné matière à écrire.
-          </p>
+          // Sans passage à citer, la page ne doit pas laisser le lecteur sans
+          // issue : on lui ouvre les lettres de la période, à lui de juger.
+          <div className="flex flex-col gap-4">
+            <p className="text-ardoise">
+              Aucune des dernières lettres ne le nomme en toutes lettres. Le dossier reste
+              ouvert : il est suivi, et son état figure ci-dessous.
+            </p>
+            {notes.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {notes.map(({ lettre }) => (
+                  <li key={lettre.édition.pageId}>
+                    <LienFlèche href={`/${accès.slug}/lettres/${lettre.édition.pageId}`}>
+                      {lettre.semaine.libellé}
+                      {lettre.édition.veille ? ` · ${lettre.édition.veille}` : ''}
+                    </LienFlèche>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ) : (
           <div className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
             {lettres.map(({ lettre, mentions }) => (
@@ -96,12 +112,16 @@ export default async function UnActeur({
                   </h3>
                 </div>
 
-                {mentions.map((mention) => (
-                  <div key={mention.axe} className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <SurtitreAxe axe={{ titre: mention.axe, numéro: mention.numéro }} />
-                      <BadgeImpact niveau={mention.niveau} />
-                    </div>
+                {mentions.map((mention, rang) => (
+                  <div key={`${mention.titre}-${rang}`} className="flex flex-col gap-2">
+                    {/* Un passage venu du chapeau n'a pas de titre : on ne pose
+                        pas de surtitre vide pour autant. */}
+                    {mention.titre ? (
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <SurtitreAxe axe={{ titre: mention.titre, numéro: mention.numéro }} />
+                        <BadgeImpact niveau={mention.niveau} />
+                      </div>
+                    ) : null}
                     <ul className="flex flex-col gap-2">
                       {mention.passages.map((passage) => (
                         <li key={passage} className="flex gap-2.5">

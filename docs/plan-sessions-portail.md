@@ -334,3 +334,36 @@ que la veille a cessé de les suivre.
 Coût Notion : nul. Les trois dernières lettres sont, à une près, celles que
 l'accueil lit déjà pour les axes et la comparaison des tuiles ; le cache sert
 le reste.
+
+**10 septembre 2026, septième passe.** Mesurer avant de corriger.
+
+« Certains acteurs n'ont pas d'informations de détails. » Plutôt que de deviner,
+la vraie base a été interrogée : la première lettre Infralliance et ses dix
+dossiers ouverts. Elle a révélé un **bug**, pas une limite de conception.
+
+**`mentionsDe` ne parcourait que les axes.** Or une lettre porte son essentiel,
+son analyse, son agenda et son récapitulatif de dossiers hors de toute section
+thématique — et c'est là que les dossiers sont nommés en clair. La moitié du
+texte était ignorée. La recherche parcourt maintenant le préambule, les
+introductions de rubriques et les axes, chaque passage gardant sa provenance.
+
+**Les noms de dossiers sont des syntagmes, pas des noms propres.** « règlement
+marchés publics », « raccordement Telehouse Magny », « colloque Cnam ». La prose
+les reprend avec ses articles. La recherche tolère donc entre les mots du nom
+jusqu'à deux mots d'au plus quatre lettres, et rien de plus : au-delà, ce ne
+serait plus le même syntagme.
+
+**Neuf dossiers sur dix, mesurés.** `tests/mentions.lettre-reelle.test.ts` tient
+la vraie lettre en fixture et vérifie le résultat. Le dixième,
+« SecNumCloud 3.2 », est irréductible : la lettre écrit « SecNumCloud » d'un côté
+et « référentiel 3.2 » de l'autre. Les rapprocher demanderait d'abandonner un
+qualificatif, ce qui confondrait deux versions du même référentiel. Le cas est
+documenté plutôt que forcé — et c'est lui qui justifie la seconde porte du
+filtre d'actualité.
+
+**La moitié des dossiers réels n'ont pas de précision.** Leur case n'affichait
+qu'un nom et un état. Elle porte maintenant, à défaut de précision, la phrase de
+la lettre qui les nomme — calculée par le filtre d'actualité, qui la jetait.
+
+**Une page d'acteur sans citation n'est plus un cul-de-sac** : elle ouvre les
+lettres de la période.

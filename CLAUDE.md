@@ -195,9 +195,24 @@ numéro ni d'un identifiant Notion.
 `Dossiers ouverts suivis`, un nom et un compteur. Sa page l'assemble : le
 **suivi** (toute l'archive, sans lire aucun corps) et les **mentions**, c'est-à-
 dire les passages des quatre dernières lettres qui le nomment (`mentionsDe`).
+
+`mentionsDe` parcourt **toute la note**, pas seulement les axes : une lettre
+porte son essentiel, son analyse, son agenda et son récapitulatif de dossiers
+hors de toute section thématique, et c'est précisément là que les dossiers sont
+nommés en clair. Chercher dans les seuls axes ignorait la moitié du texte.
+
 La recherche est bornée aux mots — « CADA » ne doit pas se déclencher sur
-« cadastre » — accents et casse ignorés, le reste non : on ne rapproche pas deux
-noms voisins.
+« cadastre » —, accents et casse ignorés, et elle tolère entre les mots du nom
+jusqu'à deux mots d'au plus quatre lettres : le dossier dit « raccordement
+Telehouse Magny », la lettre écrit « le raccordement **de** Telehouse Magny ».
+Au-delà, ce ne serait plus le même syntagme. `tests/mentions.lettre-reelle.test.ts`
+mesure la règle sur une vraie lettre : neuf dossiers sur dix trouvés, et le
+dixième documenté comme irréductible.
+
+Sur l'accueil, la case d'un acteur porte **la précision du dossier, ou à défaut
+la phrase de la lettre qui le nomme** (`acteursEnVue`) : la moitié des dossiers
+réels n'ont pas de précision, et leur case n'apprenait alors rien. L'extrait ne
+coûte rien, il est calculé par le filtre d'actualité qui le jetait.
 
 **L'accueil réunit les deux lettres, il ne les sépare pas.** Le lecteur n'a pas
 à savoir laquelle a relevé quoi. La coupure se fait par nature de ce qui est
@@ -212,12 +227,12 @@ ce libellé disparaîtrait au premier renommage.
 
 **Un acteur sans actualité ne figure pas sur l'accueil**, mais n'est jamais
 supprimé : le suivi entier reste sur les tendances, où un dossier qui s'enlise
-doit précisément se voir. La règle a **deux portes** (`acteursAvecActualité`) :
+doit précisément se voir. La règle a **deux portes** (`acteursEnVue`) :
 une des trois dernières lettres le nomme, **ou** son compteur est retombé à
-zéro. La seconde n'est pas une commodité — une lettre peut suivre « CADA » dans
-ses dossiers et écrire « la Commission d'accès aux documents administratifs »
-dans sa prose ; sans le compteur, l'acteur disparaîtrait la semaine même où il
-bouge. Le nombre d'acteurs écartés est affiché : un compte muet laisserait
+zéro. La seconde n'est pas une commodité — une lettre peut suivre
+« SecNumCloud 3.2 » dans ses dossiers, écrire « SecNumCloud » d'un côté et
+« référentiel 3.2 » de l'autre, et n'être rapprochée par aucune recherche
+honnête ; sans le compteur, l'acteur disparaîtrait la semaine même où il bouge. Le nombre d'acteurs écartés est affiché : un compte muet laisserait
 croire que la veille a cessé de les suivre.
 
 **Le coût Notion d'un écran se compte en corps de notes lus.** La liste des

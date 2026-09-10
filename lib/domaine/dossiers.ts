@@ -66,7 +66,7 @@ function lireUnDossier(entrée: string): DossierOuvert {
  * exploitable ferment la marche — on ne sait pas les situer, on ne les met pas
  * en avant.
  */
-export function ordonnerLesDossiers(dossiers: readonly DossierOuvert[]): DossierOuvert[] {
+export function ordonnerLesDossiers<T extends DossierOuvert>(dossiers: readonly T[]): T[] {
   return [...dossiers].sort((a, b) => {
     const gauche = a.compteur ?? Number.MAX_SAFE_INTEGER
     const droite = b.compteur ?? Number.MAX_SAFE_INTEGER
