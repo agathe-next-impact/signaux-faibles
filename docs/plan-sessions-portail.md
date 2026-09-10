@@ -312,3 +312,25 @@ Le coût de la correction était nul, la branche n'étant pas déployée.
 
 **`slugDAxe` devient `enSlug`**, dans son propre module : la règle d'adressage
 est la même pour un axe et pour un acteur, elle n'a pas à être écrite deux fois.
+
+**10 septembre 2026, sixième passe.** L'accueil ne montre que les acteurs vivants.
+
+Un dossier peut rester ouvert des semaines sans que rien ne bouge ; sur
+l'accueil, il occupait une case pour ne rien apprendre. Il n'y figure plus au
+bout de trois lettres sans actualité — mais il n'est pas perdu : le suivi entier
+reste sur les tendances, et c'est là qu'un dossier qui s'enlise doit se voir.
+
+**La règle a deux portes, et il en fallait deux.** Une des trois dernières
+lettres nomme l'acteur, ou son compteur est retombé à zéro. La seconde condition
+n'est pas une commodité : la recherche par nom est exacte, et une lettre peut
+très bien suivre « CADA » dans ses dossiers en écrivant « la Commission d'accès
+aux documents administratifs » dans sa prose. Filtrer sur les seules mentions
+aurait fait disparaître l'acteur la semaine même où il bouge. Le compteur, lui,
+est tenu par la veille.
+
+**Le nombre d'acteurs écartés est affiché.** Un compte muet laisserait croire
+que la veille a cessé de les suivre.
+
+Coût Notion : nul. Les trois dernières lettres sont, à une près, celles que
+l'accueil lit déjà pour les axes et la comparaison des tuiles ; le cache sert
+le reste.

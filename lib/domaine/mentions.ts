@@ -1,4 +1,5 @@
 import { axesDuDocument, type Bloc, type Document } from '@/lib/domaine/document'
+import type { DossierOuvert } from '@/lib/domaine/dossiers'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 
 /**
@@ -79,4 +80,31 @@ export function mentionsDe(nom: string, document: Document): Mention[] {
       ? [{ axe: axe.titre, numéro: axe.numéro, niveau: axe.niveau, passages }]
       : []
   })
+}
+
+/**
+ * Les acteurs dont les dernières lettres ont quelque chose à dire.
+ *
+ * Un dossier peut rester ouvert des semaines sans que rien ne bouge ; sur
+ * l'accueil, il occupe une case pour ne rien apprendre. On ne le supprime pas
+ * pour autant : le suivi complet reste sur les tendances, et c'est là qu'un
+ * dossier qui s'enlise doit se voir.
+ *
+ * **Deux portes, et il en faut deux.** Une lettre le nomme, ou son compteur est
+ * retombé à zéro. La seconde n'est pas une commodité : une lettre peut suivre
+ * « CADA » dans ses dossiers et écrire « la Commission d'accès aux documents
+ * administratifs » dans sa prose. La recherche par nom ne verrait rien, et
+ * l'acteur disparaîtrait de l'accueil la semaine même où il bouge. Le compteur,
+ * lui, est tenu par la veille : quand il vaut zéro, il y a du mouvement, quels
+ * que soient les mots employés.
+ */
+export function acteursAvecActualité(
+  acteurs: readonly DossierOuvert[],
+  documents: readonly Document[],
+): DossierOuvert[] {
+  return acteurs.filter(
+    (acteur) =>
+      acteur.compteur === 0 ||
+      documents.some((document) => mentionsDe(acteur.nom, document).length > 0),
+  )
 }

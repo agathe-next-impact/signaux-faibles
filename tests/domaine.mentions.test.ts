@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { construireDocument, type BlocNotion } from '@/lib/domaine/document'
-import { mentionsDe } from '@/lib/domaine/mentions'
+import { acteursAvecActualité, mentionsDe } from '@/lib/domaine/mentions'
 
 const texte = (contenu: string) => [{ plain_text: contenu }]
 
@@ -87,5 +87,48 @@ describe('mentionsDe', () => {
   it('ne rend rien pour un nom vide', () => {
     const document = construireDocument([h2('Cadre — RAS'), p('Un texte.')])
     expect(mentionsDe('  ', document)).toEqual([])
+  })
+})
+
+describe('acteursAvecActualité', () => {
+  const acteur = (nom: string, compteur: number | null) => ({ nom, compteur, précision: null })
+  const lettre = (...phrases: readonly string[]) =>
+    construireDocument([h2('Cadre — RAS'), ...phrases.map((phrase) => p(phrase))])
+
+  it('garde un acteur qu’une lettre nomme', () => {
+    const gardés = acteursAvecActualité(
+      [acteur('CADA', 4)],
+      [lettre('La CADA a rendu son avis.')],
+    )
+    expect(gardés.map((a) => a.nom)).toEqual(['CADA'])
+  })
+
+  it('écarte un acteur qu’aucune lettre ne nomme et qui n’a pas bougé', () => {
+    const gardés = acteursAvecActualité([acteur('CADA', 4)], [lettre('Rien sur ce front.')])
+    expect(gardés).toEqual([])
+  })
+
+  it('garde un acteur qui vient de bouger, même si aucune lettre ne le nomme', () => {
+    // Le cas qui impose la seconde porte : une lettre peut suivre « CADA » dans
+    // ses dossiers et écrire son nom en toutes lettres dans sa prose. Sans le
+    // compteur, l'acteur disparaîtrait la semaine même où il bouge.
+    const gardés = acteursAvecActualité(
+      [acteur('CADA', 0)],
+      [lettre('La Commission d’accès aux documents administratifs a tranché.')],
+    )
+    expect(gardés.map((a) => a.nom)).toEqual(['CADA'])
+  })
+
+  it('n’écarte rien quand il n’y a aucune lettre à interroger', () => {
+    expect(acteursAvecActualité([acteur('CADA', 0)], [])).toHaveLength(1)
+    expect(acteursAvecActualité([acteur('CADA', 2)], [])).toHaveLength(0)
+  })
+
+  it('interroge toutes les lettres fournies, pas seulement la première', () => {
+    const gardés = acteursAvecActualité(
+      [acteur('CADA', 3)],
+      [lettre('Rien.'), lettre('La CADA revient dans le débat.')],
+    )
+    expect(gardés).toHaveLength(1)
   })
 })
