@@ -50,6 +50,66 @@ export function composerRevendications(
   }
 }
 
+/**
+ * Remet la clé privée du compte de service dans une forme que Node accepte.
+ *
+ * La valeur traverse une console d'hébergement avant d'arriver ici, et elle en
+ * ressort abîmée de plusieurs façons connues. Chacune produit la même erreur
+ * OpenSSL, `DECODER routines::unsupported`, qui ne dit rien de la cause :
+ *
+ * - les retours à la ligne sont échappés en `\n` littéraux ;
+ * - la valeur a été collée avec les guillemets qui l'entouraient dans le JSON ;
+ * - elle a été ré-encodée en base64 pour éviter la question des retours à la
+ *   ligne ;
+ * - elle porte des fins de ligne Windows.
+ *
+ * Cette fonction rattrape les quatre, et lève un message explicite plutôt que
+ * de laisser OpenSSL parler quand la valeur n'est pas récupérable.
+ */
+export function normaliserClePrivée(brute: string): string {
+  let clé = brute.trim()
+
+  // Guillemets conservés au copier-coller depuis le fichier JSON.
+  const guillemets = ['"', "'"]
+  for (const guillemet of guillemets) {
+    if (clé.startsWith(guillemet) && clé.endsWith(guillemet) && clé.length > 1) {
+      clé = clé.slice(1, -1).trim()
+      break
+    }
+  }
+
+  // Retours à la ligne échappés. Sans effet si la valeur en porte déjà de vrais.
+  clé = clé.replaceAll('\\n', '\n').replaceAll('\r\n', '\n')
+
+  // Valeur entièrement ré-encodée en base64 : elle ne contient alors ni tiret
+  // ni espace, seulement l'alphabet base64.
+  if (!clé.includes('-----') && /^[A-Za-z0-9+/=\s]+$/.test(clé)) {
+    const décodée = Buffer.from(clé, 'base64').toString('utf8')
+    if (décodée.includes('-----BEGIN')) clé = décodée.trim()
+  }
+
+  if (!clé.includes('-----BEGIN') || !clé.includes('-----END')) {
+    throw new Error(
+      "La clé privée du compte de service ne ressemble pas à un PEM : les lignes " +
+        '« -----BEGIN … ----- » et « -----END … ----- » sont introuvables. ' +
+        'Recopier la valeur du champ private_key du fichier JSON, sans les ' +
+        'guillemets qui l\'entourent.',
+    )
+  }
+
+  if (!clé.includes('\n')) {
+    throw new Error(
+      'La clé privée du compte de service tient sur une seule ligne : ses ' +
+        'retours à la ligne ont été perdus. OpenSSL ne peut pas la lire. ' +
+        'Recopier la valeur telle quelle depuis le fichier JSON, retours à la ' +
+        'ligne compris ou échappés en \\n.',
+    )
+  }
+
+  // OpenSSL veut une fin de ligne après la dernière ligne d'armure.
+  return clé.endsWith('\n') ? clé : `${clé}\n`
+}
+
 function signerJWT(revendications: RevendicationsJWT, clésPrivée: string): string {
   const entête = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
   const corps = base64url(JSON.stringify(revendications))

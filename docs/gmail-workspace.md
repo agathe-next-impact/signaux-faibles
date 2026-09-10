@@ -70,10 +70,20 @@ La valeur de `private_key` est une clé PKCS#8 encadrée par
 dont elle traverse une console d'hébergement, elle arrive avec de vrais retours
 à la ligne, ou avec des séquences `\n` littérales.
 
-**Les deux formes fonctionnent.** `lib/env.ts` remplace les `\n` littéraux par
-de vrais retours à la ligne ; sur une valeur qui en contient déjà, le
-remplacement est sans effet. Les deux chemins ont été éprouvés sur une paire
-RSA réelle : le JWT produit se vérifie avec la clé publique correspondante.
+**Six formes abîmées sont rattrapées** par `normaliserClePrivée`, dans
+`lib/email/gmail.ts` : retours à la ligne échappés en `\n`, guillemets ou
+apostrophes copiés avec la valeur, fins de ligne Windows, valeur ré-encodée
+entièrement en base64, espaces autour, fin de ligne finale manquante. Chacune
+est éprouvée sur une paire RSA réelle, en signant puis en vérifiant.
+
+**Deux formes ne sont pas récupérables**, et donnent alors un message explicite
+plutôt que l'erreur d'OpenSSL : une clé dont les retours à la ligne ont été
+purement perdus, et une valeur qui n'est pas un PEM.
+
+C'est cette première qui produit `error:1E08010C:DECODER routines::unsupported`.
+L'erreur ne dit rien de la cause : elle signifie seulement qu'OpenSSL n'a pas
+su lire la valeur. Neuf fois sur dix, les retours à la ligne ont sauté au
+copier-coller.
 
 ## Ce que le portail envoie à Google
 
@@ -105,6 +115,7 @@ secret, et nomme généralement la cause.
 | `access_denied` sur la portée | une portée autre que `gmail.send` est demandée, ou `gmail.send` n'est pas dans la liste autorisée |
 | `invalid_grant` | la boîte de `sub` n'existe pas sur le domaine, ou l'horloge du serveur dérive |
 | API désactivée | l'API Gmail n'a pas été activée sur le projet Cloud |
+| `DECODER routines::unsupported` | la clé privée est illisible : retours à la ligne perdus au collage, ou valeur tronquée. Recopier `private_key` telle quelle depuis le JSON |
 
 Quotas à connaître : 2 000 messages par jour et par utilisateur Workspace, et
 environ deux envois par seconde. Sans objet pour un envoi de lien à la demande.
