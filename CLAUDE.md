@@ -176,14 +176,25 @@ varie d'une organisation à l'autre.
 
 ## Les cinq écrans de l'espace client
 
-Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, **vue concurrents**
-tirée de la lettre concurrentielle, axes de la semaine) · Lettres
+Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, puis **deux
+sections** : « Les acteurs » et « L'écosystème ») · Lettres
 (`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
 `/[slug]/lettres/[edition]` pour la lire) · Tendances (`/[slug]/tendances`,
 grille des axes avec leur mouvement, puis le suivi des dossiers ; chaque case
 ouvre `/[slug]/tendances/[axe]`, l'axe suivi sur les quatre dernières lettres)
 · Recommandations · Archives (une entrée par semaine). Pas d'autre écran sans
 discussion.
+
+**L'accueil réunit les deux lettres, il ne les sépare pas.** Le lecteur n'a pas
+à savoir laquelle a relevé quoi. La coupure se fait par nature de ce qui est
+suivi : « Les acteurs » sont les **dossiers ouverts** — des entités nommées,
+concurrent ou administration —, dédoublonnés par nom sur les deux lettres et
+ordonnés de ce qui vient de bouger à ce qui dort ; « L'écosystème » ce sont les
+**axes**, fusionnés par `fusionnerLesAxes` et triés par impact. Ne jamais
+reclasser une lettre d'après sa propriété `Veille` : son libellé est choisi par
+le client (Écosystème, Concurrentiel, Positionnement, Attractivité) et le
+portail n'a pas accès à `Famille`, la clé interne. Une section qui dépendrait de
+ce libellé disparaîtrait au premier renommage.
 
 **Le coût Notion d'un écran se compte en corps de notes lus.** La liste des
 éditions est une requête, quelle que soit la profondeur ; un corps de note en

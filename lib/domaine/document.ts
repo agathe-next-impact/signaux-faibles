@@ -1,4 +1,4 @@
-import { lireTitreDAxe, type NiveauImpact } from '@/lib/domaine/impact'
+import { lireTitreDAxe, rangDImpact, type NiveauImpact } from '@/lib/domaine/impact'
 
 /**
  * La note est rendue comme un document.
@@ -340,4 +340,58 @@ export function slugDAxe(titre: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+/** Un axe tel que les lettres de la semaine le donnent, une fois réunies. */
+export type AxeFusionné = {
+  readonly titre: string
+  readonly numéro: number | null
+  readonly niveau: NiveauImpact | null
+  readonly points: readonly string[]
+}
+
+/**
+ * Réunit les axes de plusieurs lettres en une seule liste.
+ *
+ * Une semaine porte deux lettres, une par famille de veille. Elles ouvrent des
+ * axes distincts la plupart du temps ; quand elles ouvrent le même, il ne doit
+ * en rester qu'un — deux cases au même nom se liraient comme un défaut. On garde
+ * alors le **niveau le plus fort** des deux, jamais le dernier rencontré, et on
+ * réunit leurs éléments importants.
+ *
+ * L'ordre de sortie est celui des notes ; c'est à l'écran de trier par impact,
+ * comme partout ailleurs.
+ */
+export function fusionnerLesAxes(
+  documents: readonly Document[],
+  combien = 3,
+): AxeFusionné[] {
+  const parTitre = new Map<string, AxeFusionné>()
+
+  for (const document of documents) {
+    for (const axe of axesDuDocument(document)) {
+      const points = pointsDAxe(axe, combien)
+      const connu = parTitre.get(axe.titre)
+
+      if (!connu) {
+        parTitre.set(axe.titre, {
+          titre: axe.titre,
+          numéro: axe.numéro,
+          niveau: axe.niveau,
+          points,
+        })
+        continue
+      }
+
+      parTitre.set(axe.titre, {
+        titre: axe.titre,
+        numéro: connu.numéro ?? axe.numéro,
+        niveau: rangDImpact(axe.niveau) < rangDImpact(connu.niveau) ? axe.niveau : connu.niveau,
+        // Les deux lettres peuvent avoir relevé le même fait : une seule puce.
+        points: [...new Set([...connu.points, ...points])].slice(0, combien),
+      })
+    }
+  }
+
+  return [...parTitre.values()]
 }

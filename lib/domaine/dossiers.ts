@@ -57,3 +57,19 @@ function lireUnDossier(entrée: string): DossierOuvert {
 
   return { nom, compteur, précision }
 }
+
+/**
+ * Ce qui a bougé d'abord, ce qui dort ensuite.
+ *
+ * Le compteur est le nombre de semaines sans mouvement : zéro en tête, donc,
+ * puisque c'est l'actualité de la semaine. Les dossiers sans compteur
+ * exploitable ferment la marche — on ne sait pas les situer, on ne les met pas
+ * en avant.
+ */
+export function ordonnerLesDossiers(dossiers: readonly DossierOuvert[]): DossierOuvert[] {
+  return [...dossiers].sort((a, b) => {
+    const gauche = a.compteur ?? Number.MAX_SAFE_INTEGER
+    const droite = b.compteur ?? Number.MAX_SAFE_INTEGER
+    return gauche !== droite ? gauche - droite : a.nom.localeCompare(b.nom, 'fr')
+  })
+}

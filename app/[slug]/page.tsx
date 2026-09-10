@@ -1,25 +1,29 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
-import { axesDuDocument, pointsDAxe, slugDAxe } from '@/lib/domaine/document'
-import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
+import { fusionnerLesAxes, slugDAxe } from '@/lib/domaine/document'
+import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
-import {
-  estVeilleConcurrentielle,
-  notesDeLaSemaine,
-  documentsDeLaSemaine,
-  semainesPubliées,
-} from '@/lib/portail/semaine'
+import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
 
 /**
  * Vue d'ensemble : ce que la semaine dit, en un écran.
  *
- * Les chiffres se déduisent des axes des notes de la semaine, jamais d'une
- * donnée inventée. La comparaison porte sur la semaine précédente, deux
- * lectures de blocs de plus — c'est ce qui fait la valeur d'un tableau de bord,
- * et le cache l'absorbe.
+ * Deux angles, et les deux lettres de la semaine réunies dans chacun. La
+ * séparation ne se fait pas par lettre — le lecteur n'a pas à savoir laquelle
+ * a relevé quoi — mais par nature de ce qui est suivi : des **acteurs**
+ * nommés d'un côté, les **axes** de l'écosystème de l'autre.
+ *
+ * Les chiffres se déduisent des mêmes lectures, jamais d'une donnée inventée.
+ * La comparaison porte sur la semaine précédente, deux lectures de blocs de
+ * plus — c'est ce qui fait la valeur d'un tableau de bord, et le cache
+ * l'absorbe.
  */
+
+/** Au-delà, la page s'allonge sans rien apprendre : le suivi complet est dans les tendances. */
+const ACTEURS_EN_ACCUEIL = 6
+
 export default async function VueDEnsemble({
   params,
 }: {
@@ -42,16 +46,10 @@ export default async function VueDEnsemble({
     )
   }
 
-  const [notes, documentsPrécédents] = await Promise.all([
-    notesDeLaSemaine(courante),
+  const [documents, documentsPrécédents] = await Promise.all([
+    documentsDeLaSemaine(courante),
     documentsDeLaSemaine(semaines[1]),
   ])
-  const documents = notes.map((note) => note.document)
-
-  // La veille concurrentielle, si l'organisation en a une. Rien n'est relu :
-  // c'est la lettre de la semaine, déjà chargée pour les axes.
-  const concurrentielle = notes.find((note) => estVeilleConcurrentielle(note.édition.veille))
-  const concurrents = lireDossiersOuverts(concurrentielle?.édition.dossiersOuvertsBruts)
 
   const synthèse = synthétiser(
     documents,
@@ -64,7 +62,10 @@ export default async function VueDEnsemble({
       )
     : null
 
-  const axes = trierParImpact(documents.flatMap(axesDuDocument))
+  // Les deux lettres réunies : un axe ouvert par les deux ne fait qu'une case.
+  const axes = trierParImpact(fusionnerLesAxes(documents))
+  const acteurs = ordonnerLesDossiers(synthèse.dossiers)
+
   const actions = courante.éditions
     .map((édition) => édition.actionDeLaSemaine)
     .filter((action) => action.length > 0)
@@ -91,14 +92,14 @@ export default async function VueDEnsemble({
             accent={synthèse.parNiveau.FORT > 0}
           />
           <Tuile
-            intitulé="à surveiller"
-            valeur={synthèse.parNiveau.MOYEN}
-            mention={écart(synthèse.parNiveau.MOYEN, précédente?.parNiveau.MOYEN ?? null)}
+            intitulé="acteurs suivis"
+            valeur={synthèse.dossiers.length}
+            mention={écart(synthèse.dossiers.length, précédente?.dossiers.length ?? null)}
           />
           <Tuile
-            intitulé="dossiers sans mouvement"
+            intitulé="sans mouvement"
             valeur={synthèse.dossiersEnAttente}
-            mention={`sur ${synthèse.dossiers.length} suivis`}
+            mention={`sur ${synthèse.dossiers.length} acteurs`}
           />
         </Grille>
       </div>
@@ -120,39 +121,33 @@ export default async function VueDEnsemble({
 
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-titre text-h2 font-bold text-encre">Concurrents</h2>
-          {concurrentielle ? (
-            <LienFlèche href={`/${accès.slug}/lettres/${concurrentielle.édition.pageId}`}>
-              Lire la veille concurrentielle
-            </LienFlèche>
-          ) : null}
+          <h2 className="font-titre text-h2 font-bold text-encre">Les acteurs</h2>
+          <LienFlèche href={`/${accès.slug}/tendances`}>Voir tout le suivi</LienFlèche>
         </div>
+        <p className="text-ardoise">
+          Les concurrents et les organisations du secteur que vos lettres gardent ouverts,
+          de ce qui vient de bouger à ce qui dort.
+        </p>
 
-        {/* Les dossiers de la lettre concurrentielle sont les situations que la
-            veille garde ouvertes : un concurrent, un mouvement, et depuis
-            combien de semaines il n'a pas bougé. */}
-        {!concurrentielle ? (
+        {acteurs.length === 0 ? (
           <p className="text-ardoise">
-            Votre veille ne comprend pas de volet concurrentiel cette semaine.
-          </p>
-        ) : concurrents.length === 0 ? (
-          <p className="text-ardoise">
-            Aucun dossier concurrent n’est ouvert cette semaine.
+            Aucun acteur n’est suivi cette semaine. Les lettres en ouvriront dès qu’un
+            mouvement le justifiera.
           </p>
         ) : (
-          <Grille étiquette="Dossiers concurrents suivis" colonnes={3}>
-            {concurrents.map((dossier) => (
-              <Case key={dossier.nom} accent={dossier.compteur === 0}>
-                <h3 className="font-titre text-h3 font-semibold text-encre">{dossier.nom}</h3>
-                {dossier.précision ? (
-                  <p className="text-ardoise">{dossier.précision}</p>
-                ) : null}
-                <p className="mt-auto label-mono text-ardoise pt-1">
-                  {dossier.compteur === null
+          <Grille étiquette="Acteurs suivis" colonnes={3}>
+            {acteurs.slice(0, ACTEURS_EN_ACCUEIL).map((acteur) => (
+              // Aucun badge d'impact ici : le fond accentué est donc permis, et
+              // signale l'acteur qui vient de bouger.
+              <Case key={acteur.nom} accent={acteur.compteur === 0}>
+                <h3 className="font-titre text-h3 font-semibold text-encre">{acteur.nom}</h3>
+                {acteur.précision ? <p className="text-ardoise">{acteur.précision}</p> : null}
+                <p className="mt-auto label-mono pt-1 text-ardoise">
+                  {acteur.compteur === null
                     ? 'suivi'
-                    : dossier.compteur === 0
+                    : acteur.compteur === 0
                       ? 'a bougé cette semaine'
-                      : `${dossier.compteur} semaine${dossier.compteur > 1 ? 's' : ''} sans mouvement`}
+                      : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
                 </p>
               </Case>
             ))}
@@ -162,19 +157,23 @@ export default async function VueDEnsemble({
 
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-titre text-h2 font-bold text-encre">Les axes de la semaine</h2>
+          <h2 className="font-titre text-h2 font-bold text-encre">L’écosystème</h2>
           <LienFlèche href={`/${accès.slug}/lettres`}>Lire les lettres</LienFlèche>
         </div>
+        <p className="text-ardoise">
+          Les axes de la semaine, les deux lettres réunies, du signal le plus fort au plus
+          calme.
+        </p>
 
         {axes.length === 0 ? (
           <p className="text-ardoise">Les notes de cette semaine ne portent pas d’axe.</p>
         ) : (
           <Grille étiquette="Axes de la semaine">
-            {axes.map((axe, rang) => (
+            {axes.map((axe) => (
               <CaseAxe
-                key={`${axe.titre}-${rang}`}
+                key={axe.titre}
                 axe={axe}
-                points={pointsDAxe(axe)}
+                points={axe.points}
                 href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}
               />
             ))}
