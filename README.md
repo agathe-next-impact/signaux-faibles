@@ -68,7 +68,9 @@ depuis le 14 mars 2025.
 |---|---|
 | `lib/notion/schema.ts` | le contrat des bases, confronté au schéma réel avant la première lecture |
 | `lib/notion/editions.ts`, `acces.ts` | les seules lectures Notion, toutes cachées et filtrées |
-| `lib/domaine/` | fonctions pures : impact, semaines, dossiers, arbre de document |
+| `lib/domaine/` | fonctions pures : impact, semaines, dossiers, arbre de document, synthèse, tendances |
+| `lib/portail/semaine.ts` | ce que les cinq écrans partagent, et le coût Notion de chacun |
+| `components/coquille.tsx` | le rail latéral et les briques d'écran |
 | `lib/auth/` | signature du lien, session, contrôle d'appartenance |
 | `proxy.ts` | premier verrou : signature du cookie, pages seulement |
 | `app/api/media/[block_id]` | proxy d'images, cloisonné comme une page |

@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { exigerAccès } from '@/lib/auth/appartenance'
-import { listerÉditionsPubliées } from '@/lib/notion/editions'
-import { regrouperParSemaine } from '@/lib/domaine/semaines'
+import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Note } from '@/components/note'
+import { semainesPubliées } from '@/lib/portail/semaine'
 
 /**
  * Une semaine archivée, avec les notes qu'elle porte.
@@ -19,17 +19,28 @@ export default async function UneSemaine({
   const { slug, semaine: clé } = await params
   const accès = await exigerAccès(slug)
 
-  const semaines = regrouperParSemaine(await listerÉditionsPubliées(accès.organisationId))
+  const semaines = await semainesPubliées(accès.organisationId)
   const semaine = semaines.find((candidate) => candidate.clé === clé)
 
   if (!semaine) notFound()
 
   return (
     <>
-      <h1 className="font-titre text-h1 font-bold text-encre">{semaine.libellé}</h1>
-      {semaine.éditions.map((édition) => (
-        <Note key={édition.pageId} édition={édition} />
-      ))}
+      <EntêteÉcran
+        surtitre="archives"
+        titre={semaine.libellé}
+        état={`${semaine.éditions.length} note${semaine.éditions.length > 1 ? 's' : ''}`}
+      />
+
+      <p className="mt-5">
+        <LienFlèche href={`/${accès.slug}/archives`}>Retour à toutes les semaines</LienFlèche>
+      </p>
+
+      <div className="mt-8 flex flex-col gap-12">
+        {semaine.éditions.map((édition) => (
+          <Note key={édition.pageId} édition={édition} />
+        ))}
+      </div>
     </>
   )
 }

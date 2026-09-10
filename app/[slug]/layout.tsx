@@ -1,19 +1,19 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
 import { exigerAccès } from '@/lib/auth/appartenance'
-import { Logo } from '@/components/marque'
+import { Coquille } from '@/components/coquille'
+import { ongletsDe, semainesPubliées } from '@/lib/portail/semaine'
 
 /**
- * Le cadre du portail d'un client.
+ * Le cadre de l'espace client : le rail latéral et les cinq écrans.
  *
  * Le contrôle d'appartenance s'exécute ici, dans `Garde`, avant que le moindre
  * contenu ne soit demandé. Il est isolé sous une frontière `Suspense` parce
- * qu'il lit le cookie : avec `cacheComponents`, le reste de la page peut ainsi
- * rester statique.
+ * qu'il lit le cookie : avec `cacheComponents`, l'enveloppe reste ainsi
+ * pré-rendue.
  *
  * Les pages appellent la même fonction pour obtenir l'identifiant
- * d'organisation. Ce n'est pas une redite inutile : sans RLS derrière, un
- * écran qui oublierait le contrôle servirait les éditions d'un autre client.
+ * d'organisation. Ce n'est pas une redite inutile : sans RLS, un écran qui
+ * oublierait le contrôle servirait les éditions d'un autre client.
  */
 export default function LayoutClient({
   children,
@@ -23,8 +23,7 @@ export default function LayoutClient({
   params: Promise<{ slug: string }>
 }) {
   // `params` n'est pas attendu ici : avec `cacheComponents`, c'est une donnée
-  // de requête, et l'attendre hors de la frontière empêcherait tout
-  // pré-rendu de l'enveloppe. La promesse descend telle quelle dans `Garde`.
+  // de requête, et l'attendre hors de la frontière empêcherait tout pré-rendu.
   return (
     <Suspense fallback={<Chargement />}>
       <Garde params={params}>{children}</Garde>
@@ -42,38 +41,26 @@ async function Garde({
   const { slug } = await params
   const accès = await exigerAccès(slug)
 
+  // Les deux compteurs du rail se lisent dans la requête de liste, déjà
+  // nécessaire : aucun corps de note n'est chargé pour les afficher.
+  const semaines = await semainesPubliées(accès.organisationId)
+  const recommandations = semaines.filter((semaine) =>
+    semaine.éditions.some((édition) => édition.actionDeLaSemaine.length > 0),
+  ).length
+
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-gris-ligne pb-4">
-        <Link href={`/${accès.slug}`} className="flex flex-col gap-1">
-          <Logo />
-          <span className="label-mono text-ardoise">
-            {accès.organisationLibellé || 'votre veille'}
-          </span>
-        </Link>
-
-        <nav className="flex gap-4 text-corps">
-          <Link href={`/${accès.slug}`} className="text-ardoise hover:text-encre">
-            Cette semaine
-          </Link>
-          <Link href={`/${accès.slug}/semaines`} className="text-ardoise hover:text-encre">
-            Archives
-          </Link>
-        </nav>
-      </header>
-
-      <main className="flex flex-col gap-10">{children}</main>
-
-      <footer className="mt-auto border-t border-gris-ligne pt-4 font-mono text-label text-ardoise">
-        Accès personnel, à ne pas transférer
-      </footer>
-    </div>
+    <Coquille
+      organisation={accès.organisationLibellé || 'votre veille'}
+      onglets={ongletsDe(accès.slug, { recommandations, archives: semaines.length })}
+    >
+      {children}
+    </Coquille>
   )
 }
 
 function Chargement() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10 text-ardoise">
+    <div className="px-6 py-8 text-ardoise">
       <p>Chargement…</p>
     </div>
   )
