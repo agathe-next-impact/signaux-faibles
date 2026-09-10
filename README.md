@@ -30,6 +30,13 @@ pnpm e2e
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/chemin/vers/chromium pnpm e2e
 ```
 
+## Installer une organisation
+
+`docs/onboarding-organisation.md` décrit le chemin complet, de la demande au
+portail ouvert : les sept statuts du registre, les trois exécutions Cowork, la
+boucle de validation, puis la ligne à créer dans « Accès — portail ». C'est le
+document à suivre pour équiper un nouveau client.
+
 ## Ce qu'il faut avoir préparé ailleurs
 
 Le portail ne fonctionne qu'une fois ces quatre choses faites hors du dépôt.

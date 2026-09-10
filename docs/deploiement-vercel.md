@@ -30,12 +30,40 @@ voulu — les secrets n'ont pas à être présents au build.
 | `NOTION_BASE_EDITIONS` | identifiant de la base « Éditions de veille » |
 | `NOTION_BASE_ACCES` | identifiant de la base « Accès — portail » |
 | `NOTION_WEBHOOK_SECRET` | jeton de vérification, lu dans les journaux à la poignée de main — voir `docs/webhook-notion.md` |
-| `ACCES_SECRET_HMAC` | à générer : `openssl rand -base64 48`. Ne jamais le régénérer sans prévenir : tous les liens en circulation deviendraient invalides |
+| `ACCES_SECRET_HMAC` | à générer, voir ci-dessous. Ne jamais le régénérer sans prévenir : tous les liens en circulation deviendraient invalides |
 | `PORTAIL_URL` | l'adresse publique retenue, celle qui apparaîtra dans les courriers |
-| `GOOGLE_COMPTE_SERVICE_EMAIL` | compte de service Workspace |
-| `GOOGLE_COMPTE_SERVICE_CLE_PRIVEE` | clé privée du compte de service, retours à la ligne échappés acceptés |
+| `GOOGLE_COMPTE_SERVICE_EMAIL` | `client_email` du JSON de clé — voir `docs/gmail-workspace.md` |
+| `GOOGLE_COMPTE_SERVICE_CLE_PRIVEE` | `private_key` du JSON de clé, retours à la ligne réels ou échappés |
 | `GMAIL_EXPEDITEUR` | boîte émettrice dédiée, empruntée par délégation |
 | `GMAIL_EXPEDITEUR_NOM` | facultatif, « signauxfaibles » par défaut |
+
+### Tirer le secret de signature
+
+Quarante-huit octets d'un générateur cryptographique, encodés en base64. Sur
+macOS, Linux ou Git Bash :
+
+```bash
+openssl rand -base64 48
+```
+
+En PowerShell 7 :
+
+```powershell
+[System.Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+```
+
+En Windows PowerShell 5.1, où la méthode statique `GetBytes` n'existe pas :
+
+```powershell
+$octets = [byte[]]::new(48)
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($octets)
+[System.Convert]::ToBase64String($octets)
+```
+
+Les trois rendent soixante-quatre caractères. Comme pour les identifiants
+d'accès, ne pas employer `Get-Random` : il n'est pas cryptographique. La
+génération des identifiants d'accès est détaillée dans
+`docs/onboarding-organisation.md`.
 
 ## Ce qui reste à vérifier une fois déployé
 
