@@ -49,7 +49,9 @@ export default async function Lettres({ params }: { params: Promise<{ slug: stri
                   <p className="text-ardoise">{édition.actionDeLaSemaine}</p>
                 ) : null}
                 <div className="mt-auto pt-1">
-                  <LienFlèche href={`/${accès.slug}/lettres/${édition.pageId}`}>Lire</LienFlèche>
+                  <LienFlèche href={`/${accès.slug}/lettres/${édition.pageId}`} étendu>
+                    Lire
+                  </LienFlèche>
                 </div>
               </Case>
             ))}

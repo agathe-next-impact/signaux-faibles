@@ -7,7 +7,9 @@ import { extraitDAxe, type Axe } from '@/lib/domaine/document'
  * Un axe dans une grille.
  *
  * Le badge est en pied et non contre le titre : le titre garde toute la
- * largeur et ne se casse pas en deux mots par ligne.
+ * largeur et ne se casse pas en deux mots par ligne. La case entière mène au
+ * suivi de l'axe — le lien est étendu, pas enveloppant, pour que son nom reste
+ * « Détail » et non tout l'extrait.
  */
 export function CaseAxe({ axe, href }: { axe: Axe; href: string }) {
   const extrait = extraitDAxe(axe)
@@ -20,7 +22,7 @@ export function CaseAxe({ axe, href }: { axe: Axe; href: string }) {
       {extrait ? <p className="text-ardoise">{extrait}</p> : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
         <BadgeImpact niveau={axe.niveau} />
-        <LienFlèche href={href}>Détail</LienFlèche>
+        <LienFlèche href={href} étendu>Détail</LienFlèche>
       </div>
     </Case>
   )

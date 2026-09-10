@@ -67,7 +67,7 @@ export default async function Tendances({ params }: { params: Promise<{ slug: st
                 ) : null}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
                   <BadgeImpact niveau={axe.niveau} />
-                  <LienFlèche href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}>
+                  <LienFlèche href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`} étendu>
                     Suivre
                   </LienFlèche>
                 </div>

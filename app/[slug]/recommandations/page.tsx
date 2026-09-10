@@ -61,7 +61,7 @@ export default async function Recommandations({
                 ))}
 
                 <div className="mt-auto pt-1">
-                  <LienFlèche href={`/${accès.slug}/archives/${semaine.clé}`}>
+                  <LienFlèche href={`/${accès.slug}/archives/${semaine.clé}`} étendu>
                     Relire cette semaine
                   </LienFlèche>
                 </div>

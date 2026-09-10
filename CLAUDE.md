@@ -202,6 +202,12 @@ touchent et partagent leurs filets. `Grille` et `Case` dans
 `components/coquille.tsx` sont le seul endroit où cette règle est écrite ; un
 écran qui dessine sa propre grille finit par y remettre un rayon ou un écart.
 
+Une case qui mène quelque part est **cliquable en entier**, par un
+`LienFlèche étendu` : le lien s'étale sur la case par un pseudo-élément plutôt
+que d'envelopper son contenu, ce qui garde un nom accessible court (« Détail »)
+au lieu de faire lire tout l'extrait. Un seul lien étendu par case, et rien
+d'autre de cliquable dedans — deux se recouvriraient.
+
 ## Commandes
 
 - `pnpm dev` · `pnpm build`
