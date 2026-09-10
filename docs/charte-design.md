@@ -150,14 +150,11 @@ impulsions verticales : **rose = signal fort, ardoise = signal secondaire**.
    insister, et le rendu ne doit pas en ajouter.
 5. **Un seul bouton primaire par écran.**
 
-## Deux points à arbitrer
+## Un point à arbitrer
 
-**Le domaine.** La charte porte `signauxfaibles.io` ; le CLAUDE.md porte
-`signal-faible.fr`, avec la réserve « ou équivalent retenu ». La charte est
-datée d'août 2026 et fait autorité sur la marque. Le portail ne code aucun
-domaine en dur : `PORTAIL_URL` est une variable d'environnement, et seul
-l'exemple a été aligné sur la charte. À trancher avant l'envoi du premier lien,
-puisque c'est ce domaine qui apparaîtra dans les courriers.
+**Le domaine est tranché.** `signauxfaibles.io`, décidé le 10 septembre 2026,
+conforme à la charte. Le portail ne code aucun domaine en dur : `PORTAIL_URL`
+est une variable d'environnement.
 
 **Le contraste du badge `SIGNAL FORT`.** La charte pose que le rose ne porte
 jamais de texte courant, mais compose ce badge en rose sur fond rose. Mesuré,

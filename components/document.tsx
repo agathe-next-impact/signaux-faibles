@@ -1,11 +1,11 @@
-import type { Bloc, Document, Famille, Segment } from '@/lib/domaine/document'
+import type { Axe, Bloc, Document, Segment } from '@/lib/domaine/document'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { BadgeImpact } from '@/components/badge-impact'
 
 /**
  * Rendu de la note comme un document.
  *
- * Les familles sont repliables et triées par impact ; le reste garde l'ordre
+ * Les axes sont repliables et triés par impact ; le reste garde l'ordre
  * de la note. Aucune couleur n'est écrite ici : tout passe par les tokens, pour
  * que l'arrivée de la charte ne touche aucun composant.
  */
@@ -79,14 +79,14 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
 
     case 'encadré':
       return (
-        <aside className="rounded-carte bg-fond-neutre px-4 py-3 text-encre">
+        <aside className="bg-fond-neutre px-4 py-3 text-encre">
           <Texte segments={bloc.segments} />
         </aside>
       )
 
     case 'code':
       return (
-        <pre className="overflow-x-auto rounded-carte bg-fond-neutre p-4">
+        <pre className="overflow-x-auto bg-fond-neutre p-4">
           <code className="font-mono text-label">{bloc.texte}</code>
         </pre>
       )
@@ -103,7 +103,6 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
             src={`/api/media/${bloc.blocId}`}
             alt={bloc.légende}
             loading="lazy"
-            className="rounded-carte"
           />
           {bloc.légende ? (
             <figcaption className="font-mono text-label text-ardoise">
@@ -157,22 +156,22 @@ function Blocs({ blocs }: { blocs: readonly Bloc[] }) {
   )
 }
 
-function RenduFamille({ famille }: { famille: Famille }) {
+function RenduAxe({ axe }: { axe: Axe }) {
   return (
     <details
       // Ouvertes par défaut, toutes. La charte pose que « RAS » est un état à
-      // part entière : il se montre, il ne se cache pas — une famille repliée
+      // part entière : il se montre, il ne se cache pas — un axe replié
       // d'office le cacherait. Le pli reste offert au lecteur, il n'est pas
       // imposé. C'est aussi ce qui fait une lettre plutôt qu'un tableau de bord.
       open
-      className="rounded-carte border border-gris-ligne"
+      className="border border-gris-ligne"
     >
       <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-4 py-3">
-        <span className="font-titre text-h3 font-semibold text-encre">{famille.titre}</span>
-        <BadgeImpact niveau={famille.niveau} />
+        <span className="font-titre text-h3 font-semibold text-encre">{axe.titre}</span>
+        <BadgeImpact niveau={axe.niveau} />
       </summary>
       <div className="px-4 pb-4">
-        <Blocs blocs={famille.blocs} />
+        <Blocs blocs={axe.blocs} />
       </div>
     </details>
   )
@@ -191,12 +190,12 @@ export function RenduDocument({ document }: { document: Document }) {
 
           <Blocs blocs={rubrique.introduction} />
 
-          {rubrique.familles.length > 0 ? (
+          {rubrique.axes.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {/* Le tri par impact opère au niveau des familles, jamais des
+              {/* Le tri par impact opère au niveau des axes, jamais des
                   faits : la note est un document, pas une base d'items. */}
-              {trierParImpact(rubrique.familles).map((famille, rang) => (
-                <RenduFamille key={rang} famille={famille} />
+              {trierParImpact(rubrique.axes).map((axe, rang) => (
+                <RenduAxe key={rang} axe={axe} />
               ))}
             </div>
           ) : null}

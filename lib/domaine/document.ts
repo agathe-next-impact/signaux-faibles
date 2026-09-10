@@ -1,12 +1,16 @@
-import { lireTitreDeFamille, type NiveauImpact } from '@/lib/domaine/impact'
+import { lireTitreDAxe, type NiveauImpact } from '@/lib/domaine/impact'
 
 /**
  * La note est rendue comme un document.
  *
  * Décision du 9 septembre 2026 : il n'y a pas de base « Items ». Le corps de la
  * page Notion *est* la note. Ce module le transforme en un arbre de rendu :
- * les H1 ouvrent des rubriques, les H2 des familles repliables dont le badge
+ * les H1 ouvrent des rubriques, les H2 des axes repliables dont le badge
  * d'impact est lu dans le suffixe, le reste s'empile.
+ *
+ * « Axe » désigne ici une section thématique du corps de la note. La propriété
+ * Notion `Famille` est tout autre chose — une clé de gestion interne — et
+ * n'entre jamais dans cet arbre.
  *
  * Aucune URL de fichier Notion ne survit à cette transformation : les URL
  * signées expirent en une heure, seul l'identifiant du bloc est conservé et le
@@ -41,7 +45,7 @@ export type Bloc =
   | { readonly type: 'séparateur' }
   | { readonly type: 'image'; readonly blocId: string; readonly légende: string }
 
-export type Famille = {
+export type Axe = {
   readonly titre: string
   readonly niveau: NiveauImpact | null
   readonly blocs: readonly Bloc[]
@@ -49,9 +53,9 @@ export type Famille = {
 
 export type Rubrique = {
   readonly titre: string
-  /** Ce qui précède la première famille de la rubrique. */
+  /** Ce qui précède le premier axe de la rubrique. */
   readonly introduction: readonly Bloc[]
-  readonly familles: readonly Famille[]
+  readonly axes: readonly Axe[]
 }
 
 export type Document = {
@@ -198,7 +202,7 @@ class Pile {
  * Construit le document à partir des blocs de premier niveau d'une page.
  *
  * Le tri par impact ne se fait pas ici : l'arbre garde l'ordre de la note, et
- * c'est l'écran qui décide de trier les familles ou non.
+ * c'est l'écran qui décide de trier les axes ou non.
  */
 export function construireDocument(blocs: readonly BlocNotion[]): Document {
   const préambule = new Pile()
@@ -207,7 +211,7 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
   let rubriqueCourante: {
     titre: string
     introduction: Pile
-    familles: Array<{ titre: string; niveau: NiveauImpact | null; blocs: Pile }>
+    axes: Array<{ titre: string; niveau: NiveauImpact | null; blocs: Pile }>
   } | null = null
 
   const clore = (): void => {
@@ -215,10 +219,10 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
     rubriques.push({
       titre: rubriqueCourante.titre,
       introduction: rubriqueCourante.introduction.vider(),
-      familles: rubriqueCourante.familles.map((famille) => ({
-        titre: famille.titre,
-        niveau: famille.niveau,
-        blocs: famille.blocs.vider(),
+      axes: rubriqueCourante.axes.map((axe) => ({
+        titre: axe.titre,
+        niveau: axe.niveau,
+        blocs: axe.blocs.vider(),
       })),
     })
     rubriqueCourante = null
@@ -230,19 +234,19 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
       rubriqueCourante = {
         titre: texteDeSegments(lireSegments(contenu(bloc)['rich_text'])),
         introduction: new Pile(),
-        familles: [],
+        axes: [],
       }
       continue
     }
 
     if (bloc.type === 'heading_2') {
       const brut = texteDeSegments(lireSegments(contenu(bloc)['rich_text']))
-      const { famille, niveau } = lireTitreDeFamille(brut)
+      const { axe, niveau } = lireTitreDAxe(brut)
 
       // Un H2 avant tout H1 : on ouvre une rubrique sans titre plutôt que de
-      // laisser la famille orpheline.
-      rubriqueCourante ??= { titre: '', introduction: new Pile(), familles: [] }
-      rubriqueCourante.familles.push({ titre: famille, niveau, blocs: new Pile() })
+      // laisser l'axe orphelin.
+      rubriqueCourante ??= { titre: '', introduction: new Pile(), axes: [] }
+      rubriqueCourante.axes.push({ titre: axe, niveau, blocs: new Pile() })
       continue
     }
 
@@ -251,8 +255,8 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
       continue
     }
 
-    const familleCourante = rubriqueCourante.familles.at(-1)
-    if (familleCourante) familleCourante.blocs.ajouter(bloc)
+    const axeCourant = rubriqueCourante.axes.at(-1)
+    if (axeCourant) axeCourant.blocs.ajouter(bloc)
     else rubriqueCourante.introduction.ajouter(bloc)
   }
 
@@ -261,19 +265,19 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
   return { préambule: préambule.vider(), rubriques }
 }
 
-/** Toutes les familles du document, à plat, pour un tri global par impact. */
-export function famillesDuDocument(document: Document): Famille[] {
-  return document.rubriques.flatMap((rubrique) => rubrique.familles)
+/** Tous les axes du document, à plat, pour un tri global par impact. */
+export function axesDuDocument(document: Document): Axe[] {
+  return document.rubriques.flatMap((rubrique) => rubrique.axes)
 }
 
 /**
- * Les premiers mots d'une famille, pour une carte de synthèse.
+ * Les premiers mots d'un axe, pour une carte de synthèse.
  *
  * On prend le premier bloc qui porte du texte suivi — un paragraphe ou une
  * citation — et non un titre, qui ne dirait que ce que la carte affiche déjà.
  */
-export function extraitDeFamille(famille: Famille, longueur = 150): string {
-  for (const bloc of famille.blocs) {
+export function extraitDAxe(axe: Axe, longueur = 150): string {
+  for (const bloc of axe.blocs) {
     if (bloc.type !== 'paragraphe' && bloc.type !== 'citation') continue
     const texte = bloc.segments.map((segment) => segment.texte).join('').trim()
     if (texte.length === 0) continue

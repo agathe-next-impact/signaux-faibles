@@ -27,9 +27,12 @@ export default async function Archives({ params }: { params: Promise<{ slug: str
       {semaines.length === 0 ? (
         <p className="mt-8 text-ardoise">Aucune édition archivée pour l’instant.</p>
       ) : (
-        <ul className="mt-8 flex flex-col divide-y divide-gris-ligne">
+        <ul className="mt-8 flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
           {semaines.map((semaine) => (
-            <li key={semaine.clé} className="flex flex-wrap items-baseline justify-between gap-3 py-4">
+            <li
+              key={semaine.clé}
+              className="flex flex-wrap items-baseline justify-between gap-3 px-1 py-4"
+            >
               <div className="flex flex-col gap-1">
                 <span className="text-encre">{semaine.libellé}</span>
                 <span className="label-mono text-ardoise">

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { Onglet } from '@/components/coquille'
+import { estOngletCourant } from '@/lib/portail/onglet'
 
 /**
  * Le menu de pied, sur mobile.
@@ -21,9 +22,7 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
     >
       <ul className="flex">
         {onglets.map((onglet) => {
-          const courant =
-            chemin === onglet.href ||
-            (onglet.href.endsWith('/archives') && chemin.startsWith(`${onglet.href}/`))
+          const courant = estOngletCourant(onglet, chemin)
 
           return (
             <li key={onglet.href} className="min-w-0 flex-1">

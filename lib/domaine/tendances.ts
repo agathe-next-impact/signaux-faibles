@@ -1,4 +1,6 @@
 import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
+import { axesDuDocument, type Document } from '@/lib/domaine/document'
+import { rangDImpact, trierParImpact, type NiveauImpact } from '@/lib/domaine/impact'
 import type { CléDeSemaine, Semaine } from '@/lib/domaine/semaines'
 
 /**
@@ -92,4 +94,84 @@ export function suivreLesDossiers<T extends AvecDossiers>(
       (a, b) =>
         b.semainesSansMouvement - a.semainesSansMouvement || a.nom.localeCompare(b.nom, 'fr'),
     )
+}
+
+/**
+ * L'évolution d'un axe d'une semaine sur l'autre.
+ *
+ * Le rapprochement se fait sur le **nom** de l'axe, qui vient du référentiel de
+ * l'organisation et ne bouge pas d'une semaine à l'autre. Un axe renommé dans
+ * le référentiel se lit donc comme un axe nouveau : c'est fidèle à ce que la
+ * note dit, et préférable à un rapprochement approximatif qui inventerait une
+ * continuité.
+ */
+export type Mouvement = 'nouveau' | 'monté' | 'redescendu' | 'stable'
+
+export type AxeSuivi = {
+  readonly titre: string
+  readonly niveau: NiveauImpact | null
+  readonly mouvement: Mouvement
+  /** Le niveau de la semaine précédente, `null` si l'axe n'y figurait pas. */
+  readonly niveauPrécédent: NiveauImpact | null
+}
+
+/** Le niveau le plus fort retenu par nom d'axe, les deux notes confondues. */
+function niveauxParAxe(documents: readonly Document[]): Map<string, NiveauImpact | null> {
+  const parTitre = new Map<string, NiveauImpact | null>()
+
+  for (const document of documents) {
+    for (const axe of axesDuDocument(document)) {
+      const connu = parTitre.get(axe.titre)
+      // Un même axe peut figurer dans les deux notes de la semaine : on garde
+      // le niveau le plus fort, jamais le dernier rencontré.
+      if (connu === undefined || rangDImpact(axe.niveau) < rangDImpact(connu)) {
+        parTitre.set(axe.titre, axe.niveau)
+      }
+    }
+  }
+
+  return parTitre
+}
+
+/**
+ * Les axes de la semaine, triés par impact, avec leur mouvement.
+ *
+ * Les axes disparus ne sont pas listés : cet écran montre ce que la semaine
+ * dit, pas ce qu'elle a cessé de dire.
+ */
+export function suivreLesAxes(
+  documents: readonly Document[],
+  documentsPrécédents: readonly Document[],
+): AxeSuivi[] {
+  const précédents = niveauxParAxe(documentsPrécédents)
+
+  const suivis = [...niveauxParAxe(documents)].map(([titre, niveau]) => {
+    const niveauPrécédent = précédents.get(titre)
+
+    if (niveauPrécédent === undefined) {
+      return { titre, niveau, mouvement: 'nouveau' as const, niveauPrécédent: null }
+    }
+
+    // Le rang croît quand l'impact décroît : FORT vaut 0, RAS vaut 2.
+    const écart = rangDImpact(niveau) - rangDImpact(niveauPrécédent)
+    const mouvement: Mouvement = écart < 0 ? 'monté' : écart > 0 ? 'redescendu' : 'stable'
+
+    return { titre, niveau, mouvement, niveauPrécédent }
+  })
+
+  return trierParImpact(suivis)
+}
+
+/** Ce qu'affiche la pastille de mouvement. */
+export function libelléDeMouvement(mouvement: Mouvement): string {
+  switch (mouvement) {
+    case 'nouveau':
+      return 'nouveau'
+    case 'monté':
+      return 'en hausse'
+    case 'redescendu':
+      return 'en baisse'
+    case 'stable':
+      return 'stable'
+  }
 }

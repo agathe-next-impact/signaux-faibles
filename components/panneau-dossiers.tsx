@@ -12,7 +12,7 @@ export function PanneauDossiers({ brut }: { brut: string }) {
   if (dossiers.length === 0) return null
 
   return (
-    <section className="rounded-carte border border-gris-ligne bg-fond-neutre p-4">
+    <section className="border border-gris-ligne bg-fond-neutre p-4">
       <h3 className="label-mono text-ardoise">
         Dossiers ouverts
       </h3>

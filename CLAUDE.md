@@ -13,8 +13,8 @@ dans les bases Notion ; ces tâches vivent hors de ce dépôt. Le portail
 webhook Notion et par revalidation périodique. Le portail n'a **pas de base
 de données** et n'écrit jamais dans Notion.
 
-Domaine : signal-faible.fr (ou équivalent retenu — voir `docs/domaine.md`
-si présent). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et
+Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
+charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et
 sa transcription `docs/charte-design.md`. Maquette de référence de la page
 d'édition et du panneau des dossiers : `docs/maquette-edition.html` — à
 ouvrir dans un navigateur avant de coder l'écran, c'est elle qui fait foi
@@ -106,10 +106,15 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
 6. Impact scoré à trois niveaux seulement (fort / moyen / RAS). Ne pas
    ajouter de niveau ni de couleur d'impact supplémentaire — c'est une
    règle de la charte, pas un choix d'implémentation. Dans Notion, le
-   niveau est le suffixe du titre H2 d'une famille (« Famille — FORT »,
-   « — MOYEN », « — RAS ») ; **FAIBLE n'existe pas** et doit disparaître des
-   référentiels. Un suffixe inconnu s'affiche sans badge, jamais converti
-   en un autre niveau.
+   niveau est le suffixe du titre H2 d'un **axe** (« Marché du travail —
+   FORT », « — MOYEN », « — RAS ») ; **FAIBLE n'existe pas** et doit
+   disparaître des référentiels. Un suffixe inconnu s'affiche sans badge,
+   jamais converti en un autre niveau.
+   Vocabulaire, depuis le 10 septembre 2026 : ces sections thématiques du
+   corps de la note s'appellent des **axes**, partout dans l'UI et dans le
+   code. À ne pas confondre avec la propriété Notion `Famille`, clé de
+   gestion interne à deux valeurs qui n'est jamais affichée. Le format des
+   H2 dans Notion, lui, n'a pas changé.
 7. Aucune donnée d'un client n'apparaît dans le HTML envoyé au navigateur
    d'un autre client, y compris dans les payloads JSON non affichés (props
    Next.js sérialisées). Vérifier explicitement à la recette avec un compte
@@ -145,9 +150,9 @@ Bases partagées avec l'intégration du portail, et elles seules :
   et Concurrentiel, qui sert au comptage des numéros et à l'anti-doublon).
   Le corps de la page est la note, **rendue comme un document** (décision
   du 9 septembre 2026, pas de base « Items ») : H1 de rubriques, H2
-  « Famille — FORT / MOYEN / RAS » repliables avec badge d'impact lu dans
+  « axe — FORT / MOYEN / RAS » repliables avec badge d'impact lu dans
   le suffixe, paragraphes, puces, tableaux. Le tri par impact se fait au
-  niveau des familles. Le corps ne contient aucun bloc interne.
+  niveau des axes. Le corps ne contient aucun bloc interne.
 - **Accès — portail** (existe, `collection://4d3d7403-35d7-4815-884b-877d17423842`) :
   Nom (titre) · Email · Organisation (libellé) (texte, affichage
   seulement) · **Identifiant Notion de l'organisation** (texte, `page_id`
@@ -159,7 +164,8 @@ Jamais partagés : le registre « Organisations — pipeline et activation »
 référentiels, les prompts.
 
 Deux lettres par parution et par organisation (une par veille), numérotées
-séparément par famille. Le portail n'en fait pas deux entrées concurrentes :
+séparément par la propriété `Famille`. Le portail n'en fait pas deux entrées
+concurrentes :
 **une entrée par semaine**, qui rassemble les notes de la semaine, et une
 archive listant les semaines (décision du 9 septembre 2026). Le regroupement
 se fait côté portail, sur le lundi de la semaine ISO de `Date d'édition`,
@@ -167,6 +173,19 @@ après la requête filtrée ; jamais une requête Notion par semaine. Le
 `page_id` Notion est l'identifiant stable des URL du portail. Ne jamais
 raisonner sur le titre d'une édition : il est fixé par chaque référentiel et
 varie d'une organisation à l'autre.
+
+## Les cinq écrans de l'espace client
+
+Vue d'ensemble (`/[slug]`) · Lettres (`/[slug]/lettres`, grille de toutes les
+lettres, une case par édition, plus `/[slug]/lettres/[edition]` pour la lire) ·
+Tendances (`/[slug]/tendances`, grille des axes de la semaine avec leur
+mouvement, puis le suivi des dossiers) · Recommandations · Archives (une entrée
+par semaine). Pas d'autre écran sans discussion.
+
+Les grilles de boîtes sont **à angle droit et sans gouttière** : les cases se
+touchent et partagent leurs filets. `Grille` et `Case` dans
+`components/coquille.tsx` sont le seul endroit où cette règle est écrite ; un
+écran qui dessine sa propre grille finit par y remettre un rayon ou un écart.
 
 ## Commandes
 

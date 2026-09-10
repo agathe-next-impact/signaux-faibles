@@ -20,7 +20,7 @@ export async function Note({ édition }: { édition: Édition }) {
       <EntêteÉdition édition={édition} />
 
       {édition.actionDeLaSemaine ? (
-        <aside className="rounded-carte border border-gris-ligne bg-fond-ardoise p-4">
+        <aside className="border border-gris-ligne bg-fond-ardoise p-4">
           <h3 className="label-mono text-ardoise">
             Action de la semaine
           </h3>

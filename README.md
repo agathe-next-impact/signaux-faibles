@@ -70,7 +70,7 @@ depuis le 14 mars 2025.
 | `lib/notion/editions.ts`, `acces.ts` | les seules lectures Notion, toutes cachées et filtrées |
 | `lib/domaine/` | fonctions pures : impact, semaines, dossiers, arbre de document, synthèse, tendances |
 | `lib/portail/semaine.ts` | ce que les cinq écrans partagent, et le coût Notion de chacun |
-| `components/coquille.tsx` | le rail latéral, le menu de pied et les briques d'écran |
+| `components/coquille.tsx` | le rail, le menu de pied, et `Grille`/`Case` — la règle des boîtes |
 | `public/sw.js`, `app/manifest.ts` | application installable et lecture hors ligne |
 | `lib/auth/` | signature du lien, session, contrôle d'appartenance |
 | `proxy.ts` | premier verrou : signature du cookie, pages seulement |
@@ -102,6 +102,15 @@ une révocation et la navigation suivante, est dans `docs/pwa-hors-ligne.md`.
 
 ## L'apparence
 
+Les grilles de boîtes sont à angle droit et sans gouttière : les cases se
+touchent et partagent leurs filets. `Grille` et `Case` portent seules cette
+règle — un écran qui dessine sa propre grille finit par y remettre un rayon ou
+un écart. Les rayons de la charte restent sur ce qui n'est pas une boîte :
+champs, boutons, onglets du rail, badges, bannière d'installation.
+
+Une section thématique d'une note s'appelle un **axe** — jamais une « famille »,
+qui est le nom d'une propriété Notion interne, invisible du client.
+
 Les tokens de `app/globals.css` sont ceux de la charte graphique v1.0
 (`docs/charte-design.pdf`, transcrite dans `docs/charte-design.md`). Aucun
 composant ne porte de couleur ni de taille en dur : ce fichier reste le point
@@ -119,11 +128,6 @@ bouton primaire par écran.
 maquette donnerait la hiérarchie visuelle de la page d'édition et du panneau
 des dossiers ; la mise en page actuelle en découle mais n'a été comparée à
 aucune maquette.
-
-Le domaine reste à trancher : la charte porte `signauxfaibles.io`, le
-`CLAUDE.md` porte `signal-faible.fr`. Rien n'est codé en dur, `PORTAIL_URL`
-est une variable d'environnement, mais c'est ce domaine qui apparaîtra dans
-les courriers.
 
 La recette de cloisonnement avec un compte par client demande un déploiement
 réel ; elle est décrite en session 8 de `docs/plan-sessions-portail.md`.

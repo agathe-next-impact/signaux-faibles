@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { regrouperParSemaine } from '@/lib/domaine/semaines'
-import { suivreLesDossiers } from '@/lib/domaine/tendances'
+import { suivreLesAxes, suivreLesDossiers } from '@/lib/domaine/tendances'
 
 const édition = (dateÉdition: string, dossiersOuvertsBruts: string) => ({
   dateÉdition,
@@ -55,5 +55,66 @@ describe('suivreLesDossiers', () => {
 
   it('ne renvoie rien quand aucune édition ne porte de dossier', () => {
     expect(suivreLesDossiers(regrouperParSemaine([édition('2026-09-07', '')]))).toEqual([])
+  })
+})
+
+/** Un document réduit à ses axes : le reste n'entre pas dans le calcul. */
+const doc = (...axes: readonly (readonly [string, 'FORT' | 'MOYEN' | 'RAS' | null])[]) => ({
+  préambule: [],
+  rubriques: [
+    {
+      titre: 'Rubrique',
+      introduction: [],
+      axes: axes.map(([titre, niveau]) => ({ titre, niveau, blocs: [] })),
+    },
+  ],
+})
+
+describe('suivreLesAxes', () => {
+  it('trie par impact et signale ce qui monte, baisse ou ne bouge pas', () => {
+    const axes = suivreLesAxes(
+      [doc(['Financements', 'MOYEN'], ['Cadre', 'FORT'], ['Filière', 'RAS'])],
+      [doc(['Financements', 'RAS'], ['Cadre', 'FORT'], ['Filière', 'MOYEN'])],
+    )
+
+    expect(axes.map((axe) => axe.titre)).toEqual(['Cadre', 'Financements', 'Filière'])
+    expect(axes.map((axe) => axe.mouvement)).toEqual(['stable', 'monté', 'redescendu'])
+  })
+
+  it('marque « nouveau » un axe absent de la semaine précédente', () => {
+    const axes = suivreLesAxes([doc(['Recrutement', 'FORT'])], [doc(['Cadre', 'FORT'])])
+
+    expect(axes).toHaveLength(1)
+    expect(axes[0]?.mouvement).toBe('nouveau')
+    expect(axes[0]?.niveauPrécédent).toBeNull()
+  })
+
+  it('ne liste pas les axes disparus : l’écran dit ce que la semaine dit', () => {
+    const axes = suivreLesAxes([doc(['Cadre', 'MOYEN'])], [doc(['Cadre', 'MOYEN'], ['Parti', 'FORT'])])
+
+    expect(axes.map((axe) => axe.titre)).toEqual(['Cadre'])
+  })
+
+  it('retient le niveau le plus fort quand les deux notes portent le même axe', () => {
+    const axes = suivreLesAxes([doc(['Cadre', 'RAS']), doc(['Cadre', 'FORT'])], [])
+
+    expect(axes).toHaveLength(1)
+    expect(axes[0]?.niveau).toBe('FORT')
+  })
+
+  it('sans semaine précédente, tout est nouveau — l’écran s’en sert pour se taire', () => {
+    const axes = suivreLesAxes([doc(['Cadre', 'FORT'])], [])
+
+    expect(axes[0]?.mouvement).toBe('nouveau')
+  })
+
+  it('un axe sans niveau connu passe en dernier et reste comparable', () => {
+    const axes = suivreLesAxes(
+      [doc(['Inconnu', null], ['Cadre', 'RAS'])],
+      [doc(['Inconnu', null], ['Cadre', 'RAS'])],
+    )
+
+    expect(axes.map((axe) => axe.titre)).toEqual(['Cadre', 'Inconnu'])
+    expect(axes.map((axe) => axe.mouvement)).toEqual(['stable', 'stable'])
   })
 })

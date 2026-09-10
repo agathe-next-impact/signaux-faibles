@@ -201,3 +201,39 @@ cache que l'on venait de remplir.
 **Ce cache est une donnée client sur un appareil.** C'est le seul endroit du
 portail où il en reste une copie. Purge à la révocation, purge sur demande, et
 un risque résiduel assumé entre les deux : `docs/pwa-hors-ligne.md`.
+
+**10 septembre 2026, seconde passe.** Vocabulaire, grilles et domaine.
+
+**« Famille » disait deux choses, et c'était une pour de trop.** Le mot
+désignait à la fois les sections thématiques du corps d'une note — ce que le
+client lit — et la propriété Notion `Famille`, clé de gestion interne à deux
+valeurs qui n'est jamais affichée. Les premières s'appellent désormais des
+**axes**, partout dans l'UI et dans le code ; la propriété garde son nom, qui
+appartient au schéma Notion et donc aux tâches Cowork. Le format des H2 dans
+Notion n'a pas bougé, seule la façon d'en parler a changé.
+
+**Les grilles passent à l'angle droit, sans gouttière.** Les cases se touchent
+et partagent leurs filets. Deux briques, `Grille` et `Case`, portent seules la
+règle. Le contour demandait une précaution : une rangée incomplète laissait le
+rectangle ouvert à droite, puisqu'aucune case ne venait le fermer. Le contour
+appartient donc à l'encadrement, et la grille est décalée d'un pixel pour que la
+dernière colonne retombe exactement dessus. Les rayons de la charte restent sur
+ce qui n'est pas une boîte : champs, boutons, onglets, badges, bannière.
+
+**Signaux devient Lettres, et change de nature.** L'écran empilait les notes de
+la semaine ; c'est maintenant une grille de toutes les lettres publiées, une
+case par édition, avec une page de lecture par lettre. La différence avec les
+archives est nette : celles-ci listent des semaines, celle-là des lettres — deux
+par parution, une par veille. Aucune lecture de corps : la grille de cinquante
+lettres coûte autant qu'une grille vide.
+
+**Tendances gagne la grille des axes.** Chaque axe de la semaine avec son niveau
+et son mouvement par rapport à la précédente. Le rapprochement se fait sur le
+nom, qui vient du référentiel : un axe renommé se lit comme nouveau, ce qui est
+préférable à une continuité inventée. Sans semaine précédente, l'écran se tait
+au lieu d'annoncer que tout est nouveau. Coût Notion : nul en pratique, ce sont
+les deux mêmes semaines que la vue d'ensemble, donc les mêmes entrées de cache.
+
+**Le domaine est tranché : `signauxfaibles.io`**, conforme à la charte. Rien
+n'était codé en dur ; `PORTAIL_URL` porte la valeur, et les documents qui
+laissaient l'arbitrage ouvert ne le laissent plus.
