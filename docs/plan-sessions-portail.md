@@ -390,3 +390,31 @@ n'est perdue au passage. Sans elle, la régression serait passée.
 
 **Six écrans, et le menu de pied tient.** Vérifié à 360 px : pas de débordement,
 les six libellés lisibles.
+
+**10 septembre 2026, neuvième passe.** Un espace vide, et pourquoi.
+
+L'Hermitage se connectait normalement et ne voyait rien. Le diagnostic s'est
+fait sur les données, pas par déduction : la ligne « Accès » portait
+`3d5fe829ce718130b48bd6b171ac7a28`, or les quatorze éditions du client portent
+`3d5fe829ce71810da651f3783a725bd8`. Le premier est la **page organisation** sous
+« Veilles clients » ; le second la **ligne du registre**. La page organisation le
+dit elle-même, dans sa ligne « Fiche au registre ».
+
+**Le code s'est comporté exactement comme il devait.** La règle 2 veut qu'un
+identifiant qui ne correspond à rien ne montre rien, plutôt que d'élargir la
+requête pour « trouver quand même ». Un espace vide est le bon échec.
+
+**Mais il était muet, et c'est le vrai défaut.** Trois fois aujourd'hui, un
+silence a coûté du temps : l'envoi de lien qui échouait sans trace, le webhook
+qui n'annonce pas ce qu'il invalide, et maintenant un espace vide qui ne
+distingue pas le client neuf du client mal relié. Le layout journalise désormais
+« accès valide, aucune édition » avec le slug et l'identifiant, en nommant la
+cause probable. Un client réellement neuf produit la même ligne : c'est un
+signal à lever, pas une preuve d'erreur.
+
+**Les états vides le disent au client aussi** : « si vous en avez déjà reçu,
+dites-le nous ». Un lecteur qui a quatorze lettres dans sa boîte et un espace
+vide doit pouvoir le signaler, pas conclure que le service ne marche pas.
+
+**Le piège est nommé dans l'onboarding**, avec la vérification en dix secondes :
+comparer la propriété `Organisation` d'une édition à la ligne « Accès ».

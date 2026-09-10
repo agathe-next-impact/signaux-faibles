@@ -158,6 +158,14 @@ Bases partagées avec l'intégration du portail, et elles seules :
   seulement) · **Identifiant Notion de l'organisation** (texte, `page_id`
   de la ligne du registre, écrit par l'onboarding Cowork — c'est la seule
   clé de cloisonnement) · Slug · Identifiant d'accès · Actif.
+  **Piège avéré** : chaque client a deux pages de même forme, la ligne du
+  registre et la **page organisation** sous « Veilles clients ». Les éditions
+  pointent vers la ligne du registre ; coller l'identifiant de la page
+  organisation donne un espace **vide et silencieux**, la personne se
+  connectant normalement. C'est arrivé le 10 septembre 2026 sur l'Hermitage.
+  Vérification en dix secondes : la propriété `Organisation` d'une édition du
+  client doit être le même identifiant que la ligne « Accès ». Le layout
+  journalise désormais « accès valide, aucune édition ».
 
 Jamais partagés : le registre « Organisations — pipeline et activation »
 (intake confidentiel), « Validations », les pages organisation, les
