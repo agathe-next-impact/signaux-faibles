@@ -1,5 +1,5 @@
 import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
-import { axesDuDocument, pointsDAxe, type Document } from '@/lib/domaine/document'
+import { fusionnerLesAxes, type AxeFusionné, type Document } from '@/lib/domaine/document'
 import { rangDImpact, trierParImpact, type NiveauImpact } from '@/lib/domaine/impact'
 import type { CléDeSemaine, Semaine } from '@/lib/domaine/semaines'
 
@@ -107,43 +107,10 @@ export function suivreLesDossiers<T extends AvecDossiers>(
  */
 export type Mouvement = 'nouveau' | 'monté' | 'redescendu' | 'stable'
 
-export type AxeSuivi = {
-  readonly titre: string
-  readonly numéro: number | null
-  readonly niveau: NiveauImpact | null
-  /** Les éléments importants de la semaine, pour la case de grille. */
-  readonly points: readonly string[]
+export type AxeSuivi = AxeFusionné & {
   readonly mouvement: Mouvement
   /** Le niveau de la semaine précédente, `null` si l'axe n'y figurait pas. */
   readonly niveauPrécédent: NiveauImpact | null
-}
-
-type AxeRetenu = {
-  readonly numéro: number | null
-  readonly niveau: NiveauImpact | null
-  readonly points: readonly string[]
-}
-
-/** Le niveau le plus fort retenu par nom d'axe, les deux notes confondues. */
-function axesParTitre(documents: readonly Document[]): Map<string, AxeRetenu> {
-  const parTitre = new Map<string, AxeRetenu>()
-
-  for (const document of documents) {
-    for (const axe of axesDuDocument(document)) {
-      const connu = parTitre.get(axe.titre)
-      // Un même axe peut figurer dans les deux notes de la semaine : on garde
-      // le niveau le plus fort, jamais le dernier rencontré.
-      if (connu === undefined || rangDImpact(axe.niveau) < rangDImpact(connu.niveau)) {
-        parTitre.set(axe.titre, {
-          numéro: axe.numéro,
-          niveau: axe.niveau,
-          points: pointsDAxe(axe),
-        })
-      }
-    }
-  }
-
-  return parTitre
 }
 
 /**
@@ -156,27 +123,22 @@ export function suivreLesAxes(
   documents: readonly Document[],
   documentsPrécédents: readonly Document[],
 ): AxeSuivi[] {
-  const précédents = axesParTitre(documentsPrécédents)
+  const précédents = new Map(
+    fusionnerLesAxes(documentsPrécédents).map((axe) => [axe.titre, axe.niveau]),
+  )
 
-  const suivis = [...axesParTitre(documents)].map(([titre, { numéro, niveau, points }]) => {
-    const avant = précédents.get(titre)
+  const suivis = fusionnerLesAxes(documents).map((axe) => {
+    const avant = précédents.get(axe.titre)
 
     if (avant === undefined) {
-      return {
-        titre,
-        numéro,
-        niveau,
-        points,
-        mouvement: 'nouveau' as const,
-        niveauPrécédent: null,
-      }
+      return { ...axe, mouvement: 'nouveau' as const, niveauPrécédent: null }
     }
 
     // Le rang croît quand l'impact décroît : FORT vaut 0, RAS vaut 2.
-    const écart = rangDImpact(niveau) - rangDImpact(avant.niveau)
+    const écart = rangDImpact(axe.niveau) - rangDImpact(avant)
     const mouvement: Mouvement = écart < 0 ? 'monté' : écart > 0 ? 'redescendu' : 'stable'
 
-    return { titre, numéro, niveau, points, mouvement, niveauPrécédent: avant.niveau }
+    return { ...axe, mouvement, niveauPrécédent: avant }
   })
 
   return trierParImpact(suivis)

@@ -83,22 +83,6 @@ export async function dernièresNotes(
       })),
   )
 }
-
-/**
- * La veille concurrentielle, si l'organisation en a une.
- *
- * Le rapprochement se fait sur la valeur affichée de la propriété `Veille`, la
- * seule dont le portail dispose. Renommée dans Notion, la section disparaît
- * plutôt que de montrer la mauvaise lettre — et l'écran le dit.
- */
-export function estVeilleConcurrentielle(veille: string | null): boolean {
-  return (veille ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .startsWith('concurrentiel')
-}
-
 /** Les cinq écrans de l'espace client, dans l'ordre du rail. */
 export function ongletsDe(
   slug: string,

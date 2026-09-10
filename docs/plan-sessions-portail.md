@@ -267,3 +267,25 @@ plutôt que de montrer la mauvaise lettre.
 **`EntêteÉcran` prend un nœud et non une chaîne.** Sans quoi la page d'un axe
 devait répéter son numéro dans une phrase, faute de pouvoir le mettre dans le
 titre.
+
+**10 septembre 2026, quatrième passe.** L'accueil en deux angles.
+
+**Les deux lettres sont réunies, pas juxtaposées.** L'accueil lisait déjà les
+deux corps de la semaine, mais les présentait à plat. Il porte maintenant deux
+sections : « Les acteurs » et « L'écosystème ». La coupure ne se fait pas par
+lettre — le lecteur n'a pas à savoir laquelle a relevé quoi — mais par nature de
+ce qui est suivi : des entités nommées d'un côté, des thèmes de l'autre.
+
+**Le classement par `Veille` a été abandonné, et c'est un gain.** La vue
+concurrents de la passe précédente reconnaissait la lettre concurrentielle à son
+libellé. Or ce libellé est choisi par le client — Écosystème, Concurrentiel,
+Positionnement, Attractivité — et la clé de gestion `Famille`, elle, n'est pas
+accessible au portail. Un renommage dans Notion aurait fait disparaître la
+section. Les dossiers ouverts, eux, sont des acteurs par nature, quelle que soit
+la lettre qui les porte. `estVeilleConcurrentielle` a été supprimée.
+
+**La fusion des axes est enfin écrite une fois.** Les tendances dédoublonnaient
+par nom, l'accueil non : deux lettres ouvrant le même axe y auraient produit
+deux cases au même surtitre. `fusionnerLesAxes` sert désormais les deux écrans —
+niveau le plus fort retenu, éléments importants réunis sans répéter un fait
+relevé deux fois.

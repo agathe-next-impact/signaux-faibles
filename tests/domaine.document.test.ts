@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   axesDuDocument,
   construireDocument,
+  fusionnerLesAxes,
   pointsDAxe,
   slugDAxe,
   type BlocNotion,
@@ -220,5 +221,60 @@ describe('pointsDAxe', () => {
 
   it('ne rend rien pour un axe sans développement', () => {
     expect(pointsDAxe(axeAvec([])!)).toEqual([])
+  })
+})
+
+describe('fusionnerLesAxes', () => {
+  const lettre = (...h2EtPuces: readonly (readonly [string, readonly string[]])[]) =>
+    construireDocument(
+      h2EtPuces.flatMap(([titre, puces]) => [h2(titre), ...puces.map((texte) => puce(texte))]),
+    )
+
+  it('réunit les axes de deux lettres en une seule liste', () => {
+    const axes = fusionnerLesAxes([
+      lettre(['① Cadre — FORT', ['Un décret.']]),
+      lettre(['② Marché — RAS', ['Rien à signaler.']]),
+    ])
+
+    expect(axes.map((axe) => axe.titre)).toEqual(['Cadre', 'Marché'])
+  })
+
+  it('n’en garde qu’un quand les deux lettres ouvrent le même axe', () => {
+    const axes = fusionnerLesAxes([
+      lettre(['① Cadre — RAS', ['Vu côté écosystème.']]),
+      lettre(['① Cadre — FORT', ['Vu côté concurrentiel.']]),
+    ])
+
+    expect(axes).toHaveLength(1)
+    // Le niveau le plus fort l'emporte, jamais le dernier rencontré.
+    expect(axes[0]?.niveau).toBe('FORT')
+    expect(axes[0]?.points).toEqual(['Vu côté écosystème.', 'Vu côté concurrentiel.'])
+  })
+
+  it('ne répète pas un fait relevé par les deux lettres', () => {
+    const axes = fusionnerLesAxes([
+      lettre(['Cadre — FORT', ['Le même décret.']]),
+      lettre(['Cadre — MOYEN', ['Le même décret.', 'Un second fait.']]),
+    ])
+
+    expect(axes[0]?.points).toEqual(['Le même décret.', 'Un second fait.'])
+  })
+
+  it('plafonne les points même quand deux lettres en apportent', () => {
+    const axes = fusionnerLesAxes(
+      [lettre(['Cadre — FORT', ['a', 'b']]), lettre(['Cadre — FORT', ['c', 'd']])],
+      3,
+    )
+
+    expect(axes[0]?.points).toEqual(['a', 'b', 'c'])
+  })
+
+  it('récupère le numéro de la lettre qui le porte', () => {
+    const axes = fusionnerLesAxes([
+      lettre(['Cadre — FORT', ['a']]),
+      lettre(['② Cadre — RAS', ['b']]),
+    ])
+
+    expect(axes[0]?.numéro).toBe(2)
   })
 })

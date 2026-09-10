@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
+import { lireDossiersOuverts, ordonnerLesDossiers } from '@/lib/domaine/dossiers'
 
 describe('lireDossiersOuverts', () => {
   it('lit le format du contrat', () => {
@@ -40,5 +40,24 @@ describe('lireDossiersOuverts', () => {
 
   it('ignore les séparateurs surnuméraires', () => {
     expect(lireDossiersOuverts('A (1) ·  · B (2)')).toHaveLength(2)
+  })
+})
+
+describe('ordonnerLesDossiers', () => {
+  const d = (nom: string, compteur: number | null) => ({ nom, compteur, précision: null })
+
+  it('met en tête ce qui vient de bouger, en queue ce qui dort', () => {
+    const ordre = ordonnerLesDossiers([d('dort', 5), d('bouge', 0), d('attend', 2)])
+    expect(ordre.map((dossier) => dossier.nom)).toEqual(['bouge', 'attend', 'dort'])
+  })
+
+  it('ferme la marche avec les dossiers sans compteur exploitable', () => {
+    const ordre = ordonnerLesDossiers([d('sans', null), d('avec', 9)])
+    expect(ordre.map((dossier) => dossier.nom)).toEqual(['avec', 'sans'])
+  })
+
+  it('départage à compteur égal par le nom, en français', () => {
+    const ordre = ordonnerLesDossiers([d('Étude', 1), d('Avis', 1), d('Zonage', 1)])
+    expect(ordre.map((dossier) => dossier.nom)).toEqual(['Avis', 'Étude', 'Zonage'])
   })
 })
