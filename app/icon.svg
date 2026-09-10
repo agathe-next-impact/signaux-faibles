@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Le motif de la charte. Couleurs en dur : une icône d'onglet ne résout
+       pas les variables CSS de la page. Elles restent celles de la charte. -->
+  <rect x="6" y="34.2" width="36" height="2.6" rx="1.3" fill="#dee3e6"/>
+  <rect x="9.8" y="26" width="4.4" height="9.6" rx="2.2" fill="#5d6b7f"/>
+  <rect x="17.8" y="20" width="4.4" height="15.6" rx="2.2" fill="#5d6b7f"/>
+  <rect x="25.8" y="10" width="4.4" height="25.6" rx="2.2" fill="#dd768a"/>
+  <rect x="33.8" y="23" width="4.4" height="12.6" rx="2.2" fill="#5d6b7f"/>
+</svg>
