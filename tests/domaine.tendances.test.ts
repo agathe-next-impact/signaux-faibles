@@ -65,7 +65,12 @@ const doc = (...axes: readonly (readonly [string, 'FORT' | 'MOYEN' | 'RAS' | nul
     {
       titre: 'Rubrique',
       introduction: [],
-      axes: axes.map(([titre, niveau]) => ({ titre, niveau, blocs: [] })),
+      axes: axes.map(([titre, niveau], rang) => ({
+        titre,
+        numéro: rang + 1,
+        niveau,
+        blocs: [],
+      })),
     },
   ],
 })

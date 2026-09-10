@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  construireDocument,
   axesDuDocument,
+  construireDocument,
+  slugDAxe,
   type BlocNotion,
 } from '@/lib/domaine/document'
 
@@ -41,9 +42,11 @@ describe('construireDocument', () => {
       h2('③ Filière — RAS'),
     ])
     const axes = doc.rubriques[0]?.axes ?? []
-    expect(axes.map((f) => [f.titre, f.niveau])).toEqual([
-      ['② Cadre français', 'FORT'],
-      ['③ Filière', 'RAS'],
+    // Le numéro du référentiel est détaché du titre : il sera composé en
+    // indice, jamais laissé dans le texte en police de secours.
+    expect(axes.map((f) => [f.numéro, f.titre, f.niveau])).toEqual([
+      [2, 'Cadre français', 'FORT'],
+      [3, 'Filière', 'RAS'],
     ])
     expect(axes[0]?.blocs).toHaveLength(1)
   })
@@ -168,5 +171,19 @@ describe('construireDocument', () => {
 
   it('rend un document vide sans broncher', () => {
     expect(construireDocument([])).toEqual({ préambule: [], rubriques: [] })
+  })
+})
+
+describe('slugDAxe', () => {
+  it('donne une adresse stable, sans accent ni ponctuation', () => {
+    expect(slugDAxe('Filière et financement')).toBe('filiere-et-financement')
+    expect(slugDAxe('Cadre français')).toBe('cadre-francais')
+    expect(slugDAxe('Emploi — formation')).toBe('emploi-formation')
+  })
+
+  it('ne garde pas le numéro du référentiel, qui change quand on le réordonne', () => {
+    // Le titre arrive déjà détaché de son numéro ; on vérifie qu'un reliquat
+    // ne produirait pas deux adresses pour le même axe.
+    expect(slugDAxe('Cadre français')).toBe(slugDAxe('  Cadre  français  '))
   })
 })

@@ -1,10 +1,16 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
-import { EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
+import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
-import { axesDuDocument } from '@/lib/domaine/document'
+import { axesDuDocument, slugDAxe } from '@/lib/domaine/document'
+import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
-import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
+import {
+  estVeilleConcurrentielle,
+  notesDeLaSemaine,
+  documentsDeLaSemaine,
+  semainesPubliées,
+} from '@/lib/portail/semaine'
 
 /**
  * Vue d'ensemble : ce que la semaine dit, en un écran.
@@ -36,10 +42,16 @@ export default async function VueDEnsemble({
     )
   }
 
-  const [documents, documentsPrécédents] = await Promise.all([
-    documentsDeLaSemaine(courante),
+  const [notes, documentsPrécédents] = await Promise.all([
+    notesDeLaSemaine(courante),
     documentsDeLaSemaine(semaines[1]),
   ])
+  const documents = notes.map((note) => note.document)
+
+  // La veille concurrentielle, si l'organisation en a une. Rien n'est relu :
+  // c'est la lettre de la semaine, déjà chargée pour les axes.
+  const concurrentielle = notes.find((note) => estVeilleConcurrentielle(note.édition.veille))
+  const concurrents = lireDossiersOuverts(concurrentielle?.édition.dossiersOuvertsBruts)
 
   const synthèse = synthétiser(
     documents,
@@ -106,7 +118,49 @@ export default async function VueDEnsemble({
         </div>
       ) : null}
 
-      <section className="mt-8 flex flex-col gap-4">
+      <section className="mt-10 flex flex-col gap-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="font-titre text-h2 font-bold text-encre">Concurrents</h2>
+          {concurrentielle ? (
+            <LienFlèche href={`/${accès.slug}/lettres/${concurrentielle.édition.pageId}`}>
+              Lire la veille concurrentielle
+            </LienFlèche>
+          ) : null}
+        </div>
+
+        {/* Les dossiers de la lettre concurrentielle sont les situations que la
+            veille garde ouvertes : un concurrent, un mouvement, et depuis
+            combien de semaines il n'a pas bougé. */}
+        {!concurrentielle ? (
+          <p className="text-ardoise">
+            Votre veille ne comprend pas de volet concurrentiel cette semaine.
+          </p>
+        ) : concurrents.length === 0 ? (
+          <p className="text-ardoise">
+            Aucun dossier concurrent n’est ouvert cette semaine.
+          </p>
+        ) : (
+          <Grille étiquette="Dossiers concurrents suivis" colonnes={3}>
+            {concurrents.map((dossier) => (
+              <Case key={dossier.nom} accent={dossier.compteur === 0}>
+                <h3 className="font-titre text-h3 font-semibold text-encre">{dossier.nom}</h3>
+                {dossier.précision ? (
+                  <p className="text-ardoise">{dossier.précision}</p>
+                ) : null}
+                <p className="mt-auto label-mono text-ardoise pt-1">
+                  {dossier.compteur === null
+                    ? 'suivi'
+                    : dossier.compteur === 0
+                      ? 'a bougé cette semaine'
+                      : `${dossier.compteur} semaine${dossier.compteur > 1 ? 's' : ''} sans mouvement`}
+                </p>
+              </Case>
+            ))}
+          </Grille>
+        )}
+      </section>
+
+      <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">Les axes de la semaine</h2>
           <LienFlèche href={`/${accès.slug}/lettres`}>Lire les lettres</LienFlèche>
@@ -120,7 +174,7 @@ export default async function VueDEnsemble({
               <CaseAxe
                 key={`${axe.titre}-${rang}`}
                 axe={axe}
-                href={`/${accès.slug}/tendances`}
+                href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}
               />
             ))}
           </Grille>

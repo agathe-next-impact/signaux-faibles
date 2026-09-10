@@ -176,11 +176,26 @@ varie d'une organisation à l'autre.
 
 ## Les cinq écrans de l'espace client
 
-Vue d'ensemble (`/[slug]`) · Lettres (`/[slug]/lettres`, grille de toutes les
-lettres, une case par édition, plus `/[slug]/lettres/[edition]` pour la lire) ·
-Tendances (`/[slug]/tendances`, grille des axes de la semaine avec leur
-mouvement, puis le suivi des dossiers) · Recommandations · Archives (une entrée
-par semaine). Pas d'autre écran sans discussion.
+Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, **vue concurrents**
+tirée de la lettre concurrentielle, axes de la semaine) · Lettres
+(`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
+`/[slug]/lettres/[edition]` pour la lire) · Tendances (`/[slug]/tendances`,
+grille des axes avec leur mouvement, puis le suivi des dossiers ; chaque case
+ouvre `/[slug]/tendances/[axe]`, l'axe suivi sur les quatre dernières lettres)
+· Recommandations · Archives (une entrée par semaine). Pas d'autre écran sans
+discussion.
+
+**Le coût Notion d'un écran se compte en corps de notes lus.** La liste des
+éditions est une requête, quelle que soit la profondeur ; un corps de note en
+est une de plus. La vue d'ensemble et les tendances lisent la semaine courante
+et la précédente — les mêmes entrées de cache. La page d'un axe remonte quatre
+lettres, plafond posé par `LETTRES_SUIVIES` : ne jamais remonter toute
+l'archive corps par corps, le débit est de trois requêtes par seconde.
+
+Les numéros d'axes des référentiels (①, ②, ③) ne sont jamais laissés dans le
+texte : ni Lora ni Public Sans ne les dessinent, le navigateur les compose dans
+une police de secours. `lireTitreDAxe` les détache, `TitreAxe` les recompose en
+indice mono.
 
 Les grilles de boîtes sont **à angle droit et sans gouttière** : les cases se
 touchent et partagent leurs filets. `Grille` et `Case` dans

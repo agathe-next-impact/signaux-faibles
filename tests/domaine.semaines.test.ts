@@ -1,3 +1,4 @@
+
 import { describe, expect, it } from 'vitest'
 import {
   estUneDateISO,
@@ -5,6 +6,7 @@ import {
   lundiDeLaSemaine,
   regrouperParSemaine,
 } from '@/lib/domaine/semaines'
+import { estVeilleConcurrentielle } from '@/lib/portail/semaine'
 
 describe('lundiDeLaSemaine', () => {
   it('renvoie le lundi lui-même', () => {
@@ -91,5 +93,22 @@ describe('regrouperParSemaine', () => {
 
   it('ne renvoie rien pour une liste vide', () => {
     expect(regrouperParSemaine([])).toEqual([])
+  })
+})
+
+describe('estVeilleConcurrentielle', () => {
+  it('reconnaît la veille concurrentielle, accents et casse compris', () => {
+    expect(estVeilleConcurrentielle('Concurrentiel')).toBe(true)
+    expect(estVeilleConcurrentielle('concurrentielle')).toBe(true)
+    expect(estVeilleConcurrentielle('Concurrentiel — marché')).toBe(true)
+  })
+
+  it('ne se laisse pas prendre par les autres veilles', () => {
+    expect(estVeilleConcurrentielle('Écosystème')).toBe(false)
+    expect(estVeilleConcurrentielle('Positionnement')).toBe(false)
+    expect(estVeilleConcurrentielle('Attractivité')).toBe(false)
+    // Sans valeur, la vue concurrents se tait plutôt que de montrer la
+    // mauvaise lettre.
+    expect(estVeilleConcurrentielle(null)).toBe(false)
   })
 })

@@ -41,15 +41,62 @@ export async function semainesPubliées(organisationId: string): Promise<Semaine
  * courante et la précédente : elles partagent donc les mêmes entrées de cache,
  * et le second écran ne coûte rien de plus que le premier.
  */
+export async function notesDeLaSemaine(
+  semaine: SemaineDÉditions | undefined,
+): Promise<{ readonly édition: Édition; readonly document: Document }[]> {
+  if (!semaine) return []
+  return Promise.all(
+    semaine.éditions.map(async (édition) => ({
+      édition,
+      document: construireDocument(await lireBlocsDePage(édition.pageId)),
+    })),
+  )
+}
+
+/** Les mêmes corps, quand l'écran n'a que faire de savoir de quelle lettre ils viennent. */
 export async function documentsDeLaSemaine(
   semaine: SemaineDÉditions | undefined,
 ): Promise<Document[]> {
-  if (!semaine) return []
+  return (await notesDeLaSemaine(semaine)).map((note) => note.document)
+}
+
+/**
+ * Le nombre de lettres que l'on remonte pour suivre un axe.
+ *
+ * Quatre : de quoi voir une tendance sans transformer un écran en une rafale de
+ * requêtes Notion. Le débit est de trois par seconde ; on ne remonte jamais
+ * toute l'archive corps par corps.
+ */
+export const LETTRES_SUIVIES = 4
+
+/** Les corps des dernières lettres, avec la lettre dont ils viennent. */
+export async function dernièresNotes(
+  semaines: readonly SemaineDÉditions[],
+  combien: number = LETTRES_SUIVIES,
+): Promise<{ readonly lettre: Lettre; readonly document: Document }[]> {
   return Promise.all(
-    semaine.éditions.map(async (édition) =>
-      construireDocument(await lireBlocsDePage(édition.pageId)),
-    ),
+    lettresPubliées(semaines)
+      .slice(0, combien)
+      .map(async (lettre) => ({
+        lettre,
+        document: construireDocument(await lireBlocsDePage(lettre.édition.pageId)),
+      })),
   )
+}
+
+/**
+ * La veille concurrentielle, si l'organisation en a une.
+ *
+ * Le rapprochement se fait sur la valeur affichée de la propriété `Veille`, la
+ * seule dont le portail dispose. Renommée dans Notion, la section disparaît
+ * plutôt que de montrer la mauvaise lettre — et l'écran le dit.
+ */
+export function estVeilleConcurrentielle(veille: string | null): boolean {
+  return (veille ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .startsWith('concurrentiel')
 }
 
 /** Les cinq écrans de l'espace client, dans l'ordre du rail. */

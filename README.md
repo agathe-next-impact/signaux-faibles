@@ -70,6 +70,7 @@ depuis le 14 mars 2025.
 | `lib/notion/editions.ts`, `acces.ts` | les seules lectures Notion, toutes cachées et filtrées |
 | `lib/domaine/` | fonctions pures : impact, semaines, dossiers, arbre de document, synthèse, tendances |
 | `lib/portail/semaine.ts` | ce que les cinq écrans partagent, et le coût Notion de chacun |
+| `components/titre-axe.tsx` | le numéro d'un axe, composé en indice plutôt qu'en chiffre cerclé |
 | `components/coquille.tsx` | le rail, le menu de pied, et `Grille`/`Case` — la règle des boîtes |
 | `public/sw.js`, `app/manifest.ts` | application installable et lecture hors ligne |
 | `lib/auth/` | signature du lien, session, contrôle d'appartenance |
