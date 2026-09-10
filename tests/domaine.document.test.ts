@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   axesDuDocument,
   construireDocument,
+  pointsDAxe,
   slugDAxe,
   type BlocNotion,
 } from '@/lib/domaine/document'
@@ -185,5 +186,39 @@ describe('slugDAxe', () => {
     // Le titre arrive déjà détaché de son numéro ; on vérifie qu'un reliquat
     // ne produirait pas deux adresses pour le même axe.
     expect(slugDAxe('Cadre français')).toBe(slugDAxe('  Cadre  français  '))
+  })
+})
+
+describe('pointsDAxe', () => {
+  const axeAvec = (blocs: readonly BlocNotion[]) => {
+    const doc = construireDocument([h1('Rubrique'), h2('Cadre — FORT'), ...blocs])
+    return doc.rubriques[0]?.axes[0]
+  }
+
+  it('prend les puces de la note quand il y en a', () => {
+    const axe = axeAvec([p('Une introduction.'), puce('Premier fait.'), puce('Second fait.')])
+    expect(pointsDAxe(axe!)).toEqual(['Premier fait.', 'Second fait.'])
+  })
+
+  it('retombe sur les paragraphes, une phrase chacun, quand la note n’a pas de puce', () => {
+    const axe = axeAvec([p('Un premier fait. Un développement qui suit.'), p('Un second fait.')])
+    expect(pointsDAxe(axe!)).toEqual(['Un premier fait.', 'Un second fait.'])
+  })
+
+  it('s’arrête au nombre demandé', () => {
+    const axe = axeAvec([puce('a'), puce('b'), puce('c'), puce('d')])
+    expect(pointsDAxe(axe!, 2)).toEqual(['a', 'b'])
+  })
+
+  it('coupe au mot entier, jamais au milieu d’un', () => {
+    const axe = axeAvec([puce('Le comité interministériel a rendu son avis définitif au printemps')])
+    const [point] = pointsDAxe(axe!, 3, 30)
+    expect(point?.endsWith('…')).toBe(true)
+    expect(point).not.toContain('inter…')
+    expect(point!.length).toBeLessThanOrEqual(31)
+  })
+
+  it('ne rend rien pour un axe sans développement', () => {
+    expect(pointsDAxe(axeAvec([])!)).toEqual([])
   })
 })

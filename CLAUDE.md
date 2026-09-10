@@ -205,8 +205,21 @@ touchent et partagent leurs filets. `Grille` et `Case` dans
 Une case qui mène quelque part est **cliquable en entier**, par un
 `LienFlèche étendu` : le lien s'étale sur la case par un pseudo-élément plutôt
 que d'envelopper son contenu, ce qui garde un nom accessible court (« Détail »)
-au lieu de faire lire tout l'extrait. Un seul lien étendu par case, et rien
+au lieu de faire lire toute la liste. Un seul lien étendu par case, et rien
 d'autre de cliquable dedans — deux se recouvriraient.
+
+**Une case qui porte un badge d'impact reste sur fond blanc.** Les trois badges
+occupent les trois fonds teintés de la charte (rose, ardoise, neutre) : un fond
+de case teinté en efface forcément un — « signal fort » sur fond rose
+disparaissait entièrement. L'accent y passe donc par la mention, pas par le
+fond. Les cases sans badge (tuiles, lettres, recommandations) gardent l'accent
+de fond.
+
+Une case d'axe porte, dans cet ordre : le **numéro et le nom en surtitre** mono
+encre — c'est l'identité, elle doit se lire en premier —, une mention de
+contexte facultative, puis les **éléments importants en liste à puces carrées**.
+Le nom n'est pas un titre en Lora : ce que la case donne à lire, ce sont les
+faits de la semaine, pas le nom d'une rubrique que le lecteur connaît déjà.
 
 ## Commandes
 

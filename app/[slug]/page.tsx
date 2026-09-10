@@ -1,7 +1,7 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
-import { axesDuDocument, slugDAxe } from '@/lib/domaine/document'
+import { axesDuDocument, pointsDAxe, slugDAxe } from '@/lib/domaine/document'
 import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
@@ -174,6 +174,7 @@ export default async function VueDEnsemble({
               <CaseAxe
                 key={`${axe.titre}-${rang}`}
                 axe={axe}
+                points={pointsDAxe(axe)}
                 href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}
               />
             ))}

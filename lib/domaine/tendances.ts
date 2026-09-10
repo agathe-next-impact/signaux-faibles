@@ -1,5 +1,5 @@
 import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
-import { axesDuDocument, type Document } from '@/lib/domaine/document'
+import { axesDuDocument, pointsDAxe, type Document } from '@/lib/domaine/document'
 import { rangDImpact, trierParImpact, type NiveauImpact } from '@/lib/domaine/impact'
 import type { CléDeSemaine, Semaine } from '@/lib/domaine/semaines'
 
@@ -111,12 +111,18 @@ export type AxeSuivi = {
   readonly titre: string
   readonly numéro: number | null
   readonly niveau: NiveauImpact | null
+  /** Les éléments importants de la semaine, pour la case de grille. */
+  readonly points: readonly string[]
   readonly mouvement: Mouvement
   /** Le niveau de la semaine précédente, `null` si l'axe n'y figurait pas. */
   readonly niveauPrécédent: NiveauImpact | null
 }
 
-type AxeRetenu = { readonly numéro: number | null; readonly niveau: NiveauImpact | null }
+type AxeRetenu = {
+  readonly numéro: number | null
+  readonly niveau: NiveauImpact | null
+  readonly points: readonly string[]
+}
 
 /** Le niveau le plus fort retenu par nom d'axe, les deux notes confondues. */
 function axesParTitre(documents: readonly Document[]): Map<string, AxeRetenu> {
@@ -128,7 +134,11 @@ function axesParTitre(documents: readonly Document[]): Map<string, AxeRetenu> {
       // Un même axe peut figurer dans les deux notes de la semaine : on garde
       // le niveau le plus fort, jamais le dernier rencontré.
       if (connu === undefined || rangDImpact(axe.niveau) < rangDImpact(connu.niveau)) {
-        parTitre.set(axe.titre, { numéro: axe.numéro, niveau: axe.niveau })
+        parTitre.set(axe.titre, {
+          numéro: axe.numéro,
+          niveau: axe.niveau,
+          points: pointsDAxe(axe),
+        })
       }
     }
   }
@@ -148,18 +158,25 @@ export function suivreLesAxes(
 ): AxeSuivi[] {
   const précédents = axesParTitre(documentsPrécédents)
 
-  const suivis = [...axesParTitre(documents)].map(([titre, { numéro, niveau }]) => {
+  const suivis = [...axesParTitre(documents)].map(([titre, { numéro, niveau, points }]) => {
     const avant = précédents.get(titre)
 
     if (avant === undefined) {
-      return { titre, numéro, niveau, mouvement: 'nouveau' as const, niveauPrécédent: null }
+      return {
+        titre,
+        numéro,
+        niveau,
+        points,
+        mouvement: 'nouveau' as const,
+        niveauPrécédent: null,
+      }
     }
 
     // Le rang croît quand l'impact décroît : FORT vaut 0, RAS vaut 2.
     const écart = rangDImpact(niveau) - rangDImpact(avant.niveau)
     const mouvement: Mouvement = écart < 0 ? 'monté' : écart > 0 ? 'redescendu' : 'stable'
 
-    return { titre, numéro, niveau, mouvement, niveauPrécédent: avant.niveau }
+    return { titre, numéro, niveau, points, mouvement, niveauPrécédent: avant.niveau }
   })
 
   return trierParImpact(suivis)
