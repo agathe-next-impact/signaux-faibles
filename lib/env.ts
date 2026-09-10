@@ -39,13 +39,10 @@ export function env(): Env {
     )
   }
 
-  // La clé privée du compte de service traverse souvent les consoles
-  // d'hébergement avec ses retours à la ligne échappés.
-  memo = {
-    ...resultat.data,
-    GOOGLE_COMPTE_SERVICE_CLE_PRIVEE:
-      resultat.data.GOOGLE_COMPTE_SERVICE_CLE_PRIVEE.replaceAll('\\n', '\n'),
-  }
+  // La clé privée est conservée telle qu'elle arrive. Sa remise en forme vit
+  // dans lib/email/gmail.ts, là où elle est employée, parce qu'elle doit lever
+  // un message utile et non se contenter d'un remplacement silencieux.
+  memo = resultat.data
   return memo
 }
 

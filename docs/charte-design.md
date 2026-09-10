@@ -30,6 +30,25 @@ Composé en Lora gras ; le curseur est un trait vertical rose.
    (« Signaux Faibles » est le nom, pas le logo) ;
 4. ajouter ombre, contour ou inclinaison.
 
+### Verrouillages fournis le 10 septembre 2026
+
+Trois compositions ont été transmises en complément du PDF : le motif seul, un
+verrouillage horizontal (motif à gauche, mot-symbole à droite) et un
+verrouillage empilé (motif au-dessus, mot-symbole, baseline en italique).
+
+Elles sont reconstruites dans `components/marque.tsx` plutôt que posées en
+images. Le motif est du vectoriel : net à toute taille, quelques centaines
+d'octets, et ses couleurs viennent des tokens. Le mot-symbole reste du **texte**
+composé en Lora, la police de la charte, et non une image de texte : il demeure
+sélectionnable, lisible par un lecteur d'écran, et net sur tout écran. Le motif
+sert aussi d'icône d'onglet, dans `app/icon.svg`.
+
+La charte n'illustre pas de version négative du **motif**, seulement du
+mot-symbole. Sur fond encre, l'ardoise et le gris ligne s'effondrent : les deux
+rôles remontent donc d'un cran, l'axe prenant l'ardoise et les impulsions
+secondaires le gris ligne. Le rose ne bouge pas. C'est une extrapolation, à
+confirmer si un écran sombre apparaît.
+
 ## 02 · Couleurs
 
 « Une palette sobre au service de la lecture : le blanc et l'encre portent le

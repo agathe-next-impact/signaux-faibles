@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { exigerAccès } from '@/lib/auth/appartenance'
-import { Logo } from '@/components/logo'
+import { Logo } from '@/components/marque'
 
 /**
  * Le cadre du portail d'un client.

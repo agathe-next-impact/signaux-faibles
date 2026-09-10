@@ -68,3 +68,71 @@ describe('composerCourrierDAccès', () => {
     expect(composerCourrierDAccès('  ', 'https://x.test/acces/a.b').texte).toContain('Bonjour,')
   })
 })
+
+import { createSign, createVerify, generateKeyPairSync } from 'node:crypto'
+import { normaliserClePrivée } from '@/lib/email/gmail'
+
+// Une vraie paire RSA, comme celle d'un compte de service Google.
+const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+})
+
+/** Signe puis vérifie : la seule preuve qu'OpenSSL accepte vraiment la clé. */
+function signeEtVérifie(clé: string): boolean {
+  const signature = createSign('RSA-SHA256').update('charge').end().sign(clé)
+  return createVerify('RSA-SHA256').update('charge').end().verify(publicKey, signature)
+}
+
+describe('normaliserClePrivée', () => {
+  it('accepte la clé telle que Node la produit', () => {
+    expect(signeEtVérifie(normaliserClePrivée(privateKey))).toBe(true)
+  })
+
+  it('rattrape les retours à la ligne échappés, forme la plus courante', () => {
+    const abîmée = privateKey.replaceAll('\n', '\\n')
+    expect(signeEtVérifie(normaliserClePrivée(abîmée))).toBe(true)
+  })
+
+  it('rattrape les guillemets copiés avec la valeur depuis le JSON', () => {
+    const abîmée = `"${privateKey.replaceAll('\n', '\\n')}"`
+    expect(signeEtVérifie(normaliserClePrivée(abîmée))).toBe(true)
+  })
+
+  it('rattrape les apostrophes, réflexe de terminal', () => {
+    expect(signeEtVérifie(normaliserClePrivée(`'${privateKey}'`))).toBe(true)
+  })
+
+  it('rattrape les fins de ligne Windows', () => {
+    const abîmée = privateKey.replaceAll('\n', '\r\n')
+    expect(signeEtVérifie(normaliserClePrivée(abîmée))).toBe(true)
+  })
+
+  it('rattrape une clé ré-encodée entièrement en base64', () => {
+    const abîmée = Buffer.from(privateKey, 'utf8').toString('base64')
+    expect(signeEtVérifie(normaliserClePrivée(abîmée))).toBe(true)
+  })
+
+  it('rattrape les espaces et la fin de ligne manquante', () => {
+    expect(signeEtVérifie(normaliserClePrivée(`  ${privateKey.trimEnd()}  `))).toBe(true)
+  })
+
+  it('nomme le problème quand les retours à la ligne ont été perdus', () => {
+    // C'est le cas qui produisait « DECODER routines::unsupported », sans rien
+    // dire de la cause.
+    const aplatie = privateKey.replaceAll('\n', '')
+    expect(() => normaliserClePrivée(aplatie)).toThrow(/une seule ligne/)
+  })
+
+  it('nomme le problème quand la valeur n’est pas un PEM du tout', () => {
+    expect(() => normaliserClePrivée('collée-de-travers')).toThrow(/BEGIN/)
+    expect(() => normaliserClePrivée('')).toThrow(/BEGIN/)
+  })
+
+  it('laisse OpenSSL refuser une armure correcte au contenu invalide', () => {
+    const fausse = '-----BEGIN PRIVATE KEY-----\nZm91cmJp\n-----END PRIVATE KEY-----\n'
+    expect(() => normaliserClePrivée(fausse)).not.toThrow()
+    expect(() => signeEtVérifie(normaliserClePrivée(fausse))).toThrow()
+  })
+})
