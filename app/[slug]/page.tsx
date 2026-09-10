@@ -4,9 +4,15 @@ import { CaseAxe } from '@/components/case-axe'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
 import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
+import { acteursAvecActualité } from '@/lib/domaine/mentions'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
-import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
+import {
+  dernièresNotes,
+  documentsDeLaSemaine,
+  LETTRES_POUR_ACTUALITÉ,
+  semainesPubliées,
+} from '@/lib/portail/semaine'
 
 /**
  * Vue d'ensemble : ce que la semaine dit, en un écran.
@@ -47,9 +53,13 @@ export default async function VueDEnsemble({
     )
   }
 
-  const [documents, documentsPrécédents] = await Promise.all([
+  // Les trois dernières lettres servent à filtrer les acteurs. Ce sont les
+  // mêmes pages que les deux appels voisins pour l'essentiel : le cache les
+  // sert, aucune requête Notion de plus.
+  const [documents, documentsPrécédents, récentes] = await Promise.all([
     documentsDeLaSemaine(courante),
     documentsDeLaSemaine(semaines[1]),
+    dernièresNotes(semaines, LETTRES_POUR_ACTUALITÉ),
   ])
 
   const synthèse = synthétiser(
@@ -65,7 +75,16 @@ export default async function VueDEnsemble({
 
   // Les deux lettres réunies : un axe ouvert par les deux ne fait qu'une case.
   const axes = trierParImpact(fusionnerLesAxes(documents))
-  const acteurs = ordonnerLesDossiers(synthèse.dossiers)
+
+  // Un dossier qui dort n'occupe pas une case de l'accueil pour ne rien
+  // apprendre. Il n'est pas perdu : les tendances portent le suivi entier.
+  const acteurs = ordonnerLesDossiers(
+    acteursAvecActualité(
+      synthèse.dossiers,
+      récentes.map((note) => note.document),
+    ),
+  )
+  const dormants = synthèse.dossiers.length - acteurs.length
 
   const actions = courante.éditions
     .map((édition) => édition.actionDeLaSemaine)
@@ -126,14 +145,24 @@ export default async function VueDEnsemble({
           <LienFlèche href={`/${accès.slug}/tendances`}>Voir tout le suivi</LienFlèche>
         </div>
         <p className="text-ardoise">
-          Les concurrents et les organisations du secteur que vos lettres gardent ouverts,
-          de ce qui vient de bouger à ce qui dort.
+          Les concurrents et les organisations du secteur dont les {LETTRES_POUR_ACTUALITÉ}{' '}
+          dernières lettres ont quelque chose à dire.
         </p>
+        {dormants > 0 ? (
+          // Ce qui est écarté doit se dire : un compte muet laisserait croire
+          // que la veille a cessé de suivre ces dossiers.
+          <p className="label-mono text-ardoise">
+            {dormants > 1
+              ? `${dormants} autres acteurs sont suivis sans actualité récente`
+              : '1 autre acteur est suivi sans actualité récente'}
+          </p>
+        ) : null}
 
         {acteurs.length === 0 ? (
           <p className="text-ardoise">
-            Aucun acteur n’est suivi cette semaine. Les lettres en ouvriront dès qu’un
-            mouvement le justifiera.
+            {synthèse.dossiers.length === 0
+              ? 'Aucun acteur n’est suivi cette semaine. Les lettres en ouvriront dès qu’un mouvement le justifiera.'
+              : 'Aucun acteur suivi n’a d’actualité dans les dernières lettres. Le suivi complet reste dans les tendances.'}
           </p>
         ) : (
           <Grille étiquette="Acteurs suivis" colonnes={3}>

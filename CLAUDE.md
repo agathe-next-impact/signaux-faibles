@@ -210,6 +210,16 @@ le client (Écosystème, Concurrentiel, Positionnement, Attractivité) et le
 portail n'a pas accès à `Famille`, la clé interne. Une section qui dépendrait de
 ce libellé disparaîtrait au premier renommage.
 
+**Un acteur sans actualité ne figure pas sur l'accueil**, mais n'est jamais
+supprimé : le suivi entier reste sur les tendances, où un dossier qui s'enlise
+doit précisément se voir. La règle a **deux portes** (`acteursAvecActualité`) :
+une des trois dernières lettres le nomme, **ou** son compteur est retombé à
+zéro. La seconde n'est pas une commodité — une lettre peut suivre « CADA » dans
+ses dossiers et écrire « la Commission d'accès aux documents administratifs »
+dans sa prose ; sans le compteur, l'acteur disparaîtrait la semaine même où il
+bouge. Le nombre d'acteurs écartés est affiché : un compte muet laisserait
+croire que la veille a cessé de les suivre.
+
 **Le coût Notion d'un écran se compte en corps de notes lus.** La liste des
 éditions est une requête, quelle que soit la profondeur ; un corps de note en
 est une de plus. La vue d'ensemble et les tendances lisent la semaine courante

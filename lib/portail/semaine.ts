@@ -69,6 +69,15 @@ export async function documentsDeLaSemaine(
  */
 export const LETTRES_SUIVIES = 4
 
+/**
+ * Le nombre de lettres au-delà duquel un acteur sans actualité quitte l'accueil.
+ *
+ * Trois : une semaine et demie de parution. Assez pour qu'un dossier qui vient
+ * de bouger reste visible la semaine suivante, trop court pour qu'un dossier
+ * dormant s'installe sur la page d'entrée.
+ */
+export const LETTRES_POUR_ACTUALITÉ = 3
+
 /** Les corps des dernières lettres, avec la lettre dont ils viennent. */
 export async function dernièresNotes(
   semaines: readonly SemaineDÉditions[],
