@@ -154,6 +154,26 @@ portail voit.
 deux lecteurs chez le même client font deux lignes, pour que la révocation soit
 individuelle.
 
+**Plusieurs adresses pour un même espace, c'est le cas normal.** Rien à
+configurer ailleurs : autant de lignes que de lecteurs. Ce qu'elles partagent et
+ce qui doit les distinguer :
+
+| | |
+|---|---|
+| **identique** sur toutes les lignes du client | `Identifiant Notion de l'organisation`, `Slug`, `Organisation (libellé)` |
+| **propre à chaque personne** | `Email`, `Identifiant d'accès`, `Nom`, et la case `Actif` |
+
+**Ne pas dupliquer une ligne existante pour en ajouter une.** La duplication
+Notion recopie `Identifiant d'accès`, et deux lignes portant le même
+identifiant font **cesser de fonctionner les deux liens à la fois** : le portail
+refuse plutôt que de rattacher la personne au mauvais client. Créer une ligne
+vierge et tirer un identifiant neuf. Depuis le 10 septembre 2026, le cas est
+journalisé — mais il coûte deux accès en attendant qu'on le lise.
+
+Une adresse ne peut être active que sur **un seul** espace à la fois : la page
+« recevoir mon lien » exige exactement une ligne active par email, sans quoi
+elle ne saurait pas quel lien renvoyer.
+
 | Propriété | Ce qu'on y met |
 |---|---|
 | `Nom` | prénom et nom, repris dans le courrier |

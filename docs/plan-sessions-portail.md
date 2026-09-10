@@ -418,3 +418,30 @@ vide doit pouvoir le signaler, pas conclure que le service ne marche pas.
 
 **Le piège est nommé dans l'onboarding**, avec la vérification en dix secondes :
 comparer la propriété `Organisation` d'une édition à la ligne « Accès ».
+
+**10 septembre 2026, dixième passe.** Plusieurs lecteurs, et un silence de plus.
+
+**Plusieurs adresses pour un espace : c'était déjà le modèle.** Les deux lectures
+d'accès sont clefées par personne — identifiant, ou email —, jamais par espace.
+Autant de lignes que de lecteurs, partageant l'identifiant d'organisation et le
+slug, chacune avec son lien et sa révocation. Rien à changer dans le code.
+
+**Mais un piège s'y cache, et il était muet.** Dupliquer une ligne dans Notion
+pour ajouter un lecteur recopie « Identifiant d'accès ». Le portail trouve alors
+deux lignes pour un même identifiant et refuse — à raison, un choix arbitraire
+rattacherait peut-être la personne au mauvais client — mais il refusait sans
+rien dire, et les deux liens cessaient de fonctionner d'un coup. Le cas est
+désormais journalisé, et l'onboarding dit de créer une ligne vierge plutôt que
+de dupliquer.
+
+**Une adresse reste liée à un seul espace** : la page « recevoir mon lien » exige
+exactement une ligne active par email, sans quoi elle ne saurait pas quel lien
+renvoyer. C'est une limite, elle est écrite.
+
+**Les acteurs vides de l'Hermitage ne sont pas un bug.** Les quatorze éditions du
+client sont des archives importées d'un dispositif antérieur à Notion, et leur
+propriété « Dossiers ouverts suivis » est vide — vérifié sur les six dernières.
+Le corps des lettres, lui, nomme abondamment des concurrents, jusqu'à porter une
+rubrique « Actualité acteurs ». Le portail ne peut pas en déduire une liste
+d'entités sans inventer un second contrat, à rebours du modèle. La section vide
+renvoie donc désormais vers les lettres, où ces organisations restent lisibles.

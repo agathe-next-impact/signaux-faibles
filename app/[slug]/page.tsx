@@ -161,11 +161,20 @@ export default async function VueDEnsemble({
         ) : null}
 
         {acteurs.length === 0 ? (
-          <p className="text-ardoise">
-            {synthèse.dossiers.length === 0
-              ? 'Aucun acteur n’est suivi cette semaine. Les lettres en ouvriront dès qu’un mouvement le justifiera.'
-              : 'Aucun acteur suivi n’a d’actualité dans les dernières lettres. Le suivi complet reste dans les tendances.'}
-          </p>
+          // Une section vide doit dire où aller. Une lettre peut nommer
+          // beaucoup d'organisations sans qu'aucune soit ouverte comme dossier
+          // suivi : c'est le cas des lettres reprises d'un dispositif
+          // antérieur, dont la propriété de suivi est vide.
+          <div className="flex flex-col gap-3">
+            <p className="text-ardoise">
+              {synthèse.dossiers.length === 0
+                ? 'Aucun dossier n’est ouvert cette semaine. Les organisations citées par vos lettres y restent lisibles.'
+                : 'Aucun acteur suivi n’a d’actualité dans les dernières lettres. Le suivi complet reste dans les tendances.'}
+            </p>
+            <p>
+              <LienFlèche href={`/${accès.slug}/lettres`}>Lire les lettres</LienFlèche>
+            </p>
+          </div>
         ) : (
           <Grille étiquette="Acteurs suivis" colonnes={3}>
             {acteurs.slice(0, ACTEURS_EN_ACCUEIL).map((acteur) => (
