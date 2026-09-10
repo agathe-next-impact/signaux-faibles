@@ -47,7 +47,9 @@ export default async function VueDEnsemble({
       <>
         <EntêteÉcran surtitre="veille personnalisée" titre="Vue d’ensemble" />
         <p className="mt-8 text-ardoise">
-          Dès que la première lettre sera envoyée, elle apparaîtra ici.
+          Dès que la première lettre sera envoyée, elle apparaîtra ici. Si vous en avez
+          déjà reçu, dites-le nous : votre espace n’est peut-être pas encore relié à vos
+          éditions.
         </p>
       </>
     )

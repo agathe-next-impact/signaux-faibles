@@ -159,10 +159,40 @@ individuelle.
 | `Nom` | prénom et nom, repris dans le courrier |
 | `Email` | l'adresse à laquelle le lien sera envoyé |
 | `Organisation (libellé)` | affichage seulement, en en-tête du portail |
-| **`Identifiant Notion de l'organisation`** | le `page_id` de la ligne du registre |
+| **`Identifiant Notion de l'organisation`** | le `page_id` de la **ligne du registre** — voir le piège ci-dessous |
 | `Slug` | **identique** à celui du registre |
 | `Identifiant d'accès` | aléatoire, 32 caractères hexadécimaux (voir ci-dessous) |
 | `Actif` | coché |
+
+### Le piège : deux pages portent le nom du client
+
+Chaque organisation a **deux pages** dans l'espace, et elles se ressemblent :
+
+- la **ligne du registre** « Organisations — pipeline et activation », celle qui
+  porte le statut, la cadence, les référentiels — **c'est elle qu'il faut** ;
+- la **page organisation**, page de travail sous « Veilles clients », qui décrit
+  les dispositifs et renvoie vers le registre par une ligne « Fiche au
+  registre ».
+
+Les deux ont un `page_id` de même forme, et rien ne les distingue une fois
+collées dans un champ texte. C'est la page organisation qu'on a naturellement
+sous les yeux, et c'est donc elle qu'on colle par erreur.
+
+**La conséquence est silencieuse.** Le portail filtre les éditions par
+`Organisation contains <identifiant>` ; les éditions portent la ligne du
+registre. Avec l'identifiant de la page organisation, le filtre ne rencontre
+rien : la personne se connecte normalement et découvre un espace vide. Aucune
+erreur, aucun refus — c'est le comportement voulu de la règle 2, qui préfère
+ne rien montrer plutôt que de risquer les données d'un autre client.
+
+**Comment vérifier en dix secondes.** Ouvrir une édition du client dans
+« Éditions de veille », regarder sa propriété `Organisation`, et comparer à ce
+qui est dans la ligne « Accès ». Les deux doivent être le même identifiant.
+
+Depuis le 10 septembre 2026, le portail journalise le cas : « accès valide,
+aucune édition » avec le slug et l'identifiant, visible dans les journaux
+Vercel. Un client réellement neuf produit la même ligne — c'est un signal à
+lever, pas une preuve d'erreur.
 
 ### Tirer l'identifiant d'accès
 

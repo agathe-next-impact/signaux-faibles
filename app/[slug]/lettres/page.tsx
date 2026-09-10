@@ -29,7 +29,10 @@ export default async function Lettres({ params }: { params: Promise<{ slug: stri
       />
 
       {lettres.length === 0 ? (
-        <p className="mt-8 text-ardoise">Aucune lettre publiée pour l’instant.</p>
+        <p className="mt-8 text-ardoise">
+          Aucune lettre publiée pour l’instant. Si vous en avez déjà reçu, dites-le nous :
+          votre espace n’est peut-être pas encore relié à vos éditions.
+        </p>
       ) : (
         <div className="mt-8">
           <Grille étiquette="Lettres publiées">

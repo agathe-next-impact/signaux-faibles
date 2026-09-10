@@ -44,6 +44,24 @@ async function Garde({
   // Les compteurs du rail se lisent dans la requête de liste, déjà nécessaire :
   // aucun corps de note n'est chargé pour les afficher.
   const semaines = await semainesPubliées(accès.organisationId)
+
+  // Un accès valide qui ne voit aucune édition n'est pas forcément une
+  // anomalie — un client fraîchement équipé attend sa première lettre. Mais
+  // c'est aussi la trace exacte que laisse une ligne « Accès » dont
+  // l'identifiant d'organisation ne désigne pas la ligne du registre : le
+  // filtre ne rencontre rien, et l'espace reste vide en silence. Le cas s'est
+  // produit le 10 septembre 2026 et n'a été trouvé qu'en lisant Notion à la
+  // main. Une ligne de journal suffit à le voir venir. Un `page_id` n'est pas
+  // un secret ; l'identifiant d'accès, lui, n'apparaît jamais ici.
+  if (semaines.length === 0) {
+    console.warn(
+      `[espace] ${accès.slug} : accès valide, aucune édition. Vérifier que ` +
+        `« Identifiant Notion de l'organisation » (${accès.organisationId}) est ` +
+        `bien le page_id de la ligne du registre, et non celui de la page ` +
+        `organisation.`,
+    )
+  }
+
   const recommandations = semaines.filter((semaine) =>
     semaine.éditions.some((édition) => édition.actionDeLaSemaine.length > 0),
   ).length
