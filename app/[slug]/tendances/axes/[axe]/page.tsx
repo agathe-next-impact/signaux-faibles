@@ -4,7 +4,8 @@ import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { RenduBlocs } from '@/components/document'
 import { TitreAxe } from '@/components/titre-axe'
-import { axesDuDocument, slugDAxe } from '@/lib/domaine/document'
+import { axesDuDocument } from '@/lib/domaine/document'
+import { enSlug } from '@/lib/domaine/slug'
 import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
 
 /**
@@ -33,7 +34,7 @@ export default async function UnAxe({
 
   const passages = notes.flatMap(({ lettre, document }) => {
     const axe = axesDuDocument(document).find(
-      (candidat) => slugDAxe(candidat.titre) === segment,
+      (candidat) => enSlug(candidat.titre) === segment,
     )
     return axe ? [{ lettre, axe }] : []
   })

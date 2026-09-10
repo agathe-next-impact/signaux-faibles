@@ -4,7 +4,6 @@ import {
   construireDocument,
   fusionnerLesAxes,
   pointsDAxe,
-  slugDAxe,
   type BlocNotion,
 } from '@/lib/domaine/document'
 
@@ -173,20 +172,6 @@ describe('construireDocument', () => {
 
   it('rend un document vide sans broncher', () => {
     expect(construireDocument([])).toEqual({ préambule: [], rubriques: [] })
-  })
-})
-
-describe('slugDAxe', () => {
-  it('donne une adresse stable, sans accent ni ponctuation', () => {
-    expect(slugDAxe('Filière et financement')).toBe('filiere-et-financement')
-    expect(slugDAxe('Cadre français')).toBe('cadre-francais')
-    expect(slugDAxe('Emploi — formation')).toBe('emploi-formation')
-  })
-
-  it('ne garde pas le numéro du référentiel, qui change quand on le réordonne', () => {
-    // Le titre arrive déjà détaché de son numéro ; on vérifie qu'un reliquat
-    // ne produirait pas deux adresses pour le même axe.
-    expect(slugDAxe('Cadre français')).toBe(slugDAxe('  Cadre  français  '))
   })
 })
 

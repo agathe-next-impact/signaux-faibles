@@ -324,24 +324,6 @@ function écourter(texte: string, longueur: number): string {
   return `${(dernierEspace > longueur / 2 ? tronqué.slice(0, dernierEspace) : tronqué).trimEnd()}…`
 }
 
-/**
- * L'adresse d'un axe dans une URL.
- *
- * Dérivée du titre, sans accents ni ponctuation. Le numéro du référentiel n'y
- * entre pas : il change quand le référentiel est réordonné, alors que le nom
- * de l'axe, lui, est ce que le client reconnaît. Deux axes qui se réduiraient
- * au même segment seraient indiscernables — le cas ne s'est pas présenté, et
- * la page prend alors le premier, plutôt que d'échouer devant le lecteur.
- */
-export function slugDAxe(titre: string): string {
-  return titre
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
 /** Un axe tel que les lettres de la semaine le donnent, une fois réunies. */
 export type AxeFusionné = {
   readonly titre: string

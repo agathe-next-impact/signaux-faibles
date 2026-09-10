@@ -1,7 +1,8 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
-import { fusionnerLesAxes, slugDAxe } from '@/lib/domaine/document'
+import { fusionnerLesAxes } from '@/lib/domaine/document'
+import { enSlug } from '@/lib/domaine/slug'
 import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
@@ -142,13 +143,21 @@ export default async function VueDEnsemble({
               <Case key={acteur.nom} accent={acteur.compteur === 0}>
                 <h3 className="font-titre text-h3 font-semibold text-encre">{acteur.nom}</h3>
                 {acteur.précision ? <p className="text-ardoise">{acteur.précision}</p> : null}
-                <p className="mt-auto label-mono pt-1 text-ardoise">
-                  {acteur.compteur === null
-                    ? 'suivi'
-                    : acteur.compteur === 0
-                      ? 'a bougé cette semaine'
-                      : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
-                </p>
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
+                  <p className="label-mono text-ardoise">
+                    {acteur.compteur === null
+                      ? 'suivi'
+                      : acteur.compteur === 0
+                        ? 'a bougé cette semaine'
+                        : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
+                  </p>
+                  <LienFlèche
+                    href={`/${accès.slug}/tendances/acteurs/${enSlug(acteur.nom)}`}
+                    étendu
+                  >
+                    Détail
+                  </LienFlèche>
+                </div>
               </Case>
             ))}
           </Grille>
@@ -174,7 +183,7 @@ export default async function VueDEnsemble({
                 key={axe.titre}
                 axe={axe}
                 points={axe.points}
-                href={`/${accès.slug}/tendances/${slugDAxe(axe.titre)}`}
+                href={`/${accès.slug}/tendances/axes/${enSlug(axe.titre)}`}
               />
             ))}
           </Grille>
