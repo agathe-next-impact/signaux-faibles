@@ -147,7 +147,7 @@ Conception proposée :
    invalidée par webhook. Aucune écriture du portail dans Notion.
 2. **Jeton** : `identifiant d'accès` signé HMAC-SHA256 avec un secret
    d'environnement, encodé en base64url. Le lien est
-   `https://signal-faible.fr/acces/<jeton>`. Notion ne stocke jamais le
+   `https://signauxfaibles.io/acces/<jeton>`. Notion ne stocke jamais le
    secret ; révoquer = décocher `actif` ou régénérer l'identifiant.
 3. **Route `/acces/[jeton]`** : vérifie la signature en temps constant,
    cherche l'identifiant dans « Accès » (cache), pose un cookie de session
@@ -187,7 +187,7 @@ HMAC :
   « Accès » en cache et recompose le lien à la demande. Premier envoi et
   renvoi passent par le même flux : la page « recevoir mon lien ».
   L'opérateur dit simplement à la personne « saisissez votre email sur
-  signal-faible.fr ».
+  signauxfaibles.io ».
 - Ce choix évite deux écueils : faire sortir le secret vers Cowork, et
   envoyer un email depuis le handler de webhook (huit tentatives Notion
   possibles, donc doublons).

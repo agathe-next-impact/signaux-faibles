@@ -2,9 +2,9 @@
  * Regroupement des éditions par semaine.
  *
  * Le dispositif produit deux notes par parution et par organisation, une par
- * veille, numérotées séparément par famille. Le portail n'en fait pas deux
- * entrées concurrentes : une entrée par semaine, qui rassemble les notes de la
- * semaine. Le regroupement se fait ici, côté portail, après la requête filtrée
+ * veille, numérotées séparément par la propriété interne `Famille`. Le portail
+ * n'en fait pas deux entrées concurrentes : une entrée par semaine, qui
+ * rassemble les notes de la semaine. Le regroupement se fait ici, côté portail, après la requête filtrée
  * — jamais par une requête Notion par semaine.
  *
  * Tous les calculs sont en UTC. Les dates d'édition sont des dates sans heure ;

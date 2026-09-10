@@ -1,5 +1,5 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
-import { EntêteÉcran, LienFlèche } from '@/components/coquille'
+import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { semainesPubliées } from '@/lib/portail/semaine'
 
 /**
@@ -40,32 +40,35 @@ export default async function Recommandations({
           toujours.
         </p>
       ) : (
-        <ul className="mt-8 flex flex-col gap-4">
-          {avecAction.map(({ semaine, actions }, rang) => (
-            <li
-              key={semaine.clé}
-              className={`flex flex-col gap-3 rounded-carte border p-5 ${
-                rang === 0 ? 'border-rose bg-fond-rose' : 'border-gris-ligne bg-blanc'
-              }`}
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <h2 className="font-titre text-h3 font-semibold text-encre">{semaine.libellé}</h2>
-                {rang === 0 ? <span className="label-mono text-rose">cette semaine</span> : null}
-              </div>
-
-              {actions.map(({ veille, action }) => (
-                <div key={`${veille}-${action}`} className="flex flex-col gap-1">
-                  {veille ? <p className="label-mono text-ardoise">{veille}</p> : null}
-                  <p className="text-encre">{action}</p>
+        <div className="mt-8">
+          <Grille étiquette="Actions proposées" colonnes={2}>
+            {avecAction.map(({ semaine, actions }, rang) => (
+              // La semaine en cours est la seule accentuée : le fond rose
+              // signale l'actualité, il ne hiérarchise pas les autres.
+              <Case key={semaine.clé} accent={rang === 0}>
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
+                  <h2 className="font-titre text-h3 font-semibold text-encre">
+                    {semaine.libellé}
+                  </h2>
+                  {rang === 0 ? <span className="label-mono text-rose">cette semaine</span> : null}
                 </div>
-              ))}
 
-              <LienFlèche href={`/${accès.slug}/archives/${semaine.clé}`}>
-                Relire cette semaine
-              </LienFlèche>
-            </li>
-          ))}
-        </ul>
+                {actions.map(({ veille, action }) => (
+                  <div key={`${veille}-${action}`} className="flex flex-col gap-1">
+                    {veille ? <p className="label-mono text-ardoise">{veille}</p> : null}
+                    <p className="text-encre">{action}</p>
+                  </div>
+                ))}
+
+                <div className="mt-auto pt-1">
+                  <LienFlèche href={`/${accès.slug}/archives/${semaine.clé}`}>
+                    Relire cette semaine
+                  </LienFlèche>
+                </div>
+              </Case>
+            ))}
+          </Grille>
+        </div>
       )}
     </>
   )

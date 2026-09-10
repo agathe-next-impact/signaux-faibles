@@ -1,19 +1,19 @@
-import { famillesDuDocument, type Document } from '@/lib/domaine/document'
+import { axesDuDocument, type Document } from '@/lib/domaine/document'
 import { lireDossiersOuverts, type DossierOuvert } from '@/lib/domaine/dossiers'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 
 /**
  * Ce que la vue d'ensemble sait dire d'une semaine.
  *
- * Tout se déduit de ce que Notion porte déjà : les familles du corps des notes,
- * et la propriété texte des dossiers ouverts. Rien n'est inventé, et rien ne
+ * Tout se déduit de ce que Notion porte déjà : les axes du corps des notes, et
+ * la propriété texte des dossiers ouverts. Rien n'est inventé, et rien ne
  * demande de lecture supplémentaire.
  */
 export type Synthèse = {
   readonly parNiveau: Readonly<Record<NiveauImpact, number>>
-  /** Familles dont le suffixe n'est pas un niveau connu : affichées, non comptées. */
+  /** Axes dont le suffixe n'est pas un niveau connu : affichés, non comptés. */
   readonly sansNiveau: number
-  readonly famillesTotal: number
+  readonly axesTotal: number
   readonly dossiers: readonly DossierOuvert[]
   /** Dossiers rouverts au moins une fois sans avoir bougé. */
   readonly dossiersEnAttente: number
@@ -27,8 +27,8 @@ export function synthétiser(
   let sansNiveau = 0
 
   for (const document of documents) {
-    for (const famille of famillesDuDocument(document)) {
-      if (famille.niveau) parNiveau[famille.niveau] += 1
+    for (const axe of axesDuDocument(document)) {
+      if (axe.niveau) parNiveau[axe.niveau] += 1
       else sansNiveau += 1
     }
   }
@@ -50,7 +50,7 @@ export function synthétiser(
   return {
     parNiveau,
     sansNiveau,
-    famillesTotal: parNiveau.FORT + parNiveau.MOYEN + parNiveau.RAS + sansNiveau,
+    axesTotal: parNiveau.FORT + parNiveau.MOYEN + parNiveau.RAS + sansNiveau,
     dossiers,
     dossiersEnAttente: dossiers.filter((dossier) => (dossier.compteur ?? 0) > 0).length,
   }

@@ -10,7 +10,7 @@ export function Formulaire() {
 
   if (résultat.état === 'envoyé') {
     return (
-      <p className="rounded-carte bg-fond-ardoise px-4 py-3 text-encre">
+      <p className="bg-fond-ardoise px-4 py-3 text-encre">
         Si cette adresse a un accès actif, le lien vient d’y être envoyé.
         Regardez votre boîte, et vos indésirables.
       </p>

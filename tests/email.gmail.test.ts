@@ -7,9 +7,9 @@ import {
 
 describe('composerRevendications', () => {
   it('emprunte la boîte dédiée et ne demande que gmail.send', () => {
-    const r = composerRevendications('sa@projet.iam.gserviceaccount.com', 'acces@signal-faible.fr', 1_000_000)
+    const r = composerRevendications('sa@projet.iam.gserviceaccount.com', 'acces@signauxfaibles.io', 1_000_000)
     expect(r.iss).toBe('sa@projet.iam.gserviceaccount.com')
-    expect(r.sub).toBe('acces@signal-faible.fr')
+    expect(r.sub).toBe('acces@signauxfaibles.io')
     expect(r.scope).toBe('https://www.googleapis.com/auth/gmail.send')
     expect(r.exp - r.iat).toBeLessThanOrEqual(3600)
   })
@@ -19,7 +19,7 @@ describe('composerMessage', () => {
   it('produit des fins de ligne CRLF, comme l’exige la RFC 2822', () => {
     const brut = composerMessage(
       { destinataire: 'jean@exemple.test', sujet: 'Sujet', texte: 'Corps' },
-      'acces@signal-faible.fr',
+      'acces@signauxfaibles.io',
       'signauxfaibles',
     )
     expect(brut).toContain('\r\n')
@@ -29,7 +29,7 @@ describe('composerMessage', () => {
   it('encode un sujet accentué plutôt que de l’écrire brut', () => {
     const brut = composerMessage(
       { destinataire: 'j@e.test', sujet: 'Votre accès à la veille', texte: 'x' },
-      'acces@signal-faible.fr',
+      'acces@signauxfaibles.io',
       'signauxfaibles',
     )
     expect(brut).toContain('Subject: =?UTF-8?B?')
@@ -58,8 +58,8 @@ describe('composerMessage', () => {
 
 describe('composerCourrierDAccès', () => {
   it('porte le lien et avertit contre le transfert', () => {
-    const message = composerCourrierDAccès('Jean', 'https://signal-faible.fr/acces/abc.def')
-    expect(message.texte).toContain('https://signal-faible.fr/acces/abc.def')
+    const message = composerCourrierDAccès('Jean', 'https://signauxfaibles.io/acces/abc.def')
+    expect(message.texte).toContain('https://signauxfaibles.io/acces/abc.def')
     expect(message.texte).toContain('Bonjour Jean,')
     expect(message.texte).toContain('Ne le transférez pas')
   })

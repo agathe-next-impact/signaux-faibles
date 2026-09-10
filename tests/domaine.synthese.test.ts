@@ -10,7 +10,7 @@ const h1 = (x: string): BlocNotion => ({ id: `h1${x}`, type: 'heading_1', headin
 const h2 = (x: string): BlocNotion => ({ id: `h2${x}`, type: 'heading_2', heading_2: { rich_text: [t(x)] } })
 
 const noteÉcosystème = construireDocument([
-  h1('Actualités par famille'),
+  h1('Actualités par axe'),
   h2('② Cadre — FORT'),
   h2('③ Financements — MOYEN'),
   h2('④ Filière — RAS'),
@@ -23,10 +23,10 @@ const noteConcurrentielle = construireDocument([
 ])
 
 describe('synthétiser', () => {
-  it('compte les familles par niveau, sur les deux notes de la semaine', () => {
+  it('compte les axes par niveau, sur les deux notes de la semaine', () => {
     const s = synthétiser([noteÉcosystème, noteConcurrentielle], [])
     expect(s.parNiveau).toEqual({ FORT: 2, MOYEN: 1, RAS: 2 })
-    expect(s.famillesTotal).toBe(6)
+    expect(s.axesTotal).toBe(6)
   })
 
   it('ne range pas un suffixe inconnu dans un niveau', () => {
@@ -55,7 +55,7 @@ describe('synthétiser', () => {
 
   it('rend une synthèse vide sans broncher', () => {
     const s = synthétiser([], [])
-    expect(s.famillesTotal).toBe(0)
+    expect(s.axesTotal).toBe(0)
     expect(s.dossiers).toEqual([])
   })
 })

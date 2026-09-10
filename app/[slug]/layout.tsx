@@ -41,8 +41,8 @@ async function Garde({
   const { slug } = await params
   const accès = await exigerAccès(slug)
 
-  // Les deux compteurs du rail se lisent dans la requête de liste, déjà
-  // nécessaire : aucun corps de note n'est chargé pour les afficher.
+  // Les compteurs du rail se lisent dans la requête de liste, déjà nécessaire :
+  // aucun corps de note n'est chargé pour les afficher.
   const semaines = await semainesPubliées(accès.organisationId)
   const recommandations = semaines.filter((semaine) =>
     semaine.éditions.some((édition) => édition.actionDeLaSemaine.length > 0),
@@ -51,7 +51,11 @@ async function Garde({
   return (
     <Coquille
       organisation={accès.organisationLibellé || 'votre veille'}
-      onglets={ongletsDe(accès.slug, { recommandations, archives: semaines.length })}
+      onglets={ongletsDe(accès.slug, {
+        lettres: semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
+        recommandations,
+        archives: semaines.length,
+      })}
     >
       {children}
     </Coquille>

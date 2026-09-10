@@ -1,7 +1,7 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
-import { EntêteÉcran, LienFlèche, Tuile } from '@/components/coquille'
-import { BadgeImpact } from '@/components/badge-impact'
-import { extraitDeFamille, famillesDuDocument } from '@/lib/domaine/document'
+import { EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
+import { CaseAxe } from '@/components/case-axe'
+import { axesDuDocument } from '@/lib/domaine/document'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
 import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
@@ -9,7 +9,7 @@ import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
 /**
  * Vue d'ensemble : ce que la semaine dit, en un écran.
  *
- * Les chiffres se déduisent des familles des notes de la semaine, jamais d'une
+ * Les chiffres se déduisent des axes des notes de la semaine, jamais d'une
  * donnée inventée. La comparaison porte sur la semaine précédente, deux
  * lectures de blocs de plus — c'est ce qui fait la valeur d'un tableau de bord,
  * et le cache l'absorbe.
@@ -52,7 +52,7 @@ export default async function VueDEnsemble({
       )
     : null
 
-  const familles = trierParImpact(documents.flatMap(famillesDuDocument))
+  const axes = trierParImpact(documents.flatMap(axesDuDocument))
   const actions = courante.éditions
     .map((édition) => édition.actionDeLaSemaine)
     .filter((action) => action.length > 0)
@@ -65,71 +65,65 @@ export default async function VueDEnsemble({
         état={`à jour · ${courante.libellé}`}
       />
 
-      <section aria-label="Chiffres de la semaine" className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Tuile
-          intitulé="familles suivies"
-          valeur={synthèse.famillesTotal}
-          mention={écart(synthèse.famillesTotal, précédente?.famillesTotal ?? null)}
-        />
-        <Tuile
-          intitulé="signal fort"
-          valeur={synthèse.parNiveau.FORT}
-          mention={écart(synthèse.parNiveau.FORT, précédente?.parNiveau.FORT ?? null)}
-          accent={synthèse.parNiveau.FORT > 0}
-        />
-        <Tuile
-          intitulé="à surveiller"
-          valeur={synthèse.parNiveau.MOYEN}
-          mention={écart(synthèse.parNiveau.MOYEN, précédente?.parNiveau.MOYEN ?? null)}
-        />
-        <Tuile
-          intitulé="dossiers sans mouvement"
-          valeur={synthèse.dossiersEnAttente}
-          mention={`sur ${synthèse.dossiers.length} suivis`}
-        />
-      </section>
+      <div className="mt-6">
+        <Grille étiquette="Chiffres de la semaine" colonnes={4}>
+          <Tuile
+            intitulé="axes suivis"
+            valeur={synthèse.axesTotal}
+            mention={écart(synthèse.axesTotal, précédente?.axesTotal ?? null)}
+          />
+          <Tuile
+            intitulé="signal fort"
+            valeur={synthèse.parNiveau.FORT}
+            mention={écart(synthèse.parNiveau.FORT, précédente?.parNiveau.FORT ?? null)}
+            accent={synthèse.parNiveau.FORT > 0}
+          />
+          <Tuile
+            intitulé="à surveiller"
+            valeur={synthèse.parNiveau.MOYEN}
+            mention={écart(synthèse.parNiveau.MOYEN, précédente?.parNiveau.MOYEN ?? null)}
+          />
+          <Tuile
+            intitulé="dossiers sans mouvement"
+            valeur={synthèse.dossiersEnAttente}
+            mention={`sur ${synthèse.dossiers.length} suivis`}
+          />
+        </Grille>
+      </div>
 
       {actions.length > 0 ? (
-        <section className="mt-6 rounded-carte border border-gris-ligne bg-fond-ardoise p-5">
-          <h2 className="label-mono text-ardoise">Action de la semaine</h2>
-          <ul className="mt-3 flex flex-col gap-2">
-            {actions.map((action) => (
-              <li key={action} className="text-encre">
-                {action}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <div className="mt-6">
+          <Panneau ton="ardoise">
+            <h2 className="label-mono text-ardoise">Action de la semaine</h2>
+            <ul className="mt-3 flex flex-col gap-2">
+              {actions.map((action) => (
+                <li key={action} className="text-encre">
+                  {action}
+                </li>
+              ))}
+            </ul>
+          </Panneau>
+        </div>
       ) : null}
 
       <section className="mt-8 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-titre text-h2 font-bold text-encre">Les familles de la semaine</h2>
-          <LienFlèche href={`/${accès.slug}/signaux`}>Lire les notes</LienFlèche>
+          <h2 className="font-titre text-h2 font-bold text-encre">Les axes de la semaine</h2>
+          <LienFlèche href={`/${accès.slug}/lettres`}>Lire les lettres</LienFlèche>
         </div>
 
-        {familles.length === 0 ? (
-          <p className="text-ardoise">Les notes de cette semaine ne portent pas de famille.</p>
+        {axes.length === 0 ? (
+          <p className="text-ardoise">Les notes de cette semaine ne portent pas d’axe.</p>
         ) : (
-          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {familles.map((famille, rang) => (
-              <li
-                key={`${famille.titre}-${rang}`}
-                className="flex flex-col gap-3 rounded-carte border border-gris-ligne p-4"
-              >
-                <h3 className="font-titre text-h3 font-semibold text-encre">{famille.titre}</h3>
-                {extraitDeFamille(famille) ? (
-                  <p className="text-ardoise">{extraitDeFamille(famille)}</p>
-                ) : null}
-                {/* Badge en pied, comme la carte de la maquette : le titre garde
-                    toute la largeur et ne se casse pas en deux. */}
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
-                  <BadgeImpact niveau={famille.niveau} />
-                  <LienFlèche href={`/${accès.slug}/signaux`}>Détail</LienFlèche>
-                </div>
-              </li>
+          <Grille étiquette="Axes de la semaine">
+            {axes.map((axe, rang) => (
+              <CaseAxe
+                key={`${axe.titre}-${rang}`}
+                axe={axe}
+                href={`/${accès.slug}/tendances`}
+              />
             ))}
-          </ul>
+          </Grille>
         )}
       </section>
     </>

@@ -48,8 +48,8 @@ describe('signerJeton / vérifierJeton', () => {
   })
 
   it('compose un lien vers la route qui redirige immédiatement', () => {
-    const lien = composerLienDAccès('acc_7f3a91', SECRET, 'https://signal-faible.fr')
-    expect(lien.startsWith('https://signal-faible.fr/acces/')).toBe(true)
+    const lien = composerLienDAccès('acc_7f3a91', SECRET, 'https://signauxfaibles.io')
+    expect(lien.startsWith('https://signauxfaibles.io/acces/')).toBe(true)
   })
 
   it('donne deux jetons différents pour deux identifiants différents', () => {

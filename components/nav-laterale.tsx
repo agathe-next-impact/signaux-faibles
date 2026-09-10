@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { Onglet } from '@/components/coquille'
+import { estOngletCourant } from '@/lib/portail/onglet'
 
 /**
  * La navigation du rail. Cliente pour connaître l'écran courant : le layout est
@@ -14,10 +15,7 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
   return (
     <nav aria-label="Sections" className="flex flex-wrap gap-1 lg:flex-col">
       {onglets.map((onglet) => {
-        // L'archive garde son onglet actif sur la page d'une semaine.
-        const courant =
-          chemin === onglet.href ||
-          (onglet.href.endsWith('/archives') && chemin.startsWith(`${onglet.href}/`))
+        const courant = estOngletCourant(onglet, chemin)
 
         return (
           <Link

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   construireDocument,
-  famillesDuDocument,
+  axesDuDocument,
   type BlocNotion,
 } from '@/lib/domaine/document'
 
@@ -33,25 +33,25 @@ describe('construireDocument', () => {
     expect(doc.rubriques[0]?.titre).toBe("L'essentiel")
   })
 
-  it('ouvre une famille par H2 et lit son badge dans le suffixe', () => {
+  it('ouvre un axe par H2 et lit son badge dans le suffixe', () => {
     const doc = construireDocument([
-      h1('Actualités par famille'),
+      h1('Actualités par axe'),
       h2('② Cadre français — FORT'),
       p('Un fait.'),
       h2('③ Filière — RAS'),
     ])
-    const familles = doc.rubriques[0]?.familles ?? []
-    expect(familles.map((f) => [f.titre, f.niveau])).toEqual([
+    const axes = doc.rubriques[0]?.axes ?? []
+    expect(axes.map((f) => [f.titre, f.niveau])).toEqual([
       ['② Cadre français', 'FORT'],
       ['③ Filière', 'RAS'],
     ])
-    expect(familles[0]?.blocs).toHaveLength(1)
+    expect(axes[0]?.blocs).toHaveLength(1)
   })
 
   it('range ce qui suit un H1 avant tout H2 dans l’introduction de la rubrique', () => {
-    const doc = construireDocument([h1('Analyse'), p('Mise en contexte.'), h2('Famille — FORT')])
+    const doc = construireDocument([h1('Analyse'), p('Mise en contexte.'), h2('Axe — FORT')])
     expect(doc.rubriques[0]?.introduction).toHaveLength(1)
-    expect(doc.rubriques[0]?.familles).toHaveLength(1)
+    expect(doc.rubriques[0]?.axes).toHaveLength(1)
   })
 
   it('fusionne les puces consécutives en une seule liste', () => {
@@ -151,19 +151,19 @@ describe('construireDocument', () => {
     expect(doc.préambule).toHaveLength(0)
   })
 
-  it('rattache une famille orpheline plutôt que de la perdre', () => {
-    const doc = construireDocument([h2('Famille — MOYEN'), p('un fait')])
+  it('rattache un axe orphelin plutôt que de le perdre', () => {
+    const doc = construireDocument([h2('Axe — MOYEN'), p('un fait')])
     expect(doc.rubriques).toHaveLength(1)
     expect(doc.rubriques[0]?.titre).toBe('')
-    expect(doc.rubriques[0]?.familles[0]?.blocs).toHaveLength(1)
+    expect(doc.rubriques[0]?.axes[0]?.blocs).toHaveLength(1)
   })
 
-  it('rassemble les familles de toutes les rubriques pour un tri global', () => {
+  it('rassemble les axes de toutes les rubriques pour un tri global', () => {
     const doc = construireDocument([
       h1('Un'), h2('A — RAS'),
       h1('Deux'), h2('B — FORT'),
     ])
-    expect(famillesDuDocument(doc).map((f) => f.titre)).toEqual(['A', 'B'])
+    expect(axesDuDocument(doc).map((f) => f.titre)).toEqual(['A', 'B'])
   })
 
   it('rend un document vide sans broncher', () => {
