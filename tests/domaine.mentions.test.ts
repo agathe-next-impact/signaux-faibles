@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { construireDocument, type BlocNotion } from '@/lib/domaine/document'
-import { acteursAvecActualité, mentionsDe } from '@/lib/domaine/mentions'
+import { acteursEnVue, mentionsDe } from '@/lib/domaine/mentions'
 
 const texte = (contenu: string) => [{ plain_text: contenu }]
 
@@ -32,7 +32,7 @@ describe('mentionsDe', () => {
 
     const mentions = mentionsDe('CADA', document)
     expect(mentions).toHaveLength(1)
-    expect(mentions[0]?.axe).toBe('Cadre')
+    expect(mentions[0]?.titre).toBe('Cadre')
     expect(mentions[0]?.numéro).toBe(1)
     expect(mentions[0]?.niveau).toBe('FORT')
     expect(mentions[0]?.passages).toEqual(['La CADA a rendu son avis.'])
@@ -90,21 +90,31 @@ describe('mentionsDe', () => {
   })
 })
 
-describe('acteursAvecActualité', () => {
+describe('acteursEnVue', () => {
   const acteur = (nom: string, compteur: number | null) => ({ nom, compteur, précision: null })
   const lettre = (...phrases: readonly string[]) =>
     construireDocument([h2('Cadre — RAS'), ...phrases.map((phrase) => p(phrase))])
 
+  it('rend l’extrait de la lettre, de quoi remplir la case', () => {
+    const [gardé] = acteursEnVue([acteur('CADA', 4)], [lettre('La CADA a rendu son avis.')])
+    expect(gardé?.extrait).toBe('La CADA a rendu son avis.')
+  })
+
+  it('n’invente pas d’extrait quand seul le compteur retient l’acteur', () => {
+    const [gardé] = acteursEnVue([acteur('CADA', 0)], [lettre('Rien sur ce front.')])
+    expect(gardé?.extrait).toBeNull()
+  })
+
   it('garde un acteur qu’une lettre nomme', () => {
-    const gardés = acteursAvecActualité(
+    const gardés = acteursEnVue(
       [acteur('CADA', 4)],
       [lettre('La CADA a rendu son avis.')],
     )
-    expect(gardés.map((a) => a.nom)).toEqual(['CADA'])
+    expect(gardés.map((acteur) => acteur.nom)).toEqual(['CADA'])
   })
 
   it('écarte un acteur qu’aucune lettre ne nomme et qui n’a pas bougé', () => {
-    const gardés = acteursAvecActualité([acteur('CADA', 4)], [lettre('Rien sur ce front.')])
+    const gardés = acteursEnVue([acteur('CADA', 4)], [lettre('Rien sur ce front.')])
     expect(gardés).toEqual([])
   })
 
@@ -112,20 +122,20 @@ describe('acteursAvecActualité', () => {
     // Le cas qui impose la seconde porte : une lettre peut suivre « CADA » dans
     // ses dossiers et écrire son nom en toutes lettres dans sa prose. Sans le
     // compteur, l'acteur disparaîtrait la semaine même où il bouge.
-    const gardés = acteursAvecActualité(
+    const gardés = acteursEnVue(
       [acteur('CADA', 0)],
       [lettre('La Commission d’accès aux documents administratifs a tranché.')],
     )
-    expect(gardés.map((a) => a.nom)).toEqual(['CADA'])
+    expect(gardés.map((acteur) => acteur.nom)).toEqual(['CADA'])
   })
 
   it('n’écarte rien quand il n’y a aucune lettre à interroger', () => {
-    expect(acteursAvecActualité([acteur('CADA', 0)], [])).toHaveLength(1)
-    expect(acteursAvecActualité([acteur('CADA', 2)], [])).toHaveLength(0)
+    expect(acteursEnVue([acteur('CADA', 0)], [])).toHaveLength(1)
+    expect(acteursEnVue([acteur('CADA', 2)], [])).toHaveLength(0)
   })
 
   it('interroge toutes les lettres fournies, pas seulement la première', () => {
-    const gardés = acteursAvecActualité(
+    const gardés = acteursEnVue(
       [acteur('CADA', 3)],
       [lettre('Rien.'), lettre('La CADA revient dans le débat.')],
     )

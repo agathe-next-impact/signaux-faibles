@@ -4,7 +4,7 @@ import { CaseAxe } from '@/components/case-axe'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
 import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
-import { acteursAvecActualité } from '@/lib/domaine/mentions'
+import { acteursEnVue } from '@/lib/domaine/mentions'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
 import {
@@ -79,7 +79,7 @@ export default async function VueDEnsemble({
   // Un dossier qui dort n'occupe pas une case de l'accueil pour ne rien
   // apprendre. Il n'est pas perdu : les tendances portent le suivi entier.
   const acteurs = ordonnerLesDossiers(
-    acteursAvecActualité(
+    acteursEnVue(
       synthèse.dossiers,
       récentes.map((note) => note.document),
     ),
@@ -171,7 +171,13 @@ export default async function VueDEnsemble({
               // signale l'acteur qui vient de bouger.
               <Case key={acteur.nom} accent={acteur.compteur === 0}>
                 <h3 className="font-titre text-h3 font-semibold text-encre">{acteur.nom}</h3>
-                {acteur.précision ? <p className="text-ardoise">{acteur.précision}</p> : null}
+                {/* La précision du dossier d'abord — c'est la formule de la
+                    veille. À défaut, la phrase de la lettre qui le nomme : la
+                    moitié des dossiers réels n'ont pas de précision, et leur
+                    case n'apprenait rien. */}
+                {acteur.précision ?? acteur.extrait ? (
+                  <p className="text-ardoise">{acteur.précision ?? acteur.extrait}</p>
+                ) : null}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
                   <p className="label-mono text-ardoise">
                     {acteur.compteur === null
