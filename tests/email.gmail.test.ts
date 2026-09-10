@@ -70,7 +70,7 @@ describe('composerCourrierDAccès', () => {
 })
 
 import { createSign, createVerify, generateKeyPairSync } from 'node:crypto'
-import { normaliserClePrivée } from '@/lib/email/gmail'
+import { décrireClePrivée, normaliserClePrivée } from '@/lib/email/gmail'
 
 // Une vraie paire RSA, comme celle d'un compte de service Google.
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -118,11 +118,11 @@ describe('normaliserClePrivée', () => {
     expect(signeEtVérifie(normaliserClePrivée(`  ${privateKey.trimEnd()}  `))).toBe(true)
   })
 
-  it('nomme le problème quand les retours à la ligne ont été perdus', () => {
-    // C'est le cas qui produisait « DECODER routines::unsupported », sans rien
-    // dire de la cause.
+  it('répare une clé dont tous les retours à la ligne ont été perdus', () => {
+    // C'est le cas qui produisait « DECODER routines::unsupported ». La
+    // reconstruction canonique le rattrape : l'armure et le corps suffisent.
     const aplatie = privateKey.replaceAll('\n', '')
-    expect(() => normaliserClePrivée(aplatie)).toThrow(/une seule ligne/)
+    expect(signeEtVérifie(normaliserClePrivée(aplatie))).toBe(true)
   })
 
   it('nomme le problème quand la valeur n’est pas un PEM du tout', () => {
@@ -134,5 +134,62 @@ describe('normaliserClePrivée', () => {
     const fausse = '-----BEGIN PRIVATE KEY-----\nZm91cmJp\n-----END PRIVATE KEY-----\n'
     expect(() => normaliserClePrivée(fausse)).not.toThrow()
     expect(() => signeEtVérifie(normaliserClePrivée(fausse))).toThrow()
+  })
+})
+
+describe('normaliserClePrivée — reconstruction canonique', () => {
+  it('rattrape les retours à la ligne remplacés par des espaces', () => {
+    // Cas qu'un simple contrôle « contient un retour à la ligne » laissait
+    // passer, et qui finissait en DECODER routines::unsupported.
+    const abîmée = privateKey.replaceAll('\n', ' ')
+    expect(signeEtVérifie(normaliserClePrivée(abîmée))).toBe(true)
+  })
+
+  it('rattrape une marque d’ordre des octets en tête', () => {
+    expect(signeEtVérifie(normaliserClePrivée(`\uFEFF${privateKey}`))).toBe(true)
+  })
+
+  it('rattrape les espaces insécables semés dans le corps', () => {
+    const abîmée = privateKey.replaceAll('\n', '\u00a0\n\u00a0')
+    expect(signeEtVérifie(normaliserClePrivée(abîmée))).toBe(true)
+  })
+
+  it('rattrape des longueurs de ligne fantaisistes', () => {
+    const corps = privateKey.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')
+    const abîmée =
+      `-----BEGIN PRIVATE KEY-----\n${corps.match(/.{1,17}/g)?.join('\n')}\n-----END PRIVATE KEY-----`
+    expect(signeEtVérifie(normaliserClePrivée(abîmée))).toBe(true)
+  })
+
+  it('réécrit toujours la même forme canonique, quelle que soit l’entrée', () => {
+    const formes = [
+      privateKey,
+      privateKey.replaceAll('\n', '\\n'),
+      privateKey.replaceAll('\n', ' '),
+      `"${privateKey}"`,
+      Buffer.from(privateKey, 'utf8').toString('base64'),
+    ]
+    const canoniques = new Set(formes.map(normaliserClePrivée))
+    expect(canoniques.size).toBe(1)
+  })
+
+  it('refuse une armure dépareillée plutôt que de deviner', () => {
+    const dépareillée = '-----BEGIN PRIVATE KEY-----\nZm91cmJp\n-----END PUBLIC KEY-----'
+    expect(() => normaliserClePrivée(dépareillée)).toThrow(/BEGIN/)
+  })
+
+  it('nomme le problème quand le corps a été tronqué', () => {
+    expect(() => normaliserClePrivée('-----BEGIN PRIVATE KEY-----\n\n-----END PRIVATE KEY-----'))
+      .toThrow(/base64 exploitable/)
+  })
+})
+
+describe('décrireClePrivée', () => {
+  it('dit l’armure et la longueur, jamais le contenu', () => {
+    const description = décrireClePrivée(normaliserClePrivée(privateKey))
+    expect(description).toContain('PRIVATE KEY')
+    expect(description).toMatch(/\d+ caractères de corps/)
+    const corps = privateKey.replace(/-----[^-]+-----/g, '').replace(/\s/g, '')
+    expect(description).not.toContain(corps.slice(0, 24))
   })
 })

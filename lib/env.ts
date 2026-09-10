@@ -15,11 +15,27 @@ const schema = z.object({
   NOTION_WEBHOOK_SECRET: z.string().min(1),
   ACCES_SECRET_HMAC: z.string().min(32),
   PORTAIL_URL: z.url(),
-  GOOGLE_COMPTE_SERVICE_EMAIL: z.email(),
-  GOOGLE_COMPTE_SERVICE_CLE_PRIVEE: z.string().min(1),
+  // Trois façons de fournir le compte de service, de la plus sûre à la plus
+  // fragile. Le fichier JSON entier est à préférer : il tient sur une ligne,
+  // ses retours à la ligne y sont déjà échappés, et rien ne peut se perdre au
+  // collage. Les deux variables séparées restent acceptées.
+  GOOGLE_COMPTE_SERVICE_JSON: z.string().min(1).optional(),
+  GOOGLE_COMPTE_SERVICE_EMAIL: z.email().optional(),
+  GOOGLE_COMPTE_SERVICE_CLE_PRIVEE: z.string().min(1).optional(),
   GMAIL_EXPEDITEUR: z.email(),
   GMAIL_EXPEDITEUR_NOM: z.string().min(1).default('signauxfaibles'),
-})
+}).refine(
+  (valeurs) =>
+    Boolean(valeurs.GOOGLE_COMPTE_SERVICE_JSON) ||
+    Boolean(valeurs.GOOGLE_COMPTE_SERVICE_EMAIL && valeurs.GOOGLE_COMPTE_SERVICE_CLE_PRIVEE),
+  {
+    message:
+      'Renseigner GOOGLE_COMPTE_SERVICE_JSON — le fichier de clé entier, la voie ' +
+      'recommandée — ou bien GOOGLE_COMPTE_SERVICE_EMAIL et ' +
+      'GOOGLE_COMPTE_SERVICE_CLE_PRIVEE tous les deux.',
+    path: ['GOOGLE_COMPTE_SERVICE_JSON'],
+  },
+)
 
 export type Env = z.infer<typeof schema>
 
