@@ -265,3 +265,19 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
 export function famillesDuDocument(document: Document): Famille[] {
   return document.rubriques.flatMap((rubrique) => rubrique.familles)
 }
+
+/**
+ * Les premiers mots d'une famille, pour une carte de synthèse.
+ *
+ * On prend le premier bloc qui porte du texte suivi — un paragraphe ou une
+ * citation — et non un titre, qui ne dirait que ce que la carte affiche déjà.
+ */
+export function extraitDeFamille(famille: Famille, longueur = 150): string {
+  for (const bloc of famille.blocs) {
+    if (bloc.type !== 'paragraphe' && bloc.type !== 'citation') continue
+    const texte = bloc.segments.map((segment) => segment.texte).join('').trim()
+    if (texte.length === 0) continue
+    return texte.length <= longueur ? texte : `${texte.slice(0, longueur).trimEnd()}…`
+  }
+  return ''
+}

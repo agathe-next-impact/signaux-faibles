@@ -88,12 +88,24 @@ mènent tous les trois où il faut, et sont testés.
 
 ## Session 5 — écrans, structure avant apparence ✅
 
-- `/[slug]` : la semaine la plus récente, qui rassemble les notes de la
-  semaine (décision 6).
-- `/[slug]/semaines` : l'archive, une entrée par semaine.
-- `/[slug]/semaines/[semaine]` : une semaine.
-- Rendu du document, familles repliables, badges d'impact, panneau des
-  dossiers ouverts.
+Cinq écrans, derrière un rail latéral, structure reprise de la maquette de
+tableau de bord du 10 septembre 2026 :
+
+| Écran | Ce qu'il montre | Coût Notion |
+|---|---|---|
+| `/[slug]` — vue d'ensemble | chiffres de la semaine, action, familles en cartes | liste + 4 lectures de blocs |
+| `/[slug]/signaux` | les notes de la semaine, en entier | liste + 2 lectures de blocs |
+| `/[slug]/tendances` | l'évolution des dossiers, semaine après semaine | liste seule |
+| `/[slug]/recommandations` | l'action de la semaine, et celles d'avant | liste seule |
+| `/[slug]/archives` et `/archives/[semaine]` | une entrée par semaine | liste seule |
+
+La structure vient de la maquette ; l'apparence n'en retient rien. Couleurs,
+typographie, rayons et badges restent ceux de la charte, et le rail est blanc
+bordé de gris ligne, non foncé.
+
+Aucun écran ne lit le corps des notes sur toute l'archive : ce serait une
+requête par édition, et le débit Notion ne le permet pas. Les écrans qui
+parlent de profondeur se contentent des propriétés de la liste.
 
 La structure et la sémantique sont définitives à l'issue de cette session ;
 l'apparence ne l'est pas.
