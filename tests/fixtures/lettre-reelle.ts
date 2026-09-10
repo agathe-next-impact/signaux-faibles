@@ -70,6 +70,22 @@ export const BLOCS_RÉELS: BlocNotion[] = [
     'La semaine oppose deux façons de définir qui est souverain. Le 1er septembre, l’ANSSI l’a dit par la qualification.',
   ),
 
+  bloc('heading_1', 'Ajustements du cadrage de cette veille'),
+  bloc(
+    'bulleted_list_item',
+    'Deux dates à corriger dans ce que nous suivons. La proposition européenne sur les réseaux (Digital Networks Act) date du 21 janvier 2026, et non de mars.',
+  ),
+  bloc(
+    'bulleted_list_item',
+    'Suivre à part les qualifications de cloud en cours. Douze candidats restent en lice après OVHcloud et Numspot.',
+  ),
+  bloc(
+    'paragraph',
+    'Ces ajustements ne seront appliqués qu’après votre accord. Pour demander vous-même une modification du cadrage, écrivez-nous.',
+  ),
+
+  // Le trait ferme le cadrage : ce qui suit est le pied de la lettre, et non
+  // une suite de la discussion sur le cadrage.
   bloc('divider', ''),
   bloc(
     'paragraph',
