@@ -12,7 +12,7 @@ import { defineConfig, devices } from '@playwright/test'
  * parcours ne doit atteindre Notion. Si l'un d'eux y arrivait, il échouerait,
  * et c'est le comportement voulu.
  */
-const FACTICES = {
+export const FACTICES = {
   NOTION_TOKEN: 'ntn_factice_pour_la_recette',
   NOTION_BASE_EDITIONS: '00000000000000000000000000000001',
   NOTION_BASE_ACCES: '00000000000000000000000000000002',

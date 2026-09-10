@@ -36,10 +36,20 @@ export async function documentsDeLaSemaine(
 /** Les cinq écrans de l'espace client, dans l'ordre du rail. */
 export function ongletsDe(slug: string, comptes: { recommandations: number; archives: number }) {
   return [
-    { href: `/${slug}`, libellé: "Vue d'ensemble" },
-    { href: `/${slug}/signaux`, libellé: 'Signaux' },
-    { href: `/${slug}/tendances`, libellé: 'Tendances' },
-    { href: `/${slug}/recommandations`, libellé: 'Recommandations', compte: comptes.recommandations },
-    { href: `/${slug}/archives`, libellé: 'Archives', compte: comptes.archives },
+    { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue' },
+    { href: `/${slug}/signaux`, libellé: 'Signaux', libelléCourt: 'Signaux' },
+    { href: `/${slug}/tendances`, libellé: 'Tendances', libelléCourt: 'Tendances' },
+    {
+      href: `/${slug}/recommandations`,
+      libellé: 'Recommandations',
+      libelléCourt: 'Reco.',
+      compte: comptes.recommandations,
+    },
+    {
+      href: `/${slug}/archives`,
+      libellé: 'Archives',
+      libelléCourt: 'Archives',
+      compte: comptes.archives,
+    },
   ]
 }

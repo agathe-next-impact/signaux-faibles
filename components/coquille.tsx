@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Logo } from '@/components/marque'
+import { MenuBas } from '@/components/menu-bas'
 import { NavLatérale } from '@/components/nav-laterale'
+import { Quitter } from '@/components/quitter'
 
 /**
  * La coquille de l'espace client : un rail à gauche, le contenu à droite.
@@ -12,6 +14,12 @@ import { NavLatérale } from '@/components/nav-laterale'
 export type Onglet = {
   readonly href: string
   readonly libellé: string
+  /**
+   * Le libellé du menu de pied, où cinq entrées se partagent la largeur d'un
+   * téléphone. C'est le même mot, abrégé : un synonyme ferait croire à deux
+   * destinations différentes.
+   */
+  readonly libelléCourt: string
   /** Nombre affiché en pastille. Omis ou nul, rien n'est affiché. */
   readonly compte?: number | null
 }
@@ -34,15 +42,26 @@ export function Coquille({
             <span className="label-mono text-ardoise">{organisation}</span>
           </div>
 
-          <NavLatérale onglets={onglets} />
+          {/* Le rail ne sert que sur grand écran : sous cette largeur, c'est le
+              menu de pied qui porte la navigation. */}
+          <div className="hidden lg:block">
+            <NavLatérale onglets={onglets} />
+          </div>
 
-          <p className="mt-auto hidden label-mono text-ardoise lg:block">
-            Accès personnel, à ne pas transférer
-          </p>
+          <div className="mt-auto hidden flex-col gap-2 lg:flex">
+            <p className="label-mono text-ardoise">Accès personnel, à ne pas transférer</p>
+            <Quitter />
+          </div>
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
+        <div className="px-6 pb-6 lg:hidden">
+          <Quitter />
+        </div>
+        <MenuBas onglets={onglets} />
+      </div>
     </div>
   )
 }

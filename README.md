@@ -70,7 +70,8 @@ depuis le 14 mars 2025.
 | `lib/notion/editions.ts`, `acces.ts` | les seules lectures Notion, toutes cachées et filtrées |
 | `lib/domaine/` | fonctions pures : impact, semaines, dossiers, arbre de document, synthèse, tendances |
 | `lib/portail/semaine.ts` | ce que les cinq écrans partagent, et le coût Notion de chacun |
-| `components/coquille.tsx` | le rail latéral et les briques d'écran |
+| `components/coquille.tsx` | le rail latéral, le menu de pied et les briques d'écran |
+| `public/sw.js`, `app/manifest.ts` | application installable et lecture hors ligne |
 | `lib/auth/` | signature du lien, session, contrôle d'appartenance |
 | `proxy.ts` | premier verrou : signature du cookie, pages seulement |
 | `app/api/media/[block_id]` | proxy d'images, cloisonné comme une page |
@@ -90,6 +91,14 @@ ligne de registre vivante et son doublon mis à la corbeille ; lire le premier
 **Aucune URL de fichier Notion dans le HTML.** Elles expirent en une heure.
 L'arbre de document ne conserve que l'identifiant du bloc, et un test le
 vérifie.
+
+## Hors ligne
+
+Le portail s'installe comme une application et les semaines déjà ouvertes
+restent lisibles sans réseau. Ce cache est une copie du contenu client sur
+l'appareil : il est purgé quand l'accès est révoqué, et « quitter sur cet
+appareil » le vide à la demande. Le détail, y compris le risque résiduel entre
+une révocation et la navigation suivante, est dans `docs/pwa-hors-ligne.md`.
 
 ## L'apparence
 

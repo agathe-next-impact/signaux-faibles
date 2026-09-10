@@ -26,6 +26,14 @@ const PUBLICS = [
   '/api/',
   '/_next/',
   '/favicon.ico',
+  // Ressources de l'application installable. La page hors ligne en fait
+  // partie : le service worker doit pouvoir la mettre en cache à
+  // l'installation, avant même qu'une session existe.
+  '/hors-ligne',
+  '/manifest.webmanifest',
+  '/sw.js',
+  '/icone-',
+  '/icon.svg',
 ]
 
 export function proxy(requête: NextRequest): NextResponse {

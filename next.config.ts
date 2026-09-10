@@ -48,6 +48,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Le service worker ne doit jamais être servi depuis un cache : c'est
+        // lui qui décide de tout le reste. Et il lui faut la portée racine,
+        // alors qu'il est servi depuis /public.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+      {
         source: '/:chemin*',
         headers: [
           // Le jeton ne doit jamais fuir par l'en-tête Referer (règle 8).

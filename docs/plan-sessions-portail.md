@@ -179,3 +179,25 @@ est sorti ; le portail reste sur la ligne 5.9, contre laquelle Next.js 16 est
 construit. ESLint 10 casse `eslint-plugin-react`, tiré par la configuration
 Next : la ligne 9 est la seule qui fonctionne aujourd'hui. À revoir quand
 l'écosystème aura suivi.
+
+**10 septembre 2026.** L'espace client est réorganisé en cinq écrans — vue
+d'ensemble, signaux, tendances, recommandations, archives —, et le portail
+devient une application installable, lisible hors ligne, avec menu de pied sur
+mobile. 126 tests unitaires, 12 parcours de recette.
+
+**La structure du tableau de bord, l'apparence de la charte.** Les maquettes
+fournies donnaient une organisation de l'information, pas une identité. Rail
+blanc bordé de gris ligne et non foncé, badges d'impact à trois niveaux,
+échelle typographique et rayons inchangés : aucun token n'a bougé.
+
+**Le hors-ligne ne se teste pas avec `setOffline`.** Le drapeau de Playwright
+n'atteint pas les requêtes du service worker, qui continuent de sortir. Le
+premier test concluait que le secours marchait alors qu'il n'avait jamais été
+sollicité. La recette démarre maintenant son propre serveur et l'arrête pour de
+bon. Le même piège a masqué un second défaut : la purge de révocation se
+déclenchait à toute visite du formulaire, y compris volontaire, et vidait le
+cache que l'on venait de remplir.
+
+**Ce cache est une donnée client sur un appareil.** C'est le seul endroit du
+portail où il en reste une copie. Purge à la révocation, purge sur demande, et
+un risque résiduel assumé entre les deux : `docs/pwa-hors-ligne.md`.

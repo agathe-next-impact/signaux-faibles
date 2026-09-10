@@ -1,5 +1,7 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, Lora, Public_Sans } from 'next/font/google'
+import { BannièreInstallation } from '@/components/banniere-installation'
+import { ServiceWorker } from '@/components/service-worker'
 import './globals.css'
 
 // Graisses de la charte : Lora 500 à 700 avec italique pour la voix
@@ -35,6 +37,24 @@ export const metadata: Metadata = {
   // Le portail est privé : aucune page ne doit être indexée, et surtout pas
   // une URL d'accès.
   robots: { index: false, follow: false },
+  applicationName: 'signauxfaibles',
+  appleWebApp: {
+    capable: true,
+    title: 'signauxfaibles',
+    // Safari n'a pas de barre de titre en mode application : la barre d'état
+    // se fond dans le fond blanc de la charte.
+    statusBarStyle: 'default',
+  },
+  formatDetection: { telephone: false },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#111418',
+  colorScheme: 'light',
+  // Le portail est un document : le lecteur doit pouvoir zoomer.
+  initialScale: 1,
+  width: 'device-width',
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -43,7 +63,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="fr"
       className={`${lora.variable} ${publicSans.variable} ${plexMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorker />
+        <BannièreInstallation />
+      </body>
     </html>
   )
 }
