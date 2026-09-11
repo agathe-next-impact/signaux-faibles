@@ -62,12 +62,17 @@ export function Coquille({
           lui-même pourrait croire lire son propre espace. En rose parce que
           c'est la seule couleur de signal de la charte. */}
       {enOpérateur ? (
-        <p
+        <div
           role="status"
-          className="sticky top-0 z-40 flex h-[var(--bandeau)] shrink-0 items-center border-b border-rose bg-fond-rose px-6 label-mono text-rose"
+          className="sticky top-0 z-40 flex h-[var(--bandeau)] shrink-0 flex-wrap items-center justify-between gap-x-4 overflow-hidden border-b border-rose bg-fond-rose px-6"
         >
-          accès opérateur · vous consultez l’espace de {organisation}
-        </p>
+          <p className="label-mono text-rose">
+            accès opérateur · vous consultez l’espace de {organisation}
+          </p>
+          <Link href="/espaces" className="label-mono text-rose underline underline-offset-2">
+            changer d’espace
+          </Link>
+        </div>
       ) : null}
 
       <div className="flex flex-1 flex-col lg:flex-row">

@@ -1,5 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
-import { lireAccèsParIdentifiant, organisationDuSlug, type Accès } from '@/lib/notion/acces'
+import {
+  lireAccèsParIdentifiant,
+  organisationDuSlug,
+  espacesOuverts,
+  type Accès,
+  type Espace,
+} from '@/lib/notion/acces'
 import { identifiantDeLaSession } from '@/lib/auth/session'
 
 /**
@@ -74,4 +80,29 @@ export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé
     slug: slugDemandé,
     enOpérateur: true,
   }
+}
+
+/**
+ * Les espaces ouverts, pour l'opérateur qui choisit lequel ouvrir.
+ *
+ * La garde est **dans** cette fonction et non à côté : c'est le seul chemin qui
+ * mène à la liste, et la liste est la seule lecture du portail qui traverse les
+ * clients. Un écran qui appellerait `espacesOuverts` directement contournerait
+ * la vérification ; `tests/architecture.test.ts` interdit cet appel ailleurs.
+ *
+ * Une personne sans privilège reçoit `notFound`, comme pour le slug d'un autre
+ * client : ne pas confirmer que cette page existe.
+ */
+export async function listerLesEspaces(): Promise<{
+  readonly accès: Accès
+  readonly espaces: Espace[]
+}> {
+  const identifiant = await identifiantDeLaSession()
+  if (!identifiant) redirect('/recevoir-mon-lien')
+
+  const accès = await lireAccèsParIdentifiant(identifiant)
+  if (!accès || !accès.actif) redirect('/recevoir-mon-lien?revoque=1')
+  if (!accès.tousLesEspaces) notFound()
+
+  return { accès, espaces: await espacesOuverts() }
 }

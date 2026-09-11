@@ -213,3 +213,63 @@ export async function lireAccèsActifParEmail(email: string): Promise<
     tousLesEspaces: lireCase(page, 'Tous les espaces'),
   }
 }
+
+/** Un espace client, tel qu'un opérateur le choisit. */
+export type Espace = {
+  readonly slug: string
+  readonly organisationLibellé: string
+  /** Nombre de personnes actives sur cet espace. */
+  readonly lecteurs: number
+}
+
+/**
+ * Tous les espaces ouverts, pour le sélecteur de l'opérateur.
+ *
+ * **C'est la seule lecture du portail qui traverse les clients**, et elle
+ * n'expose que ce que la base « Accès » porte déjà : un slug et un libellé.
+ * Aucune édition, aucun contenu de veille. Elle est réservée à l'accès
+ * opérateur, et `listerLesEspaces` de `lib/auth/appartenance.ts` est le seul
+ * chemin qui y mène — la garde y est faite avant l'appel, jamais après.
+ *
+ * Nommée `espacesOuverts` et non `tousLesEspaces` : ce dernier nom est celui de
+ * la **case** qui porte le privilège, et deux choses de même nom pour deux rôles
+ * opposés — un droit d'un côté, une liste de l'autre — finissent par se
+ * confondre à la lecture comme dans une garde d'architecture.
+ *
+ * Une ligne inactive ne compte pas : un espace dont tous les accès ont été
+ * révoqués disparaît du sélecteur, comme il a disparu pour ses lecteurs.
+ */
+export async function espacesOuverts(): Promise<Espace[]> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('acces')
+
+  const { accès: sourceId } = await sourcesDeDonnées()
+  cacheTag(`liste:${sourceId}`)
+
+  const réponse = await notion().dataSources.query({
+    data_source_id: sourceId,
+    filter: { property: 'Actif', checkbox: { equals: true } },
+    page_size: 100,
+  })
+
+  const parSlug = new Map<string, Espace>()
+
+  for (const page of réponse.results) {
+    const slug = lireTexte(page, 'Slug')
+    if (slug.length === 0) continue
+
+    const connu = parSlug.get(slug)
+    parSlug.set(slug, {
+      slug,
+      // Un libellé vide sur une ligne ne doit pas effacer celui d'une autre.
+      organisationLibellé: connu?.organisationLibellé || lireTexte(page, 'Organisation (libellé)'),
+      lecteurs: (connu?.lecteurs ?? 0) + 1,
+    })
+  }
+
+  return [...parSlug.values()].sort((a, b) =>
+    (a.organisationLibellé || a.slug).localeCompare(b.organisationLibellé || b.slug, 'fr'),
+  )
+}
