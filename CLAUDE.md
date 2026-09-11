@@ -91,6 +91,19 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
    plusieurs organisations comme une anomalie remontée au monitoring,
    jamais comme une donnée à interpréter. Chaque nouvelle requête Notion
    est relue sous cet angle avant commit.
+   **Une seule exception, tenue étroite (11 septembre 2026) : l'accès
+   opérateur.** Une ligne « Accès » dont la case `Tous les espaces` est cochée
+   peut ouvrir l'espace de n'importe quel client. L'identifiant d'organisation
+   vient alors de `organisationDuSlug`, qui compare un slug **exact** aux slugs
+   de la base « Accès » — celle que le portail lit déjà. Ce n'est pas une
+   résolution de nom : le registre reste fermé. Les fonctions cachées ne voient
+   toujours qu'un identifiant d'organisation, un slug inconnu reste `notFound`,
+   `Actif` révoque le privilège comme le reste, la visite est journalisée et
+   **l'écran la signale par un bandeau**. Sans marque visible, une capture
+   d'écran de l'espace d'un client serait indiscernable d'une fuite.
+   `tests/architecture.test.ts` vérifie que `organisationDuSlug` n'est appelée
+   que depuis `lib/auth/appartenance.ts` : un écran qui l'appellerait
+   contournerait le seul endroit qui vérifie le privilège.
 3. **Seules les éditions en statut « Envoyé » sont demandées à Notion**
    (filtre `select.equals` dans la requête, combiné au filtre
    `relation.contains` de l'organisation).
@@ -157,7 +170,8 @@ Bases partagées avec l'intégration du portail, et elles seules :
   Nom (titre) · Email · Organisation (libellé) (texte, affichage
   seulement) · **Identifiant Notion de l'organisation** (texte, `page_id`
   de la ligne du registre, écrit par l'onboarding Cowork — c'est la seule
-  clé de cloisonnement) · Slug · Identifiant d'accès · Actif.
+  clé de cloisonnement) · Slug · Identifiant d'accès · Actif · **Tous les
+  espaces** (case, accès opérateur — voir règle 2).
   **Piège avéré** : chaque client a deux pages de même forme, la ligne du
   registre et la **page organisation** sous « Veilles clients ». Les éditions
   pointent vers la ligne du registre ; coller l'identifiant de la page
@@ -166,6 +180,11 @@ Bases partagées avec l'intégration du portail, et elles seules :
   Vérification en dix secondes : la propriété `Organisation` d'une édition du
   client doit être le même identifiant que la ligne « Accès ». Le layout
   journalise désormais « accès valide, aucune édition ».
+  **Second piège avéré** : dupliquer une ligne pour ajouter un lecteur recopie
+  `Identifiant d'accès`. Le portail trouve alors deux lignes pour un même
+  identifiant et refuse **les deux liens à la fois** — le mail part, mais le
+  jeton est rejeté. C'est arrivé le 11 septembre 2026 sur l'Hermitage. Créer une
+  ligne vierge et tirer un identifiant neuf (`openssl rand -hex 16`).
 
 Jamais partagés : le registre « Organisations — pipeline et activation »
 (intake confidentiel), « Validations », les pages organisation, les

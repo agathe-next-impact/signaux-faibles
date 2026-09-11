@@ -33,40 +33,74 @@ export type Onglet = {
 export function Coquille({
   organisation,
   onglets,
+  enOpérateur = false,
   children,
 }: {
   organisation: string
   onglets: readonly Onglet[]
+  /** Visite de l'espace d'un client par un opérateur : doit se voir. */
+  enOpérateur?: boolean
   children: React.ReactNode
 }) {
   return (
-    <div className="flex min-h-dvh flex-col lg:flex-row">
-      <aside className="shrink-0 border-b border-gris-ligne lg:w-64 lg:border-b-0 lg:border-r">
-        <div className="flex flex-col gap-6 p-6 lg:sticky lg:top-0 lg:h-dvh">
-          <div className="flex flex-col gap-1">
-            <Logo />
-            <span className="label-mono text-ardoise">{organisation}</span>
-          </div>
+    // La bannière vit hors de la rangée, et non dedans : en `flex-row`, elle
+    // se placerait à côté du rail. Elle occupe donc sa place dans le flux,
+    // plutôt que de flotter au-dessus d'un contenu qui passerait dessous.
+    //
+    // Sa hauteur est posée une fois, en variable : le rail est collant lui
+    // aussi, et doit se coller **sous** la bannière. Deux nombres écrits
+    // séparément finiraient par diverger, et le logo repasserait sous le
+    // bandeau au défilement — ce qu'une capture a montré.
+    <div
+      className="flex min-h-dvh flex-col"
+      // Toujours définie, à zéro hors mode opérateur : une valeur de repli
+      // dans le `var()` ferait échouer la génération de la classe Tailwind.
+      style={{ '--bandeau': enOpérateur ? '2.25rem' : '0px' } as React.CSSProperties}
+    >
+      {/* Un opérateur voit l'espace d'un client. Sans marque, une capture
+          d'écran serait indiscernable d'une fuite de données, et l'opérateur
+          lui-même pourrait croire lire son propre espace. En rose parce que
+          c'est la seule couleur de signal de la charte. */}
+      {enOpérateur ? (
+        <p
+          role="status"
+          className="sticky top-0 z-40 flex h-[var(--bandeau)] shrink-0 items-center border-b border-rose bg-fond-rose px-6 label-mono text-rose"
+        >
+          accès opérateur · vous consultez l’espace de {organisation}
+        </p>
+      ) : null}
 
-          {/* Le rail ne sert que sur grand écran : sous cette largeur, c'est le
-              menu de pied qui porte la navigation. */}
-          <div className="hidden lg:block">
-            <NavLatérale onglets={onglets} />
-          </div>
+      <div className="flex flex-1 flex-col lg:flex-row">
+        <aside className="shrink-0 border-b border-gris-ligne lg:w-64 lg:border-b-0 lg:border-r">
+          {/* La hauteur déduit le bandeau : une hauteur d'écran entière ne
+              tiendrait pas sous lui, et le rail se ferait repousser vers le
+              haut au défilement — le logo repassait alors sous la bannière. */}
+          <div className="flex flex-col gap-6 p-6 lg:sticky lg:top-[var(--bandeau)] lg:h-[calc(100dvh-var(--bandeau))]">
+            <div className="flex flex-col gap-1">
+              <Logo />
+              <span className="label-mono text-ardoise">{organisation}</span>
+            </div>
 
-          <div className="mt-auto hidden flex-col gap-2 lg:flex">
-            <p className="label-mono text-ardoise">Accès personnel, à ne pas transférer</p>
+            {/* Le rail ne sert que sur grand écran : sous cette largeur, c'est le
+                menu de pied qui porte la navigation. */}
+            <div className="hidden lg:block">
+              <NavLatérale onglets={onglets} />
+            </div>
+
+            <div className="mt-auto hidden flex-col gap-2 lg:flex">
+              <p className="label-mono text-ardoise">Accès personnel, à ne pas transférer</p>
+              <Quitter />
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
+          <div className="px-6 pb-6 lg:hidden">
             <Quitter />
           </div>
+          <MenuBas onglets={onglets} />
         </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
-        <div className="px-6 pb-6 lg:hidden">
-          <Quitter />
-        </div>
-        <MenuBas onglets={onglets} />
       </div>
     </div>
   )

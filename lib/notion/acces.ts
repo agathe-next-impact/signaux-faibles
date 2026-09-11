@@ -15,6 +15,61 @@ export type Accès = {
   readonly organisationId: string
   readonly slug: string
   readonly actif: boolean
+  /**
+   * Accès opérateur : la personne peut ouvrir l'espace de n'importe quel
+   * client. Voir `exigerAccès` pour ce que ce privilège autorise exactement.
+   */
+  readonly tousLesEspaces: boolean
+}
+
+/**
+ * L'organisation que désigne un slug, lue dans la base « Accès ».
+ *
+ * **Ceci n'est pas une résolution de nom.** Le portail n'a toujours pas accès
+ * au registre et ne sait pas ce qu'est « L'Hermitage » : il compare un slug
+ * exact aux slugs d'une base qu'il lit déjà, et n'en tire qu'un identifiant que
+ * cette même base porte. Aucune source nouvelle n'est ouverte.
+ *
+ * Réservé à l'accès opérateur. Un client ordinaire n'emprunte jamais ce chemin :
+ * son identifiant d'organisation vient de sa propre ligne, et de nulle part
+ * ailleurs.
+ */
+export async function organisationDuSlug(slug: string): Promise<{
+  readonly organisationId: string
+  readonly organisationLibellé: string
+} | null> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('acces')
+
+  const { accès: sourceId } = await sourcesDeDonnées()
+  cacheTag(`liste:${sourceId}`)
+
+  const réponse = await notion().dataSources.query({
+    data_source_id: sourceId,
+    filter: {
+      and: [
+        { property: 'Slug', rich_text: { equals: slug } },
+        { property: 'Actif', checkbox: { equals: true } },
+      ],
+    },
+    page_size: 1,
+  })
+
+  const page = réponse.results[0]
+  if (!page) return null
+
+  const organisationId = lireTexte(page, "Identifiant Notion de l'organisation")
+    .replaceAll('-', '')
+    .toLowerCase()
+
+  if (organisationId.length === 0) return null
+
+  return {
+    organisationId,
+    organisationLibellé: lireTexte(page, 'Organisation (libellé)'),
+  }
 }
 
 /**
@@ -90,6 +145,7 @@ export async function lireAccèsParIdentifiant(
     organisationId,
     slug: lireTexte(page, 'Slug'),
     actif: lireCase(page, 'Actif'),
+    tousLesEspaces: lireCase(page, 'Tous les espaces'),
   }
 }
 
@@ -154,5 +210,6 @@ export async function lireAccèsActifParEmail(email: string): Promise<
     organisationId,
     slug: lireTexte(page, 'Slug'),
     actif: true,
+    tousLesEspaces: lireCase(page, 'Tous les espaces'),
   }
 }

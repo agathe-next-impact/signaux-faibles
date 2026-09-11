@@ -83,3 +83,39 @@ describe('le cloisonnement ne se décide jamais sur le premier élément d’une
     }
   })
 })
+
+/**
+ * L'exception opérateur ne doit pas se répandre.
+ *
+ * `organisationDuSlug` est le seul chemin par lequel un identifiant
+ * d'organisation vient d'ailleurs que de la ligne « Accès » de la personne
+ * connectée. C'est une entorse assumée à la règle 2, et elle n'a de sens que
+ * si elle reste confinée au contrôle d'appartenance : un écran qui l'appellerait
+ * lui-même contournerait le seul endroit qui vérifie le privilège.
+ */
+describe('l’exception opérateur reste confinée', () => {
+  const appelants = () => {
+    const trouvés: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (!/\.tsx?$/.test(entrée.name)) continue
+        if (readFileSync(chemin, 'utf8').includes('organisationDuSlug')) {
+          trouvés.push(chemin.replace(`${process.cwd()}/`, ''))
+        }
+      }
+    }
+    for (const racine of ['app', 'components', 'lib']) {
+      parcourir(join(process.cwd(), racine))
+    }
+    return trouvés.sort()
+  }
+
+  it('n’est déclarée et appelée que dans deux fichiers', () => {
+    expect(appelants()).toEqual(['lib/auth/appartenance.ts', 'lib/notion/acces.ts'])
+  })
+})
