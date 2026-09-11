@@ -163,11 +163,11 @@ describe('la resynchronisation manuelle reste un geste d’opérateur', () => {
 })
 
 /**
- * Invalider un tag est un pouvoir, pas une commodité. Deux endroits l'ont : le
- * webhook, qui traduit un événement signé par Notion, et l'action manuelle
- * ci-dessus, qui vérifie le privilège. Un écran qui invaliderait au rendu
- * viderait le cache à chaque visite, et la limite de trois requêtes par seconde
- * serait atteinte par le trafic normal.
+ * Invalider un tag est un pouvoir, pas une commodité. Trois endroits l'ont, et
+ * chacun vérifie quelque chose avant : le webhook une signature Notion, l'action
+ * manuelle le privilège opérateur, la route d'ouverture le jeton d'activation.
+ * Un écran qui invaliderait au rendu viderait le cache à chaque visite, et la
+ * limite de trois requêtes par seconde serait atteinte par le trafic normal.
  */
 describe('l’invalidation de cache reste à deux endroits', () => {
   it('personne d’autre n’appelle updateTag ni revalidateTag', () => {
@@ -188,8 +188,46 @@ describe('l’invalidation de cache reste à deux endroits', () => {
     for (const racine of ['app', 'components', 'lib']) parcourir(join(process.cwd(), racine))
 
     expect(trouvés.sort()).toEqual([
+      'app/api/acces/ouvrir/route.ts',
       'app/api/webhooks/notion/route.ts',
       'lib/portail/resynchroniser.ts',
     ])
+  })
+})
+
+/**
+ * La route d'ouverture envoie un courrier à un vrai lecteur, sur appel d'une
+ * tâche qui vit hors du dépôt. Deux choses ne doivent jamais s'y glisser.
+ */
+describe('la route d’ouverture ne divulgue ni lien ni identifiant', () => {
+  const source = readFileSync(
+    join(process.cwd(), 'app', 'api', 'acces', 'ouvrir', 'route.ts'),
+    'utf8',
+  )
+
+  it('ne met le lien ni dans la réponse ni dans un journal', () => {
+    // Le lien ne vit que dans le courrier ; le jeton ne se lit que dans
+    // /acces/[jeton], qui redirige aussitôt (règle 8).
+    const lignes = source.split('\n').filter((ligne) => /\blien\b/.test(ligne))
+    for (const ligne of lignes) {
+      expect(ligne, ligne.trim()).not.toMatch(/console\.|NextResponse\.json/)
+    }
+    expect(source).not.toMatch(/(?:json|console)[^\n]*\blien\b/)
+  })
+
+  it('ne renvoie pas l’identifiant d’accès à l’appelant', () => {
+    const réponses = source.match(/NextResponse\.json\(\{[\s\S]*?\}\)/g) ?? []
+    expect(réponses.length).toBeGreaterThan(0)
+    for (const réponse of réponses) {
+      expect(réponse).not.toContain('identifiant')
+    }
+  })
+
+  it('vérifie la demande avant de lire l’environnement complet', () => {
+    // `env()` lève si une variable manque. Le faire avant le contrôle du jeton
+    // laisserait un appelant anonyme provoquer une 500 et apprendre au passage
+    // ce qui est mal configuré.
+    expect(source.indexOf('interpréterDemande')).toBeLessThan(source.indexOf('env()'))
+    expect(source).toContain("process.env['ACTIVATION_SECRET']")
   })
 })

@@ -44,15 +44,30 @@ session.
   Gmail de Google Workspace** (compte de service, délégation à l'échelle du
   domaine limitée à la portée `gmail.send`, boîte émettrice dédiée ; pas de
   SMTP, l'authentification basique est arrêtée pour Workspace) depuis la
-  page « recevoir mon lien », premier envoi et renvoi confondus. Le secret
-  HMAC ne quitte jamais le portail
+  page « recevoir mon lien », **et** `POST /api/acces/ouvrir`, que
+  l'onboarding Cowork appelle en fin d'activation (jeton
+  `ACTIVATION_SECRET`, corps `{ email }` — jamais un identifiant d'accès).
+  Deux déclencheurs, un seul envoi. Le partage des rôles est imposé et non
+  choisi : Cowork a le registre et écrit dans Notion, le portail a le secret
+  HMAC et n'y écrit jamais ; aucun des deux ne peut ouvrir un espace seul.
+  Le secret HMAC ne quitte jamais le portail
 - Lectures Notion en `'use cache: remote'` (le cache mémoire ne survit pas
   en serverless), profil unique `notion` : `stale` 5 min, `revalidate` 1 h,
   `expire` 30 jours. Tags `page:<page_id>` et `liste:<data_source_id>`
 - Webhook Notion reçu par un route handler Next.js, signature vérifiée avec
   `verifyWebhookSignature` du SDK, réponse 2xx immédiate, puis
   `revalidateTag(tag, 'max')`. Le handler ne relit jamais Notion et
-  n'envoie jamais d'email
+  n'envoie jamais d'email — c'est ce qui lui permet de tenir la fenêtre de
+  réponse et de ne pas transformer une rafale d'éditions en rafale de
+  courriers. L'ouverture d'un espace passe donc par sa propre route, jamais
+  par le webhook
+- **Invalider un tag est un pouvoir**, tenu en trois endroits qui vérifient
+  chacun quelque chose avant : le webhook (signature Notion),
+  `lib/portail/resynchroniser.ts` (privilège opérateur — le bouton
+  « resynchroniser » du rail, en `updateTag` pour expirer tout de suite
+  plutôt que servir l'ancienne version) et `app/api/acces/ouvrir` (jeton
+  d'activation). Un écran qui invaliderait au rendu viderait le cache à
+  chaque visite ; `tests/architecture.test.ts` l'interdit
 - **Notion sur le plan gratuit** : l'espace de travail reste à **un seul
   membre** (l'opérateur). Un espace gratuit à plusieurs membres est plafonné
   à 1 000 blocs à vie et l'API refuse ensuite toute création. Les clients ne
