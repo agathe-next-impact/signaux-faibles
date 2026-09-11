@@ -3,6 +3,7 @@ import { Logo } from '@/components/marque'
 import { MenuBas } from '@/components/menu-bas'
 import { NavLatérale } from '@/components/nav-laterale'
 import { Quitter } from '@/components/quitter'
+import { Resynchroniser } from '@/components/resynchroniser'
 
 /**
  * La coquille de l'espace client : un rail à gauche, le contenu à droite.
@@ -31,15 +32,23 @@ export type Onglet = {
 }
 
 export function Coquille({
+  slug,
   organisation,
   onglets,
   enOpérateur = false,
+  peutResynchroniser = false,
   children,
 }: {
+  slug: string
   organisation: string
   onglets: readonly Onglet[]
   /** Visite de l'espace d'un client par un opérateur : doit se voir. */
   enOpérateur?: boolean
+  /**
+   * Le privilège opérateur, et non la visite : sur son propre espace,
+   * l'opératrice n'est pas `enOpérateur` et doit pourtant garder le bouton.
+   */
+  peutResynchroniser?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -94,6 +103,7 @@ export function Coquille({
 
             <div className="mt-auto hidden flex-col gap-2 lg:flex">
               <p className="label-mono text-ardoise">Accès personnel, à ne pas transférer</p>
+              {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
               <Quitter />
             </div>
           </div>
@@ -101,7 +111,8 @@ export function Coquille({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
-          <div className="px-6 pb-6 lg:hidden">
+          <div className="flex flex-col gap-2 px-6 pb-6 lg:hidden">
+            {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
             <Quitter />
           </div>
           <MenuBas onglets={onglets} />

@@ -82,3 +82,46 @@ dernière environ vingt-quatre heures après. Un événement peut donc être per
 un abonnement en pause, un déploiement au mauvais moment. La revalidation
 horaire du profil de cache est le filet ; elle rattrape en une heure ce que le
 webhook rattraperait en une minute.
+
+## Le troisième chemin : resynchroniser à la main
+
+Ajouté le 11 septembre 2026. Le webhook rattrape en une minute, la revalidation
+horaire en une heure. Il restait un cas sans réponse : **vérifier tout de
+suite**, quand on vient de corriger une lettre dans Notion et qu'on veut la voir
+dans l'espace, ou quand on soupçonne le webhook d'être débranché (secret
+régénéré, abonnement en pause).
+
+Le bouton « resynchroniser depuis Notion » vit dans le rail de l'espace client
+et n'apparaît que pour une ligne « Accès » dont la case **Tous les espaces** est
+cochée. C'est le privilège qui l'ouvre, pas la visite : sur son propre espace,
+l'opératrice n'est pas `enOpérateur` et doit pourtant l'avoir. Il reste fermé
+aux clients pour une raison de débit — Notion tient trois requêtes par seconde,
+et un bouton « rafraîchir » offert à tout le monde est un bouton sur lequel on
+tape.
+
+`lib/portail/resynchroniser.ts` est une action serveur. Elle :
+
+1. vérifie le slug reçu du navigateur par `exigerAccès`, le contrôle unique ;
+2. exige `tousLesEspaces` ;
+3. relève les corps de notes **avant** d'invalider la liste — ce sont ceux qui
+   sont en cache, donc ceux qu'il faut expirer ; une lettre parue depuis n'a
+   jamais été lue et n'a rien à invalider ;
+4. appelle `updateTag` sur les deux listes et sur chaque page.
+
+`updateTag` et non `revalidateTag`, et c'est tout le sujet. `revalidateTag`
+marque périmé et **sert l'ancienne version** pendant la régénération : la
+personne qui vient de cliquer verrait encore l'ancienne page, exactement ce
+qu'elle cherchait à éviter. `updateTag` expire immédiatement, au prix d'être
+réservé aux actions serveur — ce qui tombe bien. `refresh()` termine le geste
+côté navigateur : sans lui, le routeur client garderait son propre rendu
+pendant les cinq minutes de `stale`.
+
+**`schema:notion` n'est délibérément pas invalidé.** Ce tag porte la garde de
+contrat, qui refuse de servir si une propriété manque. Le relancer pendant
+qu'une propriété est en cours de renommage dans Notion couperait le portail pour
+tous les clients. Un vrai changement de schéma arrive par le webhook, qui porte
+l'événement correspondant.
+
+`tests/architecture.test.ts` tient les quatre propriétés, et vérifie surtout que
+l'invalidation de cache reste à **deux endroits** : ce handler et cette action.
+Un écran qui invaliderait au rendu viderait le cache à chaque visite.
