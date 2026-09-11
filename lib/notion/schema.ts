@@ -59,6 +59,12 @@ export const CONTRAT_ACCES: ContratDeBase = {
   Slug: { type: 'rich_text' },
   "Identifiant d'accès": { type: 'rich_text' },
   Actif: { type: 'checkbox' },
+  /**
+   * Accès opérateur : la personne peut ouvrir l'espace de n'importe quel
+   * client. Attendue dans le schéma plutôt que lue au petit bonheur — sans
+   * quoi une propriété renommée désactiverait le privilège en silence.
+   */
+  'Tous les espaces': { type: 'checkbox' },
 }
 
 /** Propriétés internes, jamais exposées au navigateur d'un client. */

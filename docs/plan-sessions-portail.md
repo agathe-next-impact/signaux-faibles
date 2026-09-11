@@ -445,3 +445,31 @@ Le corps des lettres, lui, nomme abondamment des concurrents, jusqu'à porter un
 rubrique « Actualité acteurs ». Le portail ne peut pas en déduire une liste
 d'entités sans inventer un second contrat, à rebours du modèle. La section vide
 renvoie donc désormais vers les lettres, où ces organisations restent lisibles.
+
+**11 septembre 2026.** Un jeton refusé, et un accès opérateur.
+
+**Le mail partait, le jeton était rejeté.** Agathe et Jean, tous deux sur
+l'espace hermitage, portaient le **même `Identifiant d'accès`** : la ligne avait
+été dupliquée. La recherche par email trouve bien une ligne unique — le lien est
+donc composé et envoyé —, mais `/acces/<jeton>` en trouve deux et refuse, pour
+les deux personnes à la fois. C'est exactement le piège journalisé la veille.
+Identifiant régénéré pour Jean.
+
+**L'accès opérateur est une exception assumée à la règle 2**, et elle est tenue
+étroite. `organisationDuSlug` compare un slug exact aux slugs de la base
+« Accès » — celle que le portail lit déjà. Le registre reste fermé, aucun nom
+n'est résolu, les fonctions cachées ne voient toujours qu'un identifiant
+d'organisation, un slug inconnu reste `notFound`, et `Actif` révoque le
+privilège comme le reste. Un test d'architecture vérifie que cette fonction
+n'est appelée que depuis le contrôle d'appartenance : un écran qui l'appellerait
+contournerait le seul endroit qui vérifie le privilège.
+
+**Le bandeau n'est pas décoratif.** Sans marque visible, une capture d'écran de
+l'espace d'un client serait indiscernable d'une fuite, et l'opérateur lui-même
+pourrait croire lire son propre espace.
+
+**Trois mesures ont été nécessaires pour le poser correctement.** Fixé, il
+laissait le contenu passer dessous ; collant, il laissait le rail glisser sous
+lui et couper le logo ; et sa hauteur écrite deux fois aurait dérivé. La
+solution tient en une variable CSS : le bandeau la pose, le rail s'y colle et en
+déduit sa propre hauteur. Vérifié à trois positions de défilement.
