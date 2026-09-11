@@ -144,10 +144,32 @@ cinquante suivantes.
 Quand la lettre est bonne, passer au statut `5 · Prête à activer`, puis cocher
 **`▶ Activer`**. Le balayage du matin fait le reste.
 
-## Étape 7 · Ouvrir le portail
+## Étape 7 · Ouvrir le portail — automatique depuis le 11 septembre 2026
 
 C'est ici que les deux moitiés se rejoignent, et c'est la seule étape que le
 portail voit.
+
+**Elle n'est plus manuelle.** Cocher `▶ Activer` suffit : au balayage du matin,
+le §1.3 du prompt (page Notion « Tâche — Onboarding d'une organisation ») crée la
+ligne « Accès — portail » si elle manque, contrôle celles qui existent déjà, et
+appelle le portail pour qu'il envoie son lien au lecteur.
+
+**Ce qui rend l'erreur impossible, et ce n'est pas une vérification de plus.**
+L'identifiant d'organisation écrit dans la ligne d'accès est celui avec lequel le
+§1.1 vient de *trouver les éditions* de ce client. Il n'est ni déduit ni copié
+depuis une page ouverte à l'écran : il est juste par construction, puisqu'un
+identifiant qui ne ramène aucune édition fait refuser l'activation un pas plus
+tôt. Le piège des deux pages décrit plus bas n'a plus de prise, faute de page à
+regarder.
+
+**Le §1.3 corrige aussi les lignes déjà créées** : identifiant d'organisation qui
+ne rencontre aucune édition, identifiant d'accès partagé avec une autre ligne,
+slug divergent du registre. Les trois pannes constatées les 10 et 11 septembre
+sont couvertes, et une activation les répare au passage.
+
+Ce qui suit reste vrai, et sert à deux choses : comprendre ce que l'agent écrit,
+et ouvrir un accès à la main — un second lecteur en cours de route, un espace à
+rouvrir sans repasser par l'activation.
 
 **Créer une ligne par personne** dans « Accès — portail »
 (`collection://4d3d7403-35d7-4815-884b-877d17423842`). Un lien par personne :
@@ -380,7 +402,7 @@ sont, et c'est ce qui rend la recopie de l'identifiant nécessaire.
 - [ ] `▶ Produire la première lettre (B)` — statut 4
 - [ ] Première lettre lue et jugée bonne — statut 5
 - [ ] `▶ Activer` — statut 6
-- [ ] Une ligne par personne dans « Accès — portail », identifiant
-      d'organisation recopié, slug identique, `Actif` coché
-- [ ] `POST /api/acces/ouvrir` appelé pour chaque lecteur — réponse 200
-- [ ] `lettresPubliées` noté ; alerte s'il reste à zéro après la parution
+- [ ] Espace du portail ouvert **par l'activation** : ligne « Accès — portail »
+      créée, lien envoyé (vérifier le compte rendu du balayage)
+- [ ] `lettresPubliées` noté ; zéro est normal à l'activation, anormal après la
+      première parution

@@ -8,9 +8,16 @@ import { estOngletCourant } from '@/lib/portail/onglet'
 /**
  * Le menu de pied, sur mobile.
  *
- * Il porte les mêmes cinq écrans que le rail latéral, qui disparaît sous
- * l'écran large. En application installée, c'est la barre que le pouce
- * atteint ; d'où le retrait sous la zone sûre des appareils à encoche.
+ * Il porte les mêmes écrans que le rail latéral, qui disparaît sous l'écran
+ * large. En application installée, c'est la barre que le pouce atteint ; d'où
+ * le retrait sous la zone sûre des appareils à encoche.
+ *
+ * Les entrées se partagent la largeur tant qu'elles tiennent, et la barre
+ * défile horizontalement au-delà. Depuis la séparation des axes et des acteurs
+ * (11 septembre 2026) il y a sept écrans : à sept colonnes égales sur un
+ * téléphone étroit, « Archives » et « Acteurs » se faisaient tronquer, et un
+ * libellé coupé ne dit plus où il mène. Seule cette barre défile ; le corps de
+ * la page, jamais.
  */
 export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
   const chemin = usePathname()
@@ -20,12 +27,12 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
       aria-label="Sections"
       className="sticky bottom-0 z-30 border-t border-gris-ligne bg-blanc pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
-      <ul className="flex">
+      <ul className="flex overflow-x-auto">
         {onglets.map((onglet) => {
           const courant = estOngletCourant(onglet, chemin)
 
           return (
-            <li key={onglet.href} className="min-w-0 flex-1">
+            <li key={onglet.href} className="min-w-[4.25rem] flex-1 shrink-0">
               <Link
                 href={onglet.href}
                 aria-current={courant ? 'page' : undefined}

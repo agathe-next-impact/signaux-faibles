@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -229,5 +229,51 @@ describe('la route d’ouverture ne divulgue ni lien ni identifiant', () => {
     // ce qui est mal configuré.
     expect(source.indexOf('interpréterDemande')).toBeLessThan(source.indexOf('env()'))
     expect(source).toContain("process.env['ACTIVATION_SECRET']")
+  })
+})
+
+/**
+ * Le rail annonce sept écrans. Un onglet qui pointe sur une route inexistante
+ * donne un 404 depuis la navigation principale — l'erreur la plus visible du
+ * portail, et celle qu'un renommage de dossier produit sans rien casser au
+ * build. Le 11 septembre 2026, « Tendances » a été scindé en « Les axes » et
+ * « Acteurs » : trois routes déplacées, quatre liens à suivre.
+ */
+describe('chaque onglet du rail mène à une route qui existe', () => {
+  it('les sept écrans sont déclarés et présents sur le disque', async () => {
+    const { ongletsDe } = (await import('@/lib/portail/semaine')) as {
+      ongletsDe: (
+        slug: string,
+        comptes: { lettres: number; recommandations: number; archives: number },
+      ) => Array<{ href: string; libellé: string; libelléCourt: string }>
+    }
+
+    const onglets = ongletsDe('client', { lettres: 0, recommandations: 0, archives: 0 })
+    expect(onglets).toHaveLength(7)
+
+    for (const onglet of onglets) {
+      // `/client` → la racine de l'espace ; `/client/axes` → le dossier `axes`.
+      const segment = onglet.href.replace(/^\/client\/?/, '')
+      const chemin = segment
+        ? join(process.cwd(), 'app', '[slug]', segment, 'page.tsx')
+        : join(process.cwd(), 'app', '[slug]', 'page.tsx')
+
+      expect(existsSync(chemin), `${onglet.libellé} → ${onglet.href} (${chemin})`).toBe(true)
+      // Le menu de pied tronque au-delà : un libellé coupé ne dit plus où il mène.
+      expect(onglet.libelléCourt.length, onglet.libelléCourt).toBeLessThanOrEqual(8)
+    }
+  })
+
+  it('les deux écrans scindés portent chacun sa page de détail', () => {
+    for (const détail of [
+      join('axes', '[axe]'),
+      join('acteurs', '[acteur]'),
+    ]) {
+      expect(existsSync(join(process.cwd(), 'app', '[slug]', détail, 'page.tsx')), détail).toBe(
+        true,
+      )
+    }
+    // L'ancien écran ne doit pas survivre à côté des nouveaux.
+    expect(existsSync(join(process.cwd(), 'app', '[slug]', 'tendances'))).toBe(false)
   })
 })

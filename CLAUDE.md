@@ -50,6 +50,12 @@ session.
   Deux déclencheurs, un seul envoi. Le partage des rôles est imposé et non
   choisi : Cowork a le registre et écrit dans Notion, le portail a le secret
   HMAC et n'y écrit jamais ; aucun des deux ne peut ouvrir un espace seul.
+  Depuis le 11 septembre 2026, l'ouverture est **automatique** : cocher
+  `▶ Activer` sur la ligne du registre suffit, le §1.3 du balayage du matin
+  crée la ligne « Accès », contrôle celles qui existent et appelle la route.
+  L'identifiant d'organisation qu'il y écrit est celui qui vient de trouver
+  les éditions du client — jamais un identifiant copié d'une page ouverte,
+  d'où les deux espaces vides des 10 et 11 septembre.
   Le secret HMAC ne quitte jamais le portail
 - Lectures Notion en `'use cache: remote'` (le cache mémoire ne survit pas
   en serverless), profil unique `notion` : `stale` 5 min, `revalidate` 1 h,
@@ -223,16 +229,24 @@ après la requête filtrée ; jamais une requête Notion par semaine. Le
 raisonner sur le titre d'une édition : il est fixé par chaque référentiel et
 varie d'une organisation à l'autre.
 
-## Les six écrans de l'espace client
+## Les sept écrans de l'espace client
 
 Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, puis **deux
 sections** : « Les acteurs » et « L'écosystème ») · Lettres
 (`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
-`/[slug]/lettres/[edition]` pour la lire) · Tendances (`/[slug]/tendances`,
-grille des axes avec leur mouvement, puis le suivi des dossiers) ·
-Recommandations · Archives (une entrée par semaine) · **Cadrage**
-(`/[slug]/cadrage`, décidé le 10 septembre 2026). Pas d'autre écran sans
-discussion.
+`/[slug]/lettres/[edition]` pour la lire) · **Les axes** (`/[slug]/axes`,
+grille des axes avec leur mouvement) · **Acteurs** (`/[slug]/acteurs`, le
+suivi des dossiers ouverts) · Recommandations · Archives (une entrée par
+semaine) · **Cadrage** (`/[slug]/cadrage`, décidé le 10 septembre 2026).
+Pas d'autre écran sans discussion.
+
+**Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
+partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
+parle la veille » et « qui bouge » —, et surtout leur coût n'a rien à voir :
+la grille des axes demande les corps de la semaine courante et de la
+précédente, le suivi des dossiers ne lit **aucun corps**. Empilés, l'écran
+faisait payer le plus cher des deux à qui ne venait chercher que l'autre.
+Chacun renvoie vers l'autre en pied d'écran.
 
 **Les ajustements de cadrage ne figurent jamais dans une lettre.** Ce sont des
 propositions de modification du périmètre de la veille, qui appellent une
@@ -256,12 +270,37 @@ plupart des dossiers suivis** : les mentions d'acteurs s'effondreraient. Seul ce
 qui précède le trait est du cadrage ; ce qui suit revient à la lettre, dans une
 rubrique sans titre.
 
-Les tendances ont deux pages de détail, sous des segments **explicites** :
-`/[slug]/tendances/axes/[axe]` (l'axe sur les quatre dernières lettres) et
-`/[slug]/tendances/acteurs/[acteur]`. Ne pas remettre l'axe directement sous
-`/tendances/[axe]` : un axe nommé « Acteurs » masquerait alors la route des
-acteurs. Les deux segments sont adressés par `enSlug` du **nom**, jamais d'un
-numéro ni d'un identifiant Notion.
+Chaque écran porte sa page de détail sous son propre segment :
+`/[slug]/axes/[axe]` (l'axe sur les quatre dernières lettres, lien de retour
+« Retour aux axes ») et `/[slug]/acteurs/[acteur]` (lien de retour « Retour aux
+acteurs »). Les deux segments sont adressés par `enSlug` du **nom**, jamais
+d'un numéro ni d'un identifiant Notion.
+
+La leçon qui a fait choisir cette forme tient toujours : **ne jamais poser un
+segment variable là où il peut masquer une route sœur.** Tant que les deux
+détails vivaient sous `/tendances`, un axe nommé « Acteurs » aurait masqué
+`/tendances/acteurs/[acteur]` ; c'est ce qui avait imposé les segments
+intermédiaires `axes/` et `acteurs/`. Maintenant que chaque détail est seul
+sous son écran, le risque n'existe plus — mais il reviendrait au premier
+`/[slug]/axes/quelquechose` ajouté à côté de `[axe]`.
+
+**Le format des lettres est un contrat, et sa rupture était muette.** Le portail
+ne devine pas ce qu'il ne reconnaît pas — deviner produirait des acteurs inventés
+et des badges faux —, mais deux lettres complètes et publiées peuvent donner un
+tableau de bord vide sans que rien ne casse. C'est arrivé le 11 septembre 2026 sur
+le Pays de Mauriac, sur les deux contrats à la fois : un corps écrit **sans aucun
+titre H2** (l'impact était dans la prose, « Impact fort. ») et des dossiers au
+format `nom — précision — compteur` au lieu de `nom (compteur, précision)`. Zéro
+axe, zéro acteur. Trois gardes en découlent, et aucune ne rend l'analyse tolérante :
+`lib/portail/contrat.ts` nomme l'écart dans le journal (`[contrat] <slug> : …`)
+sans rien changer à l'écran ; l'étape 3bis de « Réconciliation des envois » le
+vérifie chaque soir sur la dernière lettre envoyée de chaque client actif ; et le
+**contrat de forme** est écrit en tête de l'étape 3 de « Tâche — Lettres de
+veille », où il est bloquant et **prime sur le §6 du référentiel** — c'est là que
+se corrige la cause, pour tous les clients et les suivants. La même page portait
+d'ailleurs le mauvais format (`nom — statut — compteur`) et le libellé `FAIBLE` :
+les deux ont été corrigés le 11 septembre. Les deux lettres du Pays de Mauriac ont
+été réécrites rétroactivement au contrat.
 
 **Un acteur n'a pas de contenu propre dans Notion** — c'est une entrée texte de
 `Dossiers ouverts suivis`, un nom et un compteur. Sa page l'assemble : le

@@ -59,7 +59,7 @@ export default async function UnActeur({
       />
 
       <p className="mt-5">
-        <LienFlèche href={`/${accès.slug}/tendances`}>Retour aux tendances</LienFlèche>
+        <LienFlèche href={`/${accès.slug}/acteurs`}>Retour aux acteurs</LienFlèche>
       </p>
 
       {suivi.précisionActuelle ? (

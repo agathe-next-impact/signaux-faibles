@@ -37,7 +37,7 @@ export async function semainesPubliées(organisationId: string): Promise<Semaine
  * parle des axes. Aucun écran ne le fait sur toute l'archive — ce serait une
  * requête par édition, et le débit Notion ne le permet pas.
  *
- * La vue d'ensemble et les tendances demandent les deux mêmes semaines, la
+ * La vue d'ensemble et l'écran des axes demandent les deux mêmes semaines, la
  * courante et la précédente : elles partagent donc les mêmes entrées de cache,
  * et le second écran ne coûte rien de plus que le premier.
  */
@@ -100,7 +100,8 @@ export function ongletsDe(
   return [
     { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true },
     { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres },
-    { href: `/${slug}/tendances`, libellé: 'Tendances', libelléCourt: 'Tendances' },
+    { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes' },
+    { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs' },
     {
       href: `/${slug}/recommandations`,
       libellé: 'Recommandations',

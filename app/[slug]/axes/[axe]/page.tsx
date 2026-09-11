@@ -51,7 +51,7 @@ export default async function UnAxe({
       />
 
       <p className="mt-5">
-        <LienFlèche href={`/${accès.slug}/tendances`}>Retour aux tendances</LienFlèche>
+        <LienFlèche href={`/${accès.slug}/axes`}>Retour aux axes</LienFlèche>
       </p>
 
       {passages.length < LETTRES_SUIVIES ? (
