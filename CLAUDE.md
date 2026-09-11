@@ -276,11 +276,16 @@ tableau de bord vide sans que rien ne casse. C'est arrivé le 11 septembre 2026 
 le Pays de Mauriac, sur les deux contrats à la fois : un corps écrit **sans aucun
 titre H2** (l'impact était dans la prose, « Impact fort. ») et des dossiers au
 format `nom — précision — compteur` au lieu de `nom (compteur, précision)`. Zéro
-axe, zéro acteur. `lib/portail/contrat.ts` nomme désormais l'écart dans le journal
-(`[contrat] <slug> : …`) sans rien changer à l'écran ; l'étape 3bis de la tâche
-« Réconciliation des envois » le vérifie chaque soir sur la dernière lettre
-envoyée de chaque client actif. Ne pas rendre l'analyse tolérante à ces variantes :
-c'est le format qui doit être corrigé, côté référentiel.
+axe, zéro acteur. Trois gardes en découlent, et aucune ne rend l'analyse tolérante :
+`lib/portail/contrat.ts` nomme l'écart dans le journal (`[contrat] <slug> : …`)
+sans rien changer à l'écran ; l'étape 3bis de « Réconciliation des envois » le
+vérifie chaque soir sur la dernière lettre envoyée de chaque client actif ; et le
+**contrat de forme** est écrit en tête de l'étape 3 de « Tâche — Lettres de
+veille », où il est bloquant et **prime sur le §6 du référentiel** — c'est là que
+se corrige la cause, pour tous les clients et les suivants. La même page portait
+d'ailleurs le mauvais format (`nom — statut — compteur`) et le libellé `FAIBLE` :
+les deux ont été corrigés le 11 septembre. Les deux lettres du Pays de Mauriac ont
+été réécrites rétroactivement au contrat.
 
 **Un acteur n'a pas de contenu propre dans Notion** — c'est une entrée texte de
 `Dossiers ouverts suivis`, un nom et un compteur. Sa page l'assemble : le
