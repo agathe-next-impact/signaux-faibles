@@ -50,6 +50,12 @@ session.
   Deux déclencheurs, un seul envoi. Le partage des rôles est imposé et non
   choisi : Cowork a le registre et écrit dans Notion, le portail a le secret
   HMAC et n'y écrit jamais ; aucun des deux ne peut ouvrir un espace seul.
+  Depuis le 11 septembre 2026, l'ouverture est **automatique** : cocher
+  `▶ Activer` sur la ligne du registre suffit, le §1.3 du balayage du matin
+  crée la ligne « Accès », contrôle celles qui existent et appelle la route.
+  L'identifiant d'organisation qu'il y écrit est celui qui vient de trouver
+  les éditions du client — jamais un identifiant copié d'une page ouverte,
+  d'où les deux espaces vides des 10 et 11 septembre.
   Le secret HMAC ne quitte jamais le portail
 - Lectures Notion en `'use cache: remote'` (le cache mémoire ne survit pas
   en serverless), profil unique `notion` : `stale` 5 min, `revalidate` 1 h,
