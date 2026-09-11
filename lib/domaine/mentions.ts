@@ -145,7 +145,7 @@ export type ActeurEnVue = DossierOuvert & { readonly extrait: string | null }
  *
  * Un dossier peut rester ouvert des semaines sans que rien ne bouge ; sur
  * l'accueil, il occupe une case pour ne rien apprendre. On ne le supprime pas
- * pour autant : le suivi complet reste sur les tendances, et c'est là qu'un
+ * pour autant : le suivi complet reste sur l'écran Acteurs, et c'est là qu'un
  * dossier qui s'enlise doit se voir.
  *
  * **Deux portes, et il en faut deux.** Une lettre le nomme, ou son compteur est

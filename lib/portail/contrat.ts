@@ -32,7 +32,7 @@ export function contrôlerLeContrat(entrée: {
 
   // Un axe est un titre de niveau 2 dont le suffixe porte le niveau d'impact.
   // Aucun axe sur des notes non vides, c'est un corps écrit sans titre H2 — ou
-  // avec des H2 sans suffixe. La vue d'ensemble et les tendances sont alors
+  // avec des H2 sans suffixe. La vue d'ensemble et l'écran des axes sont alors
   // vides, sans que rien ne le dise.
   if (entrée.notes > 0 && entrée.axes === 0) {
     ruptures.push({
@@ -42,7 +42,7 @@ export function contrôlerLeContrat(entrée: {
         'titres de NIVEAU 2 du corps, dont le suffixe porte l’impact ' +
         '(« Nom de l’axe — FORT », « — MOYEN », « — RAS »). Un impact écrit dans la ' +
         'prose (« Impact fort. ») n’est pas lu. Sans axe, « L’écosystème » et les ' +
-        'tendances restent vides.',
+        'l’écran des axes restent vides.',
     })
   }
 

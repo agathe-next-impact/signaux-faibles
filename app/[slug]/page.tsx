@@ -29,7 +29,7 @@ import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat
  * l'absorbe.
  */
 
-/** Au-delà, la page s'allonge sans rien apprendre : le suivi complet est dans les tendances. */
+/** Au-delà, la page s'allonge sans rien apprendre : le suivi complet est sur l'écran Acteurs. */
 const ACTEURS_EN_ACCUEIL = 6
 
 export default async function VueDEnsemble({
@@ -80,7 +80,7 @@ export default async function VueDEnsemble({
   const axes = trierParImpact(fusionnerLesAxes(documents))
 
   // Un dossier qui dort n'occupe pas une case de l'accueil pour ne rien
-  // apprendre. Il n'est pas perdu : les tendances portent le suivi entier.
+  // apprendre. Il n'est pas perdu : l'écran Acteurs porte le suivi entier.
   const acteurs = ordonnerLesDossiers(
     acteursEnVue(
       synthèse.dossiers,
@@ -159,7 +159,7 @@ export default async function VueDEnsemble({
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">Les acteurs</h2>
-          <LienFlèche href={`/${accès.slug}/tendances`}>Voir tout le suivi</LienFlèche>
+          <LienFlèche href={`/${accès.slug}/acteurs`}>Voir tout le suivi</LienFlèche>
         </div>
         <p className="text-ardoise">
           Les concurrents et les organisations du secteur dont les {LETTRES_POUR_ACTUALITÉ}{' '}
@@ -184,7 +184,7 @@ export default async function VueDEnsemble({
             <p className="text-ardoise">
               {synthèse.dossiers.length === 0
                 ? 'Aucun dossier n’est ouvert cette semaine. Les organisations citées par vos lettres y restent lisibles.'
-                : 'Aucun acteur suivi n’a d’actualité dans les dernières lettres. Le suivi complet reste dans les tendances.'}
+                : 'Aucun acteur suivi n’a d’actualité dans les dernières lettres. Le suivi complet reste sur l’écran Acteurs.'}
             </p>
             <p>
               <LienFlèche href={`/${accès.slug}/lettres`}>Lire les lettres</LienFlèche>
@@ -213,7 +213,7 @@ export default async function VueDEnsemble({
                         : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
                   </p>
                   <LienFlèche
-                    href={`/${accès.slug}/tendances/acteurs/${enSlug(acteur.nom)}`}
+                    href={`/${accès.slug}/acteurs/${enSlug(acteur.nom)}`}
                     étendu
                   >
                     Détail
@@ -228,7 +228,7 @@ export default async function VueDEnsemble({
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">L’écosystème</h2>
-          <LienFlèche href={`/${accès.slug}/lettres`}>Lire les lettres</LienFlèche>
+          <LienFlèche href={`/${accès.slug}/axes`}>Voir tous les axes</LienFlèche>
         </div>
         <p className="text-ardoise">
           Les axes de la semaine, les deux lettres réunies, du signal le plus fort au plus
@@ -244,7 +244,7 @@ export default async function VueDEnsemble({
                 key={axe.titre}
                 axe={axe}
                 points={axe.points}
-                href={`/${accès.slug}/tendances/axes/${enSlug(axe.titre)}`}
+                href={`/${accès.slug}/axes/${enSlug(axe.titre)}`}
               />
             ))}
           </Grille>

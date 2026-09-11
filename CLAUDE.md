@@ -229,16 +229,24 @@ après la requête filtrée ; jamais une requête Notion par semaine. Le
 raisonner sur le titre d'une édition : il est fixé par chaque référentiel et
 varie d'une organisation à l'autre.
 
-## Les six écrans de l'espace client
+## Les sept écrans de l'espace client
 
 Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, puis **deux
 sections** : « Les acteurs » et « L'écosystème ») · Lettres
 (`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
-`/[slug]/lettres/[edition]` pour la lire) · Tendances (`/[slug]/tendances`,
-grille des axes avec leur mouvement, puis le suivi des dossiers) ·
-Recommandations · Archives (une entrée par semaine) · **Cadrage**
-(`/[slug]/cadrage`, décidé le 10 septembre 2026). Pas d'autre écran sans
-discussion.
+`/[slug]/lettres/[edition]` pour la lire) · **Les axes** (`/[slug]/axes`,
+grille des axes avec leur mouvement) · **Acteurs** (`/[slug]/acteurs`, le
+suivi des dossiers ouverts) · Recommandations · Archives (une entrée par
+semaine) · **Cadrage** (`/[slug]/cadrage`, décidé le 10 septembre 2026).
+Pas d'autre écran sans discussion.
+
+**Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
+partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
+parle la veille » et « qui bouge » —, et surtout leur coût n'a rien à voir :
+la grille des axes demande les corps de la semaine courante et de la
+précédente, le suivi des dossiers ne lit **aucun corps**. Empilés, l'écran
+faisait payer le plus cher des deux à qui ne venait chercher que l'autre.
+Chacun renvoie vers l'autre en pied d'écran.
 
 **Les ajustements de cadrage ne figurent jamais dans une lettre.** Ce sont des
 propositions de modification du périmètre de la veille, qui appellent une
@@ -262,12 +270,19 @@ plupart des dossiers suivis** : les mentions d'acteurs s'effondreraient. Seul ce
 qui précède le trait est du cadrage ; ce qui suit revient à la lettre, dans une
 rubrique sans titre.
 
-Les tendances ont deux pages de détail, sous des segments **explicites** :
-`/[slug]/tendances/axes/[axe]` (l'axe sur les quatre dernières lettres) et
-`/[slug]/tendances/acteurs/[acteur]`. Ne pas remettre l'axe directement sous
-`/tendances/[axe]` : un axe nommé « Acteurs » masquerait alors la route des
-acteurs. Les deux segments sont adressés par `enSlug` du **nom**, jamais d'un
-numéro ni d'un identifiant Notion.
+Chaque écran porte sa page de détail sous son propre segment :
+`/[slug]/axes/[axe]` (l'axe sur les quatre dernières lettres, lien de retour
+« Retour aux axes ») et `/[slug]/acteurs/[acteur]` (lien de retour « Retour aux
+acteurs »). Les deux segments sont adressés par `enSlug` du **nom**, jamais
+d'un numéro ni d'un identifiant Notion.
+
+La leçon qui a fait choisir cette forme tient toujours : **ne jamais poser un
+segment variable là où il peut masquer une route sœur.** Tant que les deux
+détails vivaient sous `/tendances`, un axe nommé « Acteurs » aurait masqué
+`/tendances/acteurs/[acteur]` ; c'est ce qui avait imposé les segments
+intermédiaires `axes/` et `acteurs/`. Maintenant que chaque détail est seul
+sous son écran, le risque n'existe plus — mais il reviendrait au premier
+`/[slug]/axes/quelquechose` ajouté à côté de `[axe]`.
 
 **Le format des lettres est un contrat, et sa rupture était muette.** Le portail
 ne devine pas ce qu'il ne reconnaît pas — deviner produirait des acteurs inventés
