@@ -269,6 +269,19 @@ Les tendances ont deux pages de détail, sous des segments **explicites** :
 acteurs. Les deux segments sont adressés par `enSlug` du **nom**, jamais d'un
 numéro ni d'un identifiant Notion.
 
+**Le format des lettres est un contrat, et sa rupture était muette.** Le portail
+ne devine pas ce qu'il ne reconnaît pas — deviner produirait des acteurs inventés
+et des badges faux —, mais deux lettres complètes et publiées peuvent donner un
+tableau de bord vide sans que rien ne casse. C'est arrivé le 11 septembre 2026 sur
+le Pays de Mauriac, sur les deux contrats à la fois : un corps écrit **sans aucun
+titre H2** (l'impact était dans la prose, « Impact fort. ») et des dossiers au
+format `nom — précision — compteur` au lieu de `nom (compteur, précision)`. Zéro
+axe, zéro acteur. `lib/portail/contrat.ts` nomme désormais l'écart dans le journal
+(`[contrat] <slug> : …`) sans rien changer à l'écran ; l'étape 3bis de la tâche
+« Réconciliation des envois » le vérifie chaque soir sur la dernière lettre
+envoyée de chaque client actif. Ne pas rendre l'analyse tolérante à ces variantes :
+c'est le format qui doit être corrigé, côté référentiel.
+
 **Un acteur n'a pas de contenu propre dans Notion** — c'est une entrée texte de
 `Dossiers ouverts suivis`, un nom et un compteur. Sa page l'assemble : le
 **suivi** (toute l'archive, sans lire aucun corps) et les **mentions**, c'est-à-

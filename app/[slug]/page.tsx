@@ -13,6 +13,7 @@ import {
   LETTRES_POUR_ACTUALITÉ,
   semainesPubliées,
 } from '@/lib/portail/semaine'
+import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat'
 
 /**
  * Vue d'ensemble : ce que la semaine dit, en un écran.
@@ -87,6 +88,20 @@ export default async function VueDEnsemble({
     ),
   )
   const dormants = synthèse.dossiers.length - acteurs.length
+
+  // Le portail ne devine pas un format qu'il ne reconnaît pas — mais il ne doit
+  // pas se taire non plus. Deux lettres complètes et publiées peuvent donner un
+  // tableau de bord vide sans que rien ne casse : c'est arrivé le 11 septembre
+  // 2026 sur le Pays de Mauriac. Ces lignes de journal nomment l'écart ;
+  // l'écran, lui, ne change pas.
+  journaliserLeContrat(
+    accès.slug,
+    contrôlerLeContrat({
+      axes: axes.length,
+      notes: documents.length,
+      dossiers: synthèse.dossiers,
+    }),
+  )
 
   const actions = courante.éditions
     .map((édition) => édition.actionDeLaSemaine)
