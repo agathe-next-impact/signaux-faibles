@@ -48,7 +48,14 @@ export function proxy(requête: NextRequest): NextResponse {
 
   if (!secret || !jeton || !vérifierJeton(jeton, secret)) {
     const destination = new URL('/recevoir-mon-lien', requête.url)
-    return NextResponse.redirect(destination)
+    // 303 pour tout ce qui n'est pas une lecture. Le défaut de
+    // `NextResponse.redirect` est 307, qui **conserve la méthode** : un POST
+    // écarté ici était rejoué en POST sur le formulaire, qui répondait 405.
+    // C'est arrivé en production le 11 septembre 2026 sur « quitter », et cela
+    // se produirait à chaque action serveur postée depuis un onglet dont la
+    // session a expiré — cas fréquent, l'application installée restant ouverte
+    // des semaines. Le 303 retombe en GET : la personne voit le formulaire.
+    return NextResponse.redirect(destination, requête.method === 'GET' ? 307 : 303)
   }
 
   return NextResponse.next()

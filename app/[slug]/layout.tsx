@@ -68,7 +68,9 @@ async function Garde({
 
   return (
     <Coquille
+      slug={accès.slug}
       enOpérateur={accès.enOpérateur}
+      peutResynchroniser={accès.tousLesEspaces}
       organisation={accès.organisationLibellé || 'votre veille'}
       onglets={ongletsDe(accès.slug, {
         lettres: semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),

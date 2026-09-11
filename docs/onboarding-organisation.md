@@ -259,9 +259,63 @@ l'URL à celui de la ligne d'accès ; un écart donne une page introuvable, sans
 message explicite, parce qu'il ne faut pas confirmer l'existence du slug d'un
 autre client.
 
-Puis envoyer le lien : la personne va sur « recevoir mon lien », saisit son
-adresse, et le portail recompose le lien signé et le lui envoie. Le portail
-n'écrit rien dans Notion en le faisant.
+### Ouvrir l'espace : l'appel au portail
+
+**Depuis le 11 septembre 2026, cette étape ne se termine plus par une phrase.**
+Elle se terminait par « la personne va sur recevoir mon lien », ce qui
+n'engageait personne : une organisation pouvait être activée et son lecteur ne
+jamais recevoir son accès.
+
+Une fois la ligne écrite, la tâche d'onboarding appelle le portail :
+
+```http
+POST https://signauxfaibles.io/api/acces/ouvrir
+Authorization: Bearer <ACTIVATION_SECRET>
+Content-Type: application/json
+
+{ "email": "jean@hermitagelelab.com" }
+```
+
+Le portail retrouve la ligne, compose le lien signé et l'envoie. Un appel par
+lecteur : deux adresses sur un même espace font deux appels.
+
+**La demande porte un email, jamais l'identifiant d'accès.** Cowork possède
+pourtant ce dernier, puisqu'il vient de l'écrire — mais c'est le secret que le
+portail signe, et moins il circule, mieux le dispositif se porte. L'email suffit.
+
+Le partage des rôles est imposé, il n'est pas un choix de confort : Cowork a le
+registre et écrit dans Notion, le portail a le secret HMAC et n'écrit jamais
+dans Notion. Aucun des deux ne peut faire l'étape entière. C'est ce raccord, et
+lui seul, qui manquait.
+
+| Réponse | Ce qu'elle veut dire | Quoi faire |
+|---|---|---|
+| `200 {"état":"envoyé", "slug", "organisation", "lettresPubliées"}` | le courrier est parti | lire `lettresPubliées`, voir ci-dessous |
+| `404 {"état":"introuvable"}` | aucune ligne **active** pour cette adresse | si la ligne vient d'être créée, réessayer après quelques secondes ; sinon vérifier `Actif` et l'orthographe de l'adresse |
+| `401 {"état":"refusée"}` | jeton absent, faux, ou demande mal formée | vérifier `ACTIVATION_SECRET` des deux côtés |
+| `503 {"état":"non-configurée"}` | `ACTIVATION_SECRET` n'est pas défini côté portail | le définir sur Vercel ; l'ouverture reste manuelle en attendant |
+| `502 {"état":"erreur"}` | Notion ou Gmail n'a pas répondu | réessayer ; les journaux Vercel portent la cause |
+
+Le premier `404` est normal si l'appel suit immédiatement l'écriture : le
+portail garde la base « Accès » en cache une minute. Il expire le tag en
+répondant, de sorte que la tentative suivante lit Notion sans attendre.
+
+**`lettresPubliées` est le diagnostic qui manquait.** Le portail est le seul à
+savoir si l'identifiant d'organisation recopié rencontre réellement des
+éditions : c'est lui qui pose le filtre. Zéro juste après l'activation est
+normal — la première lettre n'est pas encore au statut `Envoyé`. **Le même zéro
+une semaine plus tard est exactement la panne de l'Hermitage du 10 septembre**,
+et il se lit désormais dans une réponse plutôt que dans le silence d'un espace
+vide. Le noter dans le journal de l'exécution, et lever l'alerte s'il persiste
+après la première parution.
+
+Le lien n'apparaît ni dans la réponse ni dans les journaux : il ne vit que dans
+le courrier. Le portail n'écrit rien dans Notion en le faisant.
+
+**Si `ACTIVATION_SECRET` n'est pas configuré**, la route répond 503 et
+l'ouverture redevient ce qu'elle était : la personne va sur « recevoir mon
+lien », saisit son adresse, et reçoit le même courrier. Les deux chemins mènent
+au même envoi ; l'un est automatique, l'autre reste disponible.
 
 ## Le régime de croisière
 
@@ -328,4 +382,5 @@ sont, et c'est ce qui rend la recopie de l'identifiant nécessaire.
 - [ ] `▶ Activer` — statut 6
 - [ ] Une ligne par personne dans « Accès — portail », identifiant
       d'organisation recopié, slug identique, `Actif` coché
-- [ ] Lien envoyé et ouverture vérifiée
+- [ ] `POST /api/acces/ouvrir` appelé pour chaque lecteur — réponse 200
+- [ ] `lettresPubliées` noté ; alerte s'il reste à zéro après la parution
