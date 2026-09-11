@@ -101,9 +101,16 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
    `Actif` révoque le privilège comme le reste, la visite est journalisée et
    **l'écran la signale par un bandeau**. Sans marque visible, une capture
    d'écran de l'espace d'un client serait indiscernable d'une fuite.
-   `tests/architecture.test.ts` vérifie que `organisationDuSlug` n'est appelée
-   que depuis `lib/auth/appartenance.ts` : un écran qui l'appellerait
-   contournerait le seul endroit qui vérifie le privilège.
+   Le sélecteur `/espaces` liste les espaces ouverts (`espacesOuverts`), et
+   c'est **la seule lecture du portail qui traverse les clients** : elle
+   n'expose que ce que la base « Accès » porte déjà, un slug et un libellé,
+   jamais une édition. Sa garde est **dans** `listerLesEspaces`, avant l'appel.
+   `tests/architecture.test.ts` vérifie que `organisationDuSlug` et
+   `espacesOuverts` ne sont appelées que depuis `lib/auth/appartenance.ts` : un
+   écran qui les appellerait contournerait le seul endroit qui vérifie le
+   privilège. La fonction ne s'appelle pas `tousLesEspaces` — ce nom est celui
+   de la **case** qui porte le droit, et deux choses de même nom pour deux rôles
+   opposés finissent par se confondre, y compris dans la garde.
 3. **Seules les éditions en statut « Envoyé » sont demandées à Notion**
    (filtre `select.equals` dans la requête, combiné au filtre
    `relation.contains` de l'organisation).

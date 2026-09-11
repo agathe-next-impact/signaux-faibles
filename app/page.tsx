@@ -7,7 +7,7 @@ import { lireAccèsParIdentifiant } from '@/lib/notion/acces'
  *
  * Une session valide mène au portail du client ; tout le reste mène au
  * formulaire. Le slug n'est pas dans le cookie — il vient de Notion, seule
- * source de l'appartenance.
+ * source de l'appartenance. Un accès opérateur mène au choix d'un espace.
  */
 // Cette route ne rend rien : elle lit le cookie et redirige. Il n'y a donc
 // aucune enveloppe à pré-rendre, et rien à mettre sous une frontière Suspense.
@@ -23,5 +23,6 @@ export default async function Racine() {
     redirect('/recevoir-mon-lien?revoque=1')
   }
 
-  redirect(`/${accès.slug}`)
+  // Un opérateur n'a pas d'espace à lui : on lui propose de choisir.
+  redirect(accès.tousLesEspaces ? '/espaces' : `/${accès.slug}`)
 }

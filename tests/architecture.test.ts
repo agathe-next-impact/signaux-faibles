@@ -87,14 +87,15 @@ describe('le cloisonnement ne se décide jamais sur le premier élément d’une
 /**
  * L'exception opérateur ne doit pas se répandre.
  *
- * `organisationDuSlug` est le seul chemin par lequel un identifiant
- * d'organisation vient d'ailleurs que de la ligne « Accès » de la personne
- * connectée. C'est une entorse assumée à la règle 2, et elle n'a de sens que
- * si elle reste confinée au contrôle d'appartenance : un écran qui l'appellerait
- * lui-même contournerait le seul endroit qui vérifie le privilège.
+ * Deux fonctions la portent. `organisationDuSlug` est le seul chemin par lequel
+ * un identifiant d'organisation vient d'ailleurs que de la ligne « Accès » de la
+ * personne connectée. `espacesOuverts` est la seule lecture du portail qui
+ * traverse les clients. Toutes deux n'ont de sens que confinées au contrôle
+ * d'appartenance, où la vérification du privilège précède l'appel : un écran qui
+ * les appellerait lui-même la contournerait.
  */
 describe('l’exception opérateur reste confinée', () => {
-  const appelants = () => {
+  const appelants = (fonction: string) => {
     const trouvés: string[] = []
     const parcourir = (dossier: string) => {
       for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
@@ -104,7 +105,7 @@ describe('l’exception opérateur reste confinée', () => {
           continue
         }
         if (!/\.tsx?$/.test(entrée.name)) continue
-        if (readFileSync(chemin, 'utf8').includes('organisationDuSlug')) {
+        if (readFileSync(chemin, 'utf8').includes(fonction)) {
           trouvés.push(chemin.replace(`${process.cwd()}/`, ''))
         }
       }
@@ -115,7 +116,9 @@ describe('l’exception opérateur reste confinée', () => {
     return trouvés.sort()
   }
 
-  it('n’est déclarée et appelée que dans deux fichiers', () => {
-    expect(appelants()).toEqual(['lib/auth/appartenance.ts', 'lib/notion/acces.ts'])
-  })
+  for (const fonction of ['organisationDuSlug', 'espacesOuverts']) {
+    it(`${fonction} n’est déclarée et appelée que dans deux fichiers`, () => {
+      expect(appelants(fonction)).toEqual(['lib/auth/appartenance.ts', 'lib/notion/acces.ts'])
+    })
+  }
 })

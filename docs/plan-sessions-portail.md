@@ -473,3 +473,26 @@ laissait le contenu passer dessous ; collant, il laissait le rail glisser sous
 lui et couper le logo ; et sa hauteur écrite deux fois aurait dérivé. La
 solution tient en une variable CSS : le bandeau la pose, le rail s'y colle et en
 déduit sa propre hauteur. Vérifié à trois positions de défilement.
+
+**11 septembre 2026, seconde passe.** Choisir parmi tous les espaces.
+
+L'accès opérateur ouvrait n'importe quel espace, encore fallait-il en connaître
+le slug. `/espaces` les liste : nom, slug, nombre de lecteurs actifs.
+
+**C'est la seule lecture du portail qui traverse les clients**, et elle est
+tenue en conséquence. Elle n'expose que ce que la base « Accès » porte déjà — un
+slug, un libellé — jamais une édition ni un contenu de veille. Sa garde vit
+**dans** `listerLesEspaces`, avant l'appel, et non à côté : un écran ne peut pas
+lister sans avoir vérifié. Un espace dont tous les accès sont révoqués disparaît
+du sélecteur, comme il a disparu pour ses lecteurs.
+
+**Une collision de noms a été corrigée avant qu'elle ne morde.** La fonction de
+listage s'appelait d'abord `tousLesEspaces`, comme la case qui porte le droit.
+La garde d'architecture, qui cherche des occurrences dans le source, comptait
+donc `accès.tousLesEspaces` de la racine comme un appel interdit. Le test avait
+raison de se plaindre : deux choses de même nom pour deux rôles opposés — un
+droit d'un côté, une liste de l'autre — finissent par se confondre à la lecture
+autant que dans une garde. La fonction est devenue `espacesOuverts`.
+
+**La racine oriente désormais selon le privilège** : un opérateur n'a pas
+d'espace à lui, on lui propose de choisir.
