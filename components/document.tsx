@@ -11,7 +11,14 @@ import { TitreAxe } from '@/components/titre-axe'
  * que l'arrivée de la charte ne touche aucun composant.
  */
 
-function Texte({ segments }: { segments: readonly Segment[] }) {
+/**
+ * Le rendu d'une suite de segments, avec sa mise en forme.
+ *
+ * Exporté parce que les cases d'axes et les mentions d'acteurs affichent des
+ * **extraits** de note, et non des blocs entiers : sans lui, elles rendaient un
+ * texte plat là où Notion montre un document.
+ */
+export function Texte({ segments }: { segments: readonly Segment[] }) {
   return (
     <>
       {segments.map((segment, index) => {

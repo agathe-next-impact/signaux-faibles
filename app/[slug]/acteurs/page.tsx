@@ -1,5 +1,7 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
+import { Fraicheur, LégendeFraicheur } from '@/components/fraicheur'
+import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import { semainesPubliées } from '@/lib/portail/semaine'
@@ -23,8 +25,16 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
   const accès = await exigerAccès(slug)
 
   const semaines = await semainesPubliées(accès.organisationId)
-  const suivis = suivreLesDossiers(semaines)
-  const enMouvement = suivis.filter((dossier) => dossier.aBougé).length
+  // `suivreLesDossiers` range du plus enlisé au plus récent — l'ordre d'un
+  // journal de bord, pas celui d'une lecture. On regroupe par fraîcheur : ce
+  // qui a bougé d'abord, ce qui dort en dernier. Le tri est stable, l'ordre
+  // d'origine continue donc de classer à l'intérieur de chaque groupe.
+  const suivis = [...suivreLesDossiers(semaines)].sort(
+    (a, b) => rangDeFraîcheur(fraîcheurDUnDossier(a)) - rangDeFraîcheur(fraîcheurDUnDossier(b)),
+  )
+  const enMouvement = suivis.filter(
+    (dossier) => fraîcheurDUnDossier(dossier) === 'nouveau',
+  ).length
 
   return (
     <>
@@ -44,6 +54,10 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
           : ''}
       </p>
 
+      <div className="mt-5">
+        <LégendeFraicheur />
+      </div>
+
       <section className="mt-8 flex flex-col gap-4">
         {suivis.length === 0 ? (
           <p className="text-ardoise">
@@ -60,13 +74,16 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
                       {dossier.nom}
                     </LienFlèche>
                   </h2>
-                  <p className="label-mono text-ardoise">
-                    {dossier.aBougé
-                      ? 'a bougé cette semaine'
-                      : dossier.semainesSansMouvement === 0
-                        ? 'ouvert cette semaine'
-                        : `${dossier.semainesSansMouvement} semaine${dossier.semainesSansMouvement > 1 ? 's' : ''} sans mouvement`}
-                  </p>
+                  <Fraicheur
+                    fraîcheur={fraîcheurDUnDossier(dossier)}
+                    libellé={
+                      dossier.aBougé
+                        ? 'a bougé cette semaine'
+                        : dossier.semainesSansMouvement === 0
+                          ? 'ouvert cette semaine'
+                          : `${dossier.semainesSansMouvement} semaine${dossier.semainesSansMouvement > 1 ? 's' : ''} sans mouvement`
+                    }
+                  />
                 </div>
 
                 {dossier.précisionActuelle ? (

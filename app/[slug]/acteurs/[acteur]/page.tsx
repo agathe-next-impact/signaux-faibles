@@ -2,6 +2,9 @@ import { notFound } from 'next/navigation'
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
+import { Texte } from '@/components/document'
+import { Fraicheur } from '@/components/fraicheur'
+import { fraîcheurDUnDossier } from '@/lib/domaine/fraicheur'
 import { SurtitreAxe } from '@/components/titre-axe'
 import { mentionsDe } from '@/lib/domaine/mentions'
 import { enSlug } from '@/lib/domaine/slug'
@@ -49,14 +52,23 @@ export default async function UnActeur({
       <EntêteÉcran
         surtitre="acteur suivi"
         titre={suivi.nom}
-        état={
-          suivi.aBougé
-            ? 'a bougé cette semaine'
-            : suivi.semainesSansMouvement === 0
-              ? 'ouvert cette semaine'
-              : `${suivi.semainesSansMouvement} semaine${suivi.semainesSansMouvement > 1 ? 's' : ''} sans mouvement`
-        }
+        état={`${suivi.points.length} relevé${suivi.points.length > 1 ? 's' : ''}`}
       />
+
+      {/* Le même code couleur que la liste : la page d'un acteur doit se lire
+          dans la continuité de l'écran d'où l'on vient. */}
+      <div className="mt-5">
+        <Fraicheur
+          fraîcheur={fraîcheurDUnDossier(suivi)}
+          libellé={
+            suivi.aBougé
+              ? 'a bougé cette semaine'
+              : suivi.semainesSansMouvement === 0
+                ? 'ouvert cette semaine'
+                : `${suivi.semainesSansMouvement} semaine${suivi.semainesSansMouvement > 1 ? 's' : ''} sans mouvement`
+          }
+        />
+      </div>
 
       <p className="mt-5">
         <LienFlèche href={`/${accès.slug}/acteurs`}>Retour aux acteurs</LienFlèche>
@@ -124,12 +136,17 @@ export default async function UnActeur({
                     ) : null}
                     <ul className="flex flex-col gap-2">
                       {mention.passages.map((passage) => (
-                        <li key={passage} className="flex gap-2.5">
+                        <li key={passage.texte} className="flex gap-2.5">
                           <span
                             aria-hidden="true"
                             className="mt-[0.5em] size-1.5 shrink-0 bg-ardoise"
                           />
-                          <span className="text-encre">{passage}</span>
+                          {/* Les segments, pas le texte nu : un gras, un lien ou
+                              un italique de la lettre se lit ici comme dans
+                              Notion. */}
+                          <span className="text-encre">
+                            <Texte segments={passage.segments} />
+                          </span>
                         </li>
                       ))}
                     </ul>

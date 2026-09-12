@@ -61,11 +61,15 @@ describe('mentions dans une lettre réelle', () => {
     // Le dossier dit « raccordement Telehouse Magny », la lettre écrit
     // « le raccordement de Telehouse Magny ».
     const passages = trouvés('raccordement Telehouse Magny').flatMap((m) => m.passages)
-    expect(passages.some((p) => p.includes('raccordement de Telehouse Magny'))).toBe(true)
+    expect(passages.some((p) => p.texte.includes('raccordement de Telehouse Magny'))).toBe(true)
   })
 
   it('ne confond pas un dossier avec un mot qui le contient', () => {
-    expect(trouvés('DNA').flatMap((m) => m.passages).every((p) => !p.includes('ADN'))).toBe(true)
+    expect(
+      trouvés('DNA')
+        .flatMap((m) => m.passages)
+        .every((p) => !p.texte.includes('ADN')),
+    ).toBe(true)
   })
 })
 

@@ -35,7 +35,7 @@ describe('mentionsDe', () => {
     expect(mentions[0]?.titre).toBe('Cadre')
     expect(mentions[0]?.numéro).toBe(1)
     expect(mentions[0]?.niveau).toBe('FORT')
-    expect(mentions[0]?.passages).toEqual(['La CADA a rendu son avis.'])
+    expect(mentions[0]?.passages.map((p) => p.texte)).toEqual(['La CADA a rendu son avis.'])
   })
 
   it('ne se déclenche pas au milieu d’un mot', () => {
@@ -52,7 +52,7 @@ describe('mentionsDe', () => {
       p('Les préfectures voisines attendent.'),
     ])
     const mentions = mentionsDe('Préfecture', document)
-    expect(mentions[0]?.passages).toEqual(['La prefecture a tranché.'])
+    expect(mentions[0]?.passages.map((p) => p.texte)).toEqual(['La prefecture a tranché.'])
   })
 
   it('trouve un nom en plusieurs mots, dans une puce comme dans un tableau', () => {
@@ -73,7 +73,7 @@ describe('mentionsDe', () => {
       },
     ])
 
-    expect(mentionsDe('Groupe Verdier', document)[0]?.passages).toEqual([
+    expect(mentionsDe('Groupe Verdier', document)[0]?.passages.map((p) => p.texte)).toEqual([
       'Groupe Verdier annonce une levée.',
       'Groupe Verdier · 12 M€',
     ])
@@ -81,7 +81,9 @@ describe('mentionsDe', () => {
 
   it('ne prend pas un nom pour un motif d’expression régulière', () => {
     const document = construireDocument([h2('Cadre — RAS'), p('Le point (a) est acté.')])
-    expect(mentionsDe('(a)', document)[0]?.passages).toEqual(['Le point (a) est acté.'])
+    expect(mentionsDe('(a)', document)[0]?.passages.map((p) => p.texte)).toEqual([
+      'Le point (a) est acté.',
+    ])
   })
 
   it('ne rend rien pour un nom vide', () => {
@@ -140,5 +142,67 @@ describe('acteursEnVue', () => {
       [lettre('Rien.'), lettre('La CADA revient dans le débat.')],
     )
     expect(gardés).toHaveLength(1)
+  })
+})
+
+/**
+ * La mise en forme doit survivre au voyage.
+ *
+ * Un extrait quitte la page de la lettre pour la case d'un axe ou la page d'un
+ * acteur. Tant qu'il n'était qu'une chaîne, il y arrivait à plat : un gras, un
+ * lien, un italique écrits dans la note disparaissaient dès qu'on sortait du
+ * rendu du document. Le texte reste là pour chercher et dédoublonner ; les
+ * segments sont ce qu'on affiche.
+ */
+describe('les passages gardent leur mise en forme', () => {
+  const richeGras = (avant: string, gras: string, après: string): BlocNotion => ({
+    id: `p-${avant}`,
+    type: 'paragraph',
+    paragraph: {
+      rich_text: [
+        { plain_text: avant },
+        { plain_text: gras, annotations: { bold: true } },
+        { plain_text: après },
+      ],
+    },
+  })
+
+  it('rend le texte entier et les segments qui le composent', () => {
+    const document = construireDocument([
+      h2('Cadre européen — MOYEN'),
+      richeGras('Le ', 'règlement marchés publics', ' est présenté le 9 septembre.'),
+    ])
+
+    const [passage] = mentionsDe('règlement marchés publics', document)[0]!.passages
+
+    expect(passage!.texte).toBe('Le règlement marchés publics est présenté le 9 septembre.')
+    // Le texte se recompose exactement depuis les segments : la case affiche
+    // donc ce que les tests mesurent, et rien d'autre.
+    expect(passage!.segments.map((segment) => segment.texte).join('')).toBe(passage!.texte)
+    expect(passage!.segments.filter((segment) => segment.gras).map((s) => s.texte)).toEqual([
+      'règlement marchés publics',
+    ])
+  })
+
+  it('recompose une ligne de tableau sans perdre ses cellules', () => {
+    const document = construireDocument([
+      h2('Agenda — MOYEN'),
+      {
+        id: 'tableau',
+        type: 'table',
+        table: { has_column_header: false },
+        enfants: [
+          {
+            id: 'ligne',
+            type: 'table_row',
+            table_row: { cells: [texte('9/09'), texte('Règlement marchés publics')] },
+          },
+        ],
+      },
+    ])
+
+    const [passage] = mentionsDe('règlement marchés publics', document)[0]!.passages
+    expect(passage!.texte).toBe('9/09 · Règlement marchés publics')
+    expect(passage!.segments.map((segment) => segment.texte).join('')).toBe(passage!.texte)
   })
 })

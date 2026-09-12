@@ -1,6 +1,8 @@
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { CaseAxe } from '@/components/case-axe'
 import { EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
+import { LégendeFraicheur } from '@/components/fraicheur'
+import { fraîcheurDUnAxe, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { libelléDeMouvement, suivreLesAxes } from '@/lib/domaine/tendances'
 import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
@@ -30,8 +32,15 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
     documentsDeLaSemaine(semaines[0]),
     documentsDeLaSemaine(semaines[1]),
   ])
-  const axes = suivreLesAxes(documents, documentsPrécédents)
+  // `suivreLesAxes` rend les axes triés par impact. On les regroupe par
+  // fraîcheur SANS toucher à cet ordre : le tri est stable, l'impact continue
+  // donc de classer à l'intérieur de chaque groupe. Ce qui a du neuf d'abord,
+  // et à neuf égal, le signal le plus fort.
+  const axes = [...suivreLesAxes(documents, documentsPrécédents)].sort(
+    (a, b) => rangDeFraîcheur(fraîcheurDUnAxe(a)) - rangDeFraîcheur(fraîcheurDUnAxe(b)),
+  )
   const comparable = semaines.length > 1
+  const avecNouveauté = axes.filter((axe) => fraîcheurDUnAxe(axe) === 'nouveau').length
 
   return (
     <>
@@ -44,9 +53,19 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
       />
 
       <p className="mt-5 text-ardoise">
-        Les sections thématiques des lettres de la semaine, réunies et triées par impact.
+        Les sections thématiques des lettres de la semaine, réunies. Ce qui a du nouveau
+        vient en premier, et à fraîcheur égale le signal le plus fort.{' '}
+        {axes.length > 0
+          ? avecNouveauté > 0
+            ? `${avecNouveauté} ${avecNouveauté > 1 ? 'axes ont' : 'axe a'} du nouveau cette semaine.`
+            : 'Aucun axe n’a de nouveauté cette semaine.'
+          : ''}{' '}
         Chaque case ouvre le suivi de son axe sur les dernières lettres.
       </p>
+
+      <div className="mt-5">
+        <LégendeFraicheur />
+      </div>
 
       <section className="mt-8 flex flex-col gap-4">
         {axes.length === 0 ? (
@@ -63,11 +82,11 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
                 points={axe.points}
                 // Sans semaine précédente, tout serait « nouveau » : on se tait
                 // plutôt que d'annoncer un mouvement qui n'existe pas.
-                mention={
+                fraîcheur={
                   comparable
                     ? {
-                        texte: libelléDeMouvement(axe.mouvement),
-                        accentuée: axe.mouvement === 'monté',
+                        état: fraîcheurDUnAxe(axe),
+                        libellé: libelléDeMouvement(axe.mouvement),
                       }
                     : null
                 }

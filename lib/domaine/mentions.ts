@@ -1,4 +1,10 @@
-import { écourter, type Bloc, type Document } from '@/lib/domaine/document'
+import {
+  écourter,
+  type Bloc,
+  type Document,
+  type Extrait,
+  type Segment,
+} from '@/lib/domaine/document'
 import type { DossierOuvert } from '@/lib/domaine/dossiers'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 
@@ -21,7 +27,7 @@ export type Mention = {
   /** Le niveau d'impact, quand la source est un axe. */
   readonly niveau: NiveauImpact | null
   /** Les passages qui nomment l'acteur, dans l'ordre de la note. */
-  readonly passages: readonly string[]
+  readonly passages: readonly Extrait[]
 }
 
 function sansAccent(texte: string): string {
@@ -50,26 +56,44 @@ function motifDe(nom: string): RegExp | null {
   return new RegExp(`(?<![a-z0-9])${mots.join(liaison)}(?![a-z0-9])`)
 }
 
-/** Les textes suivis d'un bloc, ceux où un nom peut se trouver. */
-function textesDuBloc(bloc: Bloc): string[] {
+/** Un séparateur de cellules, sans mise en forme propre. */
+const ENTRE_CELLULES: Segment = {
+  texte: ' · ',
+  gras: false,
+  italique: false,
+  code: false,
+  barré: false,
+  lien: null,
+}
+
+function enExtrait(segments: readonly Segment[]): Extrait {
+  return { texte: segments.map((segment) => segment.texte).join('').trim(), segments }
+}
+
+/**
+ * Les passages suivis d'un bloc, ceux où un nom peut se trouver.
+ *
+ * Chaque passage garde ses **segments** en plus de son texte. La recherche
+ * travaille sur le texte, l'affichage sur les segments : un gras, un lien ou un
+ * italique de la note survit donc jusqu'à la page de l'acteur, au lieu d'y
+ * arriver à plat.
+ */
+function passagesDuBloc(bloc: Bloc): Extrait[] {
   switch (bloc.type) {
     case 'paragraphe':
     case 'citation':
     case 'encadré':
     case 'titre':
-      return [bloc.segments.map((segment) => segment.texte).join('').trim()]
+      return [enExtrait(bloc.segments)]
 
     case 'liste':
-      return bloc.éléments.map((élément) =>
-        élément.map((segment) => segment.texte).join('').trim(),
-      )
+      return bloc.éléments.map(enExtrait)
 
     case 'tableau':
       return bloc.lignes.map((ligne) =>
-        ligne
-          .map((cellule) => cellule.map((segment) => segment.texte).join(''))
-          .join(' · ')
-          .trim(),
+        enExtrait(
+          ligne.flatMap((cellule, index) => (index === 0 ? cellule : [ENTRE_CELLULES, ...cellule])),
+        ),
       )
 
     // Ni le code, ni les séparateurs, ni les images : un nom qui s'y trouverait
@@ -92,10 +116,10 @@ export function mentionsDe(nom: string, document: Document): Mention[] {
   const motif = motifDe(nom)
   if (!motif) return []
 
-  const trouver = (blocs: readonly Bloc[]): string[] =>
+  const trouver = (blocs: readonly Bloc[]): Extrait[] =>
     blocs
-      .flatMap(textesDuBloc)
-      .filter((texte) => texte.length > 0 && motif.test(sansAccent(texte)))
+      .flatMap(passagesDuBloc)
+      .filter(({ texte }) => texte.length > 0 && motif.test(sansAccent(texte)))
 
   const mentions: Mention[] = []
 
@@ -167,6 +191,6 @@ export function acteursEnVue(
       .at(0)
 
     if (!passage && acteur.compteur !== 0) return []
-    return [{ ...acteur, extrait: passage ? écourter(passage, longueur) : null }]
+    return [{ ...acteur, extrait: passage ? écourter(passage.texte, longueur) : null }]
   })
 }
