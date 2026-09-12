@@ -27,8 +27,13 @@ export function Resynchroniser({ slug }: { slug: string }) {
       </button>
 
       {résultat.état === 'fait' ? (
-        <p className="label-mono text-ardoise">
-          à jour · {résultat.lettres} lettre{résultat.lettres > 1 ? 's' : ''}
+        // Zéro ne veut pas dire « rien à faire » : il veut dire « cet espace n'a
+        // aucune lettre publiée ». Les deux se disaient « à jour · 0 lettres »,
+        // et on cherchait la panne du côté de la synchro. Konica, 12/09/2026.
+        <p className={`label-mono ${résultat.lettres === 0 ? 'text-rose' : 'text-ardoise'}`}>
+          {résultat.lettres === 0
+            ? 'aucune lettre publiée · rien à relire dans notion'
+            : `à jour · ${résultat.lettres} lettre${résultat.lettres > 1 ? 's' : ''}`}
         </p>
       ) : null}
 

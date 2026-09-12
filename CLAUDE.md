@@ -207,7 +207,15 @@ Bases partagées avec l'intégration du portail, et elles seules :
   connectant normalement. C'est arrivé le 10 septembre 2026 sur l'Hermitage.
   Vérification en dix secondes : la propriété `Organisation` d'une édition du
   client doit être le même identifiant que la ligne « Accès ». Le layout
-  journalise désormais « accès valide, aucune édition ».
+  journalise « accès valide, aucune édition publiée ».
+  **Ce journal ne désigne plus ce piège en premier, et c'est important.** Un
+  espace vide a deux causes, et la plus fréquente n'est pas celle-là : les
+  lettres peuvent exister, portées par le bon identifiant, et rester au statut
+  `Brouillon` — le portail ne demande que les `Envoyé` (règle 3), et il ne voit
+  donc pas les brouillons, ce qui lui interdit de trancher lui-même. Le
+  12 septembre 2026 sur Konica, le message qui accusait l'identifiant a fait
+  chercher une panne là où il n'y en avait pas. Vérifier le statut avant
+  l'identifiant.
   **Second piège avéré** : dupliquer une ligne pour ajouter un lecteur recopie
   `Identifiant d'accès`. Le portail trouve alors deux lignes pour un même
   identifiant et refuse **les deux liens à la fois** — le mail part, mais le
