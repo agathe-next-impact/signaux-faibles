@@ -183,25 +183,28 @@ describe('pointsDAxe', () => {
 
   it('prend les puces de la note quand il y en a', () => {
     const axe = axeAvec([p('Une introduction.'), puce('Premier fait.'), puce('Second fait.')])
-    expect(pointsDAxe(axe!)).toEqual(['Premier fait.', 'Second fait.'])
+    expect(pointsDAxe(axe!).map((p) => p.texte)).toEqual(['Premier fait.', 'Second fait.'])
   })
 
   it('retombe sur les paragraphes, une phrase chacun, quand la note n’a pas de puce', () => {
     const axe = axeAvec([p('Un premier fait. Un développement qui suit.'), p('Un second fait.')])
-    expect(pointsDAxe(axe!)).toEqual(['Un premier fait.', 'Un second fait.'])
+    expect(pointsDAxe(axe!).map((p) => p.texte)).toEqual(['Un premier fait.', 'Un second fait.'])
   })
 
   it('s’arrête au nombre demandé', () => {
     const axe = axeAvec([puce('a'), puce('b'), puce('c'), puce('d')])
-    expect(pointsDAxe(axe!, 2)).toEqual(['a', 'b'])
+    expect(pointsDAxe(axe!, 2).map((p) => p.texte)).toEqual(['a', 'b'])
   })
 
   it('coupe au mot entier, jamais au milieu d’un', () => {
     const axe = axeAvec([puce('Le comité interministériel a rendu son avis définitif au printemps')])
     const [point] = pointsDAxe(axe!, 3, 30)
-    expect(point?.endsWith('…')).toBe(true)
-    expect(point).not.toContain('inter…')
-    expect(point!.length).toBeLessThanOrEqual(31)
+    expect(point?.texte.endsWith('…')).toBe(true)
+    expect(point?.texte).not.toContain('inter…')
+    expect(point!.texte.length).toBeLessThanOrEqual(31)
+    // Les segments écourtés portent le même texte que l'extrait : sans cela, la
+    // case afficherait autre chose que ce que les tests mesurent.
+    expect(point!.segments.map((s) => s.texte).join('')).toBe(point!.texte)
   })
 
   it('ne rend rien pour un axe sans développement', () => {
@@ -233,7 +236,10 @@ describe('fusionnerLesAxes', () => {
     expect(axes).toHaveLength(1)
     // Le niveau le plus fort l'emporte, jamais le dernier rencontré.
     expect(axes[0]?.niveau).toBe('FORT')
-    expect(axes[0]?.points).toEqual(['Vu côté écosystème.', 'Vu côté concurrentiel.'])
+    expect(axes[0]?.points.map((p) => p.texte)).toEqual([
+      'Vu côté écosystème.',
+      'Vu côté concurrentiel.',
+    ])
   })
 
   it('ne répète pas un fait relevé par les deux lettres', () => {
@@ -242,7 +248,7 @@ describe('fusionnerLesAxes', () => {
       lettre(['Cadre — MOYEN', ['Le même décret.', 'Un second fait.']]),
     ])
 
-    expect(axes[0]?.points).toEqual(['Le même décret.', 'Un second fait.'])
+    expect(axes[0]?.points.map((p) => p.texte)).toEqual(['Le même décret.', 'Un second fait.'])
   })
 
   it('plafonne les points même quand deux lettres en apportent', () => {
@@ -251,7 +257,7 @@ describe('fusionnerLesAxes', () => {
       3,
     )
 
-    expect(axes[0]?.points).toEqual(['a', 'b', 'c'])
+    expect(axes[0]?.points.map((p) => p.texte)).toEqual(['a', 'b', 'c'])
   })
 
   it('récupère le numéro de la lettre qui le porte', () => {

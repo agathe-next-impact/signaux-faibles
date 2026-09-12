@@ -1,6 +1,10 @@
 import { BadgeImpact } from '@/components/badge-impact'
 import { Case, LienFlèche } from '@/components/coquille'
+import { Texte } from '@/components/document'
+import { Fraicheur } from '@/components/fraicheur'
 import { SurtitreAxe } from '@/components/titre-axe'
+import type { Extrait } from '@/lib/domaine/document'
+import type { Fraîcheur } from '@/lib/domaine/fraicheur'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 
 /**
@@ -18,17 +22,21 @@ import type { NiveauImpact } from '@/lib/domaine/impact'
 export function CaseAxe({
   axe,
   points,
-  mention,
+  fraîcheur,
   href,
 }: {
   axe: { readonly titre: string; readonly numéro: number | null; readonly niveau: NiveauImpact | null }
-  points: readonly string[]
   /**
-   * Une mention de contexte — le mouvement de l'axe. `accentuée` la passe en
-   * rose : c'est le seul accent possible ici, le fond de la case devant rester
-   * blanc (voir le commentaire du composant).
+   * Les éléments importants de la semaine, avec leur mise en forme. Ce sont des
+   * extraits de la note : un gras ou un lien écrit dans la lettre se lit ici
+   * comme il se lit dans Notion.
    */
-  mention?: { readonly texte: string; readonly accentuée?: boolean } | null
+  points: readonly Extrait[]
+  /**
+   * La fraîcheur de l'axe, avec le mot qui la dit. La couleur seule n'informe
+   * pas ; la pastille et le libellé vont ensemble.
+   */
+  fraîcheur?: { readonly état: Fraîcheur; readonly libellé: string } | null
   href: string
 }) {
   return (
@@ -39,20 +47,20 @@ export function CaseAxe({
     <Case>
       <div className="flex flex-col gap-1">
         <SurtitreAxe axe={axe} />
-        {mention ? (
-          <p className={`label-mono ${mention.accentuée ? 'text-rose' : 'text-ardoise'}`}>
-            {mention.texte}
-          </p>
+        {fraîcheur ? (
+          <Fraicheur fraîcheur={fraîcheur.état} libellé={fraîcheur.libellé} />
         ) : null}
       </div>
 
       {points.length > 0 ? (
         <ul className="flex flex-col gap-2">
           {points.map((point) => (
-            <li key={point} className="flex gap-2.5">
+            <li key={point.texte} className="flex gap-2.5">
               {/* Puce carrée : la grille est à angle droit, ses puces aussi. */}
               <span aria-hidden="true" className="mt-[0.5em] size-1.5 shrink-0 bg-ardoise" />
-              <span className="text-encre">{point}</span>
+              <span className="text-encre">
+                <Texte segments={point.segments} />
+              </span>
             </li>
           ))}
         </ul>

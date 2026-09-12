@@ -55,10 +55,13 @@ async function Garde({
   // un secret ; l'identifiant d'accès, lui, n'apparaît jamais ici.
   if (semaines.length === 0) {
     console.warn(
-      `[espace] ${accès.slug} : accès valide, aucune édition. Vérifier que ` +
-        `« Identifiant Notion de l'organisation » (${accès.organisationId}) est ` +
-        `bien le page_id de la ligne du registre, et non celui de la page ` +
-        `organisation.`,
+      `[espace] ${accès.slug} : accès valide, aucune édition publiée. Deux causes, ` +
+        `dans cet ordre : (1) aucune lettre n'est encore au statut « Envoyé » — le ` +
+        `portail ne demande que celles-là, et une lettre en Brouillon est invisible ` +
+        `même si elle existe ; (2) « Identifiant Notion de l'organisation » ` +
+        `(${accès.organisationId}) n'est pas le page_id de la ligne du registre mais ` +
+        `celui de la page organisation. Vérifier (1) avant (2) : le portail ne voit ` +
+        `pas les brouillons et ne peut pas trancher lui-même.`,
     )
   }
 

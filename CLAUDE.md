@@ -207,7 +207,15 @@ Bases partagées avec l'intégration du portail, et elles seules :
   connectant normalement. C'est arrivé le 10 septembre 2026 sur l'Hermitage.
   Vérification en dix secondes : la propriété `Organisation` d'une édition du
   client doit être le même identifiant que la ligne « Accès ». Le layout
-  journalise désormais « accès valide, aucune édition ».
+  journalise « accès valide, aucune édition publiée ».
+  **Ce journal ne désigne plus ce piège en premier, et c'est important.** Un
+  espace vide a deux causes, et la plus fréquente n'est pas celle-là : les
+  lettres peuvent exister, portées par le bon identifiant, et rester au statut
+  `Brouillon` — le portail ne demande que les `Envoyé` (règle 3), et il ne voit
+  donc pas les brouillons, ce qui lui interdit de trancher lui-même. Le
+  12 septembre 2026 sur Konica, le message qui accusait l'identifiant a fait
+  chercher une panne là où il n'y en avait pas. Vérifier le statut avant
+  l'identifiant.
   **Second piège avéré** : dupliquer une ligne pour ajouter un lecteur recopie
   `Identifiant d'accès`. Le portail trouve alors deux lignes pour un même
   identifiant et refuse **les deux liens à la fois** — le mail part, mais le
@@ -377,10 +385,42 @@ fond. Les cases sans badge (tuiles, lettres, recommandations) gardent l'accent
 de fond.
 
 Une case d'axe porte, dans cet ordre : le **numéro et le nom en surtitre** mono
-encre — c'est l'identité, elle doit se lire en premier —, une mention de
-contexte facultative, puis les **éléments importants en liste à puces carrées**.
-Le nom n'est pas un titre en Lora : ce que la case donne à lire, ce sont les
-faits de la semaine, pas le nom d'une rubrique que le lecteur connaît déjà.
+encre — c'est l'identité, elle doit se lire en premier —, la **pastille de
+fraîcheur** avec son libellé, puis les **éléments importants en liste à puces
+carrées**. Le nom n'est pas un titre en Lora : ce que la case donne à lire, ce
+sont les faits de la semaine, pas le nom d'une rubrique que le lecteur connaît
+déjà.
+
+**Un extrait de note garde sa mise en forme.** `Extrait` porte un `texte` et ses
+`segments`, et les deux ne font pas double emploi : le texte sert à chercher,
+dédoublonner et comparer — c'est lui que les tests mesurent —, les segments
+servent à afficher. Tant qu'un extrait n'était qu'une chaîne, un gras, un lien
+ou un italique de la lettre disparaissait dès qu'il quittait la page de la note :
+les cases d'axes et les mentions d'acteurs rendaient du texte plat là où Notion
+montre un document. `écourterSegments` plafonne la longueur en coupant **dans**
+le segment qui déborde ; `couperSegments` s'arrête net à un offset connu, sans
+ellipse, pour la première phrase d'un paragraphe.
+
+**La fraîcheur classe, l'impact hiérarchise, et les deux se lisent ensemble.**
+`lib/domaine/fraicheur.ts` donne trois états — `nouveau`, `suivi`, `dormant` —
+communs aux axes et aux acteurs. Les écrans « Les axes » et « Acteurs » groupent
+par fraîcheur d'abord ; le tri étant **stable**, l'ordre d'origine (impact pour
+les axes, ancienneté pour les acteurs) continue de classer à l'intérieur de
+chaque groupe. L'accueil, lui, reste trié par impact seul : c'est un condensé,
+il montre ce qui compte le plus, pas ce qui vient d'arriver.
+
+Ce n'est **pas** une quatrième graduation d'impact (règle 6) : c'est un autre axe
+de lecture, et un axe peut être FORT et sans nouveauté. RAS l'emporte toujours
+sur le mouvement — un axe qui apparaît en RAS est nouveau au sens du suivi mais
+n'apporte rien à lire, et le mettre en tête ferait remonter du vide.
+
+**La couleur de fraîcheur est une pastille, pas une teinte de texte.** Trois
+états, et la charte n'a que deux couleurs de texte lisibles : inventer la
+troisième aurait réinventé la palette, s'en tenir à deux aurait effacé un état.
+Le carré décoratif porte donc la couleur (rose, ardoise, gris de filet) et le
+libellé reste lisible ; le gris de filet n'est admis que là, parce qu'il ne porte
+aucun mot. Carré et non rond, comme les puces et les grilles. Chaque écran
+affiche la légende : un code couleur qu'on n'explique pas est une décoration.
 
 ## Commandes
 

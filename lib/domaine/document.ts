@@ -354,22 +354,116 @@ export function axesDuDocument(document: Document): Axe[] {
  * Le texte est coupé au mot, jamais au milieu d'un : une case n'a pas la place
  * d'un paragraphe, et la page de l'axe porte le texte entier.
  */
-export function pointsDAxe(axe: Axe, combien = 3, longueur = 110): string[] {
-  const puces: string[] = []
-  const phrases: string[] = []
+/**
+ * Un extrait de note : son texte nu, et les segments qui le composent.
+ *
+ * Les deux sont nécessaires et ne font pas double emploi. Le **texte** sert à
+ * chercher, dédoublonner et comparer — c'est lui que les tests mesurent. Les
+ * **segments** servent à afficher : sans eux, un gras, un lien ou un italique
+ * de la note se perdaient dès qu'un extrait quittait la page de la lettre, et
+ * les cases d'axes comme les mentions d'acteurs rendaient un texte plat là où
+ * Notion montre un document.
+ */
+export type Extrait = {
+  readonly texte: string
+  readonly segments: readonly Segment[]
+}
+
+/**
+ * Écourte une suite de segments sans perdre leur mise en forme.
+ *
+ * `écourter` ne sait travailler que sur une chaîne : appliquée à des segments,
+ * elle les aurait aplatis, ce qui était exactement le défaut à corriger. On
+ * coupe donc **dans** le segment qui dépasse, au mot, et on jette la suite.
+ */
+export function écourterSegments(
+  segments: readonly Segment[],
+  longueur: number,
+): Segment[] {
+  const entier = texteDeSegments(segments)
+  if (entier.length <= longueur) return [...segments]
+
+  const gardés: Segment[] = []
+  let reste = longueur
+
+  for (const segment of segments) {
+    if (reste <= 0) break
+
+    if (segment.texte.length <= reste) {
+      gardés.push(segment)
+      reste -= segment.texte.length
+      continue
+    }
+
+    // Le segment déborde : on le coupe au mot, et l'ellipse reste dans sa
+    // propre mise en forme — elle appartient à la phrase, pas au composant.
+    gardés.push({ ...segment, texte: écourter(segment.texte, reste) })
+    reste = 0
+  }
+
+  return gardés
+}
+
+/**
+ * Garde les `combien` premiers caractères d'une suite de segments, exactement.
+ *
+ * Distinct d'`écourterSegments` : ici on coupe à un offset connu — la fin de la
+ * première phrase — sans chercher de mot entier et sans ajouter d'ellipse. Une
+ * phrase complète ne doit pas se terminer par « … ».
+ */
+function couperSegments(segments: readonly Segment[], combien: number): Segment[] {
+  const gardés: Segment[] = []
+  let reste = combien
+
+  for (const segment of segments) {
+    if (reste <= 0) break
+    if (segment.texte.length <= reste) {
+      gardés.push(segment)
+      reste -= segment.texte.length
+      continue
+    }
+    gardés.push({ ...segment, texte: segment.texte.slice(0, reste) })
+    reste = 0
+  }
+
+  return gardés
+}
+
+function extraitDe(segments: readonly Segment[], longueur: number): Extrait | null {
+  const texte = texteDeSegments(segments).trim()
+  if (texte.length === 0) return null
+  return { texte: écourter(texte, longueur), segments: écourterSegments(segments, longueur) }
+}
+
+export function pointsDAxe(axe: Axe, combien = 3, longueur = 110): Extrait[] {
+  const puces: Extrait[] = []
+  const phrases: Extrait[] = []
 
   for (const bloc of axe.blocs) {
     if (bloc.type === 'liste') {
       for (const élément of bloc.éléments) {
-        const texte = texteDeSegments(élément).trim()
-        if (texte.length > 0) puces.push(écourter(texte, longueur))
+        const extrait = extraitDe(élément, longueur)
+        if (extrait) puces.push(extrait)
       }
       continue
     }
 
     if (bloc.type === 'paragraphe' || bloc.type === 'citation') {
-      const texte = texteDeSegments(bloc.segments).trim()
-      if (texte.length > 0) phrases.push(écourter(premièrePhrase(texte), longueur))
+      // La première phrase seulement. Le découpage se fait sur le texte — c'est
+      // là que vit la ponctuation —, puis se reporte sur les segments par le
+      // même offset. Deux coupes, donc, et deux fonctions : `couperSegments`
+      // s'arrête net à la fin de la phrase, `écourterSegments` plafonne la
+      // longueur au mot et pose l'ellipse.
+      const entier = texteDeSegments(bloc.segments)
+      if (entier.trim().length === 0) continue
+      const début = premièrePhrase(entier.trimStart())
+      const décalage = entier.length - entier.trimStart().length
+      const segments = couperSegments(bloc.segments, décalage + début.length)
+
+      phrases.push({
+        texte: écourter(début.trim(), longueur),
+        segments: écourterSegments(segments, décalage + longueur),
+      })
     }
   }
 
@@ -395,7 +489,7 @@ export type AxeFusionné = {
   readonly titre: string
   readonly numéro: number | null
   readonly niveau: NiveauImpact | null
-  readonly points: readonly string[]
+  readonly points: readonly Extrait[]
 }
 
 /**
@@ -410,6 +504,14 @@ export type AxeFusionné = {
  * L'ordre de sortie est celui des notes ; c'est à l'écran de trier par impact,
  * comme partout ailleurs.
  */
+function dédoublonner(extraits: readonly Extrait[]): Extrait[] {
+  const vus = new Map<string, Extrait>()
+  for (const extrait of extraits) {
+    if (!vus.has(extrait.texte)) vus.set(extrait.texte, extrait)
+  }
+  return [...vus.values()]
+}
+
 export function fusionnerLesAxes(
   documents: readonly Document[],
   combien = 3,
@@ -436,7 +538,9 @@ export function fusionnerLesAxes(
         numéro: connu.numéro ?? axe.numéro,
         niveau: rangDImpact(axe.niveau) < rangDImpact(connu.niveau) ? axe.niveau : connu.niveau,
         // Les deux lettres peuvent avoir relevé le même fait : une seule puce.
-        points: [...new Set([...connu.points, ...points])].slice(0, combien),
+        // Le dédoublonnage porte sur le TEXTE, pas sur l'objet : deux extraits
+        // identiques venus de deux lettres n'ont pas la même identité.
+        points: dédoublonner([...connu.points, ...points]).slice(0, combien),
       })
     }
   }
