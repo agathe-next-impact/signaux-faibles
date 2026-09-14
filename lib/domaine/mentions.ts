@@ -152,6 +152,19 @@ export function mentionsDe(nom: string, document: Document): Mention[] {
     }
   }
 
+  // « Les acteurs que nous suivons pour vous » est détaché de la lettre pour
+  // l'écran du périmètre, mais il reste du contenu de veille, et c'est même
+  // l'endroit où la lettre concurrentielle dit où en est chaque dossier, nom
+  // par nom. Ne pas le parcourir aurait vidé les pages d'acteurs de ces
+  // clients le jour même où la section a été détachée — le symétrique exact du
+  // pied de lettre, que le trait horizontal garde dans la note pour la même
+  // raison. Le cadrage, lui, n'est pas parcouru : ce sont des propositions à
+  // valider, et les citer comme mentions les ferait lire comme des faits.
+  const corpus = trouver(document.acteursSuivis)
+  if (corpus.length > 0) {
+    mentions.push({ titre: '', numéro: null, niveau: null, passages: corpus })
+  }
+
   return mentions
 }
 

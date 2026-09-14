@@ -45,6 +45,19 @@ const nextConfig: NextConfig = {
   // (règle 5, les URL de fichiers Notion expirent en une heure).
   images: { remotePatterns: [] },
 
+  async redirects() {
+    return [
+      {
+        // L'écran « Cadrage » est devenu « Périmètre » le 14 septembre 2026, en
+        // accueillant la section des acteurs suivis. Un lecteur qui avait gardé
+        // l'ancienne adresse doit arriver au bon endroit plutôt que sur un 404.
+        source: '/:slug/cadrage',
+        destination: '/:slug/perimetre',
+        permanent: true,
+      },
+    ]
+  },
+
   async headers() {
     return [
       {

@@ -245,8 +245,9 @@ sections** : « Les acteurs » et « L'écosystème ») · Lettres
 `/[slug]/lettres/[edition]` pour la lire) · **Les axes** (`/[slug]/axes`,
 grille des axes avec leur mouvement) · **Acteurs** (`/[slug]/acteurs`, le
 suivi des dossiers ouverts) · Recommandations · Archives (une entrée par
-semaine) · **Cadrage** (`/[slug]/cadrage`, décidé le 10 septembre 2026).
-Pas d'autre écran sans discussion.
+semaine) · **Périmètre** (`/[slug]/perimetre`, décidé le 10 septembre 2026
+sous le nom « Cadrage », renommé le 14 septembre en accueillant les acteurs
+suivis). Pas d'autre écran sans discussion.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
@@ -256,19 +257,48 @@ précédente, le suivi des dossiers ne lit **aucun corps**. Empilés, l'écran
 faisait payer le plus cher des deux à qui ne venait chercher que l'autre.
 Chacun renvoie vers l'autre en pied d'écran.
 
-**Les ajustements de cadrage ne figurent jamais dans une lettre.** Ce sont des
-propositions de modification du périmètre de la veille, qui appellent une
-décision du client ; mêlées aux faits de la semaine, elles se lisaient comme de
-l'information de veille. Elles sont **détachées à la construction du document**
-(`construireDocument` les sort de `rubriques` et les pose dans `document.cadrage`),
-et non masquées à l'affichage : aucun écran ne peut donc les faire réapparaître
-par mégarde.
+**Deux sections des lettres ne figurent jamais dans une lettre**, et elles
+vivent ensemble sur l'écran « Périmètre » (`/[slug]/perimetre`), réunies le
+14 septembre 2026. Elles répondent à la même question — ce que la veille
+surveille pour ce client — quand tout le reste de la lettre répond à l'autre,
+ce qui s'est passé cette semaine.
 
-La rubrique est reconnue au mot « cadrage » dans son titre H1, accents et casse
-ignorés — c'est le seul signal disponible, aucune propriété Notion ne la marque.
-Convention avec les tâches Cowork : si le titre était reformulé au point de ne
-plus contenir ce mot, la section **réapparaîtrait dans la lettre**, panne
-visible plutôt que disparition silencieuse.
+- **Les ajustements de cadrage** sont des propositions de modification du
+  périmètre, qui appellent une décision du client ; mêlées aux faits de la
+  semaine, elles se lisaient comme de l'information de veille.
+- **« Les acteurs que nous suivons pour vous »**, rubrique de la lettre
+  concurrentielle, décrit le corpus lui-même : combien d'entités, lesquelles
+  ont produit un fait daté, où en est chaque dossier ouvert, quels trous de
+  couverture subsistent.
+
+Les deux sont **détachées à la construction du document** (`construireDocument`
+les sort de `rubriques` et les pose dans `document.cadrage` et
+`document.acteursSuivis`), et non masquées à l'affichage : aucun écran ne peut
+donc les faire réapparaître dans une lettre par mégarde.
+
+**L'écran du périmètre n'est pas l'écran des acteurs, et la distinction est de
+coût autant que de sens.** « Acteurs » suit les dossiers un par un sur toute
+l'archive sans lire **aucun corps** ; « Périmètre » lit les quatre dernières
+lettres, les mêmes entrées de cache que la page d'un axe. Les empiler
+rééditerait exactement l'erreur qui a fait scinder « Tendances ». Chacun
+renvoie vers l'autre en pied d'écran.
+
+La rubrique de cadrage est reconnue au mot « cadrage » dans son titre H1,
+accents et casse ignorés — c'est le seul signal disponible, aucune propriété
+Notion ne la marque. Celle du corpus demande **deux** signaux, « acteur » et
+« nous suiv » : le mot « acteurs » seul détacherait une rubrique d'actualité,
+et l'Hermitage en a une, « Actualité acteurs ». Convention avec les tâches
+Cowork, dans les deux cas : si le titre était reformulé au point de perdre son
+signal, la section **réapparaîtrait dans la lettre**, panne visible plutôt que
+disparition silencieuse.
+
+**Le cadrage n'est pas cité comme une mention, les acteurs suivis le sont.**
+`mentionsDe` parcourt `document.acteursSuivis` comme le reste de la note : c'est
+là que la lettre concurrentielle nomme ses dossiers en clair, et pour plusieurs
+d'entre eux c'est le seul endroit du texte où ils figurent — Kyocera, dans la
+lettre du 12 septembre. Ne pas le parcourir aurait vidé leurs pages le jour même
+du détachement. Le cadrage, lui, reste hors de la recherche : ce sont des
+propositions à valider, les citer les ferait lire comme des faits.
 
 **Le trait horizontal ferme la section, et ce détail n'est pas cosmétique.**
 Dans les lettres, la rubrique de cadrage est suivie d'un `---` puis du pied de
@@ -276,7 +306,11 @@ la lettre — dossiers ouverts, sources vérifiées, prochaine parution. Retirer
 rubrique entière emporterait ce pied, qui est du contenu de veille et **nomme la
 plupart des dossiers suivis** : les mentions d'acteurs s'effondreraient. Seul ce
 qui précède le trait est du cadrage ; ce qui suit revient à la lettre, dans une
-rubrique sans titre.
+rubrique sans titre. La règle vaut pour les deux sections détachées : une seule
+façon de couper, écrite à un seul endroit.
+
+L'ancienne adresse `/[slug]/cadrage` redirige en 308 vers `/[slug]/perimetre`
+(`next.config.ts`) : le rail n'y menait plus, un signet gardé, si.
 
 Chaque écran porte sa page de détail sous son propre segment :
 `/[slug]/axes/[axe]` (l'axe sur les quatre dernières lettres, lien de retour

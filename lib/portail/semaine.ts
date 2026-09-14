@@ -114,6 +114,10 @@ export function ongletsDe(
       libelléCourt: 'Archives',
       compte: comptes.archives,
     },
-    { href: `/${slug}/cadrage`, libellé: 'Cadrage', libelléCourt: 'Cadrage' },
+    // « Périmètre » et non « Cadrage » : l'écran porte désormais les deux
+    // sections qui disent ce que la veille surveille — les acteurs suivis et
+    // les ajustements proposés. Le libellé court est le même mot abrégé, comme
+    // « Reco. » : un synonyme ferait croire à une autre destination.
+    { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.' },
   ]
 }

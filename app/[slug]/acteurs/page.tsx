@@ -119,9 +119,18 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
         )}
       </section>
 
-      <p className="mt-8">
-        <LienFlèche href={`/${accès.slug}/axes`}>Voir les axes de l’écosystème</LienFlèche>
-      </p>
+      <div className="mt-8 flex flex-col gap-2">
+        <p>
+          <LienFlèche href={`/${accès.slug}/axes`}>Voir les axes de l’écosystème</LienFlèche>
+        </p>
+        {/* Le suivi dit où en est chaque dossier ; le périmètre dit pourquoi
+            celui-là est suivi, et ce que nous proposons d'y changer. */}
+        <p>
+          <LienFlèche href={`/${accès.slug}/perimetre`}>
+            Voir le périmètre de la veille
+          </LienFlèche>
+        </p>
+      </div>
     </>
   )
 }

@@ -276,4 +276,18 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     // L'ancien écran ne doit pas survivre à côté des nouveaux.
     expect(existsSync(join(process.cwd(), 'app', '[slug]', 'tendances'))).toBe(false)
   })
+
+  /**
+   * « Cadrage » est devenu « Périmètre » le 14 septembre 2026, en accueillant la
+   * rubrique des acteurs suivis. Le rail ne mène plus à l'ancienne adresse, mais
+   * un signet, si : la redirection est la seule chose qui l'empêche de tomber
+   * sur un 404, et rien dans le build ne casserait si elle disparaissait.
+   */
+  it('l’écran renommé laisse sa redirection derrière lui', () => {
+    expect(existsSync(join(process.cwd(), 'app', '[slug]', 'cadrage'))).toBe(false)
+
+    const config = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8')
+    expect(config).toContain("source: '/:slug/cadrage'")
+    expect(config).toContain("destination: '/:slug/perimetre'")
+  })
 })

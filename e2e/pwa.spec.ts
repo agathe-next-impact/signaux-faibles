@@ -119,11 +119,11 @@ test.describe('installation et hors-ligne', () => {
     await expect(déjàOuverte.getByRole('heading', { name: 'Recevoir mon lien' })).toBeVisible()
 
     const jamaisOuverte = await contexte.newPage()
-    await jamaisOuverte.goto(`${BASE}/hermitage/tendances`, { waitUntil: 'domcontentloaded' })
+    await jamaisOuverte.goto(`${BASE}/hermitage/perimetre`, { waitUntil: 'domcontentloaded' })
     await expect(jamaisOuverte.getByRole('heading', { name: 'Pas de réseau' })).toBeVisible()
     // L'adresse demandée est conservée : un rechargement, une fois le réseau
     // revenu, ramène la page voulue et non la page de secours.
-    expect(new URL(jamaisOuverte.url()).pathname).toBe('/hermitage/tendances')
+    expect(new URL(jamaisOuverte.url()).pathname).toBe('/hermitage/perimetre')
 
     await contexte.close()
   })

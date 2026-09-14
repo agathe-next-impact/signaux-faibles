@@ -171,7 +171,12 @@ describe('construireDocument', () => {
   })
 
   it('rend un document vide sans broncher', () => {
-    expect(construireDocument([])).toEqual({ préambule: [], rubriques: [], cadrage: [] })
+    expect(construireDocument([])).toEqual({
+      préambule: [],
+      rubriques: [],
+      cadrage: [],
+      acteursSuivis: [],
+    })
   })
 })
 
@@ -305,5 +310,54 @@ describe('détachement du cadrage', () => {
     expect(doc.cadrage).toHaveLength(1)
     expect(doc.rubriques).toHaveLength(1)
     expect(doc.rubriques[0]?.titre).toBe('')
+  })
+})
+
+describe('détachement des acteurs suivis', () => {
+  it('reconnaît la rubrique du corpus quel que soit l’habillage du titre', () => {
+    for (const titre of [
+      'Les acteurs que nous suivons pour vous',
+      'LES ACTEURS QUE NOUS SUIVONS',
+      'Acteurs : ce que nous suivions cette période',
+    ]) {
+      const doc = construireDocument([h1(titre), p('Notre corpus compte trente-six entreprises.')])
+      expect(doc.acteursSuivis, titre).toHaveLength(1)
+      expect(doc.rubriques, titre).toHaveLength(0)
+    }
+  })
+
+  it('ne touche pas à une rubrique d’actualité des acteurs', () => {
+    // L'Hermitage porte une rubrique « Actualité acteurs », qui est du contenu
+    // de veille. Le mot « acteurs » ne suffit donc pas à détacher : il faut la
+    // promesse de suivi, « nous suivons ».
+    for (const titre of ['Actualité acteurs', 'Acteurs suivis de près par la concurrence']) {
+      const doc = construireDocument([h1(titre), p('Un fait de la semaine.')])
+      expect(doc.acteursSuivis, titre).toEqual([])
+      expect(doc.rubriques.map((r) => r.titre), titre).toEqual([titre])
+    }
+  })
+
+  it('coupe au trait comme le cadrage, et rend la suite à la lettre', () => {
+    const doc = construireDocument([
+      h1('Les acteurs que nous suivons'),
+      p('Notre corpus compte trente-six entreprises.'),
+      { id: 'd', type: 'divider', divider: {} },
+      p('Le pied de la lettre.'),
+    ])
+    expect(doc.acteursSuivis).toHaveLength(1)
+    expect(doc.rubriques).toHaveLength(1)
+    expect(doc.rubriques[0]?.titre).toBe('')
+  })
+
+  it('sépare les deux sections de périmètre, sans les confondre', () => {
+    const doc = construireDocument([
+      h1('Les acteurs que nous suivons pour vous'),
+      p('Notre corpus.'),
+      h1('Ajustements du cadrage de cette veille'),
+      p('Une proposition.'),
+    ])
+    expect(doc.acteursSuivis).toHaveLength(1)
+    expect(doc.cadrage).toHaveLength(1)
+    expect(doc.rubriques).toHaveLength(0)
   })
 })
