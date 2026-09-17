@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -28,6 +28,14 @@ function fonctionsDe(source: string): Array<{ nom: string; corps: string }> {
 }
 
 const fichiers = readdirSync(DOSSIER).filter((nom) => nom.endsWith('.ts'))
+
+/**
+ * Chemin relatif au dépôt, avec des barres obliques quel que soit le système :
+ * `join` compose avec `\\` sous Windows, et `process.cwd()` y porte une lettre
+ * de lecteur. Les listes attendues ci-dessous sont écrites en `/`, comme le
+ * dépôt les nomme.
+ */
+const relatif = (chemin: string): string => relative(process.cwd(), chemin).split(sep).join('/')
 
 describe('toute lecture Notion vit dans une fonction cachée', () => {
   it('trouve bien les modules à inspecter', () => {
@@ -106,7 +114,7 @@ describe('l’exception opérateur reste confinée', () => {
         }
         if (!/\.tsx?$/.test(entrée.name)) continue
         if (readFileSync(chemin, 'utf8').includes(fonction)) {
-          trouvés.push(chemin.replace(`${process.cwd()}/`, ''))
+          trouvés.push(relatif(chemin))
         }
       }
     }
@@ -184,7 +192,7 @@ describe('l’invalidation de cache reste à quatre endroits, tous gardés', () 
         }
         if (!/\.tsx?$/.test(entrée.name)) continue
         if (/\b(?:updateTag|revalidateTag)\(/.test(readFileSync(chemin, 'utf8'))) {
-          trouvés.push(chemin.replace(`${process.cwd()}/`, ''))
+          trouvés.push(relatif(chemin))
         }
       }
     }
@@ -228,7 +236,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
         }
         if (!/\.tsx?$/.test(entrée.name)) continue
         if (readFileSync(chemin, 'utf8').includes(`${fonction}(`)) {
-          trouvés.push(chemin.replace(`${process.cwd()}/`, ''))
+          trouvés.push(relatif(chemin))
         }
       }
     }
