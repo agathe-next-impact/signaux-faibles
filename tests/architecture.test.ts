@@ -163,13 +163,16 @@ describe('la resynchronisation manuelle reste un geste d’opérateur', () => {
 })
 
 /**
- * Invalider un tag est un pouvoir, pas une commodité. Trois endroits l'ont, et
+ * Invalider un tag est un pouvoir, pas une commodité. Quatre endroits l'ont, et
  * chacun vérifie quelque chose avant : le webhook une signature Notion, l'action
- * manuelle le privilège opérateur, la route d'ouverture le jeton d'activation.
- * Un écran qui invaliderait au rendu viderait le cache à chaque visite, et la
- * limite de trois requêtes par seconde serait atteinte par le trafic normal.
+ * manuelle le privilège opérateur, la route d'ouverture et le validateur de
+ * lettre le jeton d'activation. Le validateur expire le tag de la page qu'on
+ * lui soumet, parce qu'elle vient d'être corrigée et qu'un rapport sur la
+ * version d'avant ferait corriger dans le vide. Un écran qui invaliderait au
+ * rendu viderait le cache à chaque visite, et la limite de trois requêtes par
+ * seconde serait atteinte par le trafic normal.
  */
-describe('l’invalidation de cache reste à deux endroits', () => {
+describe('l’invalidation de cache reste à quatre endroits, tous gardés', () => {
   it('personne d’autre n’appelle updateTag ni revalidateTag', () => {
     const trouvés: string[] = []
     const parcourir = (dossier: string) => {
@@ -189,9 +192,83 @@ describe('l’invalidation de cache reste à deux endroits', () => {
 
     expect(trouvés.sort()).toEqual([
       'app/api/acces/ouvrir/route.ts',
+      'app/api/veille/lint/route.ts',
       'app/api/webhooks/notion/route.ts',
       'lib/portail/resynchroniser.ts',
     ])
+  })
+
+  it('le validateur vérifie le jeton avant d’invalider', () => {
+    const source = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'lint', 'route.ts'), 'utf8')
+    expect(source.indexOf('refuserSiNonAutorisé')).toBeLessThan(source.indexOf('revalidateTag('))
+    // `updateTag` n'est permis que dans une action serveur : dans un handler il lève.
+    expect(source).not.toContain('updateTag(')
+    expect(source).toContain('{ expire: 0 }')
+  })
+})
+
+/**
+ * Les lectures réservées au dispositif ne doivent jamais alimenter un écran.
+ *
+ * `lib/notion/travail.ts` lit les éditions tous statuts confondus et avec leurs
+ * propriétés internes (Famille, Amendements, Livraison) : c'est ce dont la
+ * tâche des lettres a besoin, et ce qu'un client ne doit jamais recevoir
+ * (règles 3 et 7). `lignesDAccèsPourContrôle` traverse tous les clients. Leurs
+ * seuls appelants sont les routes `/api/veille/*`, derrière le jeton d'activation.
+ */
+describe('les lectures du dispositif restent sous /api/veille', () => {
+  const appelants = (fonction: string) => {
+    const trouvés: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (!/\.tsx?$/.test(entrée.name)) continue
+        if (readFileSync(chemin, 'utf8').includes(`${fonction}(`)) {
+          trouvés.push(chemin.replace(`${process.cwd()}/`, ''))
+        }
+      }
+    }
+    for (const racine of ['app', 'components', 'lib']) parcourir(join(process.cwd(), racine))
+    return trouvés.sort()
+  }
+
+  it('lireÉditionDeTravail n’est appelée que par le validateur', () => {
+    expect(appelants('lireÉditionDeTravail')).toEqual([
+      'app/api/veille/lint/route.ts',
+      'lib/notion/travail.ts',
+    ])
+  })
+
+  it('listerÉditionsDeTravail n’est appelée que par le contexte', () => {
+    expect(appelants('listerÉditionsDeTravail')).toEqual([
+      'app/api/veille/contexte/route.ts',
+      'lib/notion/travail.ts',
+    ])
+  })
+
+  it('lignesDAccèsPourContrôle n’est appelée que par le contrôle du soir', () => {
+    expect(appelants('lignesDAccèsPourContrôle')).toEqual([
+      'app/api/veille/etat/route.ts',
+      'lib/notion/acces.ts',
+    ])
+  })
+
+  it('toute route /api/veille commence par la garde du jeton', () => {
+    const racine = join(process.cwd(), 'app', 'api', 'veille')
+    const routes = readdirSync(racine).map((nom) => join(racine, nom, 'route.ts'))
+    expect(routes.length).toBeGreaterThanOrEqual(4)
+    for (const route of routes) {
+      const source = readFileSync(route, 'utf8')
+      expect(source, route).toContain('refuserSiNonAutorisé(requête')
+      // La garde précède toute lecture de l'environnement complet, comme pour l'activation.
+      const garde = source.indexOf('refuserSiNonAutorisé(requête')
+      const environnement = source.indexOf('env()')
+      if (environnement !== -1) expect(garde, route).toBeLessThan(environnement)
+    }
   })
 })
 

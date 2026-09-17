@@ -273,3 +273,76 @@ export async function espacesOuverts(): Promise<Espace[]> {
     (a.organisationLibellé || a.slug).localeCompare(b.organisationLibellé || b.slug, 'fr'),
   )
 }
+
+/**
+ * Une ligne « Accès » telle que le contrôle du soir la voit.
+ *
+ * L'identifiant d'accès **ne sort pas** : il est le secret que le portail
+ * signe. Le contrôle n'a besoin que de savoir s'il est vide ou partagé avec
+ * une autre ligne, et ces deux faits sont calculés ici, avant de rendre la main.
+ */
+export type LigneDAccèsContrôlée = {
+  readonly nom: string
+  readonly emailRenseigné: boolean
+  readonly slug: string
+  readonly organisationId: string
+  readonly actif: boolean
+  readonly tousLesEspaces: boolean
+  readonly identifiantVide: boolean
+  readonly identifiantEnDoublon: boolean
+}
+
+/**
+ * Toutes les lignes de la base « Accès », actives ou non, pour le contrôle du
+ * soir de `/api/veille/etat`. Les lignes inactives comptent : un doublon
+ * d'identifiant avec une ligne révoquée refuse quand même le lien vivant.
+ *
+ * C'est la seconde lecture qui traverse les clients, après `espacesOuverts`,
+ * et elle n'expose pas davantage : ni édition, ni identifiant d'accès. Elle
+ * n'est appelée que depuis la route `/api/veille/etat`, sous le jeton d'activation ;
+ * `tests/architecture.test.ts` le vérifie.
+ */
+export async function lignesDAccèsPourContrôle(): Promise<LigneDAccèsContrôlée[]> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('acces')
+
+  const { accès: sourceId } = await sourcesDeDonnées()
+  cacheTag(`liste:${sourceId}`)
+
+  const pages: unknown[] = []
+  let curseur: string | undefined
+  do {
+    const réponse = await notion().dataSources.query({
+      data_source_id: sourceId,
+      page_size: 100,
+      start_cursor: curseur,
+    })
+    pages.push(...réponse.results)
+    curseur = réponse.next_cursor ?? undefined
+  } while (curseur)
+
+  const identifiants = pages.map((page) => lireTexte(page, "Identifiant d'accès").trim())
+  const occurrences = new Map<string, number>()
+  for (const identifiant of identifiants) {
+    if (identifiant.length > 0) occurrences.set(identifiant, (occurrences.get(identifiant) ?? 0) + 1)
+  }
+
+  return pages.map((page, i) => {
+    const identifiant = identifiants[i] ?? ''
+    return {
+      nom: lireTitre(page, 'Nom'),
+      emailRenseigné: lireEmail(page, 'Email') !== null,
+      slug: lireTexte(page, 'Slug').trim(),
+      organisationId: lireTexte(page, "Identifiant Notion de l'organisation")
+        .replaceAll('-', '')
+        .trim()
+        .toLowerCase(),
+      actif: lireCase(page, 'Actif'),
+      tousLesEspaces: lireCase(page, 'Tous les espaces'),
+      identifiantVide: identifiant.length === 0,
+      identifiantEnDoublon: (occurrences.get(identifiant) ?? 0) > 1,
+    }
+  })
+}
