@@ -496,3 +496,55 @@ autant que dans une garde. La fonction est devenue `espacesOuverts`.
 
 **La racine oriente désormais selon le privilège** : un opérateur n'a pas
 d'espace à lui, on lui propose de choisir.
+
+**14 septembre 2026.** Le périmètre sur un seul écran.
+
+Deux sections des lettres parlaient du même sujet sans jamais se rencontrer.
+« Les acteurs que nous suivons pour vous », rubrique de la lettre
+concurrentielle, décrit le corpus : combien d'entités, lesquelles ont produit un
+fait daté cette période, où en est chaque dossier ouvert, quels trous de
+couverture subsistent. Les « ajustements du cadrage » proposent de modifier ce
+même corpus. La première restait dans la lettre, la seconde vivait seule sur un
+écran nommé « Cadrage ». Elles sont désormais réunies sur `/[slug]/perimetre`.
+
+**Le renommage n'est pas cosmétique.** « Cadrage » nommait ce que l'écran
+portait quand il ne portait qu'une chose. Un écran qui dit d'abord ce que la
+veille surveille, et ensuite ce qu'on propose d'y changer, s'appelle le
+périmètre. L'ancienne adresse redirige en 308 : le rail n'y menait plus, un
+signet gardé, si.
+
+**Le corpus ne rejoint pas l'écran des acteurs, et c'est délibéré.** La
+tentation était là — les deux parlent d'acteurs. Mais « Acteurs » ne lit **aucun
+corps de note** : il suit les dossiers sur toute l'archive pour la seule requête
+de liste. Le corpus, comme le cadrage, vit dans le corps des quatre dernières
+lettres. Les empiler aurait fait payer quatre corps à qui ne venait chercher que
+le suivi — exactement ce qui avait imposé de scinder « Tendances » trois jours
+plus tôt. Les deux écrans se renvoient l'un à l'autre.
+
+**La reconnaissance du titre est plus serrée que celle du cadrage, et il le
+fallait.** Le mot « cadrage » suffit à identifier sa rubrique ; le mot
+« acteurs » n'identifie rien — l'Hermitage porte une rubrique « Actualité
+acteurs » qui est du contenu de veille, et la détacher aurait retiré des faits
+de la semaine. Le signal retenu est le couple « acteur » et « nous suiv », la
+seule promesse que cette rubrique fasse : dire ce qui est surveillé, pas ce qui
+s'est passé.
+
+**La vraie garde est ailleurs, et elle a failli manquer.** Détacher une section
+la retire du parcours de `mentionsDe`. Or c'est précisément dans cette rubrique
+que la lettre concurrentielle nomme ses dossiers en clair, un par un — pour
+plusieurs d'entre eux, c'est le seul endroit du texte où ils figurent. Sur la
+lettre Konica du 12 septembre, Kyocera n'est nommé nulle part ailleurs. Sa page
+serait devenue vide le jour du détachement, sans que rien ne casse : le
+symétrique exact du pied de lettre, que le trait horizontal garde dans la note
+pour la même raison. `mentionsDe` parcourt donc `document.acteursSuivis` comme
+le reste de la note. Le cadrage, lui, reste hors de la recherche : ce sont des
+propositions à valider, les citer les ferait lire comme des faits.
+
+**Une seconde lettre réelle entre dans les tests.** `tests/fixtures/lettre-concurrentielle.ts`
+reprend la première lettre Konica ; sept de ses neuf dossiers sont retrouvés dans
+le texte. Les deux autres sont irréductibles pour la raison déjà mesurée sur la
+lettre Infralliance : la prose reformule le syntagme au lieu de l'insérer tel
+quel — « la convergence **des réseaux** Xerox et Lexmark », « le rythme comparé
+sur **vos** cinq marchés » quand le dossier dit « sur les cinq marchés ». Les
+rapprocher demanderait de laisser tomber un mot du nom, c'est-à-dire de citer un
+passage qui ne nomme pas vraiment le dossier.

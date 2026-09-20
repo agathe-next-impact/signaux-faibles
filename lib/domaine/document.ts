@@ -72,6 +72,21 @@ export type Document = {
    * ont leur écran ; les laisser dans le corps les mêlerait aux faits.
    */
   readonly cadrage: readonly Bloc[]
+  /**
+   * « Les acteurs que nous suivons pour vous », retiré de la lecture.
+   *
+   * La lettre concurrentielle porte une rubrique qui décrit le corpus lui-même :
+   * combien d'entités il compte, ce que la période a produit chez chacune, où en
+   * est chaque dossier ouvert, et quels trous de couverture subsistent. Elle ne
+   * raconte pas la semaine, elle dit ce que la veille surveille — la même
+   * question que les ajustements de cadrage, qui disent ce qu'on propose d'y
+   * changer. Les deux sont posées sur le même écran, celui du périmètre.
+   *
+   * **Ces blocs restent du contenu de veille**, à la différence du cadrage :
+   * c'est là que les dossiers suivis sont nommés en clair, et `mentionsDe` les
+   * parcourt donc comme le reste de la note.
+   */
+  readonly acteursSuivis: readonly Bloc[]
 }
 
 /** Forme minimale d'un bloc Notion, enfants éventuellement rattachés. */
@@ -278,7 +293,14 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
 
   clore()
 
-  return { préambule: préambule.vider(), ...détacherLeCadrage(rubriques) }
+  return { préambule: préambule.vider(), ...détacherLePérimètre(rubriques) }
+}
+
+function sansAccent(titre: string): string {
+  return titre
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
 }
 
 /**
@@ -292,35 +314,66 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
  * pas une disparition silencieuse.
  */
 function estRubriqueDeCadrage(titre: string): boolean {
-  return titre
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .includes('cadrage')
+  return sansAccent(titre).includes('cadrage')
 }
 
 /**
- * Sort les ajustements de cadrage des rubriques de lecture.
+ * Reconnaît la rubrique « Les acteurs que nous suivons pour vous ».
+ *
+ * Même convention que le cadrage, mais **tenue plus serrée**, et pour une
+ * raison précise : le mot « acteurs » seul ne suffirait pas. Une lettre peut
+ * porter une rubrique d'actualité — l'Hermitage en a une, « Actualité
+ * acteurs » — et la détacher retirerait de la lettre des faits de la semaine.
+ * Le signal est donc le couple « acteur » et « nous suiv », c'est-à-dire la
+ * promesse que cette rubrique est la seule à faire : dire ce que la veille
+ * surveille, et non ce qui s'est passé.
+ *
+ * Le cadrage est reconnu d'abord : un titre qui porterait les deux signaux part
+ * aux ajustements, où le trait horizontal sait fermer la section.
+ */
+function estRubriqueDesActeursSuivis(titre: string): boolean {
+  const normalisé = sansAccent(titre)
+  return normalisé.includes('acteur') && normalisé.includes('nous suiv')
+}
+
+/**
+ * Sort du corps de la lettre les deux sections qui parlent du périmètre.
+ *
+ * Elles répondent à la même question — ce que la veille surveille pour ce
+ * client — quand tout le reste de la lettre répond à l'autre, ce qui s'est
+ * passé cette semaine. Elles sont détachées ici, à la construction du document,
+ * et non masquées à l'affichage : aucun écran ne peut donc les faire
+ * réapparaître dans une lettre par mégarde.
  *
  * **Le trait horizontal ferme la section.** Dans les lettres, la rubrique de
  * cadrage est suivie d'un `---` puis du pied de la lettre — dossiers ouverts,
  * sources vérifiées, prochaine parution. Retirer la rubrique entière
  * emporterait ce pied, qui est du contenu de veille et nomme la plupart des
- * dossiers suivis. Seul ce qui précède le trait est donc du cadrage ; ce qui
- * suit revient à la lettre, dans une rubrique sans titre.
+ * dossiers suivis. Seul ce qui précède le trait est donc détaché ; ce qui suit
+ * revient à la lettre, dans une rubrique sans titre. La règle vaut pour les
+ * deux sections : une seule façon de couper, et un seul endroit où elle est
+ * écrite.
  *
- * Une rubrique de cadrage n'est pas censée porter de H2. Si elle en portait,
- * ses axes resteraient dans la lettre — un titre apparaîtrait, ce qui se voit.
+ * Ces rubriques ne sont pas censées porter de H2. Si elles en portaient, leurs
+ * axes resteraient dans la lettre — un titre apparaîtrait, ce qui se voit.
  */
-function détacherLeCadrage(rubriques: readonly Rubrique[]): {
+function détacherLePérimètre(rubriques: readonly Rubrique[]): {
   rubriques: Rubrique[]
   cadrage: Bloc[]
+  acteursSuivis: Bloc[]
 } {
   const cadrage: Bloc[] = []
+  const acteursSuivis: Bloc[] = []
   const gardées: Rubrique[] = []
 
   for (const rubrique of rubriques) {
-    if (!estRubriqueDeCadrage(rubrique.titre)) {
+    const détachée = estRubriqueDeCadrage(rubrique.titre)
+      ? cadrage
+      : estRubriqueDesActeursSuivis(rubrique.titre)
+        ? acteursSuivis
+        : null
+
+    if (!détachée) {
       gardées.push(rubrique)
       continue
     }
@@ -329,14 +382,14 @@ function détacherLeCadrage(rubriques: readonly Rubrique[]): {
     const avant = trait === -1 ? rubrique.introduction : rubrique.introduction.slice(0, trait)
     const après = trait === -1 ? [] : rubrique.introduction.slice(trait + 1)
 
-    cadrage.push(...avant)
+    détachée.push(...avant)
 
     if (après.length > 0 || rubrique.axes.length > 0) {
       gardées.push({ titre: '', introduction: après, axes: rubrique.axes })
     }
   }
 
-  return { rubriques: gardées, cadrage }
+  return { rubriques: gardées, cadrage, acteursSuivis }
 }
 
 /** Tous les axes du document, à plat, pour un tri global par impact. */

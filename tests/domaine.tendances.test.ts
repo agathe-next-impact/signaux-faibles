@@ -62,6 +62,7 @@ describe('suivreLesDossiers', () => {
 const doc = (...axes: readonly (readonly [string, 'FORT' | 'MOYEN' | 'RAS' | null])[]) => ({
   préambule: [],
   cadrage: [],
+  acteursSuivis: [],
   rubriques: [
     {
       titre: 'Rubrique',
