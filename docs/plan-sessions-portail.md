@@ -147,6 +147,19 @@ réels sur un déploiement réel.
 
 ## Journal
 
+**17 septembre 2026 — les routes `/api/veille/*`.** Premier palier de l'audit
+du processus de veille (« passage par le portail »), à périmètre constant : le
+portail ne lit toujours pas le registre et n'écrit toujours pas dans Notion,
+mais il fait désormais en code ce que le modèle recalculait à chaque run — la
+sélection du jour, les numéros par famille, le contrat de forme avant l'envoi,
+le contrôle des espaces du soir. Quatre routes, un cron, 54 tests de plus,
+`docs/api-veille.md`. Les pages de prompts Notion ne les appellent qu'après
+déploiement ; le texte des amendements est dans ce document. Un choix à
+retenir : `lib/notion/travail.ts` lit les éditions tous statuts confondus,
+avec leurs propriétés internes. C'est une entorse volontaire et bornée aux
+règles 3 et 7 — ces lectures ne servent que les routes du dispositif, derrière
+le jeton d'activation, et la garde d'architecture énumère leurs appelants.
+
 **9 septembre 2026.** Sessions 1 à 5 faites, session 6 faite sauf la recette du
 mode dégradé, qui demande un déploiement. 84 tests unitaires, 8 parcours de
 recette sur les chemins de refus, `pnpm build` vert avec pré-rendu partiel sur

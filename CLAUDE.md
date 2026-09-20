@@ -21,9 +21,10 @@ ouvrir dans un navigateur avant de coder l'écran, c'est elle qui fait foi
 pour la hiérarchie visuelle, pas une reformulation de ce fichier.
 
 Décisions d'architecture et faits vérifiés : `docs/etat-des-api.md`
-(état des API au 9 septembre 2026) et `docs/architecture-notion-headless.md`
-(pivot Notion headless, lien magique persistant). Les lire avant toute
-session.
+(état des API au 9 septembre 2026), `docs/architecture-notion-headless.md`
+(pivot Notion headless, lien magique persistant) et `docs/api-veille.md`
+(les routes que les tâches Cowork appellent, depuis le 17 septembre 2026).
+Les lire avant toute session.
 
 ## Stack (ne pas changer sans discussion)
 
@@ -67,13 +68,30 @@ session.
   réponse et de ne pas transformer une rafale d'éditions en rafale de
   courriers. L'ouverture d'un espace passe donc par sa propre route, jamais
   par le webhook
-- **Invalider un tag est un pouvoir**, tenu en trois endroits qui vérifient
+- **Invalider un tag est un pouvoir**, tenu en quatre endroits qui vérifient
   chacun quelque chose avant : le webhook (signature Notion),
   `lib/portail/resynchroniser.ts` (privilège opérateur — le bouton
   « resynchroniser » du rail, en `updateTag` pour expirer tout de suite
-  plutôt que servir l'ancienne version) et `app/api/acces/ouvrir` (jeton
-  d'activation). Un écran qui invaliderait au rendu viderait le cache à
-  chaque visite ; `tests/architecture.test.ts` l'interdit
+  plutôt que servir l'ancienne version), `app/api/acces/ouvrir` (jeton
+  d'activation) et `app/api/veille/lint` (même jeton ; il expire la page
+  qu'on lui soumet, parce qu'elle vient d'être corrigée — en
+  `revalidateTag(…, { expire: 0 })`, `updateTag` n'étant permis que dans
+  une action serveur). Un écran qui
+  invaliderait au rendu viderait le cache à chaque visite ;
+  `tests/architecture.test.ts` l'interdit
+- **Les routes `/api/veille/*` servent le dispositif, jamais un navigateur**
+  (17 septembre 2026, `docs/api-veille.md`). Elles font en code ce que les
+  tâches Cowork demandaient au modèle à chaque run : la sélection du jour
+  (`calendrier`), les numéros et l'anti-doublon (`contexte`), le contrat de
+  forme **avant** l'envoi (`lint`, sur le parseur de production) et le
+  contrôle des espaces du soir (`etat`, appelé par le cron de `vercel.json`).
+  Elles sont gardées par `ACTIVATION_SECRET` ou `CRON_SECRET`, avant toute
+  lecture de l'environnement. Elles ne changent rien au périmètre : le
+  portail n'écrit toujours pas dans Notion et ne lit toujours pas le registre
+  — pour la sélection du jour, la tâche lui **donne** les lignes de la vue.
+  `lib/notion/travail.ts` lit les éditions tous statuts et avec leurs
+  propriétés internes : c'est pour ces routes seulement, jamais pour un
+  écran, et la garde d'architecture le vérifie
 - **Notion sur le plan gratuit** : l'espace de travail reste à **un seul
   membre** (l'opérateur). Un espace gratuit à plusieurs membres est plafonné
   à 1 000 blocs à vie et l'API refuse ensuite toute création. Les clients ne

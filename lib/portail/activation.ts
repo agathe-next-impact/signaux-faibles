@@ -83,7 +83,7 @@ export function interpréterDemande(demande: {
   return { sorte: 'ouvrir', email }
 }
 
-function égalEnTempsConstant(reçu: string, attendu: string): boolean {
+export function égalEnTempsConstant(reçu: string, attendu: string): boolean {
   // Les deux chaînes n'ont pas forcément la même longueur, et `timingSafeEqual`
   // lève dans ce cas. Comparer les longueurs d'abord dirait combien de
   // caractères viser ; on compare donc des empreintes, qui font toujours
