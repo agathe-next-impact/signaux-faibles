@@ -1,5 +1,6 @@
 import {
   écourter,
+  phrasesDe,
   type Bloc,
   type Document,
   type Extrait,
@@ -77,12 +78,23 @@ function enExtrait(segments: readonly Segment[]): Extrait {
  * travaille sur le texte, l'affichage sur les segments : un gras, un lien ou un
  * italique de la note survit donc jusqu'à la page de l'acteur, au lieu d'y
  * arriver à plat.
+ *
+ * **Un paragraphe se cite phrase par phrase.** Une lettre groupe volontiers
+ * plusieurs acteurs dans un même paragraphe — « Le programme d'Airbnb n'a pas
+ * de date. Réinventer le patrimoine ne porte aucun appel. » Cité entier, le
+ * paragraphe posait sur la page d'un acteur des phrases qui parlent d'un autre.
+ * Une puce et une ligne de tableau restent des unités : leur auteur les a déjà
+ * découpées.
+ *
+ * **Un encadré n'est jamais cité** : par convention, c'est de la méthode ou un
+ * constat d'absence, pas un fait — voir `estUnFait`.
  */
 function passagesDuBloc(bloc: Bloc): Extrait[] {
   switch (bloc.type) {
     case 'paragraphe':
     case 'citation':
-    case 'encadré':
+      return phrasesDe(bloc.segments)
+
     case 'titre':
       return [enExtrait(bloc.segments)]
 
@@ -96,8 +108,8 @@ function passagesDuBloc(bloc: Bloc): Extrait[] {
         ),
       )
 
-    // Ni le code, ni les séparateurs, ni les images : un nom qui s'y trouverait
-    // ne serait pas une mention à citer.
+    // Ni l'encadré, ni le code, ni les séparateurs, ni les images : un nom qui
+    // s'y trouverait ne serait pas une mention à citer.
     default:
       return []
   }

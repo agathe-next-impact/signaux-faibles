@@ -70,7 +70,11 @@ production** (`construireDocument`, `lireDossiersOuverts`, `mentionsDe`,
 n'affichera pas) ; `niveau-faible` et `cadrage-sans-adresse` sont de portée
 `lettre` (règles de la page « Tâche — Lettres de veille »).
 **Avertissements** (ne bloquent pas) — `dossier-non-nommé`,
-`axes-hors-rubrique`, `référence-interne`, `aucun-dossier`.
+`axes-hors-rubrique`, `référence-interne`, `aucun-dossier`,
+`absence-en-prose` (un axe RAS dont le corps n'est pas en encadré : le portail
+le rendrait sur la page de l'axe et le citerait sur celle de chaque acteur
+nommé, comme un fait ; depuis le 21 septembre 2026, le RAS motivé, les sources
+non ouvertes et les notes de méthode s'écrivent en encadré).
 
 `404` : l'identifiant n'est pas une page de la base Éditions. `400` : corps
 ou identifiant illisible.

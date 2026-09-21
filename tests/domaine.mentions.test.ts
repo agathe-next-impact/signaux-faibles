@@ -19,6 +19,11 @@ const puce = (contenu: string): BlocNotion => ({
   type: 'bulleted_list_item',
   bulleted_list_item: { rich_text: texte(contenu) },
 })
+const encadré = (contenu: string): BlocNotion => ({
+  id: `c-${contenu}`,
+  type: 'callout',
+  callout: { rich_text: texte(contenu) },
+})
 
 describe('mentionsDe', () => {
   it('rend les passages qui nomment l’acteur, avec leur axe', () => {
@@ -84,6 +89,61 @@ describe('mentionsDe', () => {
     expect(mentionsDe('(a)', document)[0]?.passages.map((p) => p.texte)).toEqual([
       'Le point (a) est acté.',
     ])
+  })
+
+  it('ne cite que les phrases qui nomment l’acteur, pas le paragraphe entier', () => {
+    // Le cas du 21 septembre 2026 sur l'Hermitage : un paragraphe qui passe en
+    // revue trois guichets était cité entier sur la page de l'acteur Airbnb,
+    // avec ses deux phrases sur Réinventer le patrimoine et sur l'Oise.
+    const document = construireDocument([
+      h2('④ Patrimoine — FORT'),
+      p(
+        'Les autres guichets n’ont pas bougé. Le programme d’Airbnb et de la Fondation du patrimoine ' +
+          'annonce toujours deux sessions par an. Le site de Réinventer le patrimoine ne porte aucun appel. ' +
+          'Les fiches de l’Oise renvoient une page introuvable.',
+      ),
+    ])
+
+    const passages = mentionsDe('Programme Airbnb et Fondation du patrimoine', document)[0]?.passages
+    expect(passages?.map((p) => p.texte)).toEqual([
+      'Le programme d’Airbnb et de la Fondation du patrimoine annonce toujours deux sessions par an.',
+    ])
+  })
+
+  it('cite plusieurs phrases d’un même paragraphe si chacune nomme l’acteur', () => {
+    const document = construireDocument([
+      h2('Cadre — MOYEN'),
+      p('La CADA a été saisie le 3 juillet. Le décret est paru. La CADA rendra son avis en octobre.'),
+    ])
+    expect(mentionsDe('CADA', document)[0]?.passages.map((p) => p.texte)).toEqual([
+      'La CADA a été saisie le 3 juillet.',
+      'La CADA rendra son avis en octobre.',
+    ])
+  })
+
+  it('ne coupe pas une phrase sur un point suivi d’une minuscule ou d’un nombre décimal', () => {
+    const document = construireDocument([
+      h2('Cadre — MOYEN'),
+      p('La CADA vise l’art. 3 du décret, soit 5,4 % du budget. Rien d’autre.'),
+    ])
+    expect(mentionsDe('CADA', document)[0]?.passages.map((p) => p.texte)).toEqual([
+      'La CADA vise l’art. 3 du décret, soit 5,4 % du budget.',
+    ])
+  })
+
+  it('ne cite jamais un encadré : c’est de la méthode ou une absence, pas un fait', () => {
+    // Convention du 21 septembre 2026. Le RAS motivé nomme les acteurs
+    // vérifiés ; cité sur leur page, « rien depuis le 12 mars » se lisait
+    // comme une information de la semaine.
+    const document = construireDocument([
+      h2('Cadre — RAS'),
+      encadré('La CADA n’a rien publié depuis le 12 mars. Le Sénat non plus.'),
+      p('La CADA reste saisie du dossier.'),
+    ])
+    expect(mentionsDe('CADA', document)[0]?.passages.map((p) => p.texte)).toEqual([
+      'La CADA reste saisie du dossier.',
+    ])
+    expect(mentionsDe('Sénat', document)).toEqual([])
   })
 
   it('ne rend rien pour un nom vide', () => {

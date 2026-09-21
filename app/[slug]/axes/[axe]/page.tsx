@@ -4,7 +4,7 @@ import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { RenduBlocs } from '@/components/document'
 import { TitreAxe } from '@/components/titre-axe'
-import { axesDuDocument } from '@/lib/domaine/document'
+import { axesDuDocument, faitsDe } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
 import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
 
@@ -82,13 +82,12 @@ export default async function UnAxe({
               <BadgeImpact niveau={axe.niveau} />
             </div>
 
-            {axe.blocs.length > 0 ? (
-              <RenduBlocs blocs={axe.blocs} />
-            ) : (
-              <p className="text-ardoise">
-                L’axe est ouvert cette semaine-là, sans développement.
-              </p>
-            )}
+            {/* Les faits seulement. Le RAS motivé, les sources muettes et les
+                notes de méthode sont écrits en encadré dans la lettre, où ils
+                prouvent que le silence est un constat ; ici, ils se liraient
+                comme de l'information. Un axe sans fait ne porte que son
+                badge et le lien vers la lettre. */}
+            <RenduBlocs blocs={faitsDe(axe.blocs)} />
 
             <p>
               <LienFlèche href={`/${accès.slug}/lettres/${lettre.édition.pageId}`}>
