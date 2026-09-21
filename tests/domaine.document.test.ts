@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   axesDuDocument,
   construireDocument,
+  faitsDe,
   fusionnerLesAxes,
+  phrasesDe,
   pointsDAxe,
   type BlocNotion,
 } from '@/lib/domaine/document'
@@ -359,5 +361,42 @@ describe('détachement des acteurs suivis', () => {
     expect(doc.acteursSuivis).toHaveLength(1)
     expect(doc.cadrage).toHaveLength(1)
     expect(doc.rubriques).toHaveLength(0)
+  })
+})
+
+describe('faitsDe et phrasesDe', () => {
+  it('écarte les encadrés et garde tout le reste', () => {
+    const document = construireDocument([
+      h2('Cadre — FORT'),
+      p('Un fait.'),
+      { id: 'c', type: 'callout', callout: { rich_text: [texte('Une note de méthode.')] } },
+      puce('Une puce.'),
+    ])
+    const axe = document.rubriques[0]!.axes[0]!
+    expect(faitsDe(axe.blocs).map((b) => b.type)).toEqual(['paragraphe', 'liste'])
+  })
+
+  it('découpe un paragraphe en phrases sans perdre la mise en forme', () => {
+    const segments = [
+      { texte: 'Le ', gras: false, italique: false, code: false, barré: false, lien: null },
+      { texte: 'décret', gras: true, italique: false, code: false, barré: false, lien: null },
+      { texte: ' est paru. La suite « viendra ». Enfin, 3 points.', gras: false, italique: false, code: false, barré: false, lien: null },
+    ]
+    const phrases = phrasesDe(segments)
+    expect(phrases.map((p) => p.texte)).toEqual([
+      'Le décret est paru.',
+      'La suite « viendra ».',
+      'Enfin, 3 points.',
+    ])
+    expect(phrases[0]!.segments.map((s) => s.texte)).toEqual(['Le ', 'décret', ' est paru.'])
+    expect(phrases[0]!.segments[1]!.gras).toBe(true)
+    for (const phrase of phrases) {
+      expect(phrase.segments.map((s) => s.texte).join('')).toBe(phrase.texte)
+    }
+  })
+
+  it('rend un texte sans ponctuation comme une seule phrase', () => {
+    const segments = [{ texte: 'Groupe Verdier · 12 M€', gras: false, italique: false, code: false, barré: false, lien: null }]
+    expect(phrasesDe(segments).map((p) => p.texte)).toEqual(['Groupe Verdier · 12 M€'])
   })
 })

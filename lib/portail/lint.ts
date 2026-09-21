@@ -7,6 +7,7 @@ import {
 } from '@/lib/domaine/document'
 import { lireDossiersOuverts, type DossierOuvert } from '@/lib/domaine/dossiers'
 import { mentionsDe } from '@/lib/domaine/mentions'
+import { faitsDe } from '@/lib/domaine/document'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 import { contrôlerLeContrat } from '@/lib/portail/contrat'
 
@@ -56,6 +57,7 @@ export type Avertissement = {
     | 'axes-hors-rubrique'
     | 'référence-interne'
     | 'aucun-dossier'
+    | 'absence-en-prose'
   readonly message: string
 }
 
@@ -214,6 +216,24 @@ export function contrôlerLaLettre(entrée: {
         `${axesAilleurs.length} axe(s) hors de la rubrique « Actualités par axe » : ` +
         axesAilleurs.map((axe) => `« ${axe.titre} »`).join(', ') +
         '. Le portail les lit quand même ; la page Lettres demande de les grouper sous ce seul titre de niveau 1.',
+    })
+  }
+
+  // ── Absence et méthode : en encadré, jamais en prose ─────────────────────
+  // Convention du 21 septembre 2026 (`estUnFait`) : ce qui est encadré n'est
+  // pas un fait, et les écrans d'extraction ne le citent pas. Un axe en RAS
+  // n'a, par définition, aucun fait à donner : tout ce que son corps porte
+  // est un constat de vérification. Écrit en paragraphes, ce constat serait
+  // rendu sur la page de l'axe et cité sur celle de chaque acteur qu'il nomme.
+  for (const axe of axes) {
+    if (axe.niveau !== 'RAS') continue
+    if (faitsDe(axe.blocs).length === 0) continue
+    avertissements.push({
+      code: 'absence-en-prose',
+      message:
+        `l’axe « ${axe.titre} » est en RAS mais son corps n’est pas en encadré : ` +
+        'le portail le rendra sur la page de l’axe et le citera sur la page de chaque acteur qu’il nomme, comme s’il s’agissait de faits. ' +
+        'Le RAS motivé, les sources non ouvertes et les notes de méthode s’écrivent en encadré (callout).',
     })
   }
 

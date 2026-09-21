@@ -398,6 +398,34 @@ export function axesDuDocument(document: Document): Axe[] {
 }
 
 /**
+ * Un bloc est-il un fait de la période, ou de la méthode ?
+ *
+ * Convention avec les tâches Cowork, depuis le 21 septembre 2026 : **ce qui est
+ * encadré n'est pas un fait.** Une lettre porte, à côté de ce qui s'est passé,
+ * ce qui a été vérifié sans rien donner — le RAS motivé d'un axe, la source
+ * qui ne s'est pas ouverte, la requête qui n'a pas pu être lancée, la note de
+ * méthode. Cette prose est due au lecteur de la lettre : elle prouve que le
+ * silence est un constat, pas un oubli. Mais elle n'a rien à faire sur la page
+ * d'un axe, dans la case d'un acteur ni sur l'accueil, où elle se lisait comme
+ * une information — et, groupée, comme une information sur d'autres acteurs
+ * que celui de la page.
+ *
+ * Le portail ne devine pas ce qu'est un constat d'absence : il n'a aucun moyen
+ * honnête de distinguer « rien depuis le 12 mars » d'un fait daté. La lettre
+ * le lui dit par la forme, avec un bloc que Notion sait rendre à part
+ * (`callout`). Tout écran qui extrait de la lettre passe par `faitsDe` ; la
+ * page de la lettre, elle, rend tout.
+ */
+export function estUnFait(bloc: Bloc): boolean {
+  return bloc.type !== 'encadré'
+}
+
+/** Les blocs d'une suite qui sont des faits — voir `estUnFait`. */
+export function faitsDe(blocs: readonly Bloc[]): Bloc[] {
+  return blocs.filter(estUnFait)
+}
+
+/**
  * Les éléments importants d'un axe, pour une case de grille.
  *
  * Les puces de la note passent d'abord : quand l'auteur en a écrit, ce sont
@@ -527,6 +555,77 @@ export function pointsDAxe(axe: Axe, combien = 3, longueur = 110): Extrait[] {
 function premièrePhrase(texte: string): string {
   const fin = /[.!?…]\s/.exec(texte)
   return fin ? texte.slice(0, fin.index + 1) : texte
+}
+
+/**
+ * La tranche `[début, fin)` d'une suite de segments, mise en forme comprise.
+ *
+ * Les offsets sont ceux du texte recomposé ; un segment à cheval sur une borne
+ * est coupé, les autres sont gardés entiers.
+ */
+export function trancherSegments(
+  segments: readonly Segment[],
+  début: number,
+  fin: number,
+): Segment[] {
+  const gardés: Segment[] = []
+  let position = 0
+
+  for (const segment of segments) {
+    const de = position
+    const à = position + segment.texte.length
+    position = à
+
+    if (à <= début || de >= fin) continue
+
+    const texte = segment.texte.slice(Math.max(début, de) - de, Math.min(fin, à) - de)
+    if (texte.length > 0) gardés.push({ ...segment, texte })
+  }
+
+  return gardés
+}
+
+/**
+ * Une fin de phrase : une ponctuation forte, une éventuelle fermante, puis un
+ * blanc et une majuscule ou un guillemet ouvrant. Demander la majuscule évite
+ * de couper « art. 3 » ou « 5,4 % » ; ce qui suit un point et une majuscule
+ * est une phrase dans les lettres, qui développent leurs sigles et n'abrègent
+ * pas. Une phrase qui commence par un chiffre est fondue dans la précédente,
+ * ce qui allonge une citation sans jamais la fausser.
+ */
+const FIN_DE_PHRASE = /[.!?…]+["»”)]?(?=\s+[A-ZÀ-ÖØ-ÝŒ«"“(])/gu
+
+/**
+ * Les phrases d'un paragraphe, chacune avec ses segments.
+ *
+ * Un paragraphe de lettre parle souvent de plusieurs choses : « Le programme
+ * d'Airbnb n'a pas de date. Le site de Réinventer le patrimoine ne porte aucun
+ * appel. Les fiches de l'Oise renvoient une page introuvable. » Cité en entier
+ * sur la page de l'acteur Airbnb, il y apportait deux phrases sur d'autres
+ * acteurs. La mention se cherche donc phrase par phrase, et ne cite que celles
+ * qui nomment.
+ */
+export function phrasesDe(segments: readonly Segment[]): Extrait[] {
+  const entier = texteDeSegments(segments)
+  const phrases: Extrait[] = []
+  let début = 0
+
+  const pousser = (fin: number): void => {
+    const brut = entier.slice(début, fin)
+    const avant = brut.length - brut.trimStart().length
+    const après = brut.length - brut.trimEnd().length
+    const de = début + avant
+    const à = fin - après
+    if (à > de) phrases.push({ texte: entier.slice(de, à), segments: trancherSegments(segments, de, à) })
+    début = fin
+  }
+
+  for (const coupure of entier.matchAll(FIN_DE_PHRASE)) {
+    pousser(coupure.index + coupure[0].length)
+  }
+  pousser(entier.length)
+
+  return phrases
 }
 
 /** Coupe au dernier mot entier, et ne coupe pas si ce n'est pas nécessaire. */

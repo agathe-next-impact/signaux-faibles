@@ -13,6 +13,7 @@ const bloc = (type: string, contenu = ''): BlocNotion => ({
 const h1 = (t: string) => bloc('heading_1', t)
 const h2 = (t: string) => bloc('heading_2', t)
 const p = (t: string) => bloc('paragraph', t)
+const encadré = (t: string) => bloc('callout', t)
 const trait = () => bloc('divider')
 
 const CLÔTURE =
@@ -32,7 +33,9 @@ function lettreConforme(): BlocNotion[] {
     h2('② Financements — MOYEN'),
     p('La circulaire DETR 2027 est attendue vers le 20 octobre.'),
     h2('③ Gouvernance — RAS'),
-    p('La CADA n’a rien publié depuis le 3 juillet.'),
+    // Le RAS motivé s'écrit en encadré : ce n'est pas un fait (convention du
+    // 21 septembre 2026), et le portail ne le cite nulle part hors de la lettre.
+    encadré('La CADA n’a rien publié depuis le 3 juillet.'),
     h1('La recommandation de la période'),
     p('Écrire à la préfecture avant le vendredi 18 septembre.'),
     h1('Ajustements du cadrage de cette veille'),
@@ -53,8 +56,9 @@ describe('contrôlerLaLettre — une lettre au contrat', () => {
     dossiersBruts: DOSSIERS_CONFORMES,
   })
 
-  it('est conforme, sans rupture', () => {
+  it('est conforme, sans rupture ni avertissement', () => {
     expect(rapport.ruptures).toEqual([])
+    expect(rapport.avertissements).toEqual([])
     expect(rapport.conforme).toBe(true)
   })
 
@@ -194,6 +198,29 @@ describe('contrôlerLaLettre — les avertissements', () => {
     const rapport = contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
     expect(rapport.conforme).toBe(true)
     expect(rapport.avertissements.map((a) => a.code)).toContain('axes-hors-rubrique')
+  })
+
+  it('un axe RAS dont le corps est en prose : absence en prose, non bloquant', () => {
+    // Le cas du 21 septembre 2026 : le RAS motivé écrit en paragraphes était
+    // rendu sur la page de l'axe et cité sur la page de chaque acteur nommé,
+    // comme un fait. Le contrat de forme ne casse pas — la lettre s'affiche —,
+    // mais la relectrice doit le savoir avant l'envoi.
+    const blocs = lettreConforme()
+    const rang = blocs.findIndex((b) => b.type === 'callout')
+    blocs[rang] = p('La CADA n’a rien publié depuis le 3 juillet.')
+    const rapport = contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
+    expect(rapport.conforme).toBe(true)
+    const avertissement = rapport.avertissements.find((a) => a.code === 'absence-en-prose')
+    expect(avertissement?.message).toContain('Gouvernance')
+    expect(avertissement?.message).toContain('encadré')
+  })
+
+  it('un axe FORT dont le corps mêle un fait et un encadré : rien à signaler', () => {
+    const blocs = lettreConforme()
+    const rang = blocs.findIndex((b) => b.type === 'heading_2' && String((b['heading_2'] as { rich_text: { plain_text: string }[] }).rich_text[0]?.plain_text).includes('Commande'))
+    blocs.splice(rang + 2, 0, encadré('Le site du ministère ne s’est pas ouvert pendant ce relevé.'))
+    const rapport = contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
+    expect(rapport.avertissements.map((a) => a.code)).not.toContain('absence-en-prose')
   })
 
   it('une numérotation interne citée dans le corps', () => {

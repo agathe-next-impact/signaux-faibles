@@ -380,6 +380,32 @@ Au-delà, ce ne serait plus le même syntagme. `tests/mentions.lettre-reelle.tes
 mesure la règle sur une vraie lettre : neuf dossiers sur dix trouvés, et le
 dixième documenté comme irréductible.
 
+**Une mention est une phrase, pas un paragraphe** (21 septembre 2026). Une
+lettre groupe volontiers plusieurs acteurs dans un même paragraphe — « Les
+autres guichets n'ont pas bougé. Le programme d'Airbnb… Réinventer le
+patrimoine… Les fiches de l'Oise… ». Cité entier, ce paragraphe posait sur la
+page de l'acteur Airbnb deux phrases qui parlent d'autres acteurs.
+`passagesDuBloc` découpe donc les paragraphes et citations avec `phrasesDe`
+(fin de phrase = ponctuation forte, blanc, majuscule ou guillemet ouvrant ; un
+chiffre ne coupe pas, « art. 3 » et « 5,4 % » restent entiers) et ne cite que
+les phrases qui nomment. Une puce et une ligne de tableau restent des unités.
+
+**Ce qui est encadré n'est pas un fait** (`estUnFait`, `faitsDe`, 21 septembre
+2026). Une lettre porte, à côté de ce qui s'est passé, ce qui a été vérifié
+sans rien donner : le RAS motivé d'un axe, les sources qui ne se sont pas
+ouvertes, les requêtes qui n'ont pas pu être lancées, la note de méthode. Cette
+prose est due au lecteur de la lettre — elle prouve que le silence est un
+constat —, mais sur la page d'un axe, dans la case d'un acteur ou sur l'accueil
+elle se lisait comme une information, et « rien depuis le 12 mars » comme un
+fait de la semaine. Le portail n'a aucun moyen honnête de distinguer les deux
+par le sens : la lettre le lui dit par la **forme**, en écrivant cette prose en
+encadré (`callout` Notion). `mentionsDe` ne cite jamais un encadré,
+`pointsDAxe` ne l'a jamais lu, la page `/[slug]/axes/[axe]` rend `faitsDe(axe.blocs)`
+et un axe sans fait n'y porte que son badge ; la page de la lettre rend tout.
+Le validateur signale en avertissement `absence-en-prose` un axe RAS dont le
+corps n'est pas en encadré. La règle d'écriture est dans « Tâche — Lettres de
+veille », étape 3, contrat de forme, point 4.
+
 Sur l'accueil, la case d'un acteur porte **la précision du dossier, ou à défaut
 la phrase de la lettre qui le nomme** (`acteursEnVue`) : la moitié des dossiers
 réels n'ont pas de précision, et leur case n'apprenait alors rien. L'extrait ne
