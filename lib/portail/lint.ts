@@ -1,6 +1,7 @@
 import {
   axesDuDocument,
   construireDocument,
+  écourter,
   type Bloc,
   type BlocNotion,
   type Document,
@@ -47,6 +48,8 @@ export type Rupture = {
     | 'cadrage-non-clos'
     | 'cadrage-sans-adresse'
     | 'titre-vide'
+    | 'essentiel-absent'
+    | 'essentiel-trop-long'
   readonly portée: Portée
   readonly message: string
 }
@@ -58,6 +61,7 @@ export type Avertissement = {
     | 'référence-interne'
     | 'aucun-dossier'
     | 'absence-en-prose'
+    | 'essentiel-ligne-longue'
   readonly message: string
 }
 
@@ -97,6 +101,38 @@ export const PHRASE_DE_CLÔTURE = 'Ces ajustements ne seront appliqués qu’apr
 export const ADRESSE_DU_CADRAGE = 'agathe@signauxfaibles.io'
 
 const RUBRIQUE_DES_AXES = 'actualites par axe'
+
+/**
+ * « L'essentiel » tient en huit lignes de 140 caractères au plus.
+ *
+ * Ces lignes sont reprises **telles quelles**, sans modèle de langage, par le
+ * digest hebdomadaire de l'espace client Next Impact : une édition y occupe au
+ * plus huit lignes. La limite ne peut donc être tenue qu'à la source, ici, avant
+ * l'envoi. Une ligne est une puce (à puces ou numérotée) ou un paragraphe non
+ * vide de l'introduction de la rubrique — ce qui précède son premier H2.
+ */
+export const ESSENTIEL_LIGNES_MAX = 8
+export const ESSENTIEL_CARACTÈRES_MAX = 140
+
+/** « L'essentiel », « L’essentiel », « Essentiel », « L'essentiel de la semaine ». */
+function estRubriqueEssentielle(titre: string): boolean {
+  return /^(l')?essentiel\b/.test(sansAccent(titre).trim())
+}
+
+/** Les lignes de « L'essentiel », au sens du digest : puces et paragraphes non vides. */
+export function lignesDeLEssentiel(document: Document): string[] | null {
+  const rubrique = document.rubriques.find((r) => estRubriqueEssentielle(r.titre))
+  if (!rubrique) return null
+
+  const lignes: string[] = []
+  for (const bloc of rubrique.introduction) {
+    if (bloc.type === 'paragraphe') lignes.push(bloc.segments.map((s) => s.texte).join(''))
+    else if (bloc.type === 'liste') {
+      for (const élément of bloc.éléments) lignes.push(élément.map((s) => s.texte).join(''))
+    }
+  }
+  return lignes.map((ligne) => ligne.trim()).filter((ligne) => ligne.length > 0)
+}
 
 function sansAccent(texte: string): string {
   return texte
@@ -234,6 +270,39 @@ export function contrôlerLaLettre(entrée: {
         `l’axe « ${axe.titre} » est en RAS mais son corps n’est pas en encadré : ` +
         'le portail le rendra sur la page de l’axe et le citera sur la page de chaque acteur qu’il nomme, comme s’il s’agissait de faits. ' +
         'Le RAS motivé, les sources non ouvertes et les notes de méthode s’écrivent en encadré (callout).',
+    })
+  }
+
+  // ── L'essentiel : huit lignes de 140 caractères, reprises par le digest ──
+  const essentiel = lignesDeLEssentiel(document)
+  if (essentiel === null || essentiel.length === 0) {
+    ruptures.push({
+      code: 'essentiel-absent',
+      portée: 'lettre',
+      message:
+        essentiel === null
+          ? 'aucune rubrique de niveau 1 « L’essentiel ». Elle ouvre chaque lettre et le digest hebdomadaire de l’espace client la reprend telle quelle : sans elle, l’édition n’y a aucune ligne.'
+          : 'la rubrique « L’essentiel » est vide : ni puce ni paragraphe avant le titre suivant. Le digest hebdomadaire de l’espace client la reprend telle quelle.',
+    })
+  } else {
+    if (essentiel.length > ESSENTIEL_LIGNES_MAX) {
+      ruptures.push({
+        code: 'essentiel-trop-long',
+        portée: 'lettre',
+        message:
+          `la rubrique « L’essentiel » compte ${essentiel.length} lignes pour ${ESSENTIEL_LIGNES_MAX} au plus ` +
+          '(une ligne = une puce ou un paragraphe non vide). Le digest hebdomadaire la reprend telle ' +
+          'quelle, sans résumé : fusionner ou retirer des lignes, le détail a sa place dans les axes.',
+      })
+    }
+    essentiel.forEach((ligne, i) => {
+      if (ligne.length <= ESSENTIEL_CARACTÈRES_MAX) return
+      avertissements.push({
+        code: 'essentiel-ligne-longue',
+        message:
+          `la ligne ${i + 1} de « L’essentiel » fait ${ligne.length} caractères pour ${ESSENTIEL_CARACTÈRES_MAX} au plus : ` +
+          `« ${écourter(ligne, 60)} ». Le digest la reprend telle quelle ; la resserrer.`,
+      })
     })
   }
 

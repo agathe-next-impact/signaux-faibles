@@ -67,14 +67,41 @@ production** (`construireDocument`, `lireDossiersOuverts`, `mentionsDe`,
 **Codes de rupture** (bloquent : `conforme` est faux) — `aucun-axe`,
 `axe-sans-niveau`, `dossier-sans-compteur`, `cadrage-absent`,
 `cadrage-non-clos`, `titre-vide` sont de portée `portail` (ce que le portail
-n'affichera pas) ; `niveau-faible` et `cadrage-sans-adresse` sont de portée
-`lettre` (règles de la page « Tâche — Lettres de veille »).
+n'affichera pas) ; `niveau-faible`, `cadrage-sans-adresse`, `essentiel-absent`
+et `essentiel-trop-long` sont de portée `lettre` (règles de la page « Tâche —
+Lettres de veille »).
 **Avertissements** (ne bloquent pas) — `dossier-non-nommé`,
 `axes-hors-rubrique`, `référence-interne`, `aucun-dossier`,
 `absence-en-prose` (un axe RAS dont le corps n'est pas en encadré : le portail
 le rendrait sur la page de l'axe et le citerait sur celle de chaque acteur
 nommé, comme un fait ; depuis le 21 septembre 2026, le RAS motivé, les sources
-non ouvertes et les notes de méthode s'écrivent en encadré).
+non ouvertes et les notes de méthode s'écrivent en encadré),
+`essentiel-ligne-longue`.
+
+### « L'essentiel » : 8 lignes de 140 caractères au plus
+
+*Depuis le 26 septembre 2026.* Le digest hebdomadaire de l'espace client
+Next Impact reprend « L'essentiel » de chaque édition **tel quel**, sans
+modèle de langage ni résumé : une édition y occupe 8 lignes au plus. La limite
+est donc tenue ici, avant l'envoi.
+
+- La rubrique est un **titre de niveau 1** (`heading_1`) « L’essentiel ».
+  Apostrophe droite ou typographique, casse et accents indifférents ;
+  « Essentiel » seul ou « L’essentiel de la semaine » sont reconnus,
+  « Essentiellement » non.
+- Elle s'étend jusqu'au titre suivant de niveau 1 **ou 2** (un H2 ouvre un
+  axe : ce qui le suit n'est plus l'essentiel).
+- Une **ligne** = une puce (`bulleted_list_item` ou `numbered_list_item`) ou
+  un paragraphe (`paragraph`) non vide. Les autres blocs (citation, encadré,
+  tableau, H3, sous-puces imbriquées) ne sont pas comptés — et ne sont pas
+  repris par le digest : ne pas en mettre dans « L'essentiel ».
+- `essentiel-absent` (rupture) : pas de rubrique, ou aucune ligne.
+  `essentiel-trop-long` (rupture) : plus de 8 lignes — fusionner ou renvoyer
+  le détail dans les axes. `essentiel-ligne-longue` (avertissement) : une ligne
+  de plus de 140 caractères, que le rapport cite par son rang.
+
+Portée `lettre` : le contrôle du soir (`/api/veille/etat`) ne les compte pas,
+les éditions déjà envoyées ne sont pas rouvertes.
 
 `404` : l'identifiant n'est pas une page de la base Éditions. `400` : corps
 ou identifiant illisible.
@@ -226,6 +253,13 @@ messages le même soir.
 
 **« Tâche — Revue mensuelle »**, porte — même amendement que l'étape 0.0 :
 `revuesDues` de `/api/veille/calendrier` est exactement sa porte.
+
+**« Tâche — Lettres de veille », étape 3 (contrat de forme)** — ajouter :
+*« L'essentiel » (titre de niveau 1) tient en **8 lignes au plus**, une ligne
+étant une puce ou un paragraphe, et chaque ligne en **140 caractères au plus**.
+Ces lignes sont reprises telles quelles dans le digest hebdomadaire des
+clients : chacune doit se lire seule, sans le reste de la lettre. Pas de
+citation, d'encadré, de tableau ni de sous-puce dans cette rubrique. »*
 
 **Le contrat de forme des lettres** (page Lettres, tête de l'étape 3) reste où
 il est : le validateur l'applique, il ne le remplace pas. On peut par contre y
