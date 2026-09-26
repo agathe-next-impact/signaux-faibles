@@ -42,6 +42,10 @@ Corps de la page (deux éditions existantes, Infralliance du 8 septembre) :
 3. une « Note de méthode » en gras ;
 4. des titres H1 (« L'essentiel », « Actualités par famille », « Analyse »,
    « Trois idées de posts… », « Agenda des quinze jours ») ;
+   *Contrat depuis le 26 septembre 2026 :* « L'essentiel » (H1) tient en
+   8 lignes au plus — puces ou paragraphes — de 140 caractères au plus,
+   reprises telles quelles par le digest de l'espace client Next Impact ;
+   vérifié par `POST /api/veille/lint` (`docs/api-veille.md`) ;
 5. sous « Actualités par famille », des titres H2 de la forme
    **« ② Cadre français — FORT »** : le niveau d'impact est un suffixe du
    titre de famille ;

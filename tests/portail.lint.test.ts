@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { BlocNotion } from '@/lib/domaine/document'
-import { ADRESSE_DU_CADRAGE, PHRASE_DE_CLÔTURE, contrôlerLaLettre } from '@/lib/portail/lint'
+import {
+  ADRESSE_DU_CADRAGE,
+  ESSENTIEL_CARACTÈRES_MAX,
+  ESSENTIEL_LIGNES_MAX,
+  PHRASE_DE_CLÔTURE,
+  contrôlerLaLettre,
+} from '@/lib/portail/lint'
 import { BLOCS_RÉELS, DOSSIERS_RÉELS } from './fixtures/lettre-reelle'
 
 const texte = (contenu: string) => [{ plain_text: contenu }]
@@ -14,6 +20,8 @@ const h1 = (t: string) => bloc('heading_1', t)
 const h2 = (t: string) => bloc('heading_2', t)
 const p = (t: string) => bloc('paragraph', t)
 const trait = () => bloc('divider')
+const puce = (t: string) => bloc('bulleted_list_item', t)
+const numéro = (t: string) => bloc('numbered_list_item', t)
 
 const CLÔTURE =
   `${PHRASE_DE_CLÔTURE}. Pour demander vous-même une modification du cadrage — ajouter ou ` +
@@ -190,7 +198,8 @@ describe('contrôlerLaLettre — les avertissements', () => {
 
   it('des axes hors de « Actualités par axe »', () => {
     const blocs = lettreConforme()
-    blocs.splice(2, 0, h2('⓪ Hors rubrique — MOYEN'), p('Un fait.'))
+    // Après la ligne de « L’essentiel » : un H2 juste sous son titre la viderait.
+    blocs.splice(3, 0, h2('⓪ Hors rubrique — MOYEN'), p('Un fait.'))
     const rapport = contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
     expect(rapport.conforme).toBe(true)
     expect(rapport.avertissements.map((a) => a.code)).toContain('axes-hors-rubrique')
@@ -201,6 +210,79 @@ describe('contrôlerLaLettre — les avertissements', () => {
     blocs.splice(3, 0, p('Voir le §2 du référentiel.'))
     const rapport = contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
     expect(rapport.avertissements.find((a) => a.code === 'référence-interne')?.message).toContain('§2')
+  })
+})
+
+/** Remplace le contenu de « L'essentiel » de la lettre conforme par `lignes`. */
+function avecEssentiel(lignes: BlocNotion[], titre = 'L’essentiel'): BlocNotion[] {
+  const blocs = lettreConforme()
+  const début = blocs.findIndex((b) => b.type === 'heading_1')
+  blocs.splice(début, 2, h1(titre), ...lignes)
+  return blocs
+}
+
+const contrôler = (blocs: BlocNotion[]) =>
+  contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
+
+describe('contrôlerLaLettre — « L’essentiel », repris tel quel par le digest', () => {
+  it('huit lignes, puces et paragraphes mêlés : conforme', () => {
+    const lignes = [p('Un.'), puce('Deux.'), puce('Trois.'), numéro('Quatre.'), p('Cinq.'), puce('Six.'), puce('Sept.'), p('Huit.')]
+    expect(lignes).toHaveLength(ESSENTIEL_LIGNES_MAX)
+    const rapport = contrôler(avecEssentiel(lignes))
+    expect(rapport.ruptures).toEqual([])
+    expect(rapport.avertissements).toEqual([])
+  })
+
+  it('neuf lignes : rupture essentiel-trop-long, de portée lettre', () => {
+    const lignes = Array.from({ length: 9 }, (_, i) => (i % 2 ? puce(`Fait ${i}.`) : p(`Fait ${i}.`)))
+    const rapport = contrôler(avecEssentiel(lignes))
+    expect(rapport.conforme).toBe(false)
+    const rupture = rapport.ruptures.find((r) => r.code === 'essentiel-trop-long')
+    expect(rupture?.portée).toBe('lettre')
+    expect(rupture?.message).toContain('9 lignes')
+  })
+
+  it('les paragraphes vides ne comptent pas, et le H2 suivant ferme la rubrique', () => {
+    const lignes = [...Array.from({ length: 8 }, (_, i) => puce(`Fait ${i}.`)), p('   '), p('')]
+    const blocs = avecEssentiel(lignes)
+    // Un H2 dans « L’essentiel » ouvre un axe : ce qui le suit n'est plus l'essentiel.
+    blocs.splice(blocs.indexOf(lignes[lignes.length - 1] as BlocNotion) + 1, 0, h2('⓪ Hors rubrique — MOYEN'), p('Détail.'), p('Détail.'))
+    const rapport = contrôler(blocs)
+    expect(rapport.ruptures.map((r) => r.code)).not.toContain('essentiel-trop-long')
+  })
+
+  it('absente : rupture essentiel-absent', () => {
+    const blocs = lettreConforme()
+    blocs.splice(blocs.findIndex((b) => b.type === 'heading_1'), 2)
+    const rupture = contrôler(blocs).ruptures.find((r) => r.code === 'essentiel-absent')
+    expect(rupture?.portée).toBe('lettre')
+    expect(rupture?.message).toContain('aucune rubrique')
+  })
+
+  it('vide : rupture essentiel-absent', () => {
+    const rupture = contrôler(avecEssentiel([p(' ')])).ruptures.find((r) => r.code === 'essentiel-absent')
+    expect(rupture?.message).toContain('vide')
+  })
+
+  it('reconnaît le titre à l’apostrophe droite, sans article, ou prolongé', () => {
+    for (const titre of ["L'essentiel", 'Essentiel', 'L’ESSENTIEL de la semaine']) {
+      const codes = contrôler(avecEssentiel([p('Un fait.')], titre)).ruptures.map((r) => r.code)
+      expect(codes).not.toContain('essentiel-absent')
+    }
+    // « Essentiellement » n'est pas la rubrique.
+    const codes = contrôler(avecEssentiel([p('Un fait.')], 'Essentiellement')).ruptures.map((r) => r.code)
+    expect(codes).toContain('essentiel-absent')
+  })
+
+  it('une ligne de plus de 140 caractères : avertissement, pas rupture', () => {
+    const longue = 'x'.repeat(ESSENTIEL_CARACTÈRES_MAX + 1)
+    const juste = 'y'.repeat(ESSENTIEL_CARACTÈRES_MAX)
+    const rapport = contrôler(avecEssentiel([p(juste), puce(longue)]))
+    expect(rapport.conforme).toBe(true)
+    const avertissements = rapport.avertissements.filter((a) => a.code === 'essentiel-ligne-longue')
+    expect(avertissements).toHaveLength(1)
+    expect(avertissements[0]?.message).toContain('ligne 2')
+    expect(avertissements[0]?.message).toContain('141 caractères')
   })
 })
 
