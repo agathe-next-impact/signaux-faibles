@@ -81,6 +81,7 @@ describe('construireDocument', () => {
       {
         id: 'bloc-image',
         type: 'image',
+        parent: { type: 'page_id', page_id: 'page-porteuse' },
         image: {
           type: 'file',
           file: { url: 'https://prod-files.notion/secret?X-Amz-Signature=…', expiry_time: '…' },
@@ -89,7 +90,14 @@ describe('construireDocument', () => {
       },
     ])
     const image = doc.préambule[0]
-    expect(image).toEqual({ type: 'image', blocId: 'bloc-image', légende: 'Une légende' })
+    // La page porteuse est conservée : le proxy des médias vérifie l'appartenance
+    // sur elle avant de lire le bloc dans Notion.
+    expect(image).toEqual({
+      type: 'image',
+      blocId: 'bloc-image',
+      pageId: 'page-porteuse',
+      légende: 'Une légende',
+    })
     expect(JSON.stringify(doc)).not.toContain('prod-files.notion')
     expect(JSON.stringify(doc)).not.toContain('X-Amz-Signature')
   })
@@ -288,6 +296,12 @@ describe('détachement du cadrage', () => {
       expect(doc.cadrage).toHaveLength(1)
       expect(doc.rubriques).toHaveLength(0)
     }
+  })
+
+  it('garde dans la lettre un titre d’actualité comme « Recadrage du marché »', () => {
+    const doc = construireDocument([h1('Recadrage du marché'), p('Un fait de la semaine.')])
+    expect(doc.cadrage).toEqual([])
+    expect(doc.rubriques).toHaveLength(1)
   })
 
   it('laisse la lettre intacte quand aucune rubrique ne parle de cadrage', () => {

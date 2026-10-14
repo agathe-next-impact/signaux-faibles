@@ -1,5 +1,6 @@
 import { notion, sourcesDeDonnées } from '@/lib/notion/client'
 import { lireCase, lireEmail, lireTexte, lireTitre } from '@/lib/notion/proprietes'
+import { empreinte } from '@/lib/portail/debit'
 
 /**
  * Une ligne de la base « Accès — portail ».
@@ -180,7 +181,7 @@ export async function lireAccèsActifParEmail(email: string): Promise<
 
   if (réponse.results.length !== 1) {
     console.warn(
-      `[accès] ${réponse.results.length} ligne(s) active(s) pour ${email}, il en faut ` +
+      `[accès] ${réponse.results.length} ligne(s) active(s) pour ${empreinte(email)}, il en faut ` +
         'exactement une. Vérifier la base « Accès — portail » : adresse absente, ' +
         'case Actif décochée, ou doublon.',
     )
@@ -195,7 +196,7 @@ export async function lireAccèsActifParEmail(email: string): Promise<
 
   if (identifiant.length === 0 || organisationId.length === 0) {
     console.warn(
-      `[accès] ligne trouvée pour ${email} mais incomplète : ` +
+      `[accès] ligne trouvée pour ${empreinte(email)} mais incomplète : ` +
         `${identifiant.length === 0 ? "« Identifiant d'accès » vide" : ''}` +
         `${organisationId.length === 0 ? " « Identifiant Notion de l'organisation » vide" : ''}`.trim(),
     )

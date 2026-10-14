@@ -108,7 +108,7 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
           {/* Jamais l'URL Notion : elle expire en une heure. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/media/${bloc.blocId}`}
+            src={`/api/media/${bloc.blocId}?page=${encodeURIComponent(bloc.pageId)}`}
             alt={bloc.légende}
             loading="lazy"
           />

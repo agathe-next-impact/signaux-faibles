@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/lib/env'
 import { vérifierJeton } from '@/lib/auth/jeton'
-import { NOM_DU_COOKIE } from '@/lib/auth/session'
+import { attributsDuCookie, NOM_DU_COOKIE } from '@/lib/auth/session'
 import { lireAccèsParIdentifiant } from '@/lib/notion/acces'
 
 /**
@@ -31,13 +31,7 @@ export async function GET(
   if (!accès || !accès.actif || accès.slug.length === 0) return versLeFormulaire
 
   const réponse = NextResponse.redirect(new URL(`/${accès.slug}`, requête.url))
-  réponse.cookies.set(NOM_DU_COOKIE, decodeURIComponent(jeton), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-  })
+  réponse.cookies.set(NOM_DU_COOKIE, decodeURIComponent(jeton), attributsDuCookie())
 
   return réponse
 }

@@ -317,6 +317,7 @@ lui seul, qui manquait.
 | `401 {"état":"refusée"}` | jeton absent, faux, ou demande mal formée | vérifier `ACTIVATION_SECRET` des deux côtés |
 | `503 {"état":"non-configurée"}` | `ACTIVATION_SECRET` n'est pas défini côté portail | le définir sur Vercel ; l'ouverture reste manuelle en attendant |
 | `502 {"état":"erreur"}` | Notion ou Gmail n'a pas répondu | réessayer ; les journaux Vercel portent la cause |
+| `429 {"état":"déjà-envoyé"}` | un envoi vers cette adresse a déjà eu lieu dans les dix dernières minutes (limitation de débit, depuis le 14 octobre 2026) | ne pas rappeler la route : le lien est parti ; un `404` suivi d'un rappel réussi ne compte pas comme un envoi |
 
 Le premier `404` est normal si l'appel suit immédiatement l'écriture : le
 portail garde la base « Accès » en cache une minute. Il expire le tag en

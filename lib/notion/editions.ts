@@ -167,13 +167,20 @@ export type MédiaDeBloc = {
  * expire en une heure, et servir depuis le cache une URL périmée donnerait une
  * image cassée. La page parente, elle, sert à vérifier que le demandeur a le
  * droit de voir ce média.
+ *
+ * Cette fonction ne contrôle **pas** l'appartenance : `pageId` est la page que
+ * l'appelant a déjà vérifiée dans la liste filtrée de l'organisation. Elle ne
+ * sert qu'à l'étiquette de cache, pour qu'une modification de la page invalide
+ * aussi ses médias (le webhook n'envoie que `page:<page_id>`, jamais un
+ * identifiant de bloc) ; le contrôle que le bloc appartient bien à cette page
+ * revient à l'appelant, sur `pageParenteId`.
  */
-export async function lireMédiaDeBloc(blocId: string): Promise<MédiaDeBloc | null> {
+export async function lireMédiaDeBloc(blocId: string, pageId: string): Promise<MédiaDeBloc | null> {
   'use cache: remote'
 
   const { cacheLife, cacheTag } = await import('next/cache')
   cacheLife('media')
-  cacheTag(`page:${blocId}`)
+  cacheTag(`page:${pageId}`, `page:${blocId}`)
 
   const bloc = (await notion().blocks.retrieve({ block_id: blocId })) as {
     type?: string

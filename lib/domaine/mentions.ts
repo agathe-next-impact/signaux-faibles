@@ -8,6 +8,7 @@ import {
 } from '@/lib/domaine/document'
 import type { DossierOuvert } from '@/lib/domaine/dossiers'
 import type { NiveauImpact } from '@/lib/domaine/impact'
+import { sansAccent } from '@/lib/domaine/texte'
 
 /**
  * Ce que les lettres disent d'un acteur.
@@ -29,10 +30,6 @@ export type Mention = {
   readonly niveau: NiveauImpact | null
   /** Les passages qui nomment l'acteur, dans l'ordre de la note. */
   readonly passages: readonly Extrait[]
-}
-
-function sansAccent(texte: string): string {
-  return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
 /**

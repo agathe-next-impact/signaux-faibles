@@ -376,3 +376,45 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     expect(config).toContain("destination: '/:slug/perimetre'")
   })
 })
+
+/**
+ * Deux garde-fous posés le 14 octobre 2026, après l'audit du portail.
+ *
+ * Le proxy des médias lisait le bloc dans Notion avant de vérifier que le
+ * demandeur avait le droit de le voir ; et plusieurs journaux portaient
+ * l'adresse d'un lecteur en clair. Ni l'un ni l'autre ne doit revenir.
+ */
+describe('le proxy des médias vérifie l’appartenance avant de lire Notion', () => {
+  it('consulte la liste des éditions de l’organisation avant de résoudre le bloc', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app', 'api', 'media', '[block_id]', 'route.ts'),
+      'utf8',
+    )
+    expect(source.indexOf('listerÉditionsPubliées(')).toBeLessThan(source.indexOf('lireMédiaDeBloc('))
+    expect(source).toContain("searchParams.get('page')")
+  })
+})
+
+describe('aucun journal ne porte une adresse email en clair', () => {
+  it('les console.* n’interpolent ni email ni accès.email', () => {
+    const fautifs: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (!/\.tsx?$/.test(entrée.name)) continue
+        const source = readFileSync(chemin, 'utf8')
+        // Un appel console.* peut s'étaler sur plusieurs lignes : on regarde
+        // le bloc jusqu'à la parenthèse fermante de premier niveau, grossièrement.
+        for (const bloc of source.match(/console\.(?:info|warn|error|log)\([\s\S]*?\)\s*\n/g) ?? []) {
+          if (/\$\{(?:accès\.)?email\}/.test(bloc)) fautifs.push(`${relatif(chemin)} : ${bloc.trim().slice(0, 80)}`)
+        }
+      }
+    }
+    for (const racine of ['app', 'lib']) parcourir(join(process.cwd(), racine))
+    expect(fautifs).toEqual([])
+  })
+})
