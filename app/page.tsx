@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { identifiantDeLaSession } from '@/lib/auth/session'
-import { lireAccèsParIdentifiant } from '@/lib/notion/acces'
+import { lireAccèsParIdentifiant } from '@/lib/auth/source-acces'
 
 /**
  * La racine n'affiche rien : elle oriente.

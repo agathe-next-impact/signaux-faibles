@@ -38,6 +38,14 @@ const schema = z.object({
   GOOGLE_COMPTE_SERVICE_JSON: facultative(z.string().min(1)),
   GOOGLE_COMPTE_SERVICE_EMAIL: facultative(z.email()),
   GOOGLE_COMPTE_SERVICE_CLE_PRIVEE: facultative(z.string().min(1)),
+  // Palier 1 : lues directement dans `process.env` par `lib/base/client.ts` et
+  // `lib/auth/source-acces.ts`, pour qu'une base pas encore créée ou une faute
+  // de frappe ne fasse pas tomber toutes les pages. Déclarées ici pour le contrat.
+  DATABASE_URL: facultative(z.string().min(1)),
+  // Volontairement une chaîne et non une énumération : la façade valide la
+  // valeur et retombe sur `notion` en le journalisant. Une énumération ici
+  // ferait d'une faute de frappe dans l'hébergeur une panne de tout le portail.
+  SOURCE_ACCES: facultative(z.string()),
   GMAIL_EXPEDITEUR: z.email(),
   GMAIL_EXPEDITEUR_NOM: z.preprocess(
     (valeur) => (valeur === '' ? undefined : valeur),

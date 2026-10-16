@@ -3,9 +3,8 @@ import {
   lireAccèsParIdentifiant,
   organisationDuSlug,
   espacesOuverts,
-  type Accès,
-  type Espace,
-} from '@/lib/notion/acces'
+} from '@/lib/auth/source-acces'
+import type { Accès, Espace } from '@/lib/notion/acces'
 import { identifiantDeLaSession } from '@/lib/auth/session'
 
 /**
