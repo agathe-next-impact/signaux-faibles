@@ -30,9 +30,10 @@ export async function GET(
   const accès = await lireAccèsParIdentifiant(identifiant)
   if (!accès || !accès.actif) return versLeFormulaire
 
-  // L'opérateur global (palier 1) n'a pas d'espace à lui : il choisit. Tout
-  // autre accès sans slug reste refusé, comme avant.
-  const destination = accès.slug.length > 0 ? `/${accès.slug}` : accès.tousLesEspaces ? '/espaces' : null
+  // L'opérateur global (palier 1) n'a pas d'espace à lui : il choisit, même si
+  // sa ligne Notion porte encore un slug (la lecture Notion en exige un). Même
+  // ordre que `app/page.tsx`. Tout autre accès sans slug reste refusé.
+  const destination = accès.tousLesEspaces ? '/espaces' : accès.slug.length > 0 ? `/${accès.slug}` : null
   if (!destination) return versLeFormulaire
 
   const réponse = NextResponse.redirect(new URL(destination, requête.url))

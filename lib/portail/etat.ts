@@ -42,21 +42,59 @@ export type EspaceContrôlé = {
   readonly défauts: readonly Défaut[]
 }
 
-/** Regroupe les lignes « Accès » par slug ; les lignes sans slug sont ignorées et comptées. */
+/**
+ * Regroupe les lignes « Accès » par slug ; les lignes sans slug sont ignorées et
+ * comptées.
+ *
+ * Les lignes d'opérateur (case `Tous les espaces`) sont mises à part, quel que
+ * soit leur slug : le privilège est global (16 octobre 2026), et la ligne
+ * Notion ne porte un slug et un identifiant d'organisation que parce que la
+ * lecture Notion refuse une ligne qui n'en a pas. Comptées dans un espace, elles
+ * gonfleraient son nombre de lecteurs et masqueraient `aucun-acces-actif` le
+ * jour où les lecteurs du client seraient tous révoqués.
+ */
 export function regrouperParSlug(lignes: readonly LigneDAccèsContrôlée[]): {
   readonly parSlug: ReadonlyMap<string, readonly LigneDAccèsContrôlée[]>
   readonly sansSlug: number
+  readonly opérateurs: readonly LigneDAccèsContrôlée[]
 } {
   const parSlug = new Map<string, LigneDAccèsContrôlée[]>()
+  const opérateurs: LigneDAccèsContrôlée[] = []
   let sansSlug = 0
   for (const ligne of lignes) {
+    if (ligne.tousLesEspaces) {
+      opérateurs.push(ligne)
+      continue
+    }
     if (ligne.slug.length === 0) {
       sansSlug += 1
       continue
     }
     parSlug.set(ligne.slug, [...(parSlug.get(ligne.slug) ?? []), ligne])
   }
-  return { parSlug, sansSlug }
+  return { parSlug, sansSlug, opérateurs }
+}
+
+/**
+ * Les défauts des lignes d'opérateur, hors de tout espace : un identifiant vide
+ * ou partagé refuse le lien de l'opérateur comme celui d'un lecteur.
+ */
+export function contrôlerLesOpérateurs(opérateurs: readonly LigneDAccèsContrôlée[]): Défaut[] {
+  const défauts: Défaut[] = []
+  if (opérateurs.some((l) => l.identifiantVide)) {
+    défauts.push({ slug: '(opérateur)', code: 'identifiant-acces-vide', message: 'une ligne d’opérateur n’a pas d’identifiant d’accès : aucun lien ne peut être composé.' })
+  }
+  if (opérateurs.some((l) => l.identifiantEnDoublon)) {
+    défauts.push({
+      slug: '(opérateur)',
+      code: 'identifiant-acces-doublon',
+      message: 'l’identifiant d’accès d’une ligne d’opérateur est partagé avec une autre ligne : les deux liens sont refusés.',
+    })
+  }
+  if (opérateurs.some((l) => l.actif && !l.emailRenseigné)) {
+    défauts.push({ slug: '(opérateur)', code: 'email-manquant', message: 'une ligne d’opérateur active n’a pas d’adresse : le portail ne peut pas lui envoyer de lien.' })
+  }
+  return défauts
 }
 
 /**
@@ -160,6 +198,8 @@ export type ÉtatDuDispositif = {
   readonly espaces: readonly EspaceContrôlé[]
   readonly défauts: readonly Défaut[]
   readonly lignesSansSlug: number
+  /** Lignes d'opérateur actives, comptées à part des espaces. */
+  readonly opérateursActifs: number
 }
 
 /** Le courriel du soir : une ligne par défaut, rien de plus. Texte brut, lisible sur un téléphone. */

@@ -8,6 +8,7 @@ import { lignesDAccèsPourContrôle } from '@/lib/notion/acces'
 import { listerÉditionsPubliées, lireBlocsDePage } from '@/lib/notion/editions'
 import {
   composerCourrierDÉtat,
+  contrôlerLesOpérateurs,
   contrôlerUnEspace,
   regrouperParSlug,
   type Défaut,
@@ -48,7 +49,7 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
     requête.headers.get('x-vercel-cron-schedule') !== null
 
   try {
-    const { parSlug, sansSlug } = regrouperParSlug(await lignesDAccèsPourContrôle())
+    const { parSlug, sansSlug, opérateurs } = regrouperParSlug(await lignesDAccèsPourContrôle())
     const espaces: EspaceContrôlé[] = []
 
     for (const [slug, lignes] of parSlug) {
@@ -104,8 +105,9 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
     const état: ÉtatDuDispositif = {
       date: aujourdHuiÀParis(),
       espaces,
-      défauts: [...espaces.flatMap((e) => e.défauts), ...défautsDeBase],
+      défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase],
       lignesSansSlug: sansSlug,
+      opérateursActifs: opérateurs.filter((l) => l.actif).length,
     }
 
     for (const défaut of état.défauts) console.warn(`[veille/etat] ${défaut.slug} : ${défaut.message}`)
