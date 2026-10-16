@@ -281,3 +281,24 @@ copie la base Accès, plutôt qu'un poste où il faudrait les recopier.
   écrit. Sans `a-blanc`, l'import est écrit en une transaction. Réponse :
   comptes, slugs, libellés, lignes écartées désignées par empreinte ; jamais
   d'adresse ni d'identifiant d'accès. Refuse (409) une base Notion vide.
+
+## Écriture des lecteurs (palier 1a-bis, 16 octobre 2026)
+
+`POST /api/veille/lecteurs`, gardée par le jeton :
+
+- `{ "action": "creer", "slug", "nom", "email" }` → 201 `créé`, 404
+  `organisation-inconnue`, 409 `déjà-inscrit` (même adresse chez ce client,
+  casse ignorée) ;
+- `{ "action": "revoquer" | "reactiver", "slug", "email" }` → 200 `révoqué`,
+  `réactivé` ou `inchangé`, 404 `lecteur-inconnu`.
+
+Refuse en 409 tant que `SOURCE_ACCES` n'est pas `postgres` : avant la bascule,
+la base Notion « Accès » fait foi et c'est là qu'on écrit. L'identifiant
+d'accès est tiré par le portail et n'apparaît ni dans la réponse ni dans les
+journaux ; après une création, le lien part par `POST /api/acces/ouvrir`
+`{ email }`, comme aujourd'hui.
+
+`GET /api/veille/etat` rend désormais aussi `accès : { source, base,
+lecteursActifs }`, où `base` vaut `joignable`, `injoignable` ou `non
+configurée`. En mode `postgres`, une base injoignable est un défaut
+(`base-injoignable`), notifié comme les autres.

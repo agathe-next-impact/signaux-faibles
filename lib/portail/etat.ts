@@ -25,6 +25,7 @@ export type CodeDeDéfaut =
   | 'aucun-acces-actif'
   | 'aucune-lettre-publiée'
   | 'contrat-rompu'
+  | 'base-injoignable'
 
 export type Défaut = {
   readonly slug: string
