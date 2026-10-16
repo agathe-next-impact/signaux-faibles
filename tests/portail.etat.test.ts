@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LigneDAccèsContrôlée } from '@/lib/notion/acces'
 import type { Édition } from '@/lib/notion/editions'
-import { composerCourrierDÉtat, contrôlerUnEspace, regrouperParSlug } from '@/lib/portail/etat'
+import { composerCourrierDÉtat, contrôlerLesOpérateurs, contrôlerUnEspace, regrouperParSlug } from '@/lib/portail/etat'
 import { vérifierJetonCowork } from '@/lib/portail/jeton-cowork'
 import type { Rapport } from '@/lib/portail/lint'
 
@@ -113,6 +113,36 @@ describe('regrouperParSlug', () => {
     expect(parSlug.get('hermitage')).toHaveLength(2)
     expect(sansSlug).toBe(1)
   })
+
+  it('met l’opérateur à part, même quand sa ligne Notion porte le slug d’un client', () => {
+    const opérateur = ligne({ nom: 'Agathe — opératrice', tousLesEspaces: true })
+    const { parSlug, sansSlug, opérateurs } = regrouperParSlug([ligne(), opérateur, ligne({ slug: '', tousLesEspaces: true })])
+    expect(parSlug.get('hermitage')).toHaveLength(1)
+    expect(opérateurs).toHaveLength(2)
+    expect(sansSlug).toBe(0)
+  })
+
+  it('l’opérateur ne masque plus un espace dont tous les lecteurs sont révoqués', () => {
+    const { parSlug } = regrouperParSlug([ligne({ actif: false }), ligne({ nom: 'Agathe', tousLesEspaces: true })])
+    const espace = contrôlerUnEspace({ slug: 'hermitage', lignes: parSlug.get('hermitage') ?? [], lettres: [lettre()], rapport: null })
+    expect(espace.lecteursActifs).toBe(0)
+    expect(espace.défauts.map((d) => d.code)).toContain('aucun-acces-actif')
+  })
+})
+
+describe('contrôlerLesOpérateurs', () => {
+  it('se tait sur une ligne d’opérateur saine', () => {
+    expect(contrôlerLesOpérateurs([ligne({ tousLesEspaces: true })])).toEqual([])
+  })
+
+  it('signale un identifiant vide, partagé, ou une adresse manquante', () => {
+    const défauts = contrôlerLesOpérateurs([
+      ligne({ tousLesEspaces: true, identifiantVide: true }),
+      ligne({ tousLesEspaces: true, identifiantEnDoublon: true, emailRenseigné: false }),
+    ])
+    expect(défauts.map((d) => d.code)).toEqual(['identifiant-acces-vide', 'identifiant-acces-doublon', 'email-manquant'])
+    expect(défauts.every((d) => d.slug === '(opérateur)')).toBe(true)
+  })
 })
 
 describe('composerCourrierDÉtat', () => {
@@ -126,6 +156,7 @@ describe('composerCourrierDÉtat', () => {
         { slug: 'ccpm', code: 'contrat-rompu', message: 'aucun axe.' },
       ],
       lignesSansSlug: 0,
+      opérateursActifs: 1,
     })
     expect(courrier.objet).toBe('[Veille] Espaces clients — 3 défaut(s) à corriger')
     expect(courrier.texte).toContain('dalious\n  · accès actif, aucune lettre publiée.\n  · pas d’adresse.')

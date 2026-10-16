@@ -133,6 +133,10 @@ Les lire avant toute session.
   le plan) aligne Postgres sur Notion pendant la double lecture et désactive,
   sans supprimer, qui a quitté Notion. L'opérateur (« Tous les espaces ») est
   importé **sans client** : son privilège est global (16 octobre 2026).
+  Sa ligne Notion garde un slug et un identifiant d'organisation, que la
+  lecture Notion exige ; ni le lien d'accès (il mène toujours à `/espaces`) ni
+  le contrôle du soir (lignes d'opérateur comptées à part, `opérateursActifs`)
+  ne les prennent en compte.
   **Écriture des lecteurs après la bascule** : `POST /api/veille/lecteurs`
   (`creer`, `revoquer`, `reactiver`, par slug et adresse), qui refuse tant que
   `SOURCE_ACCES` n'est pas `postgres` — avant, Notion fait foi. L'identifiant
