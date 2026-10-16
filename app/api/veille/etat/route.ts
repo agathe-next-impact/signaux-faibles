@@ -1,4 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { sourceAccès } from '@/lib/auth/source-acces'
+import { baseConfigurée } from '@/lib/base/client'
+import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { envoyerMessage } from '@/lib/email/gmail'
 import { lignesDAccèsPourContrôle } from '@/lib/notion/acces'
@@ -7,6 +10,7 @@ import {
   composerCourrierDÉtat,
   contrôlerUnEspace,
   regrouperParSlug,
+  type Défaut,
   type EspaceContrôlé,
   type ÉtatDuDispositif,
 } from '@/lib/portail/etat'
@@ -76,10 +80,31 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       espaces.push(contrôlerUnEspace({ slug, lignes, lettres, rapport }))
     }
 
+    // La source des accès et l'état de la base, chaque soir (palier 1a-bis) :
+    // un indicateur lisible plutôt qu'un silence à interpréter. Une base
+    // injoignable alors qu'elle sert les accès est un défaut, pas un constat.
+    const source = sourceAccès()
+    const sonde = baseConfigurée() ? await sonderLaBase() : null
+    const accès = {
+      source,
+      base: sonde === null ? 'non configurée' : sonde.joignable ? 'joignable' : 'injoignable',
+      lecteursActifs: sonde?.lecteursActifs ?? null,
+    }
+    const défautsDeBase: Défaut[] =
+      source === 'postgres' && !sonde?.joignable
+        ? [
+            {
+              slug: '(base)',
+              code: 'base-injoignable',
+              message: `SOURCE_ACCES vaut postgres et la base ne répond pas${sonde?.code ? ` (SQLSTATE ${sonde.code})` : ''} : personne ne peut se connecter.`,
+            },
+          ]
+        : []
+
     const état: ÉtatDuDispositif = {
       date: aujourdHuiÀParis(),
       espaces,
-      défauts: espaces.flatMap((e) => e.défauts),
+      défauts: [...espaces.flatMap((e) => e.défauts), ...défautsDeBase],
       lignesSansSlug: sansSlug,
     }
 
@@ -105,7 +130,7 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       }
     }
 
-    return NextResponse.json({ état: 'contrôlé', notification, ...état })
+    return NextResponse.json({ état: 'contrôlé', notification, accès, ...état })
   } catch (erreur) {
     console.error(`[veille/etat] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
     return NextResponse.json({ état: 'erreur' }, { status: 502 })

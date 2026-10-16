@@ -131,10 +131,17 @@ Les lire avant toute session.
   seule exception, le contrôle du soir, qui vérifie la base Notion telle
   qu'elle est. `pnpm base:importer-acces` (rejouable, `--a-blanc` pour voir
   le plan) aligne Postgres sur Notion pendant la double lecture et désactive,
-  sans supprimer, qui a quitté Notion. **Avant toute bascule à `postgres`**,
-  il faut une voie d'écriture des lecteurs (création, révocation) qui ne
-  passe plus par Notion : tant qu'elle n'existe pas, la tâche Cowork qui tient
-  la base Accès continuerait d'y écrire dans le vide
+  sans supprimer, qui a quitté Notion. L'opérateur (« Tous les espaces ») est
+  importé **sans client** : son privilège est global (16 octobre 2026).
+  **Écriture des lecteurs après la bascule** : `POST /api/veille/lecteurs`
+  (`creer`, `revoquer`, `reactiver`, par slug et adresse), qui refuse tant que
+  `SOURCE_ACCES` n'est pas `postgres` — avant, Notion fait foi. L'identifiant
+  d'accès est tiré par le portail et ne sort jamais ; le lien part ensuite par
+  `/api/acces/ouvrir`. La bascule demande donc, le même jour, de poser
+  `SOURCE_ACCES=postgres` **et** de faire passer la tâche Cowork qui tient la
+  base Accès (§1.3 du balayage) par cette route. Le contrôle du soir rend la
+  source en cours et l'état de la base (`accès` dans sa réponse) ; une base
+  injoignable en mode `postgres` est un défaut, notifié
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante
