@@ -49,6 +49,19 @@ export type PlanDImport = {
     actif: boolean
     tousLesEspaces: boolean
   }>
+  /**
+   * Les opérateurs (case « Tous les espaces » cochée), importés **sans client**
+   * : leur privilège est global, il ne dépend d'aucun espace (décision du
+   * 16 octobre 2026). Dans Notion, la ligne porte un slug parce que le modèle
+   * l'exige ; ce slug n'est pas repris, et la ligne ne compte pas parmi les
+   * lecteurs de ce client.
+   */
+  readonly opérateurs: ReadonlyArray<{
+    nom: string
+    email: string | null
+    identifiant: string
+    actif: boolean
+  }>
   readonly écartés: ReadonlyArray<Écart>
   /**
    * Identifiants des lignes écartées pour une anomalie que la lecture Notion
@@ -80,11 +93,20 @@ export function planifierImport(lignes: readonly LigneAccèsNotion[]): PlanDImpo
   }
 
   const retenues: LigneAccèsNotion[] = []
+  const opérateurs: Array<PlanDImport['opérateurs'][number]> = []
   for (const ligne of lignes) {
     const identifiant = ligne.identifiant.trim()
     if (!identifiant) écartés.push({ raison: 'identifiant d’accès vide', ligne: désigner(ligne) })
     else if ((occurrences.get(identifiant) ?? 0) > 1)
       écartés.push({ raison: 'identifiant d’accès partagé avec une autre ligne', ligne: désigner(ligne) })
+    // L'opérateur n'a besoin ni de slug ni d'organisation : il est global.
+    else if (ligne.tousLesEspaces)
+      opérateurs.push({
+        nom: ligne.nom.trim() || '(sans nom)',
+        email: ligne.email?.trim() || null,
+        identifiant,
+        actif: ligne.actif,
+      })
     else if (!ligne.slug.trim()) écartés.push({ raison: 'slug vide', ligne: désigner(ligne) })
     else if (!normaliser(ligne.organisationId))
       écartés.push({ raison: 'identifiant Notion de l’organisation vide', ligne: désigner(ligne) })
@@ -159,7 +181,7 @@ export function planifierImport(lignes: readonly LigneAccèsNotion[]): PlanDImpo
     }
   }
 
-  return { organisations: organisationsPlan, lecteurs: lecteursPlan, écartés, préservés }
+  return { organisations: organisationsPlan, lecteurs: lecteursPlan, opérateurs, écartés, préservés }
 }
 
 export type RapportDImport = {
@@ -241,7 +263,26 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
         })
     }
 
-    const connus = [...plan.lecteurs.map((lecteur) => lecteur.identifiant), ...plan.préservés]
+    for (const opérateur of plan.opérateurs) {
+      const valeurs = {
+        organisationId: null,
+        nom: opérateur.nom,
+        email: opérateur.email,
+        actif: opérateur.actif,
+        tousLesEspaces: true,
+        rôle: 'operateur' as const,
+      }
+      await tx
+        .insert(lecteurs)
+        .values({ ...valeurs, identifiantAcces: opérateur.identifiant })
+        .onConflictDoUpdate({ target: lecteurs.identifiantAcces, set: valeurs })
+    }
+
+    const connus = [
+      ...plan.lecteurs.map((lecteur) => lecteur.identifiant),
+      ...plan.opérateurs.map((opérateur) => opérateur.identifiant),
+      ...plan.préservés,
+    ]
     const désactivés = await tx
       .update(lecteurs)
       .set({ actif: false })
@@ -254,7 +295,7 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
 
     return {
       organisations: plan.organisations.length,
-      lecteurs: plan.lecteurs.length,
+      lecteurs: plan.lecteurs.length + plan.opérateurs.length,
       lecteursDésactivés: désactivés.length,
       écartés: plan.écartés,
     }

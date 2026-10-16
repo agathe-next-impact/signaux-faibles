@@ -71,7 +71,7 @@ async function principal(): Promise<void> {
   const plan = planifierImport(lignes)
   console.info(
     `${lignes.length} ligne(s) lue(s) dans Notion · ${plan.organisations.length} organisation(s) · ` +
-      `${plan.lecteurs.length} lecteur(s) à écrire · ${plan.écartés.length} écartée(s).`,
+      `${plan.lecteurs.length} lecteur(s) et ${plan.opérateurs.length} opérateur(s) global(aux) à écrire · ${plan.écartés.length} écartée(s).`,
   )
   for (const écart of plan.écartés) console.info(`  écartée — ${écart.raison} : ${écart.ligne}`)
   for (const organisation of plan.organisations) {

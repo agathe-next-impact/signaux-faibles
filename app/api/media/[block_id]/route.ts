@@ -41,6 +41,8 @@ export async function GET(
 
   const accès = await lireAccèsParIdentifiant(identifiant)
   if (!accès || !accès.actif) return INTROUVABLE
+  // Sans clé de cloisonnement (l'opérateur global), aucune édition n'est à lui.
+  if (accès.organisationId.length === 0) return INTROUVABLE
 
   const éditions = await listerÉditionsPubliées(accès.organisationId)
   const autorisé = éditions.some(

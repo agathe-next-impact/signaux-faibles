@@ -75,6 +75,14 @@ describe('écartsEntre', () => {
     expect(écartsEntre(accès, { ...accès, email: 'Claire@Hermitage.fr' })).toEqual([])
   })
 
+  it('ne compare ni le slug ni l’organisation de l’opérateur, global dans Postgres', () => {
+    const notionOpérateur = { ...accès, tousLesEspaces: true }
+    const postgresOpérateur = { ...accès, tousLesEspaces: true, slug: '', organisationId: '', organisationLibellé: '' }
+    expect(écartsEntre(notionOpérateur, postgresOpérateur)).toEqual([])
+    // Le privilège, lui, reste comparé.
+    expect(écartsEntre(notionOpérateur, { ...postgresOpérateur, tousLesEspaces: false })).toContain('tousLesEspaces')
+  })
+
   it('nomme les champs qui diffèrent, et la présence d’un seul côté', () => {
     expect(écartsEntre(accès, { ...accès, actif: false, slug: 'autre' })).toEqual(['slug', 'actif'])
     expect(écartsEntre(accès, null)).toEqual(['présence'])
