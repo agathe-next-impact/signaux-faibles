@@ -77,7 +77,12 @@ const CHAMPS: ReadonlyArray<keyof Accès> = [
 export function écartsEntre(notion: Accès | null, postgres: Accès | null): string[] {
   if (!notion && !postgres) return []
   if (!notion || !postgres) return ['présence']
+  // L'opérateur est global dans Postgres et rattaché à un client dans Notion,
+  // dont le modèle l'exige : son slug et son organisation ne sont pas comparés.
+  const opérateur = notion.tousLesEspaces && postgres.tousLesEspaces
+  const ignorés = new Set<keyof Accès>(opérateur ? ['slug', 'organisationId', 'organisationLibellé'] : [])
   return CHAMPS.filter((champ) => {
+    if (ignorés.has(champ)) return false
     const a = notion[champ]
     const b = postgres[champ]
     if (champ === 'email') return (a as string | null)?.toLowerCase() !== (b as string | null)?.toLowerCase()
@@ -178,9 +183,11 @@ export async function espacesOuverts(): Promise<Espace[]> {
     () => espacesOuvertsNotion(),
     () => espacesAvecLecteurs(),
     (n, p) => {
+      // Les slugs seulement : Notion compte l'opérateur parmi les lecteurs du
+      // client qui porte sa ligne, Postgres ne le range chez personne.
       const clé = (espaces: Espace[]) =>
         espaces
-          .map((espace) => `${espace.slug}:${espace.lecteurs}`)
+          .map((espace) => espace.slug)
           .sort()
           .join('|')
       return clé(n) === clé(p) ? [] : ['liste']

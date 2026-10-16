@@ -28,9 +28,14 @@ export async function GET(
   if (!identifiant) return versLeFormulaire
 
   const accès = await lireAccèsParIdentifiant(identifiant)
-  if (!accès || !accès.actif || accès.slug.length === 0) return versLeFormulaire
+  if (!accès || !accès.actif) return versLeFormulaire
 
-  const réponse = NextResponse.redirect(new URL(`/${accès.slug}`, requête.url))
+  // L'opérateur global (palier 1) n'a pas d'espace à lui : il choisit. Tout
+  // autre accès sans slug reste refusé, comme avant.
+  const destination = accès.slug.length > 0 ? `/${accès.slug}` : accès.tousLesEspaces ? '/espaces' : null
+  if (!destination) return versLeFormulaire
+
+  const réponse = NextResponse.redirect(new URL(destination, requête.url))
   réponse.cookies.set(NOM_DU_COOKIE, decodeURIComponent(jeton), attributsDuCookie())
 
   return réponse

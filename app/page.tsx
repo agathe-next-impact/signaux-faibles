@@ -19,10 +19,12 @@ export default async function Racine() {
   if (!identifiant) redirect('/recevoir-mon-lien')
 
   const accès = await lireAccèsParIdentifiant(identifiant)
-  if (!accès || !accès.actif || accès.slug.length === 0) {
-    redirect('/recevoir-mon-lien?revoque=1')
-  }
+  if (!accès || !accès.actif) redirect('/recevoir-mon-lien?revoque=1')
 
-  // Un opérateur n'a pas d'espace à lui : on lui propose de choisir.
-  redirect(accès.tousLesEspaces ? '/espaces' : `/${accès.slug}`)
+  // Un opérateur n'a pas d'espace à lui : on lui propose de choisir. Il passe
+  // avant le contrôle du slug, que l'opérateur global (palier 1) n'a pas.
+  if (accès.tousLesEspaces) redirect('/espaces')
+
+  if (accès.slug.length === 0) redirect('/recevoir-mon-lien?revoque=1')
+  redirect(`/${accès.slug}`)
 }

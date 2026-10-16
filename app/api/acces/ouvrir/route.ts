@@ -106,7 +106,8 @@ async function ouvrir(email: string, origine: string | null): Promise<NextRespon
 
     // Après l'envoi, pas avant : un diagnostic n'a pas à retarder le courrier,
     // et une liste d'éditions indisponible ne doit pas empêcher l'ouverture.
-    const lettres = await listerÉditionsPubliées(accès.organisationId)
+    // L'opérateur global n'a pas d'organisation : rien à compter pour lui.
+    const lettres = accès.organisationId ? await listerÉditionsPubliées(accès.organisationId) : []
 
     console.info(
       `[activation] espace ouvert pour ${marque} (${accès.slug}) : ` +

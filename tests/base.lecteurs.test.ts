@@ -174,12 +174,46 @@ describe('import et lectures sur une vraie base', () => {
     expect(await organisationParSlug('inconnu', db)).toBeNull()
   })
 
-  it('liste les espaces avec leurs lecteurs actifs seulement', async () => {
+  it('liste les espaces avec leurs lecteurs actifs, sans compter l’opérateur global', async () => {
     await importer(deuxClients)
     expect(await espacesAvecLecteurs(db)).toEqual([
       { slug: 'konica-minolta-france', organisationLibellé: 'Konica Minolta', lecteurs: 1 },
-      { slug: 'hermitage', organisationLibellé: 'L’Hermitage', lecteurs: 2 },
+      { slug: 'hermitage', organisationLibellé: 'L’Hermitage', lecteurs: 1 },
     ])
+  })
+
+  it('importe l’opérateur sans client : son privilège est global', async () => {
+    const plan = planifierImport(deuxClients)
+    expect(plan.opérateurs.map((o) => o.identifiant)).toEqual(['c'.repeat(32)])
+    expect(plan.lecteurs.map((l) => l.identifiant)).not.toContain('c'.repeat(32))
+
+    await appliquerImport(db, plan)
+    const [ligne] = await db.select().from(lecteurs).where(eq(lecteurs.identifiantAcces, 'c'.repeat(32)))
+    expect(ligne?.organisationId).toBeNull()
+    expect(ligne?.rôle).toBe('operateur')
+
+    expect(await lireLecteurParIdentifiant('c'.repeat(32), db)).toEqual({
+      nom: 'Opératrice',
+      email: 'agathe@signauxfaibles.io',
+      organisationLibellé: '',
+      organisationId: '',
+      slug: '',
+      actif: true,
+      tousLesEspaces: true,
+    })
+    expect((await lireLecteurActifParEmail('agathe@signauxfaibles.io', db))?.identifiant).toBe('c'.repeat(32))
+  })
+
+  it('un opérateur importé n’est pas désactivé au passage suivant', async () => {
+    await importer(deuxClients)
+    const second = await importer(deuxClients)
+    expect(second.lecteursDésactivés).toBe(0)
+    expect((await lireLecteurParIdentifiant('c'.repeat(32), db))?.actif).toBe(true)
+  })
+
+  it('refuse un lecteur sans client qui n’a pas le privilège opérateur', async () => {
+    await db.insert(lecteurs).values({ nom: 'Orphelin', identifiantAcces: 'e'.repeat(32), tousLesEspaces: false })
+    expect(await lireLecteurParIdentifiant('e'.repeat(32), db)).toBeNull()
   })
 
   it('est rejouable, et désactive sans supprimer qui a quitté Notion', async () => {

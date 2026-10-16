@@ -44,8 +44,9 @@ type LigneLue = {
   actif: boolean
   tousLesEspaces: boolean
   identifiant: string
-  slug: string
-  organisationLibellé: string
+  /** Nuls pour un opérateur global, rattaché à aucun client. */
+  slug: string | null
+  organisationLibellé: string | null
   registreNotion: string | null
 }
 
@@ -55,6 +56,27 @@ function clé(identifiantNotion: string | null): string {
 }
 
 function enAccès(ligne: LigneLue): Accès | null {
+  // L'opérateur global (16 octobre 2026) : rattaché à aucun client, il n'a ni
+  // slug ni clé de cloisonnement à lui. Il n'ouvre un espace que par l'accès
+  // opérateur de `exigerAccès`, qui prend alors l'identifiant de l'espace visité.
+  // Un lecteur sans client et SANS le privilège est refusé : il n'aurait aucune
+  // clé pour filtrer « Éditions ».
+  if (ligne.slug === null) {
+    if (!ligne.tousLesEspaces) {
+      console.warn('[accès:base] lecteur sans organisation et sans privilège opérateur : accès refusé.')
+      return null
+    }
+    return {
+      nom: ligne.nom,
+      email: ligne.email,
+      organisationLibellé: '',
+      organisationId: '',
+      slug: '',
+      actif: ligne.actif,
+      tousLesEspaces: true,
+    }
+  }
+
   const organisationId = clé(ligne.registreNotion)
   if (organisationId.length === 0) {
     console.warn(
@@ -65,7 +87,7 @@ function enAccès(ligne: LigneLue): Accès | null {
   return {
     nom: ligne.nom,
     email: ligne.email,
-    organisationLibellé: ligne.organisationLibellé,
+    organisationLibellé: ligne.organisationLibellé ?? '',
     organisationId,
     slug: ligne.slug,
     actif: ligne.actif,
@@ -78,7 +100,8 @@ function enAccès(ligne: LigneLue): Accès | null {
  *
  * L'unicité de `identifiant_acces` est une contrainte de la base : le cas
  * « deux lignes pour un même identifiant » que la lecture Notion devait refuser
- * ne peut plus se produire. Une organisation archivée ferme l'accès.
+ * ne peut plus se produire. Une organisation archivée ferme l'accès. La
+ * jointure est externe pour laisser passer l'opérateur global, sans client.
  */
 export async function lireLecteurParIdentifiant(
   identifiant: string,
@@ -88,7 +111,7 @@ export async function lireLecteurParIdentifiant(
     db
       .select(colonnes)
       .from(lecteurs)
-      .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
+      .leftJoin(organisations, eq(lecteurs.organisationId, organisations.id))
       .where(and(eq(lecteurs.identifiantAcces, identifiant), isNull(organisations.archivéeLe)))
       .limit(1),
   )
@@ -112,7 +135,7 @@ export async function lireLecteurActifParEmail(
     db
       .select(colonnes)
       .from(lecteurs)
-      .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
+      .leftJoin(organisations, eq(lecteurs.organisationId, organisations.id))
       .where(
         and(
           sql`lower(${lecteurs.email}) = ${email.trim().toLowerCase()}`,

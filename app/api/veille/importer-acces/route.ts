@@ -42,6 +42,8 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
         lecteurs: plan.lecteurs.filter((lecteur) => lecteur.slug === organisation.slug).length,
         lecteursActifs: plan.lecteurs.filter((l) => l.slug === organisation.slug && l.actif).length,
       })),
+      opérateurs: plan.opérateurs.length,
+      opérateursActifs: plan.opérateurs.filter((opérateur) => opérateur.actif).length,
       écartés: plan.écartés,
       préservés: plan.préservés.length,
     }
