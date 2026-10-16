@@ -192,7 +192,7 @@ describe('Postgres ne se lit que par lib/base, l’appartenance que par la faça
   it('personne n’importe une lecture d’appartenance de lib/notion/acces, sauf la façade', () => {
     // Seule exception : le contrôle du soir lit la base Notion telle qu'elle
     // est, doublons compris — c'est précisément ce qu'il vérifie.
-    const PERMIS = new Set(['lignesDAccèsPourContrôle'])
+    const PERMIS = new Set(['lignesDAccèsPourContrôle', 'lignesDAccèsPourImport'])
     const fautifs: string[] = []
     for (const { chemin, source } of sources()) {
       if (chemin === 'lib/auth/source-acces.ts' || chemin === 'lib/notion/acces.ts') continue
@@ -338,6 +338,13 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('lignesDAccèsPourContrôle n’est appelée que par le contrôle du soir', () => {
     expect(appelants('lignesDAccèsPourContrôle')).toEqual([
       'app/api/veille/etat/route.ts',
+      'lib/notion/acces.ts',
+    ])
+  })
+
+  it('lignesDAccèsPourImport n’est appelée que par la route d’import', () => {
+    expect(appelants('lignesDAccèsPourImport')).toEqual([
+      'app/api/veille/importer-acces/route.ts',
       'lib/notion/acces.ts',
     ])
   })

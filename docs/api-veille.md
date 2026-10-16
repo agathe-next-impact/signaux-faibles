@@ -265,3 +265,19 @@ citation, d'encadré, de tableau ni de sous-puce dans cette rubrique. »*
 il est : le validateur l'applique, il ne le remplace pas. On peut par contre y
 retirer les récits d'incidents, qui n'instruisent plus rien maintenant que la
 vérification est mécanique.
+
+## Mise en service de la base Postgres (palier 1a, 16 octobre 2026)
+
+Deux routes d'administration, gardées comme les autres, que la session Claude
+de l'environnement « signaux-faibles-io » appelle sans manipuler de secret (le
+proxy de l'environnement ajoute l'en-tête). Le portail est le seul à tenir
+`DATABASE_URL` et le jeton Notion : c'est donc lui qui crée les tables et
+copie la base Accès, plutôt qu'un poste où il faudrait les recopier.
+
+- `POST /api/veille/migrer` : applique les migrations de `drizzle/`.
+  Idempotente. Réponse `{ état: 'à jour' }`, ou `{ état: 'échec', message }`
+  avec le seul code SQLSTATE.
+- `POST /api/veille/importer-acces?a-blanc=1` : le plan d'import, rien n'est
+  écrit. Sans `a-blanc`, l'import est écrit en une transaction. Réponse :
+  comptes, slugs, libellés, lignes écartées désignées par empreinte ; jamais
+  d'adresse ni d'identifiant d'accès. Refuse (409) une base Notion vide.
