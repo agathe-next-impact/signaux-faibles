@@ -1,5 +1,6 @@
 import { eq, inArray, not, sql } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
+import { protéger } from '@/lib/base/erreurs'
 import { lecteurs, organisations } from '@/lib/base/schema'
 import { empreinte } from '@/lib/portail/debit'
 
@@ -49,6 +50,14 @@ export type PlanDImport = {
     tousLesEspaces: boolean
   }>
   readonly écartés: ReadonlyArray<Écart>
+  /**
+   * Identifiants des lignes écartées pour une anomalie que la lecture Notion
+   * **tolère** : Notion sert ces liens un par un, l'import ne sait pas les
+   * ranger. Ils ne sont jamais désactivés par l'import ; s'ils étaient déjà en
+   * base, ils y restent tels quels jusqu'à ce que l'anomalie soit corrigée dans
+   * Notion. Un import ne ferme jamais un accès que Notion accorde.
+   */
+  readonly préservés: ReadonlyArray<string>
 }
 
 const normaliser = (identifiantNotion: string): string =>
@@ -82,27 +91,41 @@ export function planifierImport(lignes: readonly LigneAccèsNotion[]): PlanDImpo
     else retenues.push(ligne)
   }
 
-  // Une organisation par slug. Toutes ses lignes doivent porter la même ligne
-  // de registre : deux identifiants pour un même slug, c'est le piège de la
-  // page organisation collée à la place de la ligne du registre (10 septembre
-  // 2026). On écarte le slug entier plutôt que de deviner lequel est le bon.
+  // Une organisation par slug, et un slug par organisation. Deux identifiants
+  // pour un même slug, c'est le piège de la page organisation collée à la place
+  // de la ligne du registre (10 septembre 2026) ; un même registre sous deux
+  // slugs ferait échouer l'index unique et toute la transaction. Dans les deux
+  // cas on écarte le slug entier plutôt que de deviner, et on **préserve** ses
+  // lecteurs : Notion les sert un par un, l'import n'a pas à les fermer.
   const parSlug = new Map<string, LigneAccèsNotion[]>()
+  const slugsParRegistre = new Map<string, Set<string>>()
   for (const ligne of retenues) {
     const slug = ligne.slug.trim()
     parSlug.set(slug, [...(parSlug.get(slug) ?? []), ligne])
+    const registre = normaliser(ligne.organisationId)
+    slugsParRegistre.set(registre, (slugsParRegistre.get(registre) ?? new Set()).add(slug))
   }
 
   const organisationsPlan: Array<{ slug: string; nom: string; registreNotion: string }> = []
   const lecteursPlan: Array<PlanDImport['lecteurs'][number]> = []
+  const préservés: string[] = []
+
+  const écarterLeSlug = (lignesDuSlug: LigneAccèsNotion[], raison: string) => {
+    for (const ligne of lignesDuSlug) {
+      écartés.push({ raison, ligne: désigner(ligne) })
+      if (ligne.actif) préservés.push(ligne.identifiant.trim())
+    }
+  }
 
   for (const [slug, lignesDuSlug] of parSlug) {
     const registres = new Set(lignesDuSlug.map((ligne) => normaliser(ligne.organisationId)))
     if (registres.size > 1) {
-      for (const ligne of lignesDuSlug)
-        écartés.push({
-          raison: 'le slug porte plusieurs identifiants d’organisation différents',
-          ligne: désigner(ligne),
-        })
+      écarterLeSlug(lignesDuSlug, 'le slug porte plusieurs identifiants d’organisation différents')
+      continue
+    }
+    const [registreUnique] = [...registres]
+    if (registreUnique && (slugsParRegistre.get(registreUnique)?.size ?? 0) > 1) {
+      écarterLeSlug(lignesDuSlug, 'la même organisation est portée par plusieurs slugs')
       continue
     }
 
@@ -113,11 +136,15 @@ export function planifierImport(lignes: readonly LigneAccèsNotion[]): PlanDImpo
 
     // Une adresse par organisation, comparée en minuscules : la base le
     // garantit par un index unique, le plan l'écarte avant pour le dire.
+    // La ligne active passe avant l'inactive : garder la révoquée et écarter la
+    // vivante fermerait un lien que Notion sert. Le tri est stable.
     const adresses = new Set<string>()
-    for (const ligne of lignesDuSlug) {
+    const ordonnées = [...lignesDuSlug].sort((a, b) => Number(b.actif) - Number(a.actif))
+    for (const ligne of ordonnées) {
       const adresse = ligne.email?.trim().toLowerCase() ?? null
       if (adresse && adresses.has(adresse)) {
         écartés.push({ raison: 'adresse déjà portée par une autre ligne de ce client', ligne: désigner(ligne) })
+        if (ligne.actif) préservés.push(ligne.identifiant.trim())
         continue
       }
       if (adresse) adresses.add(adresse)
@@ -132,7 +159,7 @@ export function planifierImport(lignes: readonly LigneAccèsNotion[]): PlanDImpo
     }
   }
 
-  return { organisations: organisationsPlan, lecteurs: lecteursPlan, écartés }
+  return { organisations: organisationsPlan, lecteurs: lecteursPlan, écartés, préservés }
 }
 
 export type RapportDImport = {
@@ -151,12 +178,17 @@ export type RapportDImport = {
  *   Le parcours d'essai (palier 1c) ne s'applique pas à eux tant qu'aucune
  *   ligne `abonnements` ne les y fait entrer ;
  * - lecteurs : créés par identifiant d'accès, ou mis à jour ;
+ * - un lecteur préservé (voir `PlanDImport.préservés`) n'est pas touché ;
  * - un lecteur dont l'identifiant n'est plus dans Notion est **désactivé**,
  *   jamais supprimé — y compris quand Notion est vide, ce qui désactive tout :
  *   c'est le comportement de Notion lui-même, et le script refuse d'importer
  *   une base vide pour cette raison (voir `scripts/importer-acces.ts`).
  */
 export async function appliquerImport(db: Base, plan: PlanDImport): Promise<RapportDImport> {
+  return protéger('import de la base Accès', () => écrire(db, plan))
+}
+
+async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
   return db.transaction(async (tx) => {
     const idParSlug = new Map<string, string>()
 
@@ -209,7 +241,7 @@ export async function appliquerImport(db: Base, plan: PlanDImport): Promise<Rapp
         })
     }
 
-    const connus = plan.lecteurs.map((lecteur) => lecteur.identifiant)
+    const connus = [...plan.lecteurs.map((lecteur) => lecteur.identifiant), ...plan.préservés]
     const désactivés = await tx
       .update(lecteurs)
       .set({ actif: false })

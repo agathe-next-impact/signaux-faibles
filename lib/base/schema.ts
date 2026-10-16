@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import {
   boolean,
+  check,
   integer,
   pgEnum,
   pgTable,
@@ -42,7 +43,9 @@ export const étatOrganisation = pgEnum('état_organisation', [
 ])
 
 /** Une par client, prospect ou organisation de test. */
-export const organisations = pgTable('organisations', {
+export const organisations = pgTable(
+  'organisations',
+  {
   id: uuid('id').primaryKey().defaultRandom(),
   /** Celui des URL du portail ; jamais modifié après la première lettre. */
   slug: text('slug').notNull().unique(),
@@ -74,7 +77,17 @@ export const organisations = pgTable('organisations', {
   crééeLe: horodatage('créée_le').notNull().defaultNow(),
   modifiéeLe: horodatage('modifiée_le').notNull().defaultNow(),
   archivéeLe: horodatage('archivée_le'),
-})
+  },
+  (table) => [
+    check('organisations_slug_non_vide', sql`length(trim(${table.slug})) > 0`),
+    // La forme que portent les éditions : 32 hexadécimaux, sans tirets, en
+    // minuscules. Un identifiant mal formé ne filtrerait rien, en silence.
+    check(
+      'organisations_registre_notion_forme',
+      sql`${table.registreNotion} is null or ${table.registreNotion} ~ '^[0-9a-f]{32}$'`,
+    ),
+  ],
+)
 
 export const cadenceVeille = pgEnum('cadence_veille', ['hebdomadaire', 'bimensuelle', 'mensuelle'])
 export const étatVeille = pgEnum('état_veille', ['active', 'suspendue', 'archivée'])
@@ -107,7 +120,10 @@ export const veilles = pgTable(
     numéroCourant: integer('numéro_courant').notNull().default(0),
     état: étatVeille('état').notNull().default('active'),
   },
-  (table) => [uniqueIndex('veilles_organisation_type').on(table.organisationId, table.type)],
+  (table) => [
+    uniqueIndex('veilles_organisation_type').on(table.organisationId, table.type),
+    check('veilles_jour_parution', sql`${table.jourParution} between 1 and 7`),
+  ],
 )
 
 export const rôleLecteur = pgEnum('rôle_lecteur', ['lecteur', 'relecteur', 'operateur'])
@@ -142,6 +158,7 @@ export const lecteurs = pgTable(
   },
   (table) => [
     uniqueIndex('lecteurs_organisation_email').on(table.organisationId, sql`lower(${table.email})`),
+    check('lecteurs_identifiant_non_vide', sql`length(trim(${table.identifiantAcces})) > 0`),
   ],
 )
 

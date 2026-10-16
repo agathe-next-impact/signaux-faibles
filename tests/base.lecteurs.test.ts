@@ -238,3 +238,87 @@ describe('import et lectures sur une vraie base', () => {
     ).rejects.toThrow()
   })
 })
+
+describe('défauts relevés par la relecture du 16 octobre 2026', () => {
+  let db: Base
+  let fermer: () => Promise<void>
+
+  beforeEach(async () => {
+    ;({ db, fermer } = await baseEnMémoire())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await fermer()
+  })
+
+  it('une erreur de base ne porte ni l’identifiant ni l’adresse demandés', async () => {
+    const { PGlite } = await import('@electric-sql/pglite')
+    const { drizzle } = await import('drizzle-orm/pglite')
+    const client = new PGlite()
+    const sansMigration = drizzle({ client }) as unknown as Base
+    try {
+      const identifiant = '0123456789abcdef0123456789abcdef'
+      const erreur = await lireLecteurParIdentifiant(identifiant, sansMigration).catch((e: unknown) => e)
+      expect(erreur).toBeInstanceOf(Error)
+      expect((erreur as Error).message).not.toContain(identifiant)
+      expect((erreur as Error).message).toContain('42P01')
+
+      const parEmail = await lireLecteurActifParEmail('secret@client.fr', sansMigration).catch((e: unknown) => e)
+      expect((parEmail as Error).message).not.toContain('secret@client.fr')
+    } finally {
+      await client.close()
+    }
+  })
+
+  it('un slug devenu ambigu ne ferme pas les accès déjà importés', async () => {
+    await appliquerImport(db, planifierImport([ligne()]))
+    // Une seconde ligne arrive avec l'identifiant de la page organisation.
+    const plan = planifierImport([
+      ligne(),
+      ligne({ identifiant: 'b'.repeat(32), email: 'paul@hermitage.fr', organisationId: REGISTRE_KONICA }),
+    ])
+    expect(plan.préservés).toContain('a'.repeat(32))
+    const rapport = await appliquerImport(db, plan)
+    expect(rapport.lecteursDésactivés).toBe(0)
+    expect((await lireLecteurParIdentifiant('a'.repeat(32), db))?.actif).toBe(true)
+  })
+
+  it('entre deux lignes de même adresse, la ligne active est gardée', () => {
+    const plan = planifierImport([
+      ligne({ identifiant: 'b'.repeat(32), actif: false }),
+      ligne({ identifiant: 'a'.repeat(32), actif: true }),
+    ])
+    expect(plan.lecteurs.map((l) => l.identifiant)).toEqual(['a'.repeat(32)])
+  })
+
+  it('une organisation portée par deux slugs est écartée sans faire échouer l’import', async () => {
+    const plan = planifierImport([
+      ligne(),
+      ligne({ identifiant: 'b'.repeat(32), email: 'jeanne@ailleurs.fr', slug: 'hermitage-bis' }),
+      ligne({
+        identifiant: 'd'.repeat(32),
+        email: 'jeanne@konica.fr',
+        slug: 'konica-minolta-france',
+        organisationId: REGISTRE_KONICA,
+      }),
+    ])
+    expect(plan.organisations.map((o) => o.slug)).toEqual(['konica-minolta-france'])
+    expect([...plan.préservés].sort()).toEqual(['a'.repeat(32), 'b'.repeat(32)])
+    await expect(appliquerImport(db, plan)).resolves.toMatchObject({ organisations: 1 })
+  })
+
+  it('la base refuse un identifiant vide et un registre mal formé', async () => {
+    await expect(
+      db.insert(organisations).values({ slug: 'x', nom: 'X', état: 'test', registreNotion: 'page-organisation' }),
+    ).rejects.toThrow()
+    const [créée] = await db
+      .insert(organisations)
+      .values({ slug: 'y', nom: 'Y', état: 'test' })
+      .returning({ id: organisations.id })
+    await expect(
+      db.insert(lecteurs).values({ organisationId: créée!.id, nom: 'Vide', identifiantAcces: '  ' }),
+    ).rejects.toThrow()
+  })
+})

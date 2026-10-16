@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
+import { protéger } from '@/lib/base/erreurs'
 import { lecteurs, organisations } from '@/lib/base/schema'
 import type { Accès, Espace } from '@/lib/notion/acces'
 
@@ -83,12 +84,14 @@ export async function lireLecteurParIdentifiant(
   identifiant: string,
   db: Base = base(),
 ): Promise<Accès | null> {
-  const [ligne] = await db
-    .select(colonnes)
-    .from(lecteurs)
-    .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
-    .where(and(eq(lecteurs.identifiantAcces, identifiant), isNull(organisations.archivéeLe)))
-    .limit(1)
+  const [ligne] = await protéger('lecture d’un lecteur par identifiant', () =>
+    db
+      .select(colonnes)
+      .from(lecteurs)
+      .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
+      .where(and(eq(lecteurs.identifiantAcces, identifiant), isNull(organisations.archivéeLe)))
+      .limit(1),
+  )
 
   return ligne ? enAccès(ligne) : null
 }
@@ -105,18 +108,20 @@ export async function lireLecteurActifParEmail(
   email: string,
   db: Base = base(),
 ): Promise<(Accès & { readonly identifiant: string }) | null> {
-  const lignes = await db
-    .select(colonnes)
-    .from(lecteurs)
-    .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
-    .where(
-      and(
-        sql`lower(${lecteurs.email}) = ${email.trim().toLowerCase()}`,
-        eq(lecteurs.actif, true),
-        isNull(organisations.archivéeLe),
-      ),
-    )
-    .limit(2)
+  const lignes = await protéger('lecture d’un lecteur par email', () =>
+    db
+      .select(colonnes)
+      .from(lecteurs)
+      .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
+      .where(
+        and(
+          sql`lower(${lecteurs.email}) = ${email.trim().toLowerCase()}`,
+          eq(lecteurs.actif, true),
+          isNull(organisations.archivéeLe),
+        ),
+      )
+      .limit(2),
+  )
 
   if (lignes.length !== 1) return null
   const [ligne] = lignes
@@ -138,12 +143,14 @@ export async function organisationParSlug(
   slug: string,
   db: Base = base(),
 ): Promise<{ readonly organisationId: string; readonly organisationLibellé: string } | null> {
-  const [ligne] = await db
-    .select({ registreNotion: organisations.registreNotion, nom: organisations.nom })
-    .from(organisations)
-    .innerJoin(lecteurs, eq(lecteurs.organisationId, organisations.id))
-    .where(and(eq(organisations.slug, slug), eq(lecteurs.actif, true), isNull(organisations.archivéeLe)))
-    .limit(1)
+  const [ligne] = await protéger('lecture d’une organisation par slug', () =>
+    db
+      .select({ registreNotion: organisations.registreNotion, nom: organisations.nom })
+      .from(organisations)
+      .innerJoin(lecteurs, eq(lecteurs.organisationId, organisations.id))
+      .where(and(eq(organisations.slug, slug), eq(lecteurs.actif, true), isNull(organisations.archivéeLe)))
+      .limit(1),
+  )
 
   if (!ligne) return null
   const organisationId = clé(ligne.registreNotion)
@@ -158,17 +165,19 @@ export async function organisationParSlug(
  * libellé, comme le sélecteur Notion qu'elle remplace.
  */
 export async function espacesAvecLecteurs(db: Base = base()): Promise<Espace[]> {
-  const lignes = await db
-    .select({
-      slug: organisations.slug,
-      organisationLibellé: organisations.nom,
-      lecteurs: sql<number>`count(*)::int`,
-    })
-    .from(organisations)
-    .innerJoin(lecteurs, eq(lecteurs.organisationId, organisations.id))
-    .where(and(eq(lecteurs.actif, true), isNull(organisations.archivéeLe)))
-    .groupBy(organisations.slug, organisations.nom)
-    .orderBy(asc(organisations.nom))
+  const lignes = await protéger('liste des espaces', () =>
+    db
+      .select({
+        slug: organisations.slug,
+        organisationLibellé: organisations.nom,
+        lecteurs: sql<number>`count(*)::int`,
+      })
+      .from(organisations)
+      .innerJoin(lecteurs, eq(lecteurs.organisationId, organisations.id))
+      .where(and(eq(lecteurs.actif, true), isNull(organisations.archivéeLe)))
+      .groupBy(organisations.slug, organisations.nom)
+      .orderBy(asc(organisations.nom)),
+  )
 
   return lignes
     .map((ligne) => ({ ...ligne, lecteurs: Number(ligne.lecteurs) }))

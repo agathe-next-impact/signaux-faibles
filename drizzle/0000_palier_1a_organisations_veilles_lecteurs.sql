@@ -13,7 +13,8 @@ CREATE TABLE "lecteurs" (
 	"rôle" "rôle_lecteur" DEFAULT 'lecteur' NOT NULL,
 	"créé_le" timestamp with time zone DEFAULT now() NOT NULL,
 	"dernière_visite_le" timestamp with time zone,
-	CONSTRAINT "lecteurs_identifiant_acces_unique" UNIQUE("identifiant_acces")
+	CONSTRAINT "lecteurs_identifiant_acces_unique" UNIQUE("identifiant_acces"),
+	CONSTRAINT "lecteurs_identifiant_non_vide" CHECK (length(trim("lecteurs"."identifiant_acces")) > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "organisations" (
@@ -33,7 +34,9 @@ CREATE TABLE "organisations" (
 	"modifiée_le" timestamp with time zone DEFAULT now() NOT NULL,
 	"archivée_le" timestamp with time zone,
 	CONSTRAINT "organisations_slug_unique" UNIQUE("slug"),
-	CONSTRAINT "organisations_registre_notion_unique" UNIQUE("registre_notion")
+	CONSTRAINT "organisations_registre_notion_unique" UNIQUE("registre_notion"),
+	CONSTRAINT "organisations_slug_non_vide" CHECK (length(trim("organisations"."slug")) > 0),
+	CONSTRAINT "organisations_registre_notion_forme" CHECK ("organisations"."registre_notion" is null or "organisations"."registre_notion" ~ '^[0-9a-f]{32}$')
 );
 --> statement-breakpoint
 CREATE TABLE "veilles" (
@@ -46,7 +49,8 @@ CREATE TABLE "veilles" (
 	"heure_parution" time NOT NULL,
 	"cadence" "cadence_veille" NOT NULL,
 	"numéro_courant" integer DEFAULT 0 NOT NULL,
-	"état" "état_veille" DEFAULT 'active' NOT NULL
+	"état" "état_veille" DEFAULT 'active' NOT NULL,
+	CONSTRAINT "veilles_jour_parution" CHECK ("veilles"."jour_parution" between 1 and 7)
 );
 --> statement-breakpoint
 ALTER TABLE "lecteurs" ADD CONSTRAINT "lecteurs_organisation_id_organisations_id_fk" FOREIGN KEY ("organisation_id") REFERENCES "public"."organisations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

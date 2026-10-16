@@ -1,5 +1,5 @@
 {
-  "id": "1a15dba9-8acb-471d-b767-8e67faa0c3b3",
+  "id": "9b630c9b-10fc-44f6-95df-03f25c769538",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -124,7 +124,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "lecteurs_identifiant_non_vide": {
+          "name": "lecteurs_identifiant_non_vide",
+          "value": "length(trim(\"lecteurs\".\"identifiant_acces\")) > 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.organisations": {
@@ -247,7 +252,16 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "organisations_slug_non_vide": {
+          "name": "organisations_slug_non_vide",
+          "value": "length(trim(\"organisations\".\"slug\")) > 0"
+        },
+        "organisations_registre_notion_forme": {
+          "name": "organisations_registre_notion_forme",
+          "value": "\"organisations\".\"registre_notion\" is null or \"organisations\".\"registre_notion\" ~ '^[0-9a-f]{32}$'"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.veilles": {
@@ -361,7 +375,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "veilles_jour_parution": {
+          "name": "veilles_jour_parution",
+          "value": "\"veilles\".\"jour_parution\" between 1 and 7"
+        }
+      },
       "isRLSEnabled": false
     }
   },
