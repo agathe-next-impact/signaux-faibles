@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/lib/env'
 import { vérifierJeton } from '@/lib/auth/jeton'
 import { attributsDuCookie, NOM_DU_COOKIE } from '@/lib/auth/session'
-import { lireAccèsParIdentifiant } from '@/lib/notion/acces'
+import { lireAccèsParIdentifiant } from '@/lib/auth/source-acces'
 
 /**
  * La seule URL où le jeton apparaît.

@@ -124,11 +124,88 @@ describe('l’exception opérateur reste confinée', () => {
     return trouvés.sort()
   }
 
+  // Depuis le palier 1 (16 octobre 2026), la façade `source-acces` choisit la
+  // source entre Notion et Postgres et porte les mêmes noms : elle est un
+  // troisième fichier, et le seul ajouté. L'écran n'y a toujours pas accès.
   for (const fonction of ['organisationDuSlug', 'espacesOuverts']) {
-    it(`${fonction} n’est déclarée et appelée que dans deux fichiers`, () => {
-      expect(appelants(fonction)).toEqual(['lib/auth/appartenance.ts', 'lib/notion/acces.ts'])
+    it(`${fonction} n’est déclarée et appelée que dans la lecture, la façade et le contrôle`, () => {
+      expect(appelants(fonction)).toEqual([
+        'lib/auth/appartenance.ts',
+        'lib/auth/source-acces.ts',
+        'lib/notion/acces.ts',
+      ])
     })
   }
+
+  for (const fonction of ['organisationParSlug', 'espacesAvecLecteurs']) {
+    it(`${fonction} (Postgres) n’est appelée que par la façade`, () => {
+      expect(appelants(fonction)).toEqual(['lib/auth/source-acces.ts', 'lib/base/lecteurs.ts'])
+    })
+  }
+})
+
+/**
+ * Le palier 1 : Postgres porte l'état, et un seul dossier lui parle.
+ *
+ * Deux gardes, du même esprit que celles de Notion. Aucun module hors de
+ * `lib/base/` n'importe Drizzle ni le pilote, pour qu'une requête ne puisse pas
+ * naître dans un composant ou une route ; et aucun appelant de l'appartenance ne
+ * lit Notion ou Postgres directement, pour que `SOURCE_ACCES` soit réellement le
+ * seul aiguillage.
+ */
+describe('Postgres ne se lit que par lib/base, l’appartenance que par la façade', () => {
+  const sources = (): Array<{ chemin: string; source: string }> => {
+    const trouvés: Array<{ chemin: string; source: string }> = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (/\.tsx?$/.test(entrée.name)) trouvés.push({ chemin: relatif(chemin), source: readFileSync(chemin, 'utf8') })
+      }
+    }
+    for (const racine of ['app', 'components', 'lib']) parcourir(join(process.cwd(), racine))
+    trouvés.push({ chemin: 'proxy.ts', source: readFileSync(join(process.cwd(), 'proxy.ts'), 'utf8') })
+    return trouvés
+  }
+
+  it('aucun import de Drizzle, de Neon ou de PGlite hors de lib/base', () => {
+    const fautifs = sources()
+      .filter(({ chemin }) => !chemin.startsWith('lib/base/'))
+      .filter(({ source }) => /from ['"](?:drizzle-orm|@neondatabase\/serverless|@electric-sql\/pglite)/.test(source))
+      .map(({ chemin }) => chemin)
+    expect(fautifs).toEqual([])
+  })
+
+  it('les lectures Postgres d’appartenance ne sont appelées que par la façade', () => {
+    for (const fonction of ['lireLecteurParIdentifiant', 'lireLecteurActifParEmail']) {
+      const appelants = sources()
+        .filter(({ source }) => source.includes(`${fonction}(`))
+        .map(({ chemin }) => chemin)
+        .sort()
+      expect(appelants, fonction).toEqual(['lib/auth/source-acces.ts', 'lib/base/lecteurs.ts'])
+    }
+  })
+
+  it('personne n’importe une lecture d’appartenance de lib/notion/acces, sauf la façade', () => {
+    // Seule exception : le contrôle du soir lit la base Notion telle qu'elle
+    // est, doublons compris — c'est précisément ce qu'il vérifie.
+    const PERMIS = new Set(['lignesDAccèsPourContrôle'])
+    const fautifs: string[] = []
+    for (const { chemin, source } of sources()) {
+      if (chemin === 'lib/auth/source-acces.ts' || chemin === 'lib/notion/acces.ts') continue
+      for (const [, noms] of source.matchAll(/import\s+\{([^}]*)\}\s+from\s+['"]@\/lib\/notion\/acces['"]/g)) {
+        const valeurs = (noms ?? '')
+          .split(',')
+          .map((nom) => nom.trim())
+          .filter((nom) => nom.length > 0 && !nom.startsWith('type '))
+        for (const nom of valeurs) if (!PERMIS.has(nom)) fautifs.push(`${chemin} : ${nom}`)
+      }
+    }
+    expect(fautifs).toEqual([])
+  })
 })
 
 /**

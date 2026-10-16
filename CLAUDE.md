@@ -10,8 +10,17 @@ ouverts suivis d'édition en édition.
 par des tâches Cowork planifiées (intake, génération, relecture) qui écrivent
 dans les bases Notion ; ces tâches vivent hors de ce dépôt. Le portail
 **lit Notion**, exclusivement à travers le cache de Next.js, invalidé par
-webhook Notion et par revalidation périodique. Le portail n'a **pas de base
-de données** et n'écrit jamais dans Notion.
+webhook Notion et par revalidation périodique. Le portail n'écrit jamais dans
+Notion.
+
+**Le portail a une base Postgres qui porte l'état du dispositif**
+(`docs/schema-donnees.md`) ; Notion porte les documents. Décision du
+15 octobre 2026, validée le 16 octobre (`docs/decision-portail-moteur.md`) :
+elle remplace la règle « pas de base de données » de cette page. Toute
+lecture ou écriture Postgres passe par `lib/base/`, jamais depuis un
+composant ni une route ; `tests/architecture.test.ts` le vérifie. Postgres
+ne contient jamais le corps d'une lettre ni le texte d'un référentiel, il en
+contient les identifiants Notion.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et
@@ -102,6 +111,30 @@ Les lire avant toute session.
   interverties. IBM Plex Mono n'a pas de version variable : `weight`
   explicite obligatoire
 - Vitest, Playwright, ESLint en direct (`next lint` n'existe plus)
+- **Postgres** (Neon, rattachée au projet Vercel, variable `DATABASE_URL`),
+  **Drizzle ORM** 0.45 et le pilote `@neondatabase/serverless` en `Pool`
+  (WebSocket, pour les transactions interactives). Schéma dans
+  `lib/base/schema.ts`, migrations SQL générées par `pnpm base:generer <nom>`
+  dans `drizzle/`, relues et commitées comme du code, appliquées par
+  `pnpm base:migrer`. Les tests tournent sur une vraie base Postgres en
+  mémoire (PGlite, `tests/aide/base-en-memoire.ts`) avec ces mêmes
+  migrations. `DATABASE_URL` est lue directement dans `process.env` : une
+  page qui ne touche pas Postgres ne tombe pas parce que la base n'existe pas
+  encore
+- **Migration de la base Accès, palier 1a** : l'appartenance est lue par une
+  façade unique, `lib/auth/source-acces.ts`, aiguillée par `SOURCE_ACCES` —
+  `notion` (défaut : comportement d'avant, Postgres jamais ouvert),
+  `double` (les deux lues, **Notion servie**, écarts journalisés
+  `[accès:double]`, une panne Postgres ne change rien pour le lecteur),
+  `postgres` (bascule, la base Accès est gelée). Tout appelant importe de la
+  façade, jamais de `lib/notion/acces.ts` ni de `lib/base/lecteurs.ts` ;
+  seule exception, le contrôle du soir, qui vérifie la base Notion telle
+  qu'elle est. `pnpm base:importer-acces` (rejouable, `--a-blanc` pour voir
+  le plan) aligne Postgres sur Notion pendant la double lecture et désactive,
+  sans supprimer, qui a quitté Notion. **Avant toute bascule à `postgres`**,
+  il faut une voie d'écriture des lecteurs (création, révocation) qui ne
+  passe plus par Notion : tant qu'elle n'existe pas, la tâche Cowork qui tient
+  la base Accès continuerait d'y écrire dans le vide
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante
@@ -130,6 +163,12 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
    plusieurs organisations comme une anomalie remontée au monitoring,
    jamais comme une donnée à interpréter. Chaque nouvelle requête Notion
    est relue sous cet angle avant commit.
+   Depuis le palier 1, la « ligne Accès » peut être une ligne de la table
+   Postgres `lecteurs` (selon `SOURCE_ACCES`) ; la clé ne change pas pour
+   autant : c'est `organisations.registre_notion`, l'identifiant de la ligne
+   du registre que portent les éditions. Une organisation qui n'en a pas ne
+   peut pas filtrer « Éditions », et l'accès est refusé, exactement comme une
+   ligne Notion dont l'identifiant d'organisation était vide.
    **Une seule exception, tenue étroite (11 septembre 2026) : l'accès
    opérateur.** Une ligne « Accès » dont la case `Tous les espaces` est cochée
    peut ouvrir l'espace de n'importe quel client. L'identifiant d'organisation
@@ -214,6 +253,13 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
    shadcn ou un défaut Tailwind réintroduire des majuscules.
 
 ## Modèle de données (bases Notion)
+
+L'**état** (organisations, veilles, lecteurs, puis envois, abonnements, file
+de travaux) migre vers Postgres palier par palier, selon
+`docs/schema-donnees.md` ; cette section décrit les **documents**, qui restent
+dans Notion, et la base « Accès » tant que dure sa migration. Une fois la
+bascule faite, « Éditions de veille » sera la seule base Notion lue par le
+portail.
 
 Les bases Notion **sont** le contrat ; aucun fichier n'est partagé entre le
 portail et les tâches Cowork. Cowork découvre le schéma dans Notion à chaque

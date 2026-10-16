@@ -3,7 +3,7 @@
 import { headers } from 'next/headers'
 import { env } from '@/lib/env'
 import { composerLienDAccès } from '@/lib/auth/jeton'
-import { lireAccèsActifParEmail } from '@/lib/notion/acces'
+import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { composerCourrierDAccès, envoyerMessage } from '@/lib/email/gmail'
 import {
   autoriserLEnvoi,

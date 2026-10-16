@@ -1,6 +1,6 @@
 # Schéma de données du portail (Postgres)
 
-*Proposé le 15 octobre 2026 (action 9 du plan de travail), à relire avant tout code. Le schéma décrit l'état cible à la fin du palier 2 ; chaque palier n'en crée que ce dont il a besoin. Conventions : identifiants `uuid` générés par la base, horodatages `timestamptz`, noms en français comme le reste du code, suppression jamais physique (colonne `archivée_le`).*
+*Proposé le 15 octobre 2026 (action 9 du plan de travail), validé le 16 octobre 2026 avec la décision d'architecture. Palier 1a livré : `organisations`, `veilles`, `lecteurs` (`lib/base/schema.ts`, migration `drizzle/0000_*`). Le schéma décrit l'état cible à la fin du palier 2 ; chaque palier n'en crée que ce dont il a besoin. Conventions : identifiants `uuid` générés par la base, horodatages `timestamptz`, noms en français comme le reste du code, suppression jamais physique (colonne `archivée_le`).*
 
 ## Ce qui va où
 
@@ -25,7 +25,7 @@ Une par client, prospect ou organisation de test.
 | `id` | uuid | |
 | `slug` | text, unique | celui des URL du portail ; jamais modifié après la première lettre |
 | `nom` | text | libellé affiché ; aujourd'hui « Organisation (libellé) » de la base Accès |
-| `url_site` | text | normalisée (schéma, hôte en minuscules, sans fragment) ; vient du formulaire |
+| `url_site` | text, nullable | normalisée (schéma, hôte en minuscules, sans fragment) ; vient du formulaire. Nulle pour les organisations migrées de la base Accès : le portail n'a jamais lu le registre qui la porte |
 | `page_organisation_notion` | text, nullable | page sous « Veilles clients » ; jamais utilisée pour le cloisonnement |
 | `registre_notion` | text, nullable | identifiant de l'ancienne ligne du registre, celui que portent les éditions ; conservé tant que des éditions Notion le référencent |
 | `état` | enum | `demande`, `generation`, `essai`, `abonnee`, `suspendue`, `ecartee`, `test` |
@@ -168,8 +168,8 @@ Copie de Stripe, écrite par son webhook seulement.
 ## Migration depuis Notion (palier 1)
 
 1. `organisations` et `veilles` : depuis les quatre lignes actives du registre (lecture manuelle, le portail n'y a pas accès) et les propriétés `Veille` et `Famille` des éditions. `registre_notion` reçoit l'identifiant que portent les éditions.
-2. `lecteurs` : depuis la base Accès, en lecture seule, script rejouable. `tous_les_espaces` et `actif` recopiés tels quels.
-3. Double exécution une semaine (`SOURCE_ACCES=notion|postgres`), puis bascule, puis gel de la base Accès.
+2. `lecteurs` : depuis la base Accès, en lecture seule, script rejouable (`pnpm base:importer-acces`, `--a-blanc` pour le plan). `tous_les_espaces` et `actif` recopiés tels quels. L'import crée aussi les `organisations` des clients historiques, à l'état `abonnee` avec `relecture_requise` : ils reçoivent leurs lettres hors Stripe, et le parcours d'essai ne s'applique pas à une organisation `abonnee` qui n'a pas de ligne `abonnements`. Les lignes que la lecture Notion refusait (identifiant vide ou partagé, slug ou organisation vides, slug portant deux organisations) ne sont pas importées ; un lecteur absent de Notion est désactivé, jamais supprimé.
+3. Double exécution une semaine (`SOURCE_ACCES=double` : les deux lues, Notion servie, écarts journalisés `[accès:double]`), puis bascule (`SOURCE_ACCES=postgres`), puis gel de la base Accès. **Préalable à la bascule** : une voie d'écriture des lecteurs (création, révocation) qui ne passe plus par Notion, puisque la tâche Cowork qui tient aujourd'hui la base Accès y écrirait dans le vide.
 4. La base Éditions reste lue par le portail ; son filtre d'organisation reste `Organisation contains registre_notion` tant que les éditions existantes le portent. Une nouvelle organisation sans ligne de registre reçoit un `registre_notion` égal à une page Notion vide créée par la tâche à la première génération, pour que la relation des éditions continue d'exister.
 
 ## Gardes d'architecture à ajouter

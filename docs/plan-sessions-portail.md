@@ -581,6 +581,6 @@ et chacune se termine par une PR.
 - Palier 3 (janvier 2027) : collecteur de sources, contrôle de citations,
   retrait des tâches planifiées.
 
-Jusqu'à validation de la décision, les règles de `CLAUDE.md` s'appliquent
-telles qu'écrites, y compris « pas de base de données ».
+La décision a été validée le 16 octobre 2026 ; `CLAUDE.md` est amendé en
+conséquence avec le palier 1a (« pas de base de données » est retiré).
 

@@ -95,3 +95,33 @@ describe('env()', () => {
     expect(() => env()).not.toThrow()
   })
 })
+
+describe('variables du palier 1', () => {
+  const clés = ['SOURCE_ACCES', 'DATABASE_URL']
+  const avant = new Map<string, string | undefined>()
+
+  beforeEach(() => {
+    for (const clé of [...CLÉS, ...clés]) avant.set(clé, process.env[clé])
+    reinitialiserEnv()
+  })
+
+  afterEach(() => {
+    for (const [clé, valeur] of avant) {
+      if (valeur === undefined) delete process.env[clé]
+      else process.env[clé] = valeur
+    }
+    reinitialiserEnv()
+  })
+
+  it('une faute de frappe dans SOURCE_ACCES ne fait pas tomber l’environnement', () => {
+    poser(COMPLET)
+    process.env.SOURCE_ACCES = 'postgre'
+    expect(() => env()).not.toThrow()
+  })
+
+  it('une base pas encore créée, variable vide, vaut une base absente', () => {
+    poser(COMPLET)
+    process.env.DATABASE_URL = ''
+    expect(env().DATABASE_URL).toBeUndefined()
+  })
+})

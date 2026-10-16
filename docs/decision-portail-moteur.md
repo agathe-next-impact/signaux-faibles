@@ -1,6 +1,6 @@
 # Décision d'architecture : le portail devient le moteur du dispositif
 
-*Proposée le 15 octobre 2026 (action 8 du plan de travail du 14 octobre), à valider par la propriétaire du dispositif avant le 23 octobre. Tant qu'elle n'est pas validée, `CLAUDE.md` fait foi tel qu'il est écrit ; une fois validée, ses règles sont amendées comme indiqué en fin de document.*
+*Proposée le 15 octobre 2026 (action 8 du plan de travail du 14 octobre), **validée par la propriétaire du dispositif le 16 octobre 2026**. Les amendements de `CLAUDE.md` indiqués en fin de document sont appliqués avec le palier 1a (base Postgres, migration de la base Accès en double lecture).*
 
 ## Ce qui est décidé
 
