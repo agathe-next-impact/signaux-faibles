@@ -561,3 +561,26 @@ quel — « la convergence **des réseaux** Xerox et Lexmark », « le rythme co
 sur **vos** cinq marchés » quand le dossier dit « sur les cinq marchés ». Les
 rapprocher demanderait de laisser tomber un mot du nom, c'est-à-dire de citer un
 passage qui ne nomme pas vraiment le dossier.
+
+## Après le palier 1 du 17 septembre : plan du 14 octobre 2026
+
+L'audit du 14 octobre 2026 (document du projet « Signaux faibles »,
+`claude/audit-technique-fonctionnel-roadmap-2026-10-14.md`) et le plan de
+travail du même jour fixent la suite. Les sessions suivantes ne sont pas
+numérotées ici : elles sont tenues semaine par semaine dans le plan de travail,
+et chacune se termine par une PR.
+
+- Palier 0 (S42 et S43) : correctifs P0 (PR #27), rebranchement des tâches sur
+  le portail, décision d'architecture (`docs/decision-portail-moteur.md`) et
+  schéma de données (`docs/schema-donnees.md`), tous deux à valider avant le
+  23 octobre.
+- Palier 1 (S44 à S48) : Postgres, envoi des lettres par le portail, parcours
+  d'essai, Stripe, formulaire public.
+- Palier 2 (S49 à S51) : file de travaux, résultats structurés, génération
+  sur la demande.
+- Palier 3 (janvier 2027) : collecteur de sources, contrôle de citations,
+  retrait des tâches planifiées.
+
+Jusqu'à validation de la décision, les règles de `CLAUDE.md` s'appliquent
+telles qu'écrites, y compris « pas de base de données ».
+
