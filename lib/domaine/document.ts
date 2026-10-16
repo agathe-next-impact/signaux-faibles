@@ -1,4 +1,5 @@
 import { lireTitreDAxe, rangDImpact, type NiveauImpact } from '@/lib/domaine/impact'
+import { estTitreDeCadrage, sansAccent } from '@/lib/domaine/texte'
 
 /**
  * La note est rendue comme un document.
@@ -43,7 +44,13 @@ export type Bloc =
       readonly lignes: readonly (readonly (readonly Segment[])[])[]
     }
   | { readonly type: 'séparateur' }
-  | { readonly type: 'image'; readonly blocId: string; readonly légende: string }
+  | {
+      readonly type: 'image'
+      readonly blocId: string
+      /** La page qui porte le bloc, pour que le proxy vérifie l'appartenance avant de lire. */
+      readonly pageId: string
+      readonly légende: string
+    }
 
 export type Axe = {
   readonly titre: string
@@ -166,10 +173,13 @@ function convertir(bloc: BlocNotion): Bloc | null {
 
     case 'image':
       // Ni l'URL signée ni l'URL externe ne sont conservées : le rendu passe
-      // par /api/media/[block_id], qui les résout à la demande.
+      // par /api/media/[block_id]?page=…, qui les résout à la demande. La page
+      // est portée par le bloc pour que le proxy puisse vérifier l'appartenance
+      // avant toute lecture Notion.
       return {
         type: 'image',
         blocId: bloc.id,
+        pageId: pageParente(bloc),
         légende: texteDeSegments(lireSegments(corps['caption'])),
       }
 
@@ -221,6 +231,11 @@ class Pile {
   vider(): Bloc[] {
     return this.blocs
   }
+}
+
+function pageParente(bloc: BlocNotion): string {
+  const parent = bloc['parent'] as { type?: string; page_id?: string } | undefined
+  return parent?.type === 'page_id' && typeof parent.page_id === 'string' ? parent.page_id : ''
 }
 
 /**
@@ -296,26 +311,8 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
   return { préambule: préambule.vider(), ...détacherLePérimètre(rubriques) }
 }
 
-function sansAccent(titre: string): string {
-  return titre
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-}
-
-/**
- * Reconnaît la rubrique d'ajustements du cadrage à son titre.
- *
- * C'est le seul signal disponible : le cadrage vit dans le corps de la note, et
- * aucune propriété Notion ne le marque. La reconnaissance est donc une
- * convention avec les tâches Cowork, tenue lâche — accents et casse ignorés,
- * le mot « cadrage » suffit. Si le titre était reformulé au point de ne plus le
- * contenir, la section **réapparaîtrait dans la lettre** : une panne visible,
- * pas une disparition silencieuse.
- */
-function estRubriqueDeCadrage(titre: string): boolean {
-  return sansAccent(titre).includes('cadrage')
-}
+/** La rubrique de cadrage : convention partagée avec le validateur, voir `lib/domaine/texte.ts`. */
+const estRubriqueDeCadrage = estTitreDeCadrage
 
 /**
  * Reconnaît la rubrique « Les acteurs que nous suivons pour vous ».

@@ -11,6 +11,7 @@ import { mentionsDe } from '@/lib/domaine/mentions'
 import { faitsDe } from '@/lib/domaine/document'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 import { contrôlerLeContrat } from '@/lib/portail/contrat'
+import { estTitreDeCadrage, sansAccent } from '@/lib/domaine/texte'
 
 /**
  * Le validateur de lettre : ce que le portail affichera, dit **avant** l'envoi.
@@ -134,14 +135,6 @@ export function lignesDeLEssentiel(document: Document): string[] | null {
   return lignes.map((ligne) => ligne.trim()).filter((ligne) => ligne.length > 0)
 }
 
-function sansAccent(texte: string): string {
-  return texte
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replaceAll('’', "'")
-    .toLowerCase()
-}
-
 function texteDuBloc(bloc: Bloc): string {
   switch (bloc.type) {
     case 'paragraphe':
@@ -183,12 +176,13 @@ function texteBrutDUnBlocNotion(bloc: BlocNotion): string {
  *
  * `construireDocument` ne le dit pas : sans trait, il pose tout dans
  * `document.cadrage` et la lettre perd son pied sans que rien ne le signale.
- * On relit donc les blocs bruts : entre le H1 qui contient « cadrage » et le
- * H1 suivant (ou la fin), il doit y avoir un `divider`.
+ * On relit donc les blocs bruts : entre le H1 de cadrage (même convention que
+ * `construireDocument`, `estTitreDeCadrage`) et le H1 suivant (ou la fin), il
+ * doit y avoir un `divider`.
  */
 function cadrageClos(blocs: readonly BlocNotion[]): { présent: boolean; clos: boolean } {
   const début = blocs.findIndex(
-    (bloc) => bloc.type === 'heading_1' && sansAccent(texteBrutDUnBlocNotion(bloc)).includes('cadrage'),
+    (bloc) => bloc.type === 'heading_1' && estTitreDeCadrage(texteBrutDUnBlocNotion(bloc)),
   )
   if (début === -1) return { présent: false, clos: false }
 

@@ -10,20 +10,31 @@ import { normaliserIdentifiant } from '@/lib/notion/proprietes'
  * Il existe parce que les URL de fichiers Notion expirent en une heure : aucune
  * ne doit être écrite dans le HTML. Mais un proxy naïf serait pire que le mal —
  * il donnerait à quiconque connaît un identifiant de bloc l'image d'un autre
- * client. Chaque requête est donc cloisonnée comme une page : la page qui porte
- * le bloc doit figurer dans les éditions publiées de l'organisation du
- * demandeur.
+ * client. Chaque requête est donc cloisonnée comme une page.
+ *
+ * **L'autorisation précède toute lecture Notion** (14 octobre 2026). L'adresse
+ * porte la page qui est censée contenir le bloc (`?page=<page_id>`), écrite par
+ * le rendu du document ; la route vérifie d'abord que cette page figure dans
+ * les éditions publiées de l'organisation du demandeur — une liste déjà en
+ * cache — et seulement ensuite résout le bloc, dont la page parente doit être
+ * celle annoncée. Avant, le bloc était lu dans Notion avant le contrôle, ce qui
+ * laissait un lecteur authentifié faire interroger n'importe quel identifiant
+ * de bloc, et en garder la résolution cinquante minutes en cache.
  *
  * Toutes les causes de refus rendent le même 404 : l'existence d'un bloc n'est
  * pas une information à donner.
  */
 const INTROUVABLE = new NextResponse(null, { status: 404 })
 
+const IDENTIFIANT_NOTION = /^[0-9a-f]{32}$/
+
 export async function GET(
-  _requête: NextRequest,
+  requête: NextRequest,
   contexte: { params: Promise<{ block_id: string }> },
 ): Promise<NextResponse> {
   const { block_id: blocId } = await contexte.params
+  const pageAnnoncée = normaliserIdentifiant(requête.nextUrl.searchParams.get('page') ?? '')
+  if (!IDENTIFIANT_NOTION.test(pageAnnoncée)) return INTROUVABLE
 
   const identifiant = await identifiantDeLaSession()
   if (!identifiant) return INTROUVABLE
@@ -31,15 +42,15 @@ export async function GET(
   const accès = await lireAccèsParIdentifiant(identifiant)
   if (!accès || !accès.actif) return INTROUVABLE
 
-  const média = await lireMédiaDeBloc(blocId)
-  if (!média) return INTROUVABLE
-
   const éditions = await listerÉditionsPubliées(accès.organisationId)
-  const parente = normaliserIdentifiant(média.pageParenteId)
   const autorisé = éditions.some(
-    (édition) => normaliserIdentifiant(édition.pageId) === parente,
+    (édition) => normaliserIdentifiant(édition.pageId) === pageAnnoncée,
   )
   if (!autorisé) return INTROUVABLE
+
+  const média = await lireMédiaDeBloc(blocId, pageAnnoncée)
+  if (!média) return INTROUVABLE
+  if (normaliserIdentifiant(média.pageParenteId) !== pageAnnoncée) return INTROUVABLE
 
   const amont = await fetch(média.url)
   if (!amont.ok || !amont.body) return INTROUVABLE

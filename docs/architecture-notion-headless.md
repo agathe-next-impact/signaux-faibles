@@ -193,9 +193,19 @@ HMAC :
   possibles, donc doublons).
 
 Garde-fous de la page « recevoir mon lien » : réponse identique que
-l'email soit connu ou non ; un envoi au plus par email toutes les dix
-minutes et par adresse IP ; journal côté Vercel ; pas de lien dans les
-journaux.
+l'email soit connu ou non, **et temps de réponse plancher commun aux deux
+chemins** (sans lui, l'appel Gmail du chemin « connu » suffisait à
+distinguer les deux) ; un envoi au plus par email toutes les dix minutes et
+cinq par adresse IP (`lib/portail/debit.ts`, depuis le 14 octobre 2026 ;
+auparavant promis et non tenu) ; journal côté Vercel sans adresse en clair
+(une empreinte de huit caractères) ; pas de lien dans les journaux.
+
+Limite connue de la limitation de débit : le portail n'a pas de stockage, le
+compteur vit en mémoire de l'instance. Il tient les rafales d'un même
+processus, pas un attaquant réparti ni le recyclage des instances. La
+garantie forte est une règle de limitation de débit du pare-feu Vercel sur
+`/recevoir-mon-lien` et `/api/acces/ouvrir`, à poser dans le tableau de bord
+(hors dépôt) ; le module reste en filet derrière elle.
 
 Risques assumés et parades :
 

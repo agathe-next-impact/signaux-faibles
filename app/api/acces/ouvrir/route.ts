@@ -7,6 +7,7 @@ import { lireAccèsActifParEmail } from '@/lib/notion/acces'
 import { sourcesDeDonnées } from '@/lib/notion/client'
 import { listerÉditionsPubliées } from '@/lib/notion/editions'
 import { interpréterDemande } from '@/lib/portail/activation'
+import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
 
 /**
  * Ouvrir l'espace d'un lecteur, appelée par l'onboarding Cowork.
@@ -57,11 +58,14 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ état: 'refusée' }, { status: 401 })
 
     case 'ouvrir':
-      return ouvrir(décision.email)
+      return ouvrir(décision.email, origineDe(requête.headers))
   }
 }
 
-async function ouvrir(email: string): Promise<NextResponse> {
+async function ouvrir(email: string, origine: string | null): Promise<NextResponse> {
+  // Les journaux ne portent jamais l'adresse du lecteur en clair.
+  const marque = empreinte(email)
+
   try {
     const accès = await lireAccèsActifParEmail(email)
 
@@ -74,11 +78,22 @@ async function ouvrir(email: string): Promise<NextResponse> {
       revalidateTag(`liste:${sourceId}`, { expire: 0 })
 
       console.warn(
-        `[activation] aucun accès actif pour ${email}. Si la ligne vient d'être ` +
+        `[activation] aucun accès actif pour ${marque}. Si la ligne vient d'être ` +
           'créée, réessayer dans quelques secondes ; sinon vérifier « Actif » et ' +
           "l'orthographe de l'adresse dans « Accès — portail ».",
       )
       return NextResponse.json({ état: 'introuvable' }, { status: 404 })
+    }
+
+    // La tâche d'onboarding appelle une fois par activation. Une boucle qui
+    // rappellerait la route à chaque passage ferait renvoyer le lien sans fin
+    // au même lecteur : au-delà d'un envoi par adresse et par dix minutes, la
+    // route ne renvoie rien et le dit. Le compteur ne s'incrémente qu'ici,
+    // une fois la ligne trouvée : un 404 suivi d'un rappel reste permis.
+    const débit = autoriserLEnvoi(email, origine)
+    if (!débit.autorisé) {
+      console.warn(`[activation] ${marque} : envoi refusé par la limitation de débit (${débit.motif}).`)
+      return NextResponse.json({ état: 'déjà-envoyé' }, { status: 429 })
     }
 
     const lien = composerLienDAccès(
@@ -94,7 +109,7 @@ async function ouvrir(email: string): Promise<NextResponse> {
     const lettres = await listerÉditionsPubliées(accès.organisationId)
 
     console.info(
-      `[activation] espace ouvert pour ${accès.email} (${accès.slug}) : ` +
+      `[activation] espace ouvert pour ${marque} (${accès.slug}) : ` +
         `${lettres.length} lettre(s) publiée(s).`,
     )
 
@@ -106,7 +121,7 @@ async function ouvrir(email: string): Promise<NextResponse> {
     })
   } catch (erreur) {
     console.error(
-      `[activation] échec de l'ouverture pour ${email} : ` +
+      `[activation] échec de l'ouverture pour ${marque} : ` +
         (erreur instanceof Error ? erreur.message : String(erreur)),
     )
     return NextResponse.json({ état: 'erreur' }, { status: 502 })

@@ -158,10 +158,24 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
 4. **Mode dégradé obligatoire** : profil `cacheLife` à expiration longue,
    pour que Next.js serve la dernière version connue si Notion ne répond
    pas ; aucune page d'erreur côté client ; l'opérateur est alerté par le
-   monitoring Vercel.
+   monitoring Vercel. Quand ce filet est percé malgré tout (cache expiré,
+   schéma Notion modifié, environnement invalide), `app/error.tsx`,
+   `app/[slug]/error.tsx`, `app/global-error.tsx` et `app/not-found.tsx`
+   (14 octobre 2026) rendent une page de secours dans la charte,
+   `components/page-de-secours.tsx`, **sans jamais afficher le message
+   technique** : il peut nommer une propriété Notion ou une variable
+   d'environnement, il va dans les journaux. Une variable facultative posée
+   vide dans l'hébergeur vaut une variable absente (`lib/env.ts`,
+   `facultative`) : avant, `GOOGLE_COMPTE_SERVICE_EMAIL=` faisait tomber
+   toutes les pages.
 5. **Les URL de fichiers Notion expirent en une heure.** Aucune URL de
    fichier Notion n'est écrite dans le HTML : les images passent par la
-   route proxy `/api/media/[block_id]`, ou sont des liens externes.
+   route proxy `/api/media/[block_id]?page=<page_id>`, ou sont des liens
+   externes. Le proxy vérifie que la page annoncée figure dans les éditions
+   publiées de l'organisation du demandeur **avant** toute lecture Notion,
+   puis que le bloc appartient bien à cette page ; `tests/architecture.test.ts`
+   tient l'ordre. Le bloc image porte sa page (`pageId`) depuis
+   `construireDocument` pour cela.
 6. Impact scoré à trois niveaux seulement (fort / moyen / RAS). Ne pas
    ajouter de niveau ni de couleur d'impact supplémentaire — c'est une
    règle de la charte, pas un choix d'implémentation. Dans Notion, le
@@ -181,7 +195,20 @@ plutôt que la mémoire : ces API évoluent. Les faits déjà vérifiés sont da
 8. Le jeton d'accès n'apparaît jamais ailleurs que dans l'URL
    `/acces/[jeton]`, qui redirige immédiatement. Révocation = case `actif`
    décochée dans « Accès », effective à la requête suivante. Comparaison de
-   signature en temps constant.
+   signature en temps constant. Les attributs du cookie sont écrits une
+   seule fois (`attributsDuCookie`, `lib/auth/session.ts`).
+   **Aucune adresse email de lecteur dans les journaux** : une empreinte de
+   huit caractères (`empreinte`, `lib/portail/debit.ts`), vérifié par
+   `tests/architecture.test.ts`. Les deux routes qui font partir un lien
+   (« recevoir mon lien », `/api/acces/ouvrir`) sont limitées à un envoi par
+   adresse et par dix minutes, cinq par origine réseau, et répondent en un
+   temps plancher commun aux deux chemins (`avecDuréeMinimale`) pour que le
+   délai ne dise pas si l'adresse est connue. Le compteur vit en mémoire de
+   l'instance : c'est un filet, la garantie forte est une règle du pare-feu
+   Vercel (`docs/architecture-notion-headless.md`).
+   En-têtes posés par `next.config.ts` : HSTS un an, sous-domaines compris,
+   et une politique de contenu bornée à l'origine (`'unsafe-inline'` reste
+   sur scripts et styles, le nonce est un pas suivant).
 9. Sentence case partout dans l'UI, jamais de capitales sauf les labels en
    police mono (charte, §03 Typographie). Ne pas laisser un composant
    shadcn ou un défaut Tailwind réintroduire des majuscules.
@@ -301,9 +328,11 @@ lettres, les mêmes entrées de cache que la page d'un axe. Les empiler
 rééditerait exactement l'erreur qui a fait scinder « Tendances ». Chacun
 renvoie vers l'autre en pied d'écran.
 
-La rubrique de cadrage est reconnue au mot « cadrage » dans son titre H1,
-accents et casse ignorés — c'est le seul signal disponible, aucune propriété
-Notion ne la marque. Celle du corpus demande **deux** signaux, « acteur » et
+La rubrique de cadrage est reconnue au mot « cadrage » **entier** dans son
+titre H1, accents et casse ignorés (`estTitreDeCadrage`, `lib/domaine/texte.ts`,
+seul endroit où la convention est écrite ; le validateur l'appelle aussi) —
+c'est le seul signal disponible, aucune propriété Notion ne la marque. Un
+titre d'actualité comme « Recadrage du marché » reste dans la lettre. Celle du corpus demande **deux** signaux, « acteur » et
 « nous suiv » : le mot « acteurs » seul détacherait une rubrique d'actualité,
 et l'Hermitage en a une, « Actualité acteurs ». Convention avec les tâches
 Cowork, dans les deux cas : si le titre était reformulé au point de perdre son
