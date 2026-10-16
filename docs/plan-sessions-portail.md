@@ -584,3 +584,14 @@ et chacune se termine par une PR.
 La décision a été validée le 16 octobre 2026 ; `CLAUDE.md` est amendé en
 conséquence avec le palier 1a (« pas de base de données » est retiré).
 
+
+### Journal
+
+- **16 octobre 2026.** PR #27 (correctifs P0), #28 (décision et schéma) et
+  #29 (palier 1a : base Postgres, façade `SOURCE_ACCES`, import de la base
+  Accès) fusionnées. Les jalons de date sont abandonnés ce jour-là : l'ordre
+  des paliers seul compte. Mise en service du palier 1a, dans l'ordre :
+  base Neon rattachée au projet, `pnpm base:migrer`, `pnpm base:importer-acces
+  --a-blanc` puis réel, `SOURCE_ACCES=double` pendant une semaine. La bascule
+  à `postgres` attend la voie d'écriture des lecteurs hors Notion (palier
+  1a-bis).
