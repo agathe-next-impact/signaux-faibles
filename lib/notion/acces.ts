@@ -347,3 +347,60 @@ export async function lignesDAccèsPourContrôle(): Promise<LigneDAccèsContrôl
     }
   })
 }
+
+/**
+ * Toutes les lignes de la base « Accès », identifiant d'accès compris, pour
+ * l'import dans Postgres (`POST /api/veille/importer-acces`, palier 1a).
+ *
+ * C'est la seule lecture qui rend les identifiants d'accès de toute la base :
+ * elle n'est appelée que par cette route, sous le jeton d'activation, et son
+ * résultat ne quitte jamais le serveur — la route n'en renvoie que des comptes
+ * et des empreintes. `tests/architecture.test.ts` vérifie ses appelants.
+ *
+ * Cachée comme les autres lectures de la base (règle 1), avec le profil court :
+ * un import rejoué juste après une modification dans Notion doit la voir, et
+ * le webhook invalide le même tag.
+ */
+export async function lignesDAccèsPourImport(): Promise<
+  Array<{
+    nom: string
+    email: string | null
+    organisationLibellé: string
+    organisationId: string
+    slug: string
+    identifiant: string
+    actif: boolean
+    tousLesEspaces: boolean
+  }>
+> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('acces')
+
+  const { accès: sourceId } = await sourcesDeDonnées()
+  cacheTag(`liste:${sourceId}`)
+
+  const pages: unknown[] = []
+  let curseur: string | undefined
+  do {
+    const réponse = await notion().dataSources.query({
+      data_source_id: sourceId,
+      page_size: 100,
+      start_cursor: curseur,
+    })
+    pages.push(...réponse.results)
+    curseur = réponse.next_cursor ?? undefined
+  } while (curseur)
+
+  return pages.map((page) => ({
+    nom: lireTitre(page, 'Nom'),
+    email: lireEmail(page, 'Email'),
+    organisationLibellé: lireTexte(page, 'Organisation (libellé)'),
+    organisationId: lireTexte(page, "Identifiant Notion de l'organisation"),
+    slug: lireTexte(page, 'Slug'),
+    identifiant: lireTexte(page, "Identifiant d'accès"),
+    actif: lireCase(page, 'Actif'),
+    tousLesEspaces: lireCase(page, 'Tous les espaces'),
+  }))
+}

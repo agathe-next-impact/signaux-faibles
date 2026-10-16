@@ -35,6 +35,12 @@ const POLITIQUE_DE_CONTENU = [
 ].join('; ')
 
 const nextConfig: NextConfig = {
+  // Les migrations SQL sont lues à l'exécution par `POST /api/veille/migrer` :
+  // sans cette inclusion, Vercel ne les embarquerait pas dans la fonction.
+  outputFileTracingIncludes: {
+    '/api/veille/migrer': ['./drizzle/**/*'],
+  },
+
   // Requis par `use cache`, `cacheLife` et `cacheTag`.
   cacheComponents: true,
 
