@@ -36,10 +36,25 @@ Le parcours client cible (demande par URL, génération sans validation, lettres
 
 | Décision | Avant le |
 |---|---|
-| Prix, période d'essai, contenu de la lettre tronquée | 9 novembre |
+| Prix, période d'essai, contenu de la lettre tronquée | **décidé le 17 octobre 2026**, voir « L'offre » ci-dessous |
 | Premier client en envoi par le portail | 20 novembre |
 | Liste des ruptures bloquantes | 4 décembre |
 | Premier client sans relecture | 18 janvier |
+
+## L'offre (décidée par Agathe le 17 octobre 2026)
+
+| Point | Décision |
+|---|---|
+| Prix | **89 € HT par mois** ou **890 € HT par an**, par organisation. TVA applicable (20 %) : 106,80 € TTC par mois, 1 068 € TTC par an |
+| Ce que couvre l'abonnement | une organisation, **deux veilles**, **trois lecteurs actifs au plus** |
+| Quatrième lecteur | **refusé par le portail** : `POST /api/veille/lecteurs` répond `plafond-atteint` (409), à la création comme à la réactivation. Pour ajouter quelqu'un, on en révoque un autre. L'opérateur global n'entre dans le plafond d'aucun client |
+| Période d'essai | **trois parutions complètes**, à J0, J+7 et J+14 (une parution porte les deux lettres de la semaine) |
+| Après l'essai, sans abonnement | à J+21, la parution est **réduite à « L'essentiel »** de chaque lettre, avec une invitation à s'abonner ; au-delà, l'espace est suspendu |
+| Compte Stripe | créé par Agathe avec Claude au moment de construire le palier 1c, en mode test d'abord |
+
+Les clients historiques (L'Hermitage, Dalious, Konica Minolta, Infralliance) restent hors Stripe : ils sont `abonnee` sans ligne `abonnements`, et le parcours d'essai ne s'applique pas à eux. L'Hermitage compte aujourd'hui deux lecteurs actifs, les trois autres un seul : aucun ne dépasse le plafond.
+
+« L'essentiel » est la rubrique que le contrat de forme borne à huit lignes de 140 caractères (étape 3, point 5, de « Tâche — Lettres de veille »), et que le validateur contrôle déjà (`essentiel-absent`, `essentiel-trop-long`). La lettre tronquée ne demande donc aucune écriture nouvelle : le portail n'en rend que cette rubrique.
 
 ## Risque principal et parade
 

@@ -77,6 +77,37 @@ describe('écriture des lecteurs (palier 1a-bis)', () => {
     })
   })
 
+  it('refuse un quatrième lecteur actif, et une réactivation qui le créerait', async () => {
+    for (const n of [1, 2, 3]) {
+      expect(await créerLecteur({ slug: 'hermitage', nom: `L${n}`, email: `l${n}@hermitage.fr` }, db)).toEqual({ sorte: 'créé' })
+    }
+    expect(await créerLecteur({ slug: 'hermitage', nom: 'L4', email: 'l4@hermitage.fr' }, db)).toEqual({
+      sorte: 'plafond-atteint',
+    })
+    // Révoquer libère une place, que la création reprend.
+    await changerActivation({ slug: 'hermitage', email: 'l1@hermitage.fr', actif: false }, db)
+    expect(await créerLecteur({ slug: 'hermitage', nom: 'L4', email: 'l4@hermitage.fr' }, db)).toEqual({ sorte: 'créé' })
+    // Et la place est de nouveau prise : réactiver le premier dépasserait le plafond.
+    expect(await changerActivation({ slug: 'hermitage', email: 'l1@hermitage.fr', actif: true }, db)).toEqual({
+      sorte: 'plafond-atteint',
+    })
+  })
+
+  it('l’opérateur global ne compte dans le plafond d’aucun client', async () => {
+    await db.insert(lecteurs).values({
+      organisationId: null,
+      nom: 'Agathe',
+      email: 'agathe@signauxfaibles.io',
+      identifiantAcces: tirerIdentifiantDAccès(),
+      actif: true,
+      tousLesEspaces: true,
+      rôle: 'operateur',
+    })
+    for (const n of [1, 2, 3]) {
+      expect(await créerLecteur({ slug: 'hermitage', nom: `L${n}`, email: `l${n}@hermitage.fr` }, db)).toEqual({ sorte: 'créé' })
+    }
+  })
+
   it('ne révoque pas chez un autre client que celui désigné', async () => {
     await créerLecteur({ slug: 'hermitage', nom: 'Claire', email: 'claire@hermitage.fr' }, db)
     expect(await changerActivation({ slug: 'autre', email: 'claire@hermitage.fr', actif: false }, db)).toEqual({

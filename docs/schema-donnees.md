@@ -163,7 +163,7 @@ Copie de Stripe, écrite par son webhook seulement.
 
 ## Le parcours, calculé et non stocké
 
-`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, J+7, J+14, J+21 par semaines ISO, `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de J+21 sans abonnement. Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
+`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, puis J+7 et J+14 par semaines ISO, trois parutions complètes qui forment l'essai ; à J+21 sans abonnement, une parution réduite à « L'essentiel » de chaque lettre ; `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de J+21 sans abonnement (offre décidée le 17 octobre 2026, `docs/decision-portail-moteur.md`). Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
 
 ## Migration depuis Notion (palier 1)
 
