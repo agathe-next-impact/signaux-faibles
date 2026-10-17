@@ -141,8 +141,10 @@ Les lire avant toute session.
   (`creer`, `revoquer`, `reactiver`, par slug et adresse), qui refuse tant que
   `SOURCE_ACCES` n'est pas `postgres` — avant, Notion fait foi. L'identifiant
   d'accès est tiré par le portail et ne sort jamais ; le lien part ensuite par
-  `/api/acces/ouvrir`. La bascule demande donc, le même jour, de poser
-  `SOURCE_ACCES=postgres` **et** de faire passer la tâche Cowork qui tient la
+  `/api/acces/ouvrir`. **Trois lecteurs actifs au plus par organisation** (offre
+  du 17 octobre 2026) : au-delà, la route répond `plafond-atteint`, à la
+  création comme à la réactivation ; l'opérateur global n'y compte pas.
+  La bascule demande, le même jour, de poser `SOURCE_ACCES=postgres` **et** de faire passer la tâche Cowork qui tient la
   base Accès (§1.3 du balayage) par cette route. Le contrôle du soir rend la
   source en cours et l'état de la base (`accès` dans sa réponse) ; une base
   injoignable en mode `postgres` est un défaut, notifié

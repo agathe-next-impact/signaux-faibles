@@ -46,6 +46,7 @@ const STATUT: Record<RésultatÉcriture['sorte'], number> = {
   'organisation-inconnue': 404,
   'lecteur-inconnu': 404,
   'déjà-inscrit': 409,
+  'plafond-atteint': 409,
 }
 
 export async function POST(requête: NextRequest): Promise<NextResponse> {

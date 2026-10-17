@@ -23,9 +23,25 @@ import { lecteurs, organisations } from '@/lib/base/schema'
 
 export type RésultatÉcriture =
   | { readonly sorte: 'créé' | 'révoqué' | 'réactivé' | 'inchangé' }
-  | { readonly sorte: 'organisation-inconnue' | 'lecteur-inconnu' | 'déjà-inscrit' }
+  | { readonly sorte: 'organisation-inconnue' | 'lecteur-inconnu' | 'déjà-inscrit' | 'plafond-atteint' }
+
+/**
+ * Trois lecteurs actifs au plus par organisation : c'est l'offre (décision du
+ * 17 octobre 2026, `docs/decision-portail-moteur.md`). Pour en ajouter un, on en
+ * révoque un autre. L'opérateur global n'est rattaché à aucune organisation et
+ * n'entre donc pas dans le compte.
+ */
+export const LECTEURS_ACTIFS_MAX = 3
 
 const adresse = (email: string) => email.trim().toLowerCase()
+
+async function lecteursActifs(db: Base, organisationId: string): Promise<number> {
+  const [ligne] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(lecteurs)
+    .where(and(eq(lecteurs.organisationId, organisationId), eq(lecteurs.actif, true)))
+  return Number(ligne?.n ?? 0)
+}
 
 /** 32 hexadécimaux, la forme de `openssl rand -hex 16`. */
 export function tirerIdentifiantDAccès(): string {
@@ -60,6 +76,7 @@ export async function créerLecteur(
       )
       .limit(1)
     if (existant) return { sorte: 'déjà-inscrit' }
+    if ((await lecteursActifs(db, organisation.id)) >= LECTEURS_ACTIFS_MAX) return { sorte: 'plafond-atteint' }
 
     await db.insert(lecteurs).values({
       organisationId: organisation.id,
@@ -84,7 +101,7 @@ export async function changerActivation(
 ): Promise<RésultatÉcriture> {
   return protéger('changement d’activation d’un lecteur', async () => {
     const [ligne] = await db
-      .select({ id: lecteurs.id, actif: lecteurs.actif })
+      .select({ id: lecteurs.id, actif: lecteurs.actif, organisationId: lecteurs.organisationId })
       .from(lecteurs)
       .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
       .where(
@@ -93,6 +110,9 @@ export async function changerActivation(
       .limit(1)
     if (!ligne) return { sorte: 'lecteur-inconnu' }
     if (ligne.actif === demande.actif) return { sorte: 'inchangé' }
+    if (demande.actif && ligne.organisationId && (await lecteursActifs(db, ligne.organisationId)) >= LECTEURS_ACTIFS_MAX) {
+      return { sorte: 'plafond-atteint' }
+    }
 
     await db.update(lecteurs).set({ actif: demande.actif }).where(eq(lecteurs.id, ligne.id))
     return { sorte: demande.actif ? 'réactivé' : 'révoqué' }
