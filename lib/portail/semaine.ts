@@ -96,8 +96,9 @@ export async function dernièresNotes(
 export function ongletsDe(
   slug: string,
   comptes: { lettres: number; recommandations: number; archives: number },
+  lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
 ) {
-  return [
+  const tous = [
     { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true },
     { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres },
     { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes' },
@@ -120,4 +121,10 @@ export function ongletsDe(
     // « Reco. » : un synonyme ferait croire à une autre destination.
     { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.' },
   ]
+  // Hors lecture complète (fin d'essai, palier 1c), le rail ne montre que ce qui
+  // reste ouvert : un onglet qui renverrait aussitôt à la vue d'ensemble serait
+  // une promesse non tenue.
+  if (lecture === 'essentiel') return tous.slice(0, 2)
+  if (lecture === 'aucune') return tous.slice(0, 1)
+  return tous
 }

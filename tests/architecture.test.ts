@@ -440,6 +440,13 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     }
   })
 
+  it('hors lecture complète, le rail ne montre que ce qui reste ouvert', async () => {
+    const { ongletsDe } = await import('@/lib/portail/semaine')
+    const comptes = { lettres: 2, recommandations: 0, archives: 1 }
+    expect(ongletsDe('client', comptes, 'essentiel').map((o) => o.href)).toEqual(['/client', '/client/lettres'])
+    expect(ongletsDe('client', comptes, 'aucune').map((o) => o.href)).toEqual(['/client'])
+  })
+
   it('les deux écrans scindés portent chacun sa page de détail', () => {
     for (const détail of [
       join('axes', '[axe]'),
@@ -475,6 +482,56 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
  * demandeur avait le droit de le voir ; et plusieurs journaux portaient
  * l'adresse d'un lecteur en clair. Ni l'un ni l'autre ne doit revenir.
  */
+/**
+ * La fin d'essai (palier 1c) ne vaut que si chaque écran obéit au droit de
+ * lecture. Les écrans qui assemblent plusieurs lettres (axes, acteurs,
+ * recommandations, archives, périmètre) n'ont pas de version tronquée : ils
+ * exigent la lecture complète. Seuls la vue d'ensemble et les lettres restent
+ * ouverts hors lecture complète, et ils lisent le droit eux-mêmes.
+ */
+describe('chaque écran de l’espace obéit au droit de lecture', () => {
+  const racine = join(process.cwd(), 'app', '[slug]')
+  const pages: string[] = []
+  const parcourir = (dossier: string) => {
+    for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+      const chemin = join(dossier, entrée.name)
+      if (entrée.isDirectory()) parcourir(chemin)
+      else if (entrée.name === 'page.tsx') pages.push(chemin)
+    }
+  }
+  parcourir(racine)
+  const ouvertes = ['page.tsx', join('lettres', 'page.tsx'), join('lettres', '[edition]', 'page.tsx')]
+
+  it('les écrans de contenu assemblé exigent la lecture complète', () => {
+    const fermées = pages.filter((p) => !ouvertes.includes(p.slice(racine.length + 1)))
+    expect(fermées.length).toBeGreaterThanOrEqual(8)
+    for (const page of fermées) {
+      const source = readFileSync(page, 'utf8')
+      expect(source, page).toContain('exigerLectureComplète(slug)')
+      expect(source, page).not.toContain('exigerAccès(')
+    }
+  })
+
+  it('la vue d’ensemble et les lettres lisent le droit de lecture', () => {
+    for (const ouverte of ouvertes) {
+      const source = readFileSync(join(racine, ouverte), 'utf8')
+      expect(source, ouverte).toContain('exigerLecture(slug)')
+      expect(source, ouverte).not.toContain('exigerAccès(')
+    }
+  })
+
+  it('la lettre tronque le document avant de le rendre', () => {
+    const source = readFileSync(join(process.cwd(), 'components', 'note.tsx'), 'utf8')
+    expect(source).toContain('tronquerÀLEssentiel(construireDocument(blocs))')
+  })
+
+  it('le proxy des médias ne sert rien hors lecture complète, avant toute lecture Notion', () => {
+    const source = readFileSync(join(process.cwd(), 'app', 'api', 'media', '[block_id]', 'route.ts'), 'utf8')
+    expect(source.indexOf('lectureDeLEspace(')).toBeGreaterThan(-1)
+    expect(source.indexOf('lectureDeLEspace(')).toBeLessThan(source.indexOf('listerÉditionsPubliées('))
+  })
+})
+
 describe('le proxy des médias vérifie l’appartenance avant de lire Notion', () => {
   it('consulte la liste des éditions de l’organisation avant de résoudre le bloc', () => {
     const source = readFileSync(

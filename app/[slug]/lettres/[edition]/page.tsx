@@ -1,5 +1,5 @@
-import { notFound } from 'next/navigation'
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { notFound, redirect } from 'next/navigation'
+import { exigerLecture } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Note } from '@/components/note'
 import { lettresPubliées, semainesPubliées } from '@/lib/portail/semaine'
@@ -18,7 +18,8 @@ export default async function UneLettre({
   params: Promise<{ slug: string; edition: string }>
 }) {
   const { slug, edition: pageId } = await params
-  const accès = await exigerAccès(slug)
+  const { accès, lecture } = await exigerLecture(slug)
+  if (lecture === 'aucune') redirect(`/${accès.slug}`)
 
   const semaines = await semainesPubliées(accès.organisationId)
   const lettre = lettresPubliées(semaines).find(({ édition }) => édition.pageId === pageId)
@@ -38,7 +39,7 @@ export default async function UneLettre({
       </p>
 
       <div className="mt-8">
-        <Note édition={lettre.édition} />
+        <Note édition={lettre.édition} lecture={lecture} />
       </div>
     </>
   )

@@ -164,7 +164,14 @@ Les lire avant toute session.
   construction (`tronquerÀLEssentiel`, `lib/domaine/troncature.ts`), jamais
   masquée à l'affichage : le reste de la lettre ne doit pas atteindre le HTML.
   Elle ne garde que les paragraphes et puces de « L'essentiel », huit lignes au
-  plus, ce que mesure le validateur
+  plus, ce que mesure le validateur. **Droit de lecture** : `lectureDeLEspace`
+  (`lib/portail/lecture.ts`) le calcule, complet dans le doute (base absente ou
+  injoignable, organisation hors Postgres, opérateur). Les écrans de contenu
+  assemblé (axes, acteurs, recommandations, archives, périmètre) appellent
+  `exigerLectureComplète` et renvoient sinon à la vue d'ensemble, qui devient
+  `FinDEssai` ; les lettres restent ouvertes en `essentiel` (sans action de la
+  semaine ni dossiers, propriétés hors du corps), le rail se réduit, le proxy
+  des médias ne sert rien. `tests/architecture.test.ts` le vérifie écran par écran
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

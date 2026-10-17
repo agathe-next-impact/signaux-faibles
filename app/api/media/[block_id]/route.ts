@@ -3,6 +3,7 @@ import { identifiantDeLaSession } from '@/lib/auth/session'
 import { lireAccèsParIdentifiant } from '@/lib/auth/source-acces'
 import { lireMédiaDeBloc, listerÉditionsPubliées } from '@/lib/notion/editions'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
+import { lectureDeLEspace } from '@/lib/portail/lecture'
 
 /**
  * Le proxy des médias.
@@ -43,6 +44,13 @@ export async function GET(
   if (!accès || !accès.actif) return INTROUVABLE
   // Sans clé de cloisonnement (l'opérateur global), aucune édition n'est à lui.
   if (accès.organisationId.length === 0) return INTROUVABLE
+
+  // Fin d'essai (palier 1c) : la lettre tronquée ne porte aucune image ; le
+  // proxy n'en sert donc qu'en lecture complète. Postgres seulement, avant
+  // toute lecture Notion.
+  if ((await lectureDeLEspace({ organisationId: accès.organisationId, enOpérateur: false })).lecture !== 'complète') {
+    return INTROUVABLE
+  }
 
   const éditions = await listerÉditionsPubliées(accès.organisationId)
   const autorisé = éditions.some(

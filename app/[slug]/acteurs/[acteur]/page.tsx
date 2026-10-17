@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { Texte } from '@/components/document'
@@ -31,7 +31,7 @@ export default async function UnActeur({
   params: Promise<{ slug: string; acteur: string }>
 }) {
   const { slug, acteur: segment } = await params
-  const accès = await exigerAccès(slug)
+  const accès = await exigerLectureComplète(slug)
 
   const semaines = await semainesPubliées(accès.organisationId)
   const suivi = suivreLesDossiers(semaines).find((dossier) => enSlug(dossier.nom) === segment)

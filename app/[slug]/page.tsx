@@ -1,4 +1,5 @@
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLecture } from '@/lib/auth/appartenance'
+import { FinDEssai } from '@/components/fin-d-essai'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
@@ -38,7 +39,11 @@ export default async function VueDEnsemble({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const { accès, lecture } = await exigerLecture(slug)
+
+  // Fin d'essai (palier 1c) : le tableau de bord assemble des passages de
+  // plusieurs lettres, il n'est donc montré qu'en lecture complète.
+  if (lecture !== 'complète') return <FinDEssai slug={accès.slug} lecture={lecture} />
 
   const semaines = await semainesPubliées(accès.organisationId)
   const courante = semaines[0]

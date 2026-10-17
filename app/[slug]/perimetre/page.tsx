@@ -1,4 +1,4 @@
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { RenduBlocs } from '@/components/document'
 import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
@@ -27,7 +27,7 @@ import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/porta
  */
 export default async function Périmètre({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const accès = await exigerLectureComplète(slug)
 
   const semaines = await semainesPubliées(accès.organisationId)
   const notes = await dernièresNotes(semaines)

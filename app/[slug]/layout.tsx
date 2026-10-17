@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLecture } from '@/lib/auth/appartenance'
 import { Coquille } from '@/components/coquille'
 import { ongletsDe, semainesPubliées } from '@/lib/portail/semaine'
 
@@ -39,7 +39,7 @@ async function Garde({
   children: React.ReactNode
 }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const { accès, lecture } = await exigerLecture(slug)
 
   // Les compteurs du rail se lisent dans la requête de liste, déjà nécessaire :
   // aucun corps de note n'est chargé pour les afficher.
@@ -79,7 +79,7 @@ async function Garde({
         lettres: semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
         recommandations,
         archives: semaines.length,
-      })}
+      }, lecture)}
     >
       {children}
     </Coquille>
