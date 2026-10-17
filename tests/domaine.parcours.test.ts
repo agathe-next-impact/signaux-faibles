@@ -42,7 +42,7 @@ describe('étapeDuParcours', () => {
     expect(étapeDuParcours(entrée('2026-10-12'))).toEqual({ étape: 'essai', parution: 2 })
     expect(étapeDuParcours(entrée('2026-10-19'))).toEqual({ étape: 'essai', parution: 3 })
     expect(étapeDuParcours(entrée('2026-10-26'))).toEqual({ étape: 'tronquee' })
-    expect(étapeDuParcours(entrée('2026-11-02'))).toEqual({ étape: 'suspendue' })
+    expect(étapeDuParcours(entrée('2026-11-02'))).toEqual({ étape: 'suspendue', manuelle: false })
   })
 
   it('l’activation un vendredi soir compte dans la semaine de ce vendredi', () => {
@@ -75,7 +75,7 @@ describe('étapeDuParcours', () => {
       étapeDuParcours(
         entrée('2027-03-01', { organisation: { état: 'abonnee', activéeLe: LUNDI_5_OCTOBRE }, abonnement: { état: 'canceled' } }),
       ),
-    ).toEqual({ étape: 'suspendue' })
+    ).toEqual({ étape: 'suspendue', manuelle: false })
   })
 
   it('un client historique, abonné sans ligne Stripe, reste abonné', () => {
@@ -99,6 +99,7 @@ describe('étapeDuParcours', () => {
   it('une suspension posée à la main est respectée sans abonnement', () => {
     expect(étapeDuParcours(entrée('2026-10-05', { organisation: { état: 'suspendue', activéeLe: LUNDI_5_OCTOBRE } }))).toEqual({
       étape: 'suspendue',
+      manuelle: true,
     })
   })
 })
@@ -108,6 +109,6 @@ describe('lectureAutorisée', () => {
     expect(lectureAutorisée({ étape: 'essai', parution: 2 })).toBe('complète')
     expect(lectureAutorisée({ étape: 'abonnee', source: 'stripe', paiementEnRetard: false })).toBe('complète')
     expect(lectureAutorisée({ étape: 'tronquee' })).toBe('essentiel')
-    expect(lectureAutorisée({ étape: 'suspendue' })).toBe('aucune')
+    expect(lectureAutorisée({ étape: 'suspendue', manuelle: false })).toBe('aucune')
   })
 })

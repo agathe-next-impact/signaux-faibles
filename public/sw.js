@@ -13,15 +13,27 @@
  * cache vit sur l'appareil de la personne. Dès qu'une navigation est renvoyée
  * vers « recevoir mon lien » — accès révoqué, cookie expiré —, tout le cache
  * des pages est purgé. Sans cela, une révocation laisserait les éditions
- * lisibles hors ligne.
+ * lisibles hors ligne. La fin d'essai (palier 1c) purge aussi : la vue
+ * d'ensemble et la lettre tronquée envoient « purger » au chargement.
+ *
+ * **Rien d'autre que les fichiers statiques n'est servi depuis le cache en
+ * ligne** (v2, 17 octobre 2026). Jusqu'en v1, toute requête qui n'était pas une
+ * navigation passait en « cache d'abord » : les charges RSC des navigations
+ * côté client (`?_rsc=…`) et les images du proxy `/api/media`. Un prospect dont
+ * l'essai était terminé aurait relu, en ligne, une lettre complète ouverte
+ * pendant l'essai, servie par le cache sans que le serveur soit consulté.
+ * Le passage en v2 vide les caches de la v1 à l'activation.
  */
-const VERSION = 'v1'
+const VERSION = 'v2'
 const CACHE_PAGES = `sf-pages-${VERSION}`
 const CACHE_ACTIFS = `sf-actifs-${VERSION}`
 const HORS_LIGNE = '/hors-ligne'
 
 /** Chemins qui ne doivent jamais être mis en cache. */
-const JAMAIS = ['/api/webhooks/', '/acces/', '/quitter']
+const JAMAIS = ['/api/', '/acces/', '/quitter']
+
+/** Ressources publiques et stables de l'application installable. */
+const STATIQUES = ['/icone-', '/icon.svg', '/manifest.webmanifest']
 
 self.addEventListener('install', (événement) => {
   événement.waitUntil(
@@ -48,6 +60,7 @@ self.addEventListener('activate', (événement) => {
 /** Purge le cache des pages : appelée à la révocation, et par « quitter ». */
 async function purgerLesPages() {
   await caches.delete(CACHE_PAGES)
+  await caches.delete(CACHE_ACTIFS)
   const cache = await caches.open(CACHE_PAGES)
   await cache.addAll([HORS_LIGNE])
 }
@@ -63,6 +76,9 @@ self.addEventListener('fetch', (événement) => {
   const url = new URL(requête.url)
   if (url.origin !== self.location.origin) return
   if (JAMAIS.some((chemin) => url.pathname.startsWith(chemin))) return
+  // Les charges RSC d'une navigation côté client portent le contenu d'une page :
+  // elles suivent le réseau, toujours, comme la page elle-même.
+  if (requête.headers.has('RSC') || url.searchParams.has('_rsc')) return
 
   // 1. Fichiers versionnés : cache d'abord.
   if (url.pathname.startsWith('/_next/static')) {
@@ -111,7 +127,9 @@ self.addEventListener('fetch', (événement) => {
     return
   }
 
-  // 3. Le reste, dont les médias : cache d'abord, réseau ensuite.
+  // 3. Les ressources publiques de l'application installable : cache d'abord.
+  //    Tout le reste suit le réseau, sans cache.
+  if (!STATIQUES.some((chemin) => url.pathname.startsWith(chemin))) return
   événement.respondWith(
     caches.match(requête).then(
       (enCache) =>

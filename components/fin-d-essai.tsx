@@ -1,4 +1,5 @@
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
+import { PurgeHorsLigne } from '@/components/purge-hors-ligne'
 import { ADRESSE_D_ABONNEMENT, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 
 /**
@@ -9,11 +10,43 @@ import { ADRESSE_D_ABONNEMENT, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/dom
  *   · `essentiel` (la semaine qui suit l'essai) : les lettres restent ouvertes,
  *     réduites à « L'essentiel » ;
  *   · `aucune` (au-delà) : l'espace est suspendu, les lettres sont conservées.
+ * Une suspension posée par l'opérateur (`suspenduAlaMain`) n'est pas une fin
+ * d'essai : elle peut frapper un abonné, à qui proposer de s'abonner serait
+ * absurde. Elle a son propre texte, sans prix.
  */
-export function FinDEssai({ slug, lecture }: { slug: string; lecture: 'essentiel' | 'aucune' }) {
+export function FinDEssai({
+  slug,
+  lecture,
+  suspenduAlaMain,
+}: {
+  slug: string
+  lecture: 'essentiel' | 'aucune'
+  suspenduAlaMain: boolean
+}) {
   const prix = `${PRIX_MENSUEL_HT} € HT par mois, ou ${PRIX_ANNUEL_HT} € HT par an`
+  if (suspenduAlaMain) {
+    return (
+      <>
+        <PurgeHorsLigne />
+        <EntêteÉcran surtitre="veille personnalisée" titre="Votre espace est suspendu" />
+        <div className="mt-8 flex max-w-prose flex-col gap-6">
+          <Panneau ton="rose">
+            <p className="text-encre">
+              Votre espace est momentanément suspendu. Vos lettres et vos archives sont conservées.
+              Pour en savoir plus, écrivez à{' '}
+              <a className="underline" href={`mailto:${ADRESSE_D_ABONNEMENT}`}>
+                {ADRESSE_D_ABONNEMENT}
+              </a>
+              .
+            </p>
+          </Panneau>
+        </div>
+      </>
+    )
+  }
   return (
     <>
+      <PurgeHorsLigne />
       <EntêteÉcran
         surtitre="veille personnalisée"
         titre={lecture === 'essentiel' ? 'Votre essai est terminé' : 'Votre espace est suspendu'}

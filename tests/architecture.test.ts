@@ -520,6 +520,13 @@ describe('chaque écran de l’espace obéit au droit de lecture', () => {
     }
   })
 
+  it('le service worker ne sert jamais de cache en ligne pour les charges RSC ni l’API', () => {
+    const sw = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8')
+    expect(sw).toContain("const JAMAIS = ['/api/'")
+    expect(sw).toContain("requête.headers.has('RSC') || url.searchParams.has('_rsc')")
+    expect(sw).not.toContain("const VERSION = 'v1'")
+  })
+
   it('la lettre tronque le document avant de le rendre', () => {
     const source = readFileSync(join(process.cwd(), 'components', 'note.tsx'), 'utf8')
     expect(source).toContain('tronquerÀLEssentiel(construireDocument(blocs))')

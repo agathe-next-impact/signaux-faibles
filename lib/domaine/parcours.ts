@@ -44,8 +44,11 @@ export type Étape =
    * reçoivent leurs lettres comme avant (`docs/schema-donnees.md`).
    */
   | { readonly étape: 'abonnee'; readonly source: 'stripe' | 'hors-stripe'; readonly paiementEnRetard: boolean }
-  /** Au-delà de J+21 sans abonnement, ou suspendue à la main (qui prime sur Stripe). */
-  | { readonly étape: 'suspendue' }
+  /**
+   * Au-delà de J+21 sans abonnement (`manuelle: false`), ou suspendue à la main
+   * par l'opérateur (`manuelle: true`, qui prime sur Stripe).
+   */
+  | { readonly étape: 'suspendue'; readonly manuelle: boolean }
   /** Pas encore dans le parcours (demande, génération), écartée, ou de test. */
   | { readonly étape: 'hors-parcours'; readonly raison: string }
 
@@ -90,7 +93,7 @@ export function étapeDuParcours({ organisation, abonnement, aujourdHui }: Entr�
   // Les décisions de l'opérateur priment sur Stripe : une organisation écartée
   // ou suspendue à la main le reste, qu'elle paie ou non. Une organisation de
   // test sort du parcours.
-  if (organisation.état === 'suspendue') return { étape: 'suspendue' }
+  if (organisation.état === 'suspendue') return { étape: 'suspendue', manuelle: true }
   if (organisation.état === 'ecartee') return { étape: 'hors-parcours', raison: 'écartée' }
   if (organisation.état === 'test') return { étape: 'hors-parcours', raison: 'organisation de test' }
 
@@ -129,7 +132,7 @@ export function étapeDuParcours({ organisation, abonnement, aujourdHui }: Entr�
   if (semaines < 0) return { étape: 'hors-parcours', raison: 'activation dans le futur' }
   if (semaines < PARUTIONS_D_ESSAI) return { étape: 'essai', parution: (semaines + 1) as 1 | 2 | 3 }
   if (semaines === PARUTIONS_D_ESSAI) return { étape: 'tronquee' }
-  return { étape: 'suspendue' }
+  return { étape: 'suspendue', manuelle: false }
 }
 
 /**

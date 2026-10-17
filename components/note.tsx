@@ -4,6 +4,7 @@ import { lireBlocsDePage, type Édition } from '@/lib/notion/editions'
 import { RenduDocument } from '@/components/document'
 import { EntêteÉdition } from '@/components/entete-edition'
 import { PanneauDossiers } from '@/components/panneau-dossiers'
+import { PurgeHorsLigne } from '@/components/purge-hors-ligne'
 
 /**
  * Une note complète : son cartouche, son corps, ses dossiers.
@@ -14,7 +15,7 @@ import { PanneauDossiers } from '@/components/panneau-dossiers'
  */
 export async function Note({
   édition,
-  lecture = 'complète',
+  lecture,
 }: {
   édition: Édition
   /**
@@ -22,8 +23,11 @@ export async function Note({
    * le rendu, et l'action de la semaine et les dossiers suivis, qui viennent des
    * propriétés de l'édition et non du corps, ne sont pas rendus. Rien du reste
    * de la lettre n'atteint donc le HTML ni les props sérialisées.
+   *
+   * Obligatoire, sans valeur par défaut : un appelant qui l'oublierait ne doit
+   * pas servir la lettre entière par mégarde.
    */
-  lecture?: 'complète' | 'essentiel'
+  lecture: 'complète' | 'essentiel'
 }) {
   const blocs = await lireBlocsDePage(édition.pageId)
   const document = lecture === 'essentiel' ? tronquerÀLEssentiel(construireDocument(blocs)) : construireDocument(blocs)
@@ -31,11 +35,13 @@ export async function Note({
   if (lecture === 'essentiel') {
     return (
       <section className="flex flex-col gap-6">
+        <PurgeHorsLigne />
         <EntêteÉdition édition={édition} />
         <RenduDocument document={document} />
         <p className="border border-gris-ligne bg-fond-rose p-4 text-encre">
-          Votre essai est terminé : cette lettre est réduite à sa rubrique « L’essentiel ». La lettre
-          complète est réservée aux abonnés.
+          {document.rubriques.length === 0
+            ? 'Votre essai est terminé. Cette lettre ne porte pas de rubrique « L’essentiel » : elle est réservée aux abonnés.'
+            : 'Votre essai est terminé : cette lettre est réduite à sa rubrique « L’essentiel ». La lettre complète est réservée aux abonnés.'}
         </p>
       </section>
     )

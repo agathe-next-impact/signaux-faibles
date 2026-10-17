@@ -4,9 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * Le droit de lecture d'un espace (palier 1c) : restreint seulement sur une
  * étape calculée à partir de données lues ; complet dans le doute.
  */
-const base = vi.hoisted(() => ({ lireEntréeDuParcours: vi.fn(), baseConfigurée: vi.fn() }))
+const base = vi.hoisted(() => ({ lireEntréeDuParcours: vi.fn(), baseConfigurée: vi.fn(), sourceAccès: vi.fn() }))
 vi.mock('@/lib/base/parcours', () => ({ lireEntréeDuParcours: base.lireEntréeDuParcours }))
 vi.mock('@/lib/base/client', () => ({ baseConfigurée: base.baseConfigurée }))
+vi.mock('@/lib/auth/source-acces', () => ({ sourceAccès: base.sourceAccès }))
+// Hors d'un rendu React, `cache` ne mémoïse pas : chaque appel relit, ce que les tests veulent.
+vi.mock('react', async (original) => ({ ...(await original<typeof import('react')>()), cache: <T,>(f: T) => f }))
 
 const { lectureDeLEspace } = await import('@/lib/portail/lecture')
 
@@ -16,6 +19,7 @@ const ACTIVÉE_IL_Y_A = (semaines: number) => new Date(Date.now() - semaines * 7
 beforeEach(() => {
   vi.resetAllMocks()
   base.baseConfigurée.mockReturnValue(true)
+  base.sourceAccès.mockReturnValue('double')
   vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
 afterEach(() => vi.restoreAllMocks())
@@ -54,6 +58,21 @@ describe('lectureDeLEspace', () => {
 
     base.lireEntréeDuParcours.mockResolvedValue(null)
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('complète')
+  })
+
+  it('en mode notion, Postgres n’est jamais ouvert', async () => {
+    base.sourceAccès.mockReturnValue('notion')
+    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null })
+    expect(base.lireEntréeDuParcours).not.toHaveBeenCalled()
+  })
+
+  it('une base trop lente ne fait pas attendre la page', async () => {
+    vi.useFakeTimers()
+    base.lireEntréeDuParcours.mockReturnValue(new Promise(() => {}))
+    const promesse = lectureDeLEspace(ESPACE)
+    await vi.advanceTimersByTimeAsync(450)
+    expect(await promesse).toEqual({ lecture: 'complète', étape: null })
+    vi.useRealTimers()
   })
 
   it('l’opérateur lit toujours tout, sans même interroger la base', async () => {

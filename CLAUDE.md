@@ -171,7 +171,11 @@ Les lire avant toute session.
   `exigerLectureComplète` et renvoient sinon à la vue d'ensemble, qui devient
   `FinDEssai` ; les lettres restent ouvertes en `essentiel` (sans action de la
   semaine ni dossiers, propriétés hors du corps), le rail se réduit, le proxy
-  des médias ne sert rien. `tests/architecture.test.ts` le vérifie écran par écran
+  des médias ne sert rien. `tests/architecture.test.ts` le vérifie écran par écran.
+  La lecture n'ouvre pas Postgres en mode `notion`, est bornée à 400 ms et
+  mémoïsée par requête. Le service worker (v2) ne sert plus en ligne depuis son
+  cache que les fichiers statiques : ni charge RSC (`?_rsc`), ni `/api/` ; la
+  fin d'essai purge le cache hors ligne (`PurgeHorsLigne`)
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

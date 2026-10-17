@@ -90,7 +90,12 @@ export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé
  */
 export async function exigerLecture(slugDemandé: string): Promise<{ accès: AccèsAccordé } & Lecture> {
   const accès = await exigerAccès(slugDemandé)
-  return { accès, ...(await lectureDeLEspace(accès)) }
+  // La ligne Notion de l'opérateur porte le slug d'un client : chez ce client,
+  // `enOpérateur` vaut faux. C'est le privilège qui compte, pas la visite.
+  return {
+    accès,
+    ...(await lectureDeLEspace({ organisationId: accès.organisationId, enOpérateur: accès.enOpérateur || accès.tousLesEspaces })),
+  }
 }
 
 /**

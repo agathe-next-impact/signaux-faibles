@@ -38,7 +38,7 @@ export default async function UneSemaine({
 
       <div className="mt-8 flex flex-col gap-12">
         {semaine.éditions.map((édition) => (
-          <Note key={édition.pageId} édition={édition} />
+          <Note key={édition.pageId} édition={édition} lecture="complète" />
         ))}
       </div>
     </>
