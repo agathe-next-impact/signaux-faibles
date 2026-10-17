@@ -66,6 +66,7 @@ describe('paramètresDePaiement', () => {
   it('pose l’organisation dans les métadonnées de l’abonnement, celles que lit le webhook', () => {
     const p = paramètresDePaiement({ configuration, formule: 'annuelle', organisationId: ORG, slug: 'konica', clientStripe: null, email: 'a@b.fr' })
     expect(p.mode).toBe('subscription')
+    expect(p.managed_payments).toEqual({ enabled: false })
     expect(p.subscription_data?.metadata).toEqual({ organisation_id: ORG, slug: 'konica' })
     expect(p.line_items).toEqual([{ price: 'price_annuel', quantity: 1 }])
     expect(p.subscription_data?.default_tax_rates).toEqual(['txr_20'])

@@ -119,6 +119,12 @@ export function paramètresDePaiement(entrée: {
 
   return {
     mode: 'subscription',
+    // Next Impact vend et facture, avec sa TVA (décision du 17 octobre 2026).
+    // Un compte Stripe créé en 2026 active par défaut Managed Payments, où Stripe
+    // (Link) devient le vendeur officiel et refuse tout taux de TVA imposé : la
+    // première page de paiement de recette a échoué ainsi. Le désactiver ici,
+    // à chaque session, rend le paiement indépendant de ce réglage du compte.
+    managed_payments: { enabled: false },
     locale: 'fr',
     line_items: [{ price: configuration.prix[formule], quantity: 1 }],
     subscription_data: {
