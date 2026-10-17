@@ -148,6 +148,17 @@ Les lire avant toute session.
   base Accès (§1.3 du balayage) par cette route. Le contrôle du soir rend la
   source en cours et l'état de la base (`accès` dans sa réponse) ; une base
   injoignable en mode `postgres` est un défaut, notifié
+- **Abonnement, palier 1c** (offre du 17 octobre 2026, `docs/decision-portail-moteur.md`) :
+  Stripe est la seule source de vérité ; la table `abonnements` en est la copie,
+  écrite par le seul webhook `app/api/webhooks/stripe` (signature vérifiée par le
+  SDK `stripe` 23, `STRIPE_WEBHOOK_SECRET` lu dans `process.env`, doublons et
+  désordre absorbés par `dernier_événement` et `événement_le`). L'étape du
+  parcours n'est jamais stockée : `étapeDuParcours` (`lib/domaine/parcours.ts`)
+  la calcule de la date d'activation, de l'état de l'organisation et de l'état
+  Stripe (essai J0, J+7, J+14 ; « L'essentiel » seul à J+21 ; suspension
+  au-delà ; `past_due` reste abonné). La lettre tronquée est retirée à la
+  construction (`tronquerÀLEssentiel`, `lib/domaine/troncature.ts`), jamais
+  masquée à l'affichage : le reste de la lettre ne doit pas atteindre le HTML
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

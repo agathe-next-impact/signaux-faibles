@@ -32,3 +32,17 @@ export function sansAccent(texte: string): string {
 export function estTitreDeCadrage(titre: string): boolean {
   return /\bcadrage\b/.test(sansAccent(titre))
 }
+
+/**
+ * Reconnaît la rubrique « L'essentiel » à son titre : « L'essentiel »,
+ * « L’essentiel », « Essentiel », « L'essentiel de la semaine ».
+ *
+ * Deux lecteurs s'appuient sur elle et doivent la reconnaître de la même façon :
+ * le validateur, qui borne la rubrique à huit lignes avant l'envoi, et la lettre
+ * tronquée de l'essai (offre du 17 octobre 2026), qui n'en montre rien d'autre.
+ * Si l'un acceptait un titre que l'autre refuse, une lettre conforme au
+ * validateur pourrait arriver vide au prospect.
+ */
+export function estTitreDeLEssentiel(titre: string): boolean {
+  return /^(l')?essentiel\b/.test(sansAccent(titre).trim())
+}

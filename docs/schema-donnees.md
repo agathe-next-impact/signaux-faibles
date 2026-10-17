@@ -145,7 +145,12 @@ Copie de Stripe, écrite par son webhook seulement.
 | `client_stripe`, `abonnement_stripe` | text | |
 | `état` | text | tel que Stripe le donne (`trialing`, `active`, `past_due`, `canceled`…) |
 | `période_fin` | timestamptz, nullable | |
-| `dernier_événement`, `reçu_le` | text, timestamptz | identifiant de l'événement Stripe, pour l'idempotence du webhook |
+| `formule` | text, nullable | `mensuelle` ou `annuelle`, lue sur l'intervalle du prix |
+| `dernier_événement` | text | identifiant du dernier événement Stripe appliqué : un doublon est ignoré |
+| `événement_le` | timestamptz | date de création de cet événement chez Stripe : un événement plus ancien est ignoré (Stripe ne garantit pas l'ordre) |
+| `reçu_le` | timestamptz | |
+
+Créée par la migration `0001_palier_1c_abonnements` ; écrite par `lib/base/abonnements.ts`, appelé du seul webhook `app/api/webhooks/stripe`, qui vérifie la signature avec le SDK Stripe (`STRIPE_WEBHOOK_SECRET`). L'organisation est lue dans `metadata.organisation_id` de l'abonnement, posée par le portail à la création du paiement ; jamais déduite d'une adresse ou d'un nom de client.
 
 ### `sources` (palier 3)
 

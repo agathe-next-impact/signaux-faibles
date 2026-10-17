@@ -11,7 +11,7 @@ import { mentionsDe } from '@/lib/domaine/mentions'
 import { faitsDe } from '@/lib/domaine/document'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 import { contrôlerLeContrat } from '@/lib/portail/contrat'
-import { estTitreDeCadrage, sansAccent } from '@/lib/domaine/texte'
+import { estTitreDeCadrage, estTitreDeLEssentiel, sansAccent } from '@/lib/domaine/texte'
 
 /**
  * Le validateur de lettre : ce que le portail affichera, dit **avant** l'envoi.
@@ -115,14 +115,9 @@ const RUBRIQUE_DES_AXES = 'actualites par axe'
 export const ESSENTIEL_LIGNES_MAX = 8
 export const ESSENTIEL_CARACTÈRES_MAX = 140
 
-/** « L'essentiel », « L’essentiel », « Essentiel », « L'essentiel de la semaine ». */
-function estRubriqueEssentielle(titre: string): boolean {
-  return /^(l')?essentiel\b/.test(sansAccent(titre).trim())
-}
-
 /** Les lignes de « L'essentiel », au sens du digest : puces et paragraphes non vides. */
 export function lignesDeLEssentiel(document: Document): string[] | null {
-  const rubrique = document.rubriques.find((r) => estRubriqueEssentielle(r.titre))
+  const rubrique = document.rubriques.find((r) => estTitreDeLEssentiel(r.titre))
   if (!rubrique) return null
 
   const lignes: string[] = []
