@@ -113,13 +113,22 @@ describe('copie de l’abonnement Stripe (palier 1c)', () => {
     expect(ligne?.état).toBe('active')
   })
 
-  it('sans abonnement ouvert, rend le plus récent', async () => {
-    await enregistrerÉvénementDAbonnement(événement({ abonnementStripe: 'sub_1', état: 'canceled' }), db)
+  it('sans abonnement ouvert ni fermé, rend le paiement le plus récent', async () => {
+    await enregistrerÉvénementDAbonnement(événement({ abonnementStripe: 'sub_1', état: 'incomplete' }), db)
     await enregistrerÉvénementDAbonnement(
       événement({ abonnementStripe: 'sub_2', événementId: 'evt_2', état: 'incomplete_expired', événementLe: new Date('2026-12-01T00:00:00Z') }),
       db,
     )
     expect((await lireAbonnement(organisationId, db))?.abonnementStripe).toBe('sub_2')
+  })
+
+  it('un abonnement résilié fait foi devant un paiement abandonné ensuite', async () => {
+    await enregistrerÉvénementDAbonnement(événement({ abonnementStripe: 'sub_2', état: 'canceled' }), db)
+    await enregistrerÉvénementDAbonnement(
+      événement({ abonnementStripe: 'sub_3', événementId: 'evt_3', état: 'incomplete_expired', événementLe: new Date('2026-12-01T00:00:00Z') }),
+      db,
+    )
+    expect((await lireAbonnement(organisationId, db))?.état).toBe('canceled')
   })
 
   it('un abonnement ne change pas d’organisation', async () => {

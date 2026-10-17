@@ -55,11 +55,11 @@ describe('interpréterLivraisonStripe', () => {
   it('n’applique jamais un événement de l’autre mode', () => {
     const test = événement('customer.subscription.updated', abonnement())
     expect(interpréterLivraisonStripe({ brut: test, signature: signer(test), secret: SECRET, modeRéel: true }).sorte).toBe(
-      'inexploitable',
+      'autre-mode',
     )
     const réel = événement('customer.subscription.updated', abonnement(), { livemode: true })
     expect(interpréterLivraisonStripe({ brut: réel, signature: signer(réel), secret: SECRET, modeRéel: false }).sorte).toBe(
-      'inexploitable',
+      'autre-mode',
     )
     expect(interpréterLivraisonStripe({ brut: réel, signature: signer(réel), secret: SECRET, modeRéel: true }).sorte).toBe(
       'abonnement',
@@ -159,6 +159,12 @@ describe('POST /api/webhooks/stripe', () => {
     base.enregistrerÉvénementDAbonnement.mockRejectedValue(new Error('[base] en échec (SQLSTATE 08006).'))
     const brut = événement('customer.subscription.updated', abonnement())
     expect((await livrer(brut, signer(brut))).status).toBe(500)
+  })
+
+  it('répond 500 à un événement de l’autre mode, pour que Stripe relivre et alerte', async () => {
+    const réel = événement('customer.subscription.updated', abonnement(), { livemode: true })
+    expect((await livrer(réel, signer(réel))).status).toBe(500)
+    expect(base.enregistrerÉvénementDAbonnement).not.toHaveBeenCalled()
   })
 
   it('répond 200 à une contrainte violée : relivrer n’y changerait rien', async () => {

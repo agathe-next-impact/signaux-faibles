@@ -153,8 +153,8 @@ Les lire avant toute session.
   écrite par le seul webhook `app/api/webhooks/stripe` (signature vérifiée par le
   SDK `stripe` 23, `STRIPE_WEBHOOK_SECRET` lu dans `process.env`, une ligne
   par abonnement Stripe, doublons et désordre absorbés par `dernier_événement`,
-  `événement_le` et `dernier_type`, événements de l'autre mode ignorés selon
-  `STRIPE_MODE` ; `tests/architecture.test.ts` vérifie le seul écrivain). L'étape du
+  `événement_le` et `dernier_type`, un événement de l'autre mode refusé en 500
+  selon `STRIPE_MODE` pour que Stripe relivre et alerte ; `tests/architecture.test.ts` vérifie le seul écrivain). L'étape du
   parcours n'est jamais stockée : `étapeDuParcours` (`lib/domaine/parcours.ts`)
   la calcule de la date d'activation, de l'état de l'organisation et de l'état
   Stripe (essai J0, J+7, J+14 ; « L'essentiel » seul à J+21 ; suspension

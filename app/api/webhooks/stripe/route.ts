@@ -13,11 +13,11 @@ import { interpréterLivraisonStripe } from '@/lib/stripe/webhook'
  * rôle :
  *   · 400 pour une livraison refusée (signature) : Stripe la relivre, ce qui
  *     laisse le temps de corriger un secret mal posé ;
- *   · 500 sur une panne de la base : Stripe relivre pendant trois jours, et
- *     l'écriture idempotente absorbe le doublon ;
+ *   · 500 sur une panne de la base, ou sur un événement de l'autre mode (un
+ *     `STRIPE_MODE` oublié en production) : Stripe relivre pendant trois jours
+ *     et signale l'échec, et l'écriture idempotente absorbe le doublon ;
  *   · 200 pour tout le reste, y compris une organisation inconnue, une
- *     métadonnée absente, un événement de l'autre mode (test ou réel) ou une
- *     contrainte violée : relivrer n'y changerait rien, et le journal le dit.
+ *     métadonnée absente ou une contrainte violée : relivrer n'y changerait rien, et le journal le dit.
  *
  * `STRIPE_WEBHOOK_SECRET` est lu directement dans `process.env`, comme le secret
  * du webhook Notion : une page du portail n'a pas à tomber parce que le compte
@@ -41,6 +41,10 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
 
     case 'sans-effet':
       return NextResponse.json({ reçu: true }, { status: 200 })
+
+    case 'autre-mode':
+      console.error(`[webhook stripe] ${décision.type} non appliqué : ${décision.raison}. Vérifier STRIPE_MODE.`)
+      return NextResponse.json({ reçu: false }, { status: 500 })
 
     case 'inexploitable':
       console.warn(`[webhook stripe] ${décision.type} inexploitable : ${décision.raison}`)

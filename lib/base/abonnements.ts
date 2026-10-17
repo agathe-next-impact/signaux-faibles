@@ -58,6 +58,8 @@ export type RésultatAbonnement =
   | { readonly sorte: 'autre-organisation' }
 
 const ÉTATS_OUVERTS = new Set(['trialing', 'active', 'past_due'])
+/** Un abonnement qui a existé puis s'est arrêté : résilié, impayé, en pause. */
+const ÉTATS_FERMÉS = new Set(['canceled', 'unpaid', 'paused'])
 
 /** Rang d'un type d'événement dans le cycle de vie d'un abonnement. */
 function rang(type: string): number {
@@ -138,8 +140,15 @@ export async function enregistrerÉvénementDAbonnement(
 }
 
 /**
- * L'abonnement qui fait foi pour une organisation : un abonnement ouvert s'il y
- * en a un, sinon le plus récent ; `null` si elle n'en a jamais eu.
+ * L'abonnement qui fait foi pour une organisation, dans cet ordre : un
+ * abonnement ouvert ; sinon le dernier abonnement **fermé** (résilié, impayé,
+ * en pause) ; sinon le plus récent (un paiement jamais abouti) ; `null` si elle
+ * n'en a jamais eu.
+ *
+ * L'ordre entre fermé et jamais abouti n'est pas un détail : un client résilié
+ * qui commence un nouveau paiement puis l'abandonne ne doit pas être lu comme
+ * « n'ayant jamais eu d'abonnement », ce qui lui rendrait l'accès d'un client
+ * historique (relecture du 17 octobre 2026).
  */
 export async function lireAbonnement(organisationId: string, db: Base = base()): Promise<Abonnement | null> {
   if (!UUID.test(organisationId)) return null
@@ -149,6 +158,11 @@ export async function lireAbonnement(organisationId: string, db: Base = base()):
       .from(abonnements)
       .where(eq(abonnements.organisationId, organisationId))
       .orderBy(desc(abonnements.événementLe))
-    return lignes.find((l) => ÉTATS_OUVERTS.has(l.état)) ?? lignes[0] ?? null
+    return (
+      lignes.find((l) => ÉTATS_OUVERTS.has(l.état)) ??
+      lignes.find((l) => ÉTATS_FERMÉS.has(l.état)) ??
+      lignes[0] ??
+      null
+    )
   })
 }

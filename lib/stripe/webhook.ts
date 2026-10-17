@@ -27,6 +27,14 @@ export type DécisionStripe =
   | { readonly sorte: 'sans-effet'; readonly type: string }
   /** Authentique, mais inexploitable (métadonnée absente) : accuser réception et le dire. */
   | { readonly sorte: 'inexploitable'; readonly type: string; readonly raison: string }
+  /**
+   * Authentique, mais de l'autre mode (test ou réel) que celui du portail. Ce
+   * n'est presque jamais légitime en production : c'est le signe d'un
+   * `STRIPE_MODE` oublié ou faux. La route répond 500 pour que Stripe relivre et
+   * signale l'échec dans son tableau de bord, plutôt que d'ignorer en silence
+   * des clients qui paient.
+   */
+  | { readonly sorte: 'autre-mode'; readonly type: string; readonly raison: string }
   /** À refuser en 400 : signature absente, fausse, trop ancienne, ou secret non posé. */
   | { readonly sorte: 'refusée'; readonly raison: string }
 
@@ -78,7 +86,7 @@ export function interpréterLivraisonStripe(livraison: {
   if (!TYPES_D_ABONNEMENT.has(événement.type)) return { sorte: 'sans-effet', type: événement.type }
   if (événement.livemode !== livraison.modeRéel) {
     return {
-      sorte: 'inexploitable',
+      sorte: 'autre-mode',
       type: événement.type,
       raison: `événement du mode ${événement.livemode ? 'réel' : 'test'}, portail en mode ${livraison.modeRéel ? 'réel' : 'test'}`,
     }

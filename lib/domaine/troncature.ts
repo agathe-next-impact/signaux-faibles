@@ -1,5 +1,5 @@
-import type { Bloc, Document } from '@/lib/domaine/document'
-import { ESSENTIEL_LIGNES_MAX, estTitreDeLEssentiel } from '@/lib/domaine/texte'
+import { écourterSegments, type Bloc, type Document } from '@/lib/domaine/document'
+import { ESSENTIEL_CARACTÈRES_MAX, ESSENTIEL_LIGNES_MAX, estTitreDeLEssentiel } from '@/lib/domaine/texte'
 
 /**
  * La lettre tronquée de la fin d'essai : « L'essentiel », et rien d'autre.
@@ -20,6 +20,7 @@ import { ESSENTIEL_LIGNES_MAX, estTitreDeLEssentiel } from '@/lib/domaine/texte'
  * l'introduction de la rubrique, huit lignes au plus. Tout autre bloc (tableau,
  * encadré, citation, titre de niveau 3, image) échappe au contrôle des huit
  * lignes et n'est donc pas repris ; un axe placé sous « L'essentiel » non plus.
+ * Chaque ligne est aussi écourtée à 140 caractères, la borne du validateur.
  * Le plafond tient même si le titre de niveau 1 suivant manquait : le corps
  * entier tomberait alors dans l'introduction, et seules ses huit premières
  * lignes sortiraient.
@@ -41,12 +42,13 @@ function lignesBornées(blocs: readonly Bloc[]): Bloc[] {
     if (restantes <= 0) break
     if (bloc.type === 'paragraphe') {
       if (bloc.segments.map((s) => s.texte).join('').trim().length === 0) continue
-      gardés.push(bloc)
+      gardés.push({ ...bloc, segments: écourterSegments(bloc.segments, ESSENTIEL_CARACTÈRES_MAX) })
       restantes -= 1
     } else if (bloc.type === 'liste') {
       const éléments = bloc.éléments
         .filter((é) => é.map((s) => s.texte).join('').trim().length > 0)
         .slice(0, restantes)
+        .map((é) => écourterSegments(é, ESSENTIEL_CARACTÈRES_MAX))
       if (éléments.length === 0) continue
       gardés.push({ ...bloc, éléments })
       restantes -= éléments.length

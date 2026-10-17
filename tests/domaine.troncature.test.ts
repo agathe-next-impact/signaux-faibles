@@ -61,6 +61,12 @@ describe('tronquerÀLEssentiel', () => {
     expect(JSON.stringify(tronquée)).not.toContain('Ligne en trop')
   })
 
+  it('écourte chaque ligne à 140 caractères', () => {
+    const d: Document = { ...lettre, rubriques: [{ titre: 'L’essentiel', introduction: [p('x '.repeat(2500))], axes: [] }] }
+    const [ligne] = lignesDeLEssentiel(tronquerÀLEssentiel(d)) ?? []
+    expect(ligne!.length).toBeLessThanOrEqual(141)
+  })
+
   it('une lettre sans « L’essentiel » donne un document vide, jamais la lettre entière', () => {
     const d: Document = { ...lettre, rubriques: lettre.rubriques.slice(1) }
     expect(tronquerÀLEssentiel(d).rubriques).toEqual([])
