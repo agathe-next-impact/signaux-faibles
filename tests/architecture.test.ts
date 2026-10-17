@@ -349,6 +349,13 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     ])
   })
 
+  it('la copie de l’abonnement n’est écrite que par le webhook Stripe', () => {
+    expect(appelants('enregistrerÉvénementDAbonnement')).toEqual([
+      'app/api/webhooks/stripe/route.ts',
+      'lib/base/abonnements.ts',
+    ])
+  })
+
   it('toute route /api/veille commence par la garde du jeton', () => {
     const racine = join(process.cwd(), 'app', 'api', 'veille')
     const routes = readdirSync(racine).map((nom) => join(racine, nom, 'route.ts'))

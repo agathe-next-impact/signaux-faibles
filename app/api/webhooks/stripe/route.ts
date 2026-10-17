@@ -15,8 +15,9 @@ import { interpréterLivraisonStripe } from '@/lib/stripe/webhook'
  *     laisse le temps de corriger un secret mal posé ;
  *   · 500 sur une panne de la base : Stripe relivre pendant trois jours, et
  *     l'écriture idempotente absorbe le doublon ;
- *   · 200 pour tout le reste, y compris une organisation inconnue ou une
- *     métadonnée absente : relivrer n'y changerait rien, et le journal le dit.
+ *   · 200 pour tout le reste, y compris une organisation inconnue, une
+ *     métadonnée absente, un événement de l'autre mode (test ou réel) ou une
+ *     contrainte violée : relivrer n'y changerait rien, et le journal le dit.
  *
  * `STRIPE_WEBHOOK_SECRET` est lu directement dans `process.env`, comme le secret
  * du webhook Notion : une page du portail n'a pas à tomber parce que le compte
@@ -30,6 +31,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
     brut,
     signature: requête.headers.get('stripe-signature'),
     secret: process.env['STRIPE_WEBHOOK_SECRET'],
+    modeRéel: process.env['STRIPE_MODE'] === 'reel',
   })
 
   switch (décision.sorte) {
@@ -48,10 +50,16 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
       try {
         const résultat = await enregistrerÉvénementDAbonnement(décision.événement)
         const journal = `[webhook stripe] ${décision.type} ${décision.événement.abonnementStripe} → ${décision.événement.état} : ${résultat.sorte}`
-        if (résultat.sorte === 'organisation-inconnue') console.warn(journal)
+        if (résultat.sorte === 'organisation-inconnue' || résultat.sorte === 'autre-organisation') console.warn(journal)
         else console.info(journal)
         return NextResponse.json({ reçu: true, résultat: résultat.sorte }, { status: 200 })
       } catch (erreur) {
+        // Une contrainte violée (23514 : identifiant Stripe mal formé) est une
+        // erreur déterministe : relivrer pendant trois jours n'y changerait rien.
+        if ((erreur as { code?: unknown }).code === '23514') {
+          console.warn(`[webhook stripe] ${décision.type} rejeté par une contrainte de la base (SQLSTATE 23514).`)
+          return NextResponse.json({ reçu: true, résultat: 'rejeté' }, { status: 200 })
+        }
         console.error(`[webhook stripe] écriture en échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
         return NextResponse.json({ reçu: false }, { status: 500 })
       }

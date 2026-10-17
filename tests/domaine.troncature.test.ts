@@ -46,6 +46,21 @@ describe('tronquerÀLEssentiel', () => {
     }
   })
 
+  it('ne reprend que les paragraphes et les puces, huit lignes au plus', () => {
+    const tableau: Bloc = { type: 'tableau', enTête: false, lignes: [[[s('SECRET tableau')]]] }
+    const encadré: Bloc = { type: 'encadré', segments: [s('SECRET encadré')] }
+    const titre: Bloc = { type: 'titre', niveau: 3, segments: [s('SECRET titre')] }
+    const neufPuces: Bloc = { type: 'liste', ordonnée: false, éléments: Array.from({ length: 9 }, (_, i) => [s(`Ligne ${i + 1}.`)]) }
+    const d: Document = {
+      ...lettre,
+      rubriques: [{ titre: 'L’essentiel', introduction: [tableau, encadré, titre, neufPuces, p('Ligne en trop.')], axes: [] }],
+    }
+    const tronquée = tronquerÀLEssentiel(d)
+    expect(JSON.stringify(tronquée)).not.toContain('SECRET')
+    expect(lignesDeLEssentiel(tronquée)).toHaveLength(8)
+    expect(JSON.stringify(tronquée)).not.toContain('Ligne en trop')
+  })
+
   it('une lettre sans « L’essentiel » donne un document vide, jamais la lettre entière', () => {
     const d: Document = { ...lettre, rubriques: lettre.rubriques.slice(1) }
     expect(tronquerÀLEssentiel(d).rubriques).toEqual([])

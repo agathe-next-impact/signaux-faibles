@@ -46,3 +46,11 @@ export function estTitreDeCadrage(titre: string): boolean {
 export function estTitreDeLEssentiel(titre: string): boolean {
   return /^(l')?essentiel\b/.test(sansAccent(titre).trim())
 }
+
+/**
+ * Les bornes de « L'essentiel » : huit lignes de 140 caractères au plus, une
+ * ligne étant une puce ou un paragraphe non vide. Le validateur les fait
+ * respecter avant l'envoi ; la lettre tronquée de l'essai ne montre rien au-delà.
+ */
+export const ESSENTIEL_LIGNES_MAX = 8
+export const ESSENTIEL_CARACTÈRES_MAX = 140

@@ -18,6 +18,7 @@ describe('copie de l’abonnement Stripe (palier 1c)', () => {
     périodeFin: new Date('2026-11-17T00:00:00Z'),
     événementId: 'evt_1',
     événementLe: new Date('2026-10-17T10:00:00Z'),
+    type: 'customer.subscription.updated',
     ...extras,
   })
 
@@ -68,15 +69,72 @@ describe('copie de l’abonnement Stripe (palier 1c)', () => {
     expect((await lireAbonnement(organisationId, db))?.état).toBe('active')
   })
 
-  it('un réabonnement remplace l’ancien abonnement sur la même ligne', async () => {
-    await enregistrerÉvénementDAbonnement(événement({ état: 'canceled' }), db)
+  it('à la même seconde, l’ordre du cycle de vie départage (Checkout)', async () => {
+    const même = new Date('2026-10-17T10:00:00Z')
+    // « updated » (active) arrive avant « created » (incomplete), dans la même seconde.
+    await enregistrerÉvénementDAbonnement(événement({ événementId: 'evt_u', événementLe: même }), db)
+    expect(
+      await enregistrerÉvénementDAbonnement(
+        événement({ événementId: 'evt_c', état: 'incomplete', événementLe: même, type: 'customer.subscription.created' }),
+        db,
+      ),
+    ).toEqual({ sorte: 'périmé' })
+    expect((await lireAbonnement(organisationId, db))?.état).toBe('active')
+    // Dans l'ordre naturel, la mise à jour passe après la création.
     await enregistrerÉvénementDAbonnement(
-      événement({ abonnementStripe: 'sub_456', événementId: 'evt_9', événementLe: new Date('2026-12-01T00:00:00Z') }),
+      événement({ abonnementStripe: 'sub_2', événementId: 'evt_c2', état: 'incomplete', événementLe: même, type: 'customer.subscription.created' }),
       db,
     )
+    expect(
+      await enregistrerÉvénementDAbonnement(événement({ abonnementStripe: 'sub_2', événementId: 'evt_u2', événementLe: même }), db),
+    ).toEqual({ sorte: 'appliqué' })
+  })
+
+  it('la résiliation tardive d’un ancien abonnement ne touche pas le nouveau', async () => {
+    await enregistrerÉvénementDAbonnement(événement({ abonnementStripe: 'sub_1', événementId: 'evt_1' }), db)
+    await enregistrerÉvénementDAbonnement(
+      événement({ abonnementStripe: 'sub_2', événementId: 'evt_2', événementLe: new Date('2026-12-01T00:00:00Z') }),
+      db,
+    )
+    expect(
+      await enregistrerÉvénementDAbonnement(
+        événement({
+          abonnementStripe: 'sub_1',
+          événementId: 'evt_3',
+          état: 'canceled',
+          type: 'customer.subscription.deleted',
+          événementLe: new Date('2026-12-02T00:00:00Z'),
+        }),
+        db,
+      ),
+    ).toEqual({ sorte: 'appliqué' })
     const ligne = await lireAbonnement(organisationId, db)
-    expect(ligne?.abonnementStripe).toBe('sub_456')
+    expect(ligne?.abonnementStripe).toBe('sub_2')
     expect(ligne?.état).toBe('active')
+  })
+
+  it('sans abonnement ouvert, rend le plus récent', async () => {
+    await enregistrerÉvénementDAbonnement(événement({ abonnementStripe: 'sub_1', état: 'canceled' }), db)
+    await enregistrerÉvénementDAbonnement(
+      événement({ abonnementStripe: 'sub_2', événementId: 'evt_2', état: 'incomplete_expired', événementLe: new Date('2026-12-01T00:00:00Z') }),
+      db,
+    )
+    expect((await lireAbonnement(organisationId, db))?.abonnementStripe).toBe('sub_2')
+  })
+
+  it('un abonnement ne change pas d’organisation', async () => {
+    const [autre] = await db
+      .insert(organisations)
+      .values({ slug: 'autre', nom: 'Autre', état: 'essai' })
+      .returning({ id: organisations.id })
+    await enregistrerÉvénementDAbonnement(événement(), db)
+    expect(
+      await enregistrerÉvénementDAbonnement(
+        événement({ organisationId: autre!.id, événementId: 'evt_x', événementLe: new Date('2026-10-18T00:00:00Z') }),
+        db,
+      ),
+    ).toEqual({ sorte: 'autre-organisation' })
+    expect(await lireAbonnement(autre!.id, db)).toBeNull()
   })
 
   it('refuse une organisation inconnue ou un identifiant mal formé, sans erreur de base', async () => {

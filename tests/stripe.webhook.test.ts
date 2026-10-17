@@ -15,7 +15,7 @@ vi.mock('@/lib/base/abonnements', () => base)
 const { POST } = await import('@/app/api/webhooks/stripe/route')
 
 function événement(type: string, objet: Record<string, unknown>, extras: Record<string, unknown> = {}) {
-  return JSON.stringify({ id: 'evt_1', object: 'event', type, created: 1792231200, data: { object: objet }, ...extras })
+  return JSON.stringify({ id: 'evt_1', object: 'event', type, created: 1792231200, livemode: false, data: { object: objet }, ...extras })
 }
 
 function abonnement(extras: Record<string, unknown> = {}) {
@@ -35,7 +35,7 @@ const signer = (brut: string, secret = SECRET) => Stripe.webhooks.generateTestHe
 describe('interpréterLivraisonStripe', () => {
   it('lit un abonnement signé : organisation, état, formule, fin de période, événement', () => {
     const brut = événement('customer.subscription.updated', abonnement())
-    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET })).toEqual({
+    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET, modeRéel: false })).toEqual({
       sorte: 'abonnement',
       type: 'customer.subscription.updated',
       événement: {
@@ -47,8 +47,23 @@ describe('interpréterLivraisonStripe', () => {
         périodeFin: new Date(1794909600 * 1000),
         événementId: 'evt_1',
         événementLe: new Date(1792231200 * 1000),
+        type: 'customer.subscription.updated',
       },
     })
+  })
+
+  it('n’applique jamais un événement de l’autre mode', () => {
+    const test = événement('customer.subscription.updated', abonnement())
+    expect(interpréterLivraisonStripe({ brut: test, signature: signer(test), secret: SECRET, modeRéel: true }).sorte).toBe(
+      'inexploitable',
+    )
+    const réel = événement('customer.subscription.updated', abonnement(), { livemode: true })
+    expect(interpréterLivraisonStripe({ brut: réel, signature: signer(réel), secret: SECRET, modeRéel: false }).sorte).toBe(
+      'inexploitable',
+    )
+    expect(interpréterLivraisonStripe({ brut: réel, signature: signer(réel), secret: SECRET, modeRéel: true }).sorte).toBe(
+      'abonnement',
+    )
   })
 
   it('reconnaît la formule annuelle et un client développé en objet', () => {
@@ -59,24 +74,24 @@ describe('interpréterLivraisonStripe', () => {
         items: { data: [{ current_period_end: 1824000000, price: { recurring: { interval: 'year' } } }] },
       }),
     )
-    const décision = interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET })
+    const décision = interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET, modeRéel: false })
     expect(décision.sorte === 'abonnement' && décision.événement.formule).toBe('annuelle')
     expect(décision.sorte === 'abonnement' && décision.événement.clientStripe).toBe('cus_456')
   })
 
   it('refuse une signature absente, fausse, d’un autre secret, ou un secret non posé', () => {
     const brut = événement('customer.subscription.updated', abonnement())
-    expect(interpréterLivraisonStripe({ brut, signature: null, secret: SECRET }).sorte).toBe('refusée')
-    expect(interpréterLivraisonStripe({ brut, signature: 't=1,v1=faux', secret: SECRET }).sorte).toBe('refusée')
-    expect(interpréterLivraisonStripe({ brut, signature: signer(brut, 'whsec_autre'), secret: SECRET }).sorte).toBe('refusée')
-    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: undefined }).sorte).toBe('refusée')
+    expect(interpréterLivraisonStripe({ brut, signature: null, secret: SECRET, modeRéel: false }).sorte).toBe('refusée')
+    expect(interpréterLivraisonStripe({ brut, signature: 't=1,v1=faux', secret: SECRET, modeRéel: false }).sorte).toBe('refusée')
+    expect(interpréterLivraisonStripe({ brut, signature: signer(brut, 'whsec_autre'), secret: SECRET, modeRéel: false }).sorte).toBe('refusée')
+    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: undefined, modeRéel: false }).sorte).toBe('refusée')
   })
 
   it('refuse un corps modifié après signature', () => {
     const brut = événement('customer.subscription.updated', abonnement())
     const signature = signer(brut)
     const falsifié = brut.replace('"active"', '"canceled"')
-    expect(interpréterLivraisonStripe({ brut: falsifié, signature, secret: SECRET }).sorte).toBe('refusée')
+    expect(interpréterLivraisonStripe({ brut: falsifié, signature, secret: SECRET, modeRéel: false }).sorte).toBe('refusée')
   })
 
   it('refuse une signature trop ancienne (rejeu)', () => {
@@ -86,12 +101,12 @@ describe('interpréterLivraisonStripe', () => {
       secret: SECRET,
       timestamp: Math.floor(Date.now() / 1000) - 3600,
     })
-    expect(interpréterLivraisonStripe({ brut, signature: ancienne, secret: SECRET }).sorte).toBe('refusée')
+    expect(interpréterLivraisonStripe({ brut, signature: ancienne, secret: SECRET, modeRéel: false }).sorte).toBe('refusée')
   })
 
   it('accuse réception sans effet d’un événement qui n’est pas un abonnement', () => {
     const brut = événement('invoice.paid', { id: 'in_1', object: 'invoice' })
-    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET })).toEqual({
+    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET, modeRéel: false })).toEqual({
       sorte: 'sans-effet',
       type: 'invoice.paid',
     })
@@ -99,7 +114,7 @@ describe('interpréterLivraisonStripe', () => {
 
   it('dit inexploitable un abonnement sans organisation du portail', () => {
     const brut = événement('customer.subscription.created', abonnement({ metadata: {} }))
-    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET }).sorte).toBe('inexploitable')
+    expect(interpréterLivraisonStripe({ brut, signature: signer(brut), secret: SECRET, modeRéel: false }).sorte).toBe('inexploitable')
   })
 })
 
@@ -144,6 +159,12 @@ describe('POST /api/webhooks/stripe', () => {
     base.enregistrerÉvénementDAbonnement.mockRejectedValue(new Error('[base] en échec (SQLSTATE 08006).'))
     const brut = événement('customer.subscription.updated', abonnement())
     expect((await livrer(brut, signer(brut))).status).toBe(500)
+  })
+
+  it('répond 200 à une contrainte violée : relivrer n’y changerait rien', async () => {
+    base.enregistrerÉvénementDAbonnement.mockRejectedValue(Object.assign(new Error('[base] (SQLSTATE 23514).'), { code: '23514' }))
+    const brut = événement('customer.subscription.updated', abonnement())
+    expect((await livrer(brut, signer(brut))).status).toBe(200)
   })
 
   it('répond 200 à une organisation inconnue : relivrer n’y changerait rien', async () => {

@@ -50,6 +50,9 @@ const schema = z.object({
   // secret du webhook Notion. Le portail ne tombe pas tant que le compte Stripe
   // n'existe pas : le webhook refuse simplement les livraisons.
   STRIPE_WEBHOOK_SECRET: facultative(z.string().min(1)),
+  // `reel` en production réelle ; toute autre valeur, ou rien, vaut le mode test.
+  // Le webhook n'applique que les événements du mode déclaré.
+  STRIPE_MODE: facultative(z.string()),
   GMAIL_EXPEDITEUR: z.email(),
   GMAIL_EXPEDITEUR_NOM: z.preprocess(
     (valeur) => (valeur === '' ? undefined : valeur),

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -171,8 +172,12 @@ export const lecteurs = pgTable(
  * par son webhook, jamais par un écran ni par une tâche, et le portail ne la lit
  * que pour ses propres décisions (le parcours d'essai, la lecture autorisée).
  *
- * Une ligne par organisation : un client qui se réabonne après une résiliation
- * reçoit un nouvel abonnement Stripe, qui remplace l'ancien sur la même ligne.
+ * **Une ligne par abonnement Stripe**, et non par organisation : un client qui
+ * passe du mois à l'année, ou se réabonne après une résiliation, a deux
+ * abonnements, parfois ouverts en même temps quelques instants. Une ligne unique
+ * par organisation laissait la résiliation tardive de l'ancien écraser le
+ * nouveau (relecture du 17 octobre 2026). Une organisation est abonnée si
+ * **l'une** de ses lignes est ouverte.
  *
  * `dernier_événement` et `événement_le` rendent le webhook sûr face aux deux
  * travers de Stripe, qui sont documentés : un même événement peut arriver
@@ -185,10 +190,9 @@ export const abonnements = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     organisationId: uuid('organisation_id')
       .notNull()
-      .unique()
       .references(() => organisations.id),
     clientStripe: text('client_stripe').notNull(),
-    abonnementStripe: text('abonnement_stripe').notNull(),
+    abonnementStripe: text('abonnement_stripe').notNull().unique(),
     /** Tel que Stripe le donne : `trialing`, `active`, `past_due`, `canceled`… */
     état: text('état').notNull(),
     /** `mensuelle` ou `annuelle`, lue sur l'intervalle du prix ; nulle si Stripe ne le dit pas. */
@@ -198,9 +202,17 @@ export const abonnements = pgTable(
     dernierÉvénement: text('dernier_événement').notNull(),
     /** Date de création de cet événement chez Stripe : un événement plus ancien est ignoré. */
     événementLe: horodatage('événement_le').notNull(),
+    /**
+     * Type de cet événement (`customer.subscription.updated`…). Stripe date ses
+     * événements à la seconde, et un paiement par Checkout produit `created` et
+     * `updated` dans la même : à égalité de date, l'ordre du cycle de vie
+     * départage (création, puis mise à jour, puis suppression).
+     */
+    dernierType: text('dernier_type').notNull(),
     reçuLe: horodatage('reçu_le').notNull().defaultNow(),
   },
   (table) => [
+    index('abonnements_organisation').on(table.organisationId),
     check('abonnements_client_stripe_forme', sql`${table.clientStripe} ~ '^cus_'`),
     check('abonnements_abonnement_stripe_forme', sql`${table.abonnementStripe} ~ '^sub_'`),
   ],

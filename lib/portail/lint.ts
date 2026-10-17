@@ -11,7 +11,13 @@ import { mentionsDe } from '@/lib/domaine/mentions'
 import { faitsDe } from '@/lib/domaine/document'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 import { contrôlerLeContrat } from '@/lib/portail/contrat'
-import { estTitreDeCadrage, estTitreDeLEssentiel, sansAccent } from '@/lib/domaine/texte'
+import {
+  ESSENTIEL_CARACTÈRES_MAX,
+  ESSENTIEL_LIGNES_MAX,
+  estTitreDeCadrage,
+  estTitreDeLEssentiel,
+  sansAccent,
+} from '@/lib/domaine/texte'
 
 /**
  * Le validateur de lettre : ce que le portail affichera, dit **avant** l'envoi.
@@ -112,8 +118,7 @@ const RUBRIQUE_DES_AXES = 'actualites par axe'
  * l'envoi. Une ligne est une puce (à puces ou numérotée) ou un paragraphe non
  * vide de l'introduction de la rubrique — ce qui précède son premier H2.
  */
-export const ESSENTIEL_LIGNES_MAX = 8
-export const ESSENTIEL_CARACTÈRES_MAX = 140
+export { ESSENTIEL_CARACTÈRES_MAX, ESSENTIEL_LIGNES_MAX }
 
 /** Les lignes de « L'essentiel », au sens du digest : puces et paragraphes non vides. */
 export function lignesDeLEssentiel(document: Document): string[] | null {

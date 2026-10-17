@@ -1,5 +1,5 @@
 {
-  "id": "1b471c7f-1d4d-4a4b-a5a1-e465a281e9ac",
+  "id": "7d497ccb-23b5-499f-9766-062cbc75713a",
   "prevId": "9b630c9b-10fc-44f6-95df-03f25c769538",
   "version": "7",
   "dialect": "postgresql",
@@ -63,6 +63,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "dernier_type": {
+          "name": "dernier_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "reçu_le": {
           "name": "reçu_le",
           "type": "timestamp with time zone",
@@ -71,7 +77,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "abonnements_organisation": {
+          "name": "abonnements_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "abonnements_organisation_id_organisations_id_fk": {
           "name": "abonnements_organisation_id_organisations_id_fk",
@@ -89,11 +111,11 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "abonnements_organisation_id_unique": {
-          "name": "abonnements_organisation_id_unique",
+        "abonnements_abonnement_stripe_unique": {
+          "name": "abonnements_abonnement_stripe_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "organisation_id"
+            "abonnement_stripe"
           ]
         }
       },

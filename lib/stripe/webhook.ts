@@ -56,6 +56,13 @@ export function interpréterLivraisonStripe(livraison: {
   readonly brut: string
   readonly signature: string | null | undefined
   readonly secret: string | undefined
+  /**
+   * Vrai en production réelle (`STRIPE_MODE=reel`). Un événement du mode test
+   * n'est jamais appliqué en mode réel, ni l'inverse : sans ce filtre, un
+   * abonnement d'essai fait pendant la recette, portant l'identifiant d'une
+   * vraie organisation, resterait ouvert pour toujours après le passage en réel.
+   */
+  readonly modeRéel: boolean
 }): DécisionStripe {
   if (!livraison.secret) return { sorte: 'refusée', raison: 'STRIPE_WEBHOOK_SECRET absent' }
   if (!livraison.signature) return { sorte: 'refusée', raison: 'en-tête stripe-signature absent' }
@@ -69,6 +76,13 @@ export function interpréterLivraisonStripe(livraison: {
   }
 
   if (!TYPES_D_ABONNEMENT.has(événement.type)) return { sorte: 'sans-effet', type: événement.type }
+  if (événement.livemode !== livraison.modeRéel) {
+    return {
+      sorte: 'inexploitable',
+      type: événement.type,
+      raison: `événement du mode ${événement.livemode ? 'réel' : 'test'}, portail en mode ${livraison.modeRéel ? 'réel' : 'test'}`,
+    }
+  }
 
   const abonnement = événement.data.object as Stripe.Subscription
   const organisationId = abonnement.metadata?.['organisation_id']
@@ -89,6 +103,7 @@ export function interpréterLivraisonStripe(livraison: {
       périodeFin: finDePériode(abonnement),
       événementId: événement.id,
       événementLe: new Date(événement.created * 1000),
+      type: événement.type,
     },
   }
 }

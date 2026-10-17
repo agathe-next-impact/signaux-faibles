@@ -44,7 +44,7 @@ export type Étape =
    * reçoivent leurs lettres comme avant (`docs/schema-donnees.md`).
    */
   | { readonly étape: 'abonnee'; readonly source: 'stripe' | 'hors-stripe'; readonly paiementEnRetard: boolean }
-  /** Au-delà de J+21 sans abonnement, ou suspendue à la main. */
+  /** Au-delà de J+21 sans abonnement, ou suspendue à la main (qui prime sur Stripe). */
   | { readonly étape: 'suspendue' }
   /** Pas encore dans le parcours (demande, génération), écartée, ou de test. */
   | { readonly étape: 'hors-parcours'; readonly raison: string }
@@ -79,31 +79,43 @@ export function semainesÉcoulées(depuis: string, jusquÀ: string): number {
   return Math.round(écart / (7 * JOUR_MS))
 }
 
+/**
+ * États Stripe d'un paiement qui n'a jamais abouti : le premier prélèvement
+ * attend (3D Secure) ou a expiré sans réussir. Ils ne disent rien d'une
+ * résiliation, et ne doivent rien retirer à qui avait déjà accès.
+ */
+const ÉTATS_JAMAIS_ABOUTIS = new Set(['incomplete', 'incomplete_expired'])
+
 export function étapeDuParcours({ organisation, abonnement, aujourdHui }: EntréeDuParcours): Étape {
-  // Un abonnement Stripe ouvert l'emporte sur tout le reste : une organisation
-  // qui paie n'est jamais suspendue par le calendrier. `past_due` en fait partie :
-  // Stripe relance le paiement pendant quelques jours, et couper l'espace à la
-  // première carte refusée punirait un client qui n'a rien décidé.
+  // Les décisions de l'opérateur priment sur Stripe : une organisation écartée
+  // ou suspendue à la main le reste, qu'elle paie ou non. Une organisation de
+  // test sort du parcours.
+  if (organisation.état === 'suspendue') return { étape: 'suspendue' }
+  if (organisation.état === 'ecartee') return { étape: 'hors-parcours', raison: 'écartée' }
+  if (organisation.état === 'test') return { étape: 'hors-parcours', raison: 'organisation de test' }
+
+  // Un abonnement Stripe ouvert l'emporte ensuite sur le calendrier : une
+  // organisation qui paie n'est jamais suspendue par la date. `past_due` en fait
+  // partie : Stripe relance le paiement pendant quelques jours, et couper l'espace
+  // à la première carte refusée punirait un client qui n'a rien décidé.
   if (abonnement && ÉTATS_ABONNÉS.has(abonnement.état)) {
     return { étape: 'abonnee', source: 'stripe', paiementEnRetard: abonnement.état === 'past_due' }
   }
+
+  // Un paiement jamais abouti vaut absence d'abonnement, pas résiliation.
+  const abonnementFermé = abonnement !== null && !ÉTATS_JAMAIS_ABOUTIS.has(abonnement.état)
 
   switch (organisation.état) {
     case 'demande':
     case 'generation':
       return { étape: 'hors-parcours', raison: 'pas encore activée' }
-    case 'ecartee':
-      return { étape: 'hors-parcours', raison: 'écartée' }
-    case 'test':
-      return { étape: 'hors-parcours', raison: 'organisation de test' }
     case 'abonnee':
-      // Abonnée sans abonnement Stripe ouvert : un client historique s'il n'a
-      // jamais eu de ligne `abonnements`. S'il en a une et qu'elle est fermée
-      // (résiliée, impayée), il n'est plus abonné : le calendrier reprend.
-      if (abonnement === null) return { étape: 'abonnee', source: 'hors-stripe', paiementEnRetard: false }
+      // Abonnée sans abonnement Stripe ouvert : un client historique, tant que sa
+      // ligne Stripe n'est pas fermée (`canceled`, `unpaid`, `paused`). Un client
+      // historique qui commence un paiement sans l'achever garde donc son accès.
+      // S'il a résilié, il n'est plus abonné : le calendrier reprend.
+      if (!abonnementFermé) return { étape: 'abonnee', source: 'hors-stripe', paiementEnRetard: false }
       break
-    case 'suspendue':
-      return { étape: 'suspendue' }
     case 'essai':
       break
   }
