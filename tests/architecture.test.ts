@@ -356,6 +356,24 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     ])
   })
 
+  it('Stripe n’est appelé que par la souscription, et l’organisation facturée par elle seule', () => {
+    expect(appelants('clientStripe')).toEqual(['lib/portail/abonnement.ts', 'lib/stripe/souscription.ts'])
+    expect(appelants('lireFacturation')).toEqual(['lib/base/abonnements.ts', 'lib/portail/abonnement.ts'])
+  })
+
+  it('une visite opérateur ne souscrit ni n’ouvre la facturation d’un client', () => {
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'abonnement.ts'), 'utf8')
+    for (const [action, appel] of [
+      ['export async function souscrire', 'pageDePaiement(accès'],
+      ['export async function gérerLAbonnement', 'espaceDeFacturation(accès'],
+    ] as const) {
+      const corps = source.slice(source.indexOf(action))
+      const garde = corps.indexOf('if (accès.enOpérateur) redirect(')
+      expect(garde, action).toBeGreaterThan(corps.indexOf('exigerAccès(slug)'))
+      expect(garde, action).toBeLessThan(corps.indexOf(appel))
+    }
+  })
+
   it('toute route /api/veille commence par la garde du jeton', () => {
     const racine = join(process.cwd(), 'app', 'api', 'veille')
     const routes = readdirSync(racine).map((nom) => join(racine, nom, 'route.ts'))

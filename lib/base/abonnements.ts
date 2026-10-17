@@ -166,3 +166,39 @@ export async function lireAbonnement(organisationId: string, db: Base = base()):
     )
   })
 }
+
+/**
+ * Ce que la souscription en ligne doit savoir d'une organisation, désignée par
+ * sa clé de cloisonnement (`registre_notion`, celle que porte la session) :
+ * son identifiant Postgres, à poser dans les métadonnées de l'abonnement, et
+ * l'abonnement qui fait foi, pour ne jamais ouvrir un second paiement à une
+ * organisation déjà abonnée.
+ *
+ * Rend `null` si l'organisation n'est pas dans Postgres : sans identifiant, le
+ * webhook ne saurait à qui rattacher le paiement, et la souscription en ligne
+ * est refusée.
+ */
+export async function lireFacturation(
+  registreNotion: string,
+  db: Base = base(),
+): Promise<{
+  readonly organisationId: string
+  readonly abonnement: { readonly clientStripe: string; readonly état: string; readonly ouvert: boolean } | null
+} | null> {
+  if (!/^[0-9a-f]{32}$/.test(registreNotion)) return null
+  return protéger('lecture de la facturation', async () => {
+    const [organisation] = await db
+      .select({ id: organisations.id })
+      .from(organisations)
+      .where(eq(organisations.registreNotion, registreNotion))
+      .limit(1)
+    if (!organisation) return null
+    const abonnement = await lireAbonnement(organisation.id, db)
+    return {
+      organisationId: organisation.id,
+      abonnement: abonnement
+        ? { clientStripe: abonnement.clientStripe, état: abonnement.état, ouvert: ÉTATS_OUVERTS.has(abonnement.état) }
+        : null,
+    }
+  })
+}

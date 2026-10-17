@@ -175,7 +175,18 @@ Les lire avant toute session.
   La lecture n'ouvre pas Postgres en mode `notion`, est bornée à 400 ms et
   mémoïsée par requête. Le service worker (v2) ne sert plus en ligne depuis son
   cache que les fichiers statiques : ni charge RSC (`?_rsc`), ni `/api/` ; la
-  fin d'essai purge le cache hors ligne (`PurgeHorsLigne`)
+  fin d'essai purge le cache hors ligne (`PurgeHorsLigne`).
+  **Souscription en ligne** : Stripe Checkout et l'espace de facturation Stripe,
+  ouverts par deux actions serveur (`lib/portail/abonnement.ts`, paramètres
+  purs dans `lib/stripe/souscription.ts`). L'organisation facturée est celle de
+  la session, posée en `subscription_data.metadata.organisation_id` (l'uuid
+  Postgres, que lit le webhook) ; une organisation déjà abonnée est renvoyée à la
+  facturation au lieu d'un second paiement ; une visite opérateur ne souscrit ni
+  ne gère rien. Aucune des deux n'écrit dans Postgres : seul le webhook le fait.
+  `STRIPE_CLE_SECRETE`, `STRIPE_PRIX_MENSUEL`, `STRIPE_PRIX_ANNUEL` et
+  `STRIPE_TAUX_TVA` (facultatif) sont lues dans `process.env` ; une pièce
+  manquante, ou une clé qui ne correspond pas à `STRIPE_MODE`, rend la
+  souscription « indisponible » sans faire tomber de page
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

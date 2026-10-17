@@ -1,6 +1,7 @@
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { PurgeHorsLigne } from '@/components/purge-hors-ligne'
-import { ADRESSE_D_ABONNEMENT, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { ChoixDeFormule, RetourDAbonnement } from '@/components/abonnement'
+import { ADRESSE_D_ABONNEMENT } from '@/lib/domaine/offre'
 
 /**
  * La vue d'ensemble d'un espace dont l'essai est terminé (palier 1c).
@@ -18,13 +19,15 @@ export function FinDEssai({
   slug,
   lecture,
   suspenduAlaMain,
+  retour,
 }: {
   slug: string
   lecture: 'essentiel' | 'aucune'
   suspenduAlaMain: boolean
+  /** `?abonnement=` : retour de la page de paiement, ou refus. */
+  retour?: string | undefined
 }) {
-  const prix = `${PRIX_MENSUEL_HT} € HT par mois, ou ${PRIX_ANNUEL_HT} € HT par an`
-  if (suspenduAlaMain) {
+    if (suspenduAlaMain) {
     return (
       <>
         <PurgeHorsLigne />
@@ -52,6 +55,7 @@ export function FinDEssai({
         titre={lecture === 'essentiel' ? 'Votre essai est terminé' : 'Votre espace est suspendu'}
       />
       <div className="mt-8 flex max-w-prose flex-col gap-6">
+        <RetourDAbonnement motif={retour} />
         <Panneau ton="rose">
           {lecture === 'essentiel' ? (
             <p className="text-encre">
@@ -69,10 +73,12 @@ export function FinDEssai({
         <div className="flex flex-col gap-2">
           <h2 className="font-titre text-h3 font-semibold text-encre">S’abonner</h2>
           <p className="text-ardoise">
-            L’abonnement couvre votre organisation, ses deux veilles et trois lecteurs : {prix}.
+            L’abonnement couvre votre organisation, ses deux veilles et trois lecteurs.
           </p>
+          <ChoixDeFormule slug={slug} />
           <p className="text-ardoise">
-            Pour vous abonner, écrivez à{' '}
+            Paiement sécurisé par Stripe, facture à chaque échéance. Pour un bon de commande ou
+            un virement, écrivez à{' '}
             <a className="text-encre underline" href={`mailto:${ADRESSE_D_ABONNEMENT}`}>
               {ADRESSE_D_ABONNEMENT}
             </a>

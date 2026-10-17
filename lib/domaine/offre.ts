@@ -6,5 +6,5 @@
  */
 export const PRIX_MENSUEL_HT = 89
 export const PRIX_ANNUEL_HT = 890
-/** Tant que la souscription en ligne n'existe pas, on s'abonne en écrivant ici. */
+/** Pour un bon de commande, un virement, ou quand la souscription en ligne est indisponible. */
 export const ADRESSE_D_ABONNEMENT = 'agathe@signauxfaibles.io'
