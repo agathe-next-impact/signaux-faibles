@@ -1,4 +1,4 @@
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { semainesPubliées } from '@/lib/portail/semaine'
 
@@ -12,7 +12,7 @@ import { semainesPubliées } from '@/lib/portail/semaine'
  */
 export default async function Archives({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const accès = await exigerLectureComplète(slug)
 
   const semaines = await semainesPubliées(accès.organisationId)
 

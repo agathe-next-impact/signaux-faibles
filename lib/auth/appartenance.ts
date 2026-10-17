@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/source-acces'
 import type { Accès, Espace } from '@/lib/notion/acces'
 import { identifiantDeLaSession } from '@/lib/auth/session'
+import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
 
 /**
  * Le contrôle d'appartenance, en un seul endroit.
@@ -79,6 +80,36 @@ export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé
     slug: slugDemandé,
     enOpérateur: true,
   }
+}
+
+/**
+ * L'accès, et ce que l'espace a le droit de montrer aujourd'hui (palier 1c).
+ *
+ * Le contrôle d'appartenance passe d'abord, inchangé : le droit de lecture ne
+ * se calcule que pour une personne déjà reconnue membre de l'espace.
+ */
+export async function exigerLecture(slugDemandé: string): Promise<{ accès: AccèsAccordé } & Lecture> {
+  const accès = await exigerAccès(slugDemandé)
+  // La ligne Notion de l'opérateur porte le slug d'un client : chez ce client,
+  // `enOpérateur` vaut faux. C'est le privilège qui compte, pas la visite.
+  return {
+    accès,
+    ...(await lectureDeLEspace({ organisationId: accès.organisationId, enOpérateur: accès.enOpérateur || accès.tousLesEspaces })),
+  }
+}
+
+/**
+ * Pour les écrans qui ne montrent que du contenu complet (axes, acteurs,
+ * recommandations, archives, périmètre) : hors lecture complète, retour à la vue
+ * d'ensemble, qui explique la situation. Ces écrans assemblent des passages de
+ * plusieurs lettres ; aucune troncature honnête ne les réduirait à
+ * « L'essentiel », et les garder ouverts laisserait lire ce que l'essai réserve
+ * aux abonnés. `tests/architecture.test.ts` vérifie que chacun l'appelle.
+ */
+export async function exigerLectureComplète(slugDemandé: string): Promise<AccèsAccordé> {
+  const { accès, lecture } = await exigerLecture(slugDemandé)
+  if (lecture !== 'complète') redirect(`/${accès.slug}`)
+  return accès
 }
 
 /**

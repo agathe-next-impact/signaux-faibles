@@ -148,6 +148,45 @@ Les lire avant toute session.
   base Accès (§1.3 du balayage) par cette route. Le contrôle du soir rend la
   source en cours et l'état de la base (`accès` dans sa réponse) ; une base
   injoignable en mode `postgres` est un défaut, notifié
+- **Abonnement, palier 1c** (offre du 17 octobre 2026, `docs/decision-portail-moteur.md`) :
+  Stripe est la seule source de vérité ; la table `abonnements` en est la copie,
+  écrite par le seul webhook `app/api/webhooks/stripe` (signature vérifiée par le
+  SDK `stripe` 23, `STRIPE_WEBHOOK_SECRET` lu dans `process.env`, une ligne
+  par abonnement Stripe, doublons et désordre absorbés par `dernier_événement`,
+  `événement_le` et `dernier_type`, un événement de l'autre mode refusé en 500
+  selon `STRIPE_MODE` pour que Stripe relivre et alerte ; `tests/architecture.test.ts` vérifie le seul écrivain). L'étape du
+  parcours n'est jamais stockée : `étapeDuParcours` (`lib/domaine/parcours.ts`)
+  la calcule de la date d'activation, de l'état de l'organisation et de l'état
+  Stripe (essai J0, J+7, J+14 ; « L'essentiel » seul à J+21 ; suspension
+  au-delà ; `past_due` reste abonné ; une suspension ou un écart posé par
+  l'opérateur prime sur Stripe ; un paiement jamais abouti ne retire rien à un
+  client historique). La lettre tronquée est retirée à la
+  construction (`tronquerÀLEssentiel`, `lib/domaine/troncature.ts`), jamais
+  masquée à l'affichage : le reste de la lettre ne doit pas atteindre le HTML.
+  Elle ne garde que les paragraphes et puces de « L'essentiel », huit lignes au
+  plus, ce que mesure le validateur. **Droit de lecture** : `lectureDeLEspace`
+  (`lib/portail/lecture.ts`) le calcule, complet dans le doute (base absente ou
+  injoignable, organisation hors Postgres, opérateur). Les écrans de contenu
+  assemblé (axes, acteurs, recommandations, archives, périmètre) appellent
+  `exigerLectureComplète` et renvoient sinon à la vue d'ensemble, qui devient
+  `FinDEssai` ; les lettres restent ouvertes en `essentiel` (sans action de la
+  semaine ni dossiers, propriétés hors du corps), le rail se réduit, le proxy
+  des médias ne sert rien. `tests/architecture.test.ts` le vérifie écran par écran.
+  La lecture n'ouvre pas Postgres en mode `notion`, est bornée à 400 ms et
+  mémoïsée par requête. Le service worker (v2) ne sert plus en ligne depuis son
+  cache que les fichiers statiques : ni charge RSC (`?_rsc`), ni `/api/` ; la
+  fin d'essai purge le cache hors ligne (`PurgeHorsLigne`).
+  **Souscription en ligne** : Stripe Checkout et l'espace de facturation Stripe,
+  ouverts par deux actions serveur (`lib/portail/abonnement.ts`, paramètres
+  purs dans `lib/stripe/souscription.ts`). L'organisation facturée est celle de
+  la session, posée en `subscription_data.metadata.organisation_id` (l'uuid
+  Postgres, que lit le webhook) ; une organisation déjà abonnée est renvoyée à la
+  facturation au lieu d'un second paiement ; une visite opérateur ne souscrit ni
+  ne gère rien. Aucune des deux n'écrit dans Postgres : seul le webhook le fait.
+  `STRIPE_CLE_SECRETE`, `STRIPE_PRIX_MENSUEL`, `STRIPE_PRIX_ANNUEL` et
+  `STRIPE_TAUX_TVA` (facultatif) sont lues dans `process.env` ; une pièce
+  manquante, ou une clé qui ne correspond pas à `STRIPE_MODE`, rend la
+  souscription « indisponible » sans faire tomber de page
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

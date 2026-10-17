@@ -1,4 +1,4 @@
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { CaseAxe } from '@/components/case-axe'
 import { EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { LégendeFraicheur } from '@/components/fraicheur'
@@ -24,7 +24,7 @@ import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
  */
 export default async function LesAxes({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const accès = await exigerLectureComplète(slug)
 
   const semaines = await semainesPubliées(accès.organisationId)
 

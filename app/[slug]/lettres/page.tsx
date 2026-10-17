@@ -1,4 +1,5 @@
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { redirect } from 'next/navigation'
+import { exigerLecture } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { lettresPubliées, semainesPubliées } from '@/lib/portail/semaine'
 
@@ -15,7 +16,8 @@ import { lettresPubliées, semainesPubliées } from '@/lib/portail/semaine'
  */
 export default async function Lettres({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const { accès, lecture } = await exigerLecture(slug)
+  if (lecture === 'aucune') redirect(`/${accès.slug}`)
 
   const semaines = await semainesPubliées(accès.organisationId)
   const lettres = lettresPubliées(semaines)
@@ -48,12 +50,12 @@ export default async function Lettres({ params }: { params: Promise<{ slug: stri
                 {édition.périodeCouverte ? (
                   <p className="text-ardoise">{édition.périodeCouverte}</p>
                 ) : null}
-                {édition.actionDeLaSemaine ? (
+                {lecture === 'complète' && édition.actionDeLaSemaine ? (
                   <p className="text-ardoise">{édition.actionDeLaSemaine}</p>
                 ) : null}
                 <div className="mt-auto pt-1">
                   <LienFlèche href={`/${accès.slug}/lettres/${édition.pageId}`} étendu>
-                    Lire
+                    {lecture === 'complète' ? 'Lire' : 'Lire l’essentiel'}
                   </LienFlèche>
                 </div>
               </Case>

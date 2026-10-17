@@ -1,4 +1,6 @@
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLecture } from '@/lib/auth/appartenance'
+import { FinDEssai } from '@/components/fin-d-essai'
+import { LigneDEssai, OffreDEssai, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
@@ -34,11 +36,29 @@ const ACTEURS_EN_ACCUEIL = 6
 
 export default async function VueDEnsemble({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ abonnement?: string | string[] }>
 }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const { accès, lecture, étape } = await exigerLecture(slug)
+  const brut = (await searchParams).abonnement
+  const retour = typeof brut === 'string' ? brut : undefined
+  const essai = étape?.étape === 'essai' ? étape.parution : null
+
+  // Fin d'essai (palier 1c) : le tableau de bord assemble des passages de
+  // plusieurs lettres, il n'est donc montré qu'en lecture complète.
+  if (lecture !== 'complète') {
+    return (
+      <FinDEssai
+        slug={accès.slug}
+        lecture={lecture}
+        suspenduAlaMain={étape?.étape === 'suspendue' && étape.manuelle}
+        retour={retour}
+      />
+    )
+  }
 
   const semaines = await semainesPubliées(accès.organisationId)
   const courante = semaines[0]
@@ -114,6 +134,17 @@ export default async function VueDEnsemble({
         titre="Vue d’ensemble"
         état={`à jour · ${courante.libellé}`}
       />
+
+      {essai ? (
+        <div className="mt-2">
+          <LigneDEssai parution={essai} />
+        </div>
+      ) : null}
+      {retour ? (
+        <div className="mt-6 max-w-prose">
+          <RetourDAbonnement motif={retour} />
+        </div>
+      ) : null}
 
       <div className="mt-6">
         <Grille étiquette="Chiffres de la semaine" colonnes={4}>
@@ -250,6 +281,8 @@ export default async function VueDEnsemble({
           </Grille>
         )}
       </section>
+
+      {essai ? <OffreDEssai slug={accès.slug} parution={essai} /> : null}
     </>
   )
 }

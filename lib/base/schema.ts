@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -21,9 +22,10 @@ import {
  * contient jamais le corps d'une lettre ni le texte d'un référentiel : il en
  * contient les identifiants Notion.
  *
- * Ce fichier ne crée que ce dont le palier 1a a besoin — organisations, veilles,
- * lecteurs. Les tables suivantes du schéma cible (`docs/schema-donnees.md`)
- * arrivent avec le palier qui s'en sert, chacune par sa propre migration.
+ * Ce fichier ne crée que ce dont les paliers engagés ont besoin : organisations,
+ * veilles et lecteurs (palier 1a), abonnements (palier 1c). Les tables suivantes
+ * du schéma cible (`docs/schema-donnees.md`) arrivent avec le palier qui s'en
+ * sert, chacune par sa propre migration.
  *
  * Conventions, celles du schéma cible : identifiants `uuid` tirés par la base,
  * horodatages avec fuseau, noms en français comme le reste du code, suppression
@@ -162,6 +164,61 @@ export const lecteurs = pgTable(
   ],
 )
 
+/**
+ * L'abonnement d'une organisation, **copie de Stripe** (palier 1c).
+ *
+ * Stripe est la seule source de vérité de l'abonnement
+ * (`docs/decision-portail-moteur.md`, point 6) : cette table n'est écrite que
+ * par son webhook, jamais par un écran ni par une tâche, et le portail ne la lit
+ * que pour ses propres décisions (le parcours d'essai, la lecture autorisée).
+ *
+ * **Une ligne par abonnement Stripe**, et non par organisation : un client qui
+ * passe du mois à l'année, ou se réabonne après une résiliation, a deux
+ * abonnements, parfois ouverts en même temps quelques instants. Une ligne unique
+ * par organisation laissait la résiliation tardive de l'ancien écraser le
+ * nouveau (relecture du 17 octobre 2026). Une organisation est abonnée si
+ * **l'une** de ses lignes est ouverte.
+ *
+ * `dernier_événement` et `événement_le` rendent le webhook sûr face aux deux
+ * travers de Stripe, qui sont documentés : un même événement peut arriver
+ * plusieurs fois, et deux événements peuvent arriver dans le désordre. Le
+ * premier est reconnu à son identifiant, le second à sa date de création.
+ */
+export const abonnements = pgTable(
+  'abonnements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    clientStripe: text('client_stripe').notNull(),
+    abonnementStripe: text('abonnement_stripe').notNull().unique(),
+    /** Tel que Stripe le donne : `trialing`, `active`, `past_due`, `canceled`… */
+    état: text('état').notNull(),
+    /** `mensuelle` ou `annuelle`, lue sur l'intervalle du prix ; nulle si Stripe ne le dit pas. */
+    formule: text('formule'),
+    périodeFin: horodatage('période_fin'),
+    /** Identifiant du dernier événement Stripe appliqué. */
+    dernierÉvénement: text('dernier_événement').notNull(),
+    /** Date de création de cet événement chez Stripe : un événement plus ancien est ignoré. */
+    événementLe: horodatage('événement_le').notNull(),
+    /**
+     * Type de cet événement (`customer.subscription.updated`…). Stripe date ses
+     * événements à la seconde, et un paiement par Checkout produit `created` et
+     * `updated` dans la même : à égalité de date, l'ordre du cycle de vie
+     * départage (création, puis mise à jour, puis suppression).
+     */
+    dernierType: text('dernier_type').notNull(),
+    reçuLe: horodatage('reçu_le').notNull().defaultNow(),
+  },
+  (table) => [
+    index('abonnements_organisation').on(table.organisationId),
+    check('abonnements_client_stripe_forme', sql`${table.clientStripe} ~ '^cus_'`),
+    check('abonnements_abonnement_stripe_forme', sql`${table.abonnementStripe} ~ '^sub_'`),
+  ],
+)
+
 export type Organisation = typeof organisations.$inferSelect
 export type Lecteur = typeof lecteurs.$inferSelect
 export type Veille = typeof veilles.$inferSelect
+export type Abonnement = typeof abonnements.$inferSelect

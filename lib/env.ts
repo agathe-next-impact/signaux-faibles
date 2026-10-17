@@ -46,6 +46,19 @@ const schema = z.object({
   // valeur et retombe sur `notion` en le journalisant. Une énumération ici
   // ferait d'une faute de frappe dans l'hébergeur une panne de tout le portail.
   SOURCE_ACCES: facultative(z.string()),
+  // Palier 1c : lu directement dans `process.env` par le webhook Stripe, comme le
+  // secret du webhook Notion. Le portail ne tombe pas tant que le compte Stripe
+  // n'existe pas : le webhook refuse simplement les livraisons.
+  STRIPE_WEBHOOK_SECRET: facultative(z.string().min(1)),
+  // `reel` en production réelle ; toute autre valeur, ou rien, vaut le mode test.
+  // Le webhook n'applique que les événements du mode déclaré.
+  STRIPE_MODE: facultative(z.string()),
+  // Souscription en ligne : lues dans `process.env` par `lib/stripe/souscription.ts`,
+  // qui les valide et rend la souscription indisponible s'il en manque une.
+  STRIPE_CLE_SECRETE: facultative(z.string().min(1)),
+  STRIPE_PRIX_MENSUEL: facultative(z.string().min(1)),
+  STRIPE_PRIX_ANNUEL: facultative(z.string().min(1)),
+  STRIPE_TAUX_TVA: facultative(z.string().min(1)),
   GMAIL_EXPEDITEUR: z.email(),
   GMAIL_EXPEDITEUR_NOM: z.preprocess(
     (valeur) => (valeur === '' ? undefined : valeur),

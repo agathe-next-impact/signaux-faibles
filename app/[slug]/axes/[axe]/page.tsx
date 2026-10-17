@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { RenduBlocs } from '@/components/document'
@@ -27,7 +27,7 @@ export default async function UnAxe({
   params: Promise<{ slug: string; axe: string }>
 }) {
   const { slug, axe: segment } = await params
-  const accès = await exigerAccès(slug)
+  const accès = await exigerLectureComplète(slug)
 
   const semaines = await semainesPubliées(accès.organisationId)
   const notes = await dernièresNotes(semaines)

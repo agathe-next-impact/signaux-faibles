@@ -4,6 +4,7 @@ import { MenuBas } from '@/components/menu-bas'
 import { NavLatérale } from '@/components/nav-laterale'
 import { Quitter } from '@/components/quitter'
 import { Resynchroniser } from '@/components/resynchroniser'
+import { GérerLAbonnement } from '@/components/abonnement'
 
 /**
  * La coquille de l'espace client : un rail à gauche, le contenu à droite.
@@ -37,6 +38,7 @@ export function Coquille({
   onglets,
   enOpérateur = false,
   peutResynchroniser = false,
+  peutGérerLAbonnement = false,
   children,
 }: {
   slug: string
@@ -49,6 +51,8 @@ export function Coquille({
    * l'opératrice n'est pas `enOpérateur` et doit pourtant garder le bouton.
    */
   peutResynchroniser?: boolean
+  /** Abonné par Stripe : lien vers l'espace de facturation (palier 1c). */
+  peutGérerLAbonnement?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -103,6 +107,7 @@ export function Coquille({
 
             <div className="mt-auto hidden flex-col gap-2 lg:flex">
               <p className="label-mono text-ardoise">Accès personnel, à ne pas transférer</p>
+              {peutGérerLAbonnement ? <GérerLAbonnement slug={slug} /> : null}
               {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
               <Quitter />
             </div>
@@ -112,6 +117,7 @@ export function Coquille({
         <div className="flex min-w-0 flex-1 flex-col">
           <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
           <div className="flex flex-col gap-2 px-6 pb-6 lg:hidden">
+            {peutGérerLAbonnement ? <GérerLAbonnement slug={slug} /> : null}
             {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
             <Quitter />
           </div>

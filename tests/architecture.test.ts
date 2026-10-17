@@ -349,6 +349,31 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     ])
   })
 
+  it('la copie de l’abonnement n’est écrite que par le webhook Stripe', () => {
+    expect(appelants('enregistrerÉvénementDAbonnement')).toEqual([
+      'app/api/webhooks/stripe/route.ts',
+      'lib/base/abonnements.ts',
+    ])
+  })
+
+  it('Stripe n’est appelé que par la souscription, et l’organisation facturée par elle seule', () => {
+    expect(appelants('clientStripe')).toEqual(['lib/portail/abonnement.ts', 'lib/stripe/souscription.ts'])
+    expect(appelants('lireFacturation')).toEqual(['lib/base/abonnements.ts', 'lib/portail/abonnement.ts'])
+  })
+
+  it('une visite opérateur ne souscrit ni n’ouvre la facturation d’un client', () => {
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'abonnement.ts'), 'utf8')
+    for (const [action, appel] of [
+      ['export async function souscrire', 'pageDePaiement(accès'],
+      ['export async function gérerLAbonnement', 'espaceDeFacturation(accès'],
+    ] as const) {
+      const corps = source.slice(source.indexOf(action))
+      const garde = corps.indexOf('if (accès.enOpérateur) redirect(')
+      expect(garde, action).toBeGreaterThan(corps.indexOf('exigerAccès(slug)'))
+      expect(garde, action).toBeLessThan(corps.indexOf(appel))
+    }
+  })
+
   it('toute route /api/veille commence par la garde du jeton', () => {
     const racine = join(process.cwd(), 'app', 'api', 'veille')
     const routes = readdirSync(racine).map((nom) => join(racine, nom, 'route.ts'))
@@ -433,6 +458,13 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     }
   })
 
+  it('hors lecture complète, le rail ne montre que ce qui reste ouvert', async () => {
+    const { ongletsDe } = await import('@/lib/portail/semaine')
+    const comptes = { lettres: 2, recommandations: 0, archives: 1 }
+    expect(ongletsDe('client', comptes, 'essentiel').map((o) => o.href)).toEqual(['/client', '/client/lettres'])
+    expect(ongletsDe('client', comptes, 'aucune').map((o) => o.href)).toEqual(['/client'])
+  })
+
   it('les deux écrans scindés portent chacun sa page de détail', () => {
     for (const détail of [
       join('axes', '[axe]'),
@@ -468,6 +500,63 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
  * demandeur avait le droit de le voir ; et plusieurs journaux portaient
  * l'adresse d'un lecteur en clair. Ni l'un ni l'autre ne doit revenir.
  */
+/**
+ * La fin d'essai (palier 1c) ne vaut que si chaque écran obéit au droit de
+ * lecture. Les écrans qui assemblent plusieurs lettres (axes, acteurs,
+ * recommandations, archives, périmètre) n'ont pas de version tronquée : ils
+ * exigent la lecture complète. Seuls la vue d'ensemble et les lettres restent
+ * ouverts hors lecture complète, et ils lisent le droit eux-mêmes.
+ */
+describe('chaque écran de l’espace obéit au droit de lecture', () => {
+  const racine = join(process.cwd(), 'app', '[slug]')
+  const pages: string[] = []
+  const parcourir = (dossier: string) => {
+    for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+      const chemin = join(dossier, entrée.name)
+      if (entrée.isDirectory()) parcourir(chemin)
+      else if (entrée.name === 'page.tsx') pages.push(chemin)
+    }
+  }
+  parcourir(racine)
+  const ouvertes = ['page.tsx', join('lettres', 'page.tsx'), join('lettres', '[edition]', 'page.tsx')]
+
+  it('les écrans de contenu assemblé exigent la lecture complète', () => {
+    const fermées = pages.filter((p) => !ouvertes.includes(p.slice(racine.length + 1)))
+    expect(fermées.length).toBeGreaterThanOrEqual(8)
+    for (const page of fermées) {
+      const source = readFileSync(page, 'utf8')
+      expect(source, page).toContain('exigerLectureComplète(slug)')
+      expect(source, page).not.toContain('exigerAccès(')
+    }
+  })
+
+  it('la vue d’ensemble et les lettres lisent le droit de lecture', () => {
+    for (const ouverte of ouvertes) {
+      const source = readFileSync(join(racine, ouverte), 'utf8')
+      expect(source, ouverte).toContain('exigerLecture(slug)')
+      expect(source, ouverte).not.toContain('exigerAccès(')
+    }
+  })
+
+  it('le service worker ne sert jamais de cache en ligne pour les charges RSC ni l’API', () => {
+    const sw = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8')
+    expect(sw).toContain("const JAMAIS = ['/api/'")
+    expect(sw).toContain("requête.headers.has('RSC') || url.searchParams.has('_rsc')")
+    expect(sw).not.toContain("const VERSION = 'v1'")
+  })
+
+  it('la lettre tronque le document avant de le rendre', () => {
+    const source = readFileSync(join(process.cwd(), 'components', 'note.tsx'), 'utf8')
+    expect(source).toContain('tronquerÀLEssentiel(construireDocument(blocs))')
+  })
+
+  it('le proxy des médias ne sert rien hors lecture complète, avant toute lecture Notion', () => {
+    const source = readFileSync(join(process.cwd(), 'app', 'api', 'media', '[block_id]', 'route.ts'), 'utf8')
+    expect(source.indexOf('lectureDeLEspace(')).toBeGreaterThan(-1)
+    expect(source.indexOf('lectureDeLEspace(')).toBeLessThan(source.indexOf('listerÉditionsPubliées('))
+  })
+})
+
 describe('le proxy des médias vérifie l’appartenance avant de lire Notion', () => {
   it('consulte la liste des éditions de l’organisation avant de résoudre le bloc', () => {
     const source = readFileSync(

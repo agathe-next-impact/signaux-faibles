@@ -1,4 +1,4 @@
-import { exigerAccès } from '@/lib/auth/appartenance'
+import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Fraicheur, LégendeFraicheur } from '@/components/fraicheur'
 import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
@@ -22,7 +22,7 @@ import { semainesPubliées } from '@/lib/portail/semaine'
  */
 export default async function LesActeurs({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const accès = await exigerAccès(slug)
+  const accès = await exigerLectureComplète(slug)
 
   const semaines = await semainesPubliées(accès.organisationId)
   // `suivreLesDossiers` range du plus enlisé au plus récent — l'ordre d'un
