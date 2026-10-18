@@ -3,7 +3,6 @@ import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
 import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { envoyerMessage } from '@/lib/email/gmail'
 import { lignesDAccèsPourContrôle } from '@/lib/notion/acces'
 import { listerÉditionsPubliées, lireBlocsDePage } from '@/lib/notion/editions'
 import {
@@ -15,6 +14,7 @@ import {
   type EspaceContrôlé,
   type ÉtatDuDispositif,
 } from '@/lib/portail/etat'
+import { envoyerCourrier } from '@/lib/portail/courriers'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { CONTRAT_DE_FORME_DEPUIS, contrôlerLaLettre, type Rapport } from '@/lib/portail/lint'
 
@@ -121,7 +121,14 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       } else {
         try {
           const courrier = composerCourrierDÉtat(état)
-          await envoyerMessage({ destinataire, sujet: courrier.objet, texte: courrier.texte })
+          await envoyerCourrier({
+            message: { destinataire, sujet: courrier.objet, texte: courrier.texte },
+            sorte: 'alerte_espaces',
+            déclencheur: requête.headers.get('x-vercel-cron-schedule') !== null ? 'cron' : 'manuel',
+            organisation: null,
+            lecteurId: null,
+            unique: false,
+          })
           notification = 'envoyée'
         } catch (erreur) {
           notification = 'échec'

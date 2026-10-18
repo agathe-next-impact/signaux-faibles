@@ -1,7 +1,8 @@
 import { revalidateTag } from 'next/cache'
 import { NextResponse, type NextRequest } from 'next/server'
 import { composerLienDAccès } from '@/lib/auth/jeton'
-import { composerCourrierDAccès, envoyerMessage } from '@/lib/email/gmail'
+import { composerCourrierDAccès } from '@/lib/email/gmail'
+import { envoyerCourrier } from '@/lib/portail/courriers'
 import { env } from '@/lib/env'
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { sourcesDeDonnées } from '@/lib/notion/client'
@@ -102,7 +103,14 @@ async function ouvrir(email: string, origine: string | null): Promise<NextRespon
       env().PORTAIL_URL,
     )
     const courrier = composerCourrierDAccès(accès.nom, lien)
-    await envoyerMessage({ ...courrier, destinataire: accès.email })
+    await envoyerCourrier({
+      message: { ...courrier, destinataire: accès.email },
+      sorte: 'lien_acces',
+      déclencheur: 'activation',
+      organisation: accès.organisationId ? { registreNotion: accès.organisationId } : null,
+      lecteurId: null,
+      unique: false,
+    })
 
     // Après l'envoi, pas avant : un diagnostic n'a pas à retarder le courrier,
     // et une liste d'éditions indisponible ne doit pas empêcher l'ouverture.

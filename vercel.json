@@ -5,6 +5,10 @@
     {
       "path": "/api/veille/etat",
       "schedule": "30 17 * * 1-5"
+    },
+    {
+      "path": "/api/veille/parcours",
+      "schedule": "0 8 * * *"
     }
   ]
 }

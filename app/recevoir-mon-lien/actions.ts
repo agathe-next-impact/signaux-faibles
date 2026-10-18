@@ -4,7 +4,8 @@ import { headers } from 'next/headers'
 import { env } from '@/lib/env'
 import { composerLienDAccès } from '@/lib/auth/jeton'
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
-import { composerCourrierDAccès, envoyerMessage } from '@/lib/email/gmail'
+import { composerCourrierDAccès } from '@/lib/email/gmail'
+import { envoyerCourrier } from '@/lib/portail/courriers'
 import {
   autoriserLEnvoi,
   avecDuréeMinimale,
@@ -68,7 +69,14 @@ export async function envoyerMonLien(
         env().PORTAIL_URL,
       )
       const courrier = composerCourrierDAccès(accès.nom, lien)
-      await envoyerMessage({ ...courrier, destinataire: accès.email })
+      await envoyerCourrier({
+        message: { ...courrier, destinataire: accès.email },
+        sorte: 'lien_acces',
+        déclencheur: 'recevoir-mon-lien',
+        organisation: accès.organisationId ? { registreNotion: accès.organisationId } : null,
+        lecteurId: null,
+        unique: false,
+      })
 
       console.info(`[lien] envoyé à ${marque} (${accès.slug}).`)
       return { état: 'envoyé' }

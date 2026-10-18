@@ -255,7 +255,11 @@ export function composerMessage(
   return lignes.join('\r\n')
 }
 
-export async function envoyerMessage(message: Message): Promise<void> {
+/**
+ * Envoie un message et rend l'identifiant que Gmail lui donne, pour le journal
+ * des courriers (`lib/portail/courriers.ts`, seul appelant hors de ce fichier).
+ */
+export async function envoyerMessage(message: Message): Promise<{ readonly idMessage: string | null }> {
   const configuration = env()
   const jeton = await obtenirJetonGoogle()
 
@@ -277,9 +281,17 @@ export async function envoyerMessage(message: Message): Promise<void> {
   })
 
   if (!réponse.ok) {
-    throw new Error(
-      `L'envoi par Gmail a échoué (${réponse.status}) : ${await réponse.text()}`,
-    )
+    throw new ErreurDEnvoi(réponse.status, await réponse.text())
+  }
+  const corps = (await réponse.json().catch(() => null)) as { id?: unknown } | null
+  return { idMessage: typeof corps?.id === 'string' ? corps.id : null }
+}
+
+/** Un refus de Gmail, avec son statut HTTP : c'est lui seul que le journal garde. */
+export class ErreurDEnvoi extends Error {
+  override readonly name = 'ErreurDEnvoi'
+  constructor(readonly statut: number, détail: string) {
+    super(`L'envoi par Gmail a échoué (${statut}) : ${détail}`)
   }
 }
 
