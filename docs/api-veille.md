@@ -282,6 +282,31 @@ copie la base Accès, plutôt qu'un poste où il faudrait les recopier.
   comptes, slugs, libellés, lignes écartées désignées par empreinte ; jamais
   d'adresse ni d'identifiant d'accès. Refuse (409) une base Notion vide.
 
+## Entrée en essai (18 octobre 2026)
+
+`POST /api/veille/organisations`, gardée par le jeton,
+`{ "slug", "nom", "registreNotion" }` (le `page_id` de la ligne du registre,
+celui que portent les éditions, avec ou sans tirets) :
+
+- 201 `créée` : nouvelle organisation à l'état `essai`, sans J0 ;
+- 200 `passée-en-essai` : une `demande`, une `generation`, ou une `abonnee`
+  née d'un import rejoué pendant l'onboarding (créée après le 18/10/2026, il y
+  a moins de quatorze jours, sans J0 ni abonnement) ;
+- 200 `déjà-en-essai` : rejouable ; tant que J0 n'est pas posé, corrige le
+  registre et le libellé ;
+- 409 `registre-différent` (`registreActuel`) : J0 posé, le registre ne change
+  plus ;
+- 409 `état-incompatible` (`étatActuel`) : client historique, suspendu,
+  écarté ou de test, jamais rétrogradé ;
+- 409 `registre-pris` (`slugExistant`) : ce registre porte déjà un autre slug ;
+- 409 `refusé` en `SOURCE_ACCES=notion`, 503 sans base.
+
+Ordre attendu à l'étape B de l'onboarding : cette route, puis
+`POST /api/veille/importer-acces` (en `double`), puis `POST /api/acces/ouvrir`.
+J0 est fixé ensuite par `GET /api/veille/parcours` à la date de la première
+lettre publiée datée de la semaine d'entrée en essai ou après ; la réponse le
+dit dans `j0Fixés`.
+
 ## Écriture des lecteurs (palier 1a-bis, 16 octobre 2026)
 
 `POST /api/veille/lecteurs`, gardée par le jeton :
