@@ -205,7 +205,19 @@ Les lire avant toute session.
   ou à l'adresse de relecture tant que `relecture_requise` est vrai. Le journal
   se lit par `GET /api/veille/courriers?jours=30` (jeton).
   `tests/architecture.test.ts` vérifie le seul appelant d'`envoyerMessage` et
-  l'ordre réservation puis envoi
+  l'ordre réservation puis envoi.
+  **Entrée en essai** (18 octobre 2026) : l'onboarding Cowork (étape B) appelle
+  `POST /api/veille/organisations` `{ slug, nom, registreNotion }` **avant**
+  `importer-acces` puis `/api/acces/ouvrir` ; `ouvrirEnEssai`
+  (`lib/base/organisations.ts`) crée l'organisation à l'état `essai`, sans
+  relecture des courriers, ou y fait passer une `demande`, une `generation`, ou
+  une `abonnee` née de l'import avant l'activation (sans J0, sans abonnement,
+  sans lecteur actif). Un client historique n'est jamais rétrogradé
+  (`état-incompatible`). **J0 n'est posé par personne à la main** : le passage
+  quotidien du parcours lit les éditions publiées d'une organisation en essai
+  sans date et fixe `activée_le` à la plus ancienne (`fixerJ0`, une seule fois) ;
+  avant la première lettre publiée, l'étape est « hors parcours » et la lecture
+  complète. La garde d'architecture tient le seul appelant de chacune
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

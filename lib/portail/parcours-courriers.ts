@@ -1,8 +1,12 @@
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { organisationsEnEssai } from '@/lib/base/courriers'
+import { fixerJ0 } from '@/lib/base/organisations'
 import { composerCourrierDeParcours, courrierDuParcours, type SorteDeParcours } from '@/lib/domaine/courriers-parcours'
 import { étapeDuParcours } from '@/lib/domaine/parcours'
+import { estUneDateISO } from '@/lib/domaine/semaines'
+import { listerÉditionsPubliées } from '@/lib/notion/editions'
 import { envoyerCourrier } from '@/lib/portail/courriers'
+import { identifiantAvecTirets } from '@/lib/portail/garde-veille'
 import { empreinte } from '@/lib/portail/debit'
 
 /**
@@ -24,11 +28,27 @@ import { empreinte } from '@/lib/portail/debit'
  * `double`, c'est Notion qui fait foi, et la table `lecteurs` n'est alignée qu'à
  * l'import. Un lecteur révoqué dans Notion depuis le dernier import, ou rattaché
  * à une autre organisation, ne reçoit rien.
+ *
+ * **J0 est fixé ici** (18 octobre 2026) : une organisation ouverte en essai par
+ * l'onboarding (`POST /api/veille/organisations`) n'a pas de date d'activation.
+ * Le passage lit ses éditions publiées (lecture cachée, celle des écrans) et,
+ * s'il en trouve, pose J0 à la date de la plus ancienne, à midi UTC pour que
+ * la semaine ISO de Paris soit celle de la lettre. Une date déjà posée n'est
+ * jamais déplacée (`fixerJ0`). Tant qu'aucune lettre n'est publiée, l'espace
+ * reste en lecture complète et aucun courrier n'est dû.
  */
+
+/** La date d'activation déduite de la première lettre publiée, ou `null`. */
+export function j0DesÉditions(éditions: ReadonlyArray<{ readonly dateÉdition: string }>): Date | null {
+  const dates = éditions.map((é) => é.dateÉdition.slice(0, 10)).filter(estUneDateISO).sort()
+  return dates.length > 0 ? new Date(`${dates[0]}T12:00:00Z`) : null
+}
 
 export type RapportDeParcours = {
   readonly date: string
   readonly organisationsEnEssai: number
+  /** Organisations dont J0 a été fixé par ce passage. */
+  readonly j0Fixés: string[]
   readonly courriers: Array<{
     readonly slug: string
     readonly sorte: SorteDeParcours
@@ -44,10 +64,27 @@ export async function envoyerLesCourriersDeParcours(entrée: {
 }): Promise<RapportDeParcours> {
   const organisations = await organisationsEnEssai()
   const courriers: RapportDeParcours['courriers'] = []
+  const j0Fixés: string[] = []
 
   for (const organisation of organisations) {
+    let activéeLe = organisation.activéeLe
+    if (!activéeLe) {
+      if (!organisation.registreNotion) continue
+      try {
+        const j0 = j0DesÉditions(await listerÉditionsPubliées(identifiantAvecTirets(organisation.registreNotion)))
+        if (!j0) continue
+        if (await fixerJ0(organisation.id, j0)) j0Fixés.push(organisation.slug)
+        activéeLe = j0
+      } catch (erreur) {
+        console.error(
+          `[parcours] ${organisation.slug} : J0 non fixé (${erreur instanceof Error ? erreur.name : 'inconnue'}), repris au prochain passage.`,
+        )
+        continue
+      }
+    }
+
     const étape = étapeDuParcours({
-      organisation: { état: 'essai', activéeLe: organisation.activéeLe },
+      organisation: { état: 'essai', activéeLe },
       abonnement: organisation.abonnement,
       aujourdHui: entrée.aujourdHui,
     })
@@ -112,6 +149,7 @@ export async function envoyerLesCourriersDeParcours(entrée: {
     }
   }
 
+  for (const slug of j0Fixés) console.info(`[parcours] ${slug} : J0 fixé à la première lettre publiée.`)
   for (const c of courriers) console.info(`[parcours] ${c.slug} : ${c.sorte} → ${c.destinataire} : ${c.issue}`)
-  return { date: entrée.aujourdHui, organisationsEnEssai: organisations.length, courriers }
+  return { date: entrée.aujourdHui, organisationsEnEssai: organisations.length, j0Fixés, courriers }
 }

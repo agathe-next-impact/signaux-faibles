@@ -384,6 +384,13 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(corps.indexOf('prévoirCourrier(')).toBeLessThan(corps.indexOf('envoyerMessage('))
   })
 
+  it('l’entrée en essai a un seul chemin, et J0 un seul écrivain', () => {
+    // Ouvrir en essai ne se fait que par la route gardée de l'onboarding ;
+    // J0 n'est posé que par le passage quotidien, d'après la première lettre publiée.
+    expect(appelants('ouvrirEnEssai')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts'])
+    expect(appelants('fixerJ0')).toEqual(['lib/base/organisations.ts', 'lib/portail/parcours-courriers.ts'])
+  })
+
   it('toute route /api/veille commence par la garde du jeton', () => {
     const racine = join(process.cwd(), 'app', 'api', 'veille')
     const routes = readdirSync(racine).map((nom) => join(racine, nom, 'route.ts'))
