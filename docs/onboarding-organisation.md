@@ -55,7 +55,7 @@ au statut `Brouillon`. Vérifier le statut avant l'identifiant.
 
 ## Lancer chaque étape depuis Claude Code
 
-Cinq commandes projet (`.claude/skills/`), une par lancement du cycle, décrites
+Six commandes projet (`.claude/skills/`), une par lancement du cycle, décrites
 pour l'usage dans `docs/guide-commandes-onboarding.html`. Aucune ne
 recopie de prompt : chacune ouvre la page Notion « Tâche — Onboarding d'une
 organisation », qui fait foi, et n'en exécute que la section de son étape, sur
@@ -70,6 +70,19 @@ jamais de lui-même (`disable-model-invocation`).
 | `/onboarding-repercussion <nom> [partiel]` | A-bis, balayage §2 | 2 à 5 |
 | `/onboarding-premiere-lettre <nom>` | B, première lettre | 3 |
 | `/onboarding-activation <nom>` | activation, balayage §1 | 4 ou 5 |
+| `/onboarding-ouvrir-espace <nom>` | ouverture manuelle de l'espace, §1.3 (d) et (e) | 4, 5 ou 6, « Invitation manuelle » cochée |
+
+**Invitation manuelle** (18 octobre 2026). La case du même nom, sur la ligne du
+registre, retient l'ouverture de l'espace : l'étape B fait entrer
+l'organisation en essai (`POST /api/veille/organisations`) mais ne coche pas
+« Actif » et n'envoie aucun lien, et le §1.3 de l'activation contrôle sans
+ouvrir. L'opératrice lance `/onboarding-ouvrir-espace` le jour qu'elle choisit :
+contrôle, « Actif », import, puis `POST /api/acces/ouvrir`. Le lien part
+toujours du portail, la clé qui le signe ne le quittant pas : on écrit au
+client d'abord, puis on lance la commande. L'essai ne démarre qu'à la première
+lettre publiée ; publier et inviter la même semaine évite d'entamer l'essai
+d'un client qui n'a pas encore d'accès, sinon
+`PATCH /api/veille/organisations` `{ "action": "prolonger" }` rattrape l'écart.
 
 Les deux dernières vérifient d'abord, par `GET /api/acces/ouvrir`, que le
 lien pourra partir : elles s'arrêtent avant la collecte plutôt qu'après.

@@ -1,0 +1,80 @@
+---
+name: onboarding-ouvrir-espace
+description: Ouverture manuelle de l'espace du portail d'une organisation dont « Invitation manuelle » est cochée — contrôle la ligne Accès, coche Actif, importe et fait partir le lien, en appliquant les points (d) et (e) du §1.3 du balayage Notion. À lancer par /onboarding-ouvrir-espace <organisation>, jamais de soi-même.
+argument-hint: "<nom de l'organisation, tel qu'au registre>"
+disable-model-invocation: true
+---
+
+Tu tiens le pipeline d'équipement des organisations du cabinet Signaux faibles.
+Tu écris en français. Ce lancement est l'**ouverture manuelle de l'espace** :
+l'opératrice a coché « Invitation manuelle » pour choisir elle-même le jour où le
+client reçoit son lien, et lancer cette commande vaut sa décision. Le lien part
+du portail, dans les minutes qui suivent.
+
+Organisation visée : $ARGUMENTS
+
+1. **Lis la règle.** Ouvre la page Notion « Tâche — Onboarding d'une
+   organisation (prompts A et B) » (`3d5fe829ce718112a40cfcaf55d3fd76`) : le
+   §1.3 du « Prompt — Balayage », points (a) à (f), et dans le « Prompt —
+   Première lettre » le passage « ENTRÉE DANS L'ESSAI » (e1 à e3). Ces pages
+   font foi ; cette commande ne fait que cibler une organisation et lever, pour
+   elle seule, la retenue que pose « Invitation manuelle ». Si la page est
+   inaccessible, n'écris rien et arrête-toi.
+
+2. **Un nom est obligatoire.** Argument vide : ne fais rien et demande le nom.
+   Trouve la ligne du registre
+   (`collection://4ae154b9-0bca-42f3-9e2e-e546a40dd77f`) dont « Organisation »
+   est ce nom, accents et casse ignorés ; aucune ou plusieurs : n'écris rien,
+   dis-le, arrête-toi.
+
+3. **Gardes, avant tout geste.**
+   - Statut 4, 5 ou 6 : la première lettre existe. Au statut 3 ou avant,
+     renvoie à `/onboarding-premiere-lettre` et arrête-toi.
+   - Au moins une édition trouvée par la **relation** Organisation avec l'URL
+     de cette ligne ; retiens cet identifiant, c'est le seul qui serve ici.
+   - Si « Invitation manuelle » n'est pas cochée, dis que l'espace s'ouvre
+     normalement par la première lettre ou l'activation, et arrête-toi : cette
+     commande ne double pas un envoi automatique.
+   - Si une ligne « Accès » de ce slug est déjà active et que le compte rendu
+     d'un lancement précédent dit le lien parti, n'en envoie pas un second :
+     le lecteur peut le redemander sur `https://www.signauxfaibles.io/recevoir-mon-lien`.
+
+4. **Vérifie le portail.** Sans en-tête `Authorization` :
+   - `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
+     `{"état":"prêt"}` ; un 405 veut dire que la vérification n'est pas encore
+     déployée, poursuis ;
+   - `GET https://www.signauxfaibles.io/api/veille/contexte?organisation=<page_id>`
+     doit répondre 200.
+   Un 401 sur `/api/acces/` seul : le chemin n'est pas autorisé dans
+   l'environnement. Un 401 partout : le secret de l'environnement n'est plus
+   celui du portail. Dans les deux cas, n'ouvre rien et dis-le en tête du
+   compte rendu : cocher « Actif » sans pouvoir envoyer le lien ouvrirait un
+   espace que le client ne sait pas atteindre.
+
+5. **Ouvre, dans cet ordre strict**, aucun en-tête `Authorization` (le secret
+   réseau l'ajoute), toujours sur `https://www.signauxfaibles.io` :
+   - **(e1)** `POST /api/veille/organisations` avec le slug, le nom et le
+     page_id de la ligne du registre. L'étape B l'a normalement déjà fait : 200
+     « déjà-en-essai » est la réponse attendue. 409 « registre-pris » : n'ouvre
+     rien, signale la collision.
+   - **(d)** contrôle de la ligne « Accès » : identifiant d'organisation égal à
+     celui du point 3, identifiant d'accès présent sur aucune autre ligne, slug
+     identique au registre, email renseigné. Corrige ce qui doit l'être et
+     dis-le ; email vide : n'ouvre rien. Alors seulement, **coche « Actif »**.
+   - **(e2)** `POST /api/veille/importer-acces`. Un échec n'empêche pas l'envoi :
+     signale-le.
+   - **(e3)** `POST /api/acces/ouvrir` avec `{ "email": "<Email de la ligne>" }`,
+     jamais l'identifiant d'accès. 404 : réessaie une fois après quelques
+     secondes (cache d'une minute).
+
+6. **Ne décoche pas « Invitation manuelle »** : elle garde la trace du choix, et
+   l'activation saura que l'espace a été ouvert à la main. Écris dans « Dernier
+   lancement manuel » : « espace ouvert à la main le JJ/MM, lien envoyé à
+   <empreinte ou prénom du lecteur>, lettres publiées : N ».
+
+7. **Compte rendu** : les gestes faits, la réponse de chaque appel, le nombre de
+   lettres publiées que rend `/api/acces/ouvrir`. S'il vaut zéro, rappelle que
+   le client entre dans un espace vide tant que les lettres ne sont pas au
+   statut « Envoyé », et que J0 de l'essai ne part qu'à cette publication.
+
+Aucun jeton à manipuler : n'en écris jamais dans une commande.
