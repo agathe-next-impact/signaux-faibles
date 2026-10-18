@@ -25,11 +25,24 @@ Organisation visée : $ARGUMENTS
    dis-le, arrête-toi. Argument vide : suis l'étape 0 du prompt sur la vue
    « Premières lettres à produire » (`view://3d6fe829-ce71-81e4-b79d-000ced6a49ff`).
 
-3. **Coche « ▶ Produire la première lettre (B) »** sur cette ligne si elle ne
+3. **Vérifie le portail avant tout travail.** La collecte prend une heure ; un
+   appel refusé ne doit pas se découvrir après. Sans en-tête `Authorization` :
+   - `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
+     `{"état":"prêt"}`. Un 401 veut dire que l'environnement de la session ne
+     porte pas le secret sur `/api/acces/` : arrête-toi, n'écris rien, et dis
+     qu'il faut autoriser ce chemin dans l'environnement ;
+   - `GET https://www.signauxfaibles.io/api/veille/contexte?organisation=<page_id
+     de la ligne du registre>` doit répondre 200 : il donne aussi la garde
+     d'idempotence (aucune édition de cette organisation).
+   Si le portail répond 500 en SQLSTATE 42703 ou 42P01 à un appel du run, une
+   migration manque : appelle `POST /api/veille/migrer` une fois, puis rejoue
+   l'appel.
+
+4. **Coche « ▶ Produire la première lettre (B) »** sur cette ligne si elle ne
    l'est pas : l'étape 0 ne traite alors que les lignes cochées, donc celle-ci
    seulement.
 
-4. **Exécute le prompt, étape par étape**, sans en sauter : garde
+5. **Exécute le prompt, étape par étape**, sans en sauter : garde
    d'idempotence (aucune édition existante pour cette organisation), porte
    (Q1–Q3 sans « [hypothèse] », veilles déterminées, priorité 1 répercutée),
    collecte refaite intégralement, éditions n°1 en **brouillon Gmail adressé au
@@ -45,9 +58,9 @@ Organisation visée : $ARGUMENTS
    est pas autorisé : dis-le en tête du compte rendu, sans chercher le jeton
    ailleurs.
 
-5. **Consomme la case** en fin de run, lettre produite ou non, et écris le
+6. **Consomme la case** en fin de run, lettre produite ou non, et écris le
    résultat dans « Dernier lancement manuel ».
 
-6. **Notification `[Relecture]` et compte rendu** prévus par le prompt.
+7. **Notification `[Relecture]` et compte rendu** prévus par le prompt.
    L'étape suivante appartient au relecteur : relire, envoyer le brouillon,
    puis `/onboarding-activation <nom>`.

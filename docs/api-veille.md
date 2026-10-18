@@ -277,6 +277,14 @@ copie la base Accès, plutôt qu'un poste où il faudrait les recopier.
 - `POST /api/veille/migrer` : applique les migrations de `drizzle/`.
   Idempotente. Réponse `{ état: 'à jour' }`, ou `{ état: 'échec', message }`
   avec le seul code SQLSTATE.
+  Le build de production l'applique aussi avant `next build` (18 octobre
+  2026), et le contrôle du soir signale `migrations-en-attente` si le journal
+  du dépôt et la base divergent : cette route reste le geste de rattrapage.
+- `GET /api/acces/ouvrir` : la vérification préalable des commandes
+  d'onboarding. Contrôle le seul jeton, sans corps ni envoi : 200
+  `{ état: 'prêt' }`, 401, ou 503 si le secret n'est pas configuré. Un 401
+  depuis une session Claude veut dire que son environnement ne porte le secret
+  que sur `/api/veille/` : y autoriser aussi `/api/acces/`.
 - `POST /api/veille/importer-acces?a-blanc=1` : le plan d'import, rien n'est
   écrit. Sans `a-blanc`, l'import est écrit en une transaction. Réponse :
   comptes, slugs, libellés, lignes écartées désignées par empreinte ; jamais

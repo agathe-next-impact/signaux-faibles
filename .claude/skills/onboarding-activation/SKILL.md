@@ -23,7 +23,13 @@ Organisation visée : $ARGUMENTS
    (`collection://4ae154b9-0bca-42f3-9e2e-e546a40dd77f`), accents et casse
    ignorés ; aucune ou plusieurs : n'écris rien, dis-le, arrête-toi.
 
-3. **Coche « ▶ Activer »** si elle ne l'est pas, puis exécute le §1 :
+3. **Vérifie le portail avant tout travail.** Sans en-tête `Authorization`,
+   `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
+   `{"état":"prêt"}`. Un 401 veut dire que l'environnement de la session ne
+   porte pas le secret sur `/api/acces/` : un rattrapage du §1.3 ne pourrait
+   pas envoyer de lien. Dis-le en tête du compte rendu avant d'activer.
+
+4. **Coche « ▶ Activer »** si elle ne l'est pas, puis exécute le §1 :
    - 1.1 garde : statut 4 ou 5, au moins une édition trouvée par la
      **relation** Organisation avec l'URL de cette ligne ; retiens cet
      identifiant, c'est le seul qui serve en 1.3 ;
@@ -38,10 +44,10 @@ Organisation visée : $ARGUMENTS
    jeton dans une commande. 401 ou 403 : la session n'a pas le secret réseau
    pour ce chemin, dis-le en tête du compte rendu.
 
-4. **Consomme la case** en fin de run, activation faite ou refusée, et écris
+5. **Consomme la case** en fin de run, activation faite ou refusée, et écris
    le résultat dans « Dernier lancement manuel » (« activée le JJ/MM —
    première parution le [jour] », puis la trace du 1.3 f).
 
-5. **Compte rendu** : ce qui a été activé, l'état de l'espace du portail
+6. **Compte rendu** : ce qui a été activé, l'état de l'espace du portail
    (ouvert, contrôlé, corrigé, rattrapé) et la première parution prévue. Les
    tâches planifiées prennent le relais ; rien d'autre à lancer.

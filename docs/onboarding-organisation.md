@@ -71,6 +71,8 @@ jamais de lui-même (`disable-model-invocation`).
 | `/onboarding-premiere-lettre <nom>` | B, première lettre | 3 |
 | `/onboarding-activation <nom>` | activation, balayage §1 | 4 ou 5 |
 
+Les deux dernières vérifient d'abord, par `GET /api/acces/ouvrir`, que le
+lien pourra partir : elles s'arrêtent avant la collecte plutôt qu'après.
 Les appels au portail des deux dernières (`/api/veille/*`, `/api/acces/ouvrir`)
 demandent une session sur l'environnement « signaux-faibles-io » : ailleurs,
 ils reçoivent 401 ou 403, et la commande le dit au lieu de chercher un jeton.

@@ -39,6 +39,8 @@ const nextConfig: NextConfig = {
   // sans cette inclusion, Vercel ne les embarquerait pas dans la fonction.
   outputFileTracingIncludes: {
     '/api/veille/migrer': ['./drizzle/**/*'],
+    // Le contrôle du soir compare ce journal au registre de la base.
+    '/api/veille/etat': ['./drizzle/meta/_journal.json'],
   },
 
   // Requis par `use cache`, `cacheLife` et `cacheTag`.

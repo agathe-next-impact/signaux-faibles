@@ -7,7 +7,7 @@ import { env } from '@/lib/env'
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { sourcesDeDonnées } from '@/lib/notion/client'
 import { listerÉditionsPubliées } from '@/lib/notion/editions'
-import { interpréterDemande } from '@/lib/portail/activation'
+import { interpréterDemande, vérifierJeton } from '@/lib/portail/activation'
 import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
 
 /**
@@ -27,6 +27,31 @@ import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
  * Le lien composé n'apparaît jamais dans la réponse ni dans les journaux : il
  * ne vit que dans le courrier, et le jeton ne se lit que dans `/acces/[jeton]`.
  */
+/**
+ * Vérification préalable (18 octobre 2026) : le jeton est-il porté sur cette
+ * route ? Ne lit ni corps ni environnement, ne touche ni Notion ni Gmail.
+ *
+ *   GET /api/acces/ouvrir   → 200 { état: 'prêt' } · 401 · 503
+ *
+ * Les commandes d'onboarding l'appellent avant de produire une lettre : le
+ * secret réseau d'un environnement peut ne couvrir que `/api/veille/`, et le
+ * 401 ne se découvrait qu'au moment d'envoyer le lien, collecte faite.
+ */
+export function GET(requête: NextRequest): NextResponse {
+  const jeton = vérifierJeton({
+    autorisation: requête.headers.get('authorization'),
+    secret: process.env['ACTIVATION_SECRET'],
+  })
+  switch (jeton.sorte) {
+    case 'non-configurée':
+      return NextResponse.json({ état: 'non-configurée' }, { status: 503 })
+    case 'refusée':
+      return NextResponse.json({ état: 'refusée' }, { status: 401 })
+    case 'prêt':
+      return NextResponse.json({ état: 'prêt' })
+  }
+}
+
 export async function POST(requête: NextRequest): Promise<NextResponse> {
   const brut = await requête.text()
 
