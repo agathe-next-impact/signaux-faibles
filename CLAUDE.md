@@ -221,7 +221,12 @@ Les lire avant toute session.
   ou après (`fixerJ0`, une seule fois) ; l'import écarte une organisation dont
   le registre est déjà porté en base par un autre slug ;
   avant la première lettre publiée, l'étape est « hors parcours » et la lecture
-  complète. La garde d'architecture tient le seul appelant de chacune
+  complète. La garde d'architecture tient le seul appelant de chacune.
+  **Réglages de l'opératrice** (18 octobre 2026) : `PATCH /api/veille/organisations`
+  (`réglerLeParcours`) décale J0 d'une à trois semaines (`prolonger`), jamais
+  au-delà d'aujourd'hui, seulement en essai et une fois J0 posé ; ou envoie les
+  courriers de fin d'essai à la relecture plutôt qu'au client (`relecture`).
+  C'est le seul autre écrivain de J0, et il n'est pas réglable autrement
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

@@ -307,6 +307,27 @@ J0 est fixé ensuite par `GET /api/veille/parcours` à la date de la première
 lettre publiée datée de la semaine d'entrée en essai ou après ; la réponse le
 dit dans `j0Fixés`.
 
+## Réglages du parcours par l'opératrice (18 octobre 2026)
+
+`PATCH /api/veille/organisations`, gardée par le jeton, pour ne pas couper un
+client dont l'onboarding ou la souscription prend du retard, sans écrire en base
+à la main :
+
+- `{ "slug", "action": "prolonger", "semaines": 1 | 2 | 3 }` décale J0 d'autant.
+  200 `prolongé` avec `ancienJ0` et `nouveauJ0` ; 409 `sans-j0` (le calendrier
+  n'a pas démarré : rien à prolonger), 409 `pas-en-essai` avec `état`, 409
+  `au-delà-d-aujourdhui` avec `j0Maximal` (J0 n'est jamais posé après la date
+  du jour, à Paris : au plus, l'essai repart de la semaine en cours) ;
+- `{ "slug", "action": "relecture", "requise": true | false }` envoie les
+  courriers de fin d'essai à l'adresse de relecture (`true`) ou au client
+  (`false`), sans toucher au calendrier. 200 `relecture-réglée`.
+
+404 `inconnue` pour un slug absent. Un espace réduit à « L'essentiel » ou
+suspendu par le calendrier retrouve la lecture complète si le décalage le
+ramène dans l'essai. Un courrier de fin d'essai déjà parti ne repart pas : le
+journal en tient un par organisation et par destinataire. Chaque réglage est
+journalisé (`[veille/organisations] <slug> : prolonger, J0 … → …`).
+
 ## Écriture des lecteurs (palier 1a-bis, 16 octobre 2026)
 
 `POST /api/veille/lecteurs`, gardée par le jeton :

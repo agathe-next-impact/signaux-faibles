@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
-import { ouvrirEnEssai, type RésultatDOuverture } from '@/lib/base/organisations'
+import {
+  ouvrirEnEssai,
+  réglerLeParcours,
+  type RésultatDOuverture,
+  type RésultatDuRéglage,
+} from '@/lib/base/organisations'
 import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 
 /**
@@ -24,12 +29,38 @@ import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/ga
  *
  * Un client historique n'est jamais rétrogradé (`état-incompatible`, 409).
  * Rejouable : un second appel rend `déjà-en-essai`.
+ *
+ *   PATCH /api/veille/organisations
+ *   { "slug": "acme", "action": "prolonger", "semaines": 1 | 2 | 3 }
+ *   { "slug": "acme", "action": "relecture", "requise": true | false }
+ *
+ * Les deux réglages de l'opératrice sur un parcours d'essai (`réglerLeParcours`) :
+ * décaler J0, jamais au-delà d'aujourd'hui, ou faire partir les courriers de fin
+ * d'essai à l'adresse de relecture plutôt qu'au client.
  */
 const demande = z.object({
   slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   nom: z.string().trim().min(1).max(200),
   registreNotion: z.string().trim().refine(identifiantNotionValide),
 })
+
+const réglage = z.discriminatedUnion('action', [
+  z.object({
+    slug: z.string().trim().min(1),
+    action: z.literal('prolonger'),
+    semaines: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  }),
+  z.object({ slug: z.string().trim().min(1), action: z.literal('relecture'), requise: z.boolean() }),
+])
+
+const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
+  prolongé: 200,
+  'relecture-réglée': 200,
+  inconnue: 404,
+  'pas-en-essai': 409,
+  'sans-j0': 409,
+  'au-delà-d-aujourdhui': 409,
+}
 
 const STATUT: Record<RésultatDOuverture['sorte'], number> = {
   créée: 201,
@@ -43,14 +74,8 @@ const STATUT: Record<RésultatDOuverture['sorte'], number> = {
 export async function POST(requête: NextRequest): Promise<NextResponse> {
   const refus = refuserSiNonAutorisé(requête, 'organisations')
   if (refus) return refus
-
-  if (!baseConfigurée()) {
-    return NextResponse.json({ état: 'non-configurée', raison: 'DATABASE_URL absente' }, { status: 503 })
-  }
-  // `notion` est l'interrupteur de retour en arrière : il n'ouvre jamais Postgres.
-  if (sourceAccès() === 'notion') {
-    return NextResponse.json({ état: 'refusé', raison: 'SOURCE_ACCES vaut notion' }, { status: 409 })
-  }
+  const indisponible = baseIndisponible()
+  if (indisponible) return indisponible
 
   const lue = demande.safeParse(await requête.json().catch(() => null))
   if (!lue.success) return NextResponse.json({ état: 'invalide' }, { status: 400 })
@@ -63,6 +88,58 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   } catch (erreur) {
     console.error(`[veille/organisations] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
     return NextResponse.json({ état: 'échec' }, { status: 502 })
+  }
+}
+
+export async function PATCH(requête: NextRequest): Promise<NextResponse> {
+  const refus = refuserSiNonAutorisé(requête, 'organisations')
+  if (refus) return refus
+  const indisponible = baseIndisponible()
+  if (indisponible) return indisponible
+
+  const lue = réglage.safeParse(await requête.json().catch(() => null))
+  if (!lue.success) return NextResponse.json({ état: 'invalide' }, { status: 400 })
+
+  const demande = lue.data
+  try {
+    const résultat = await réglerLeParcours(
+      demande.slug,
+      demande.action === 'prolonger'
+        ? { sorte: 'prolonger', semaines: demande.semaines }
+        : { sorte: 'relecture', requise: demande.requise },
+    )
+    console.info(`[veille/organisations] ${demande.slug} : ${demande.action}, ${journalDuRéglage(résultat)}.`)
+    const { sorte, ...reste } = résultat
+    return NextResponse.json({ état: sorte, ...reste }, { status: STATUT_DU_RÉGLAGE[sorte] })
+  } catch (erreur) {
+    console.error(`[veille/organisations] ${demande.slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return NextResponse.json({ état: 'échec' }, { status: 502 })
+  }
+}
+
+function baseIndisponible(): NextResponse | null {
+  if (!baseConfigurée()) {
+    return NextResponse.json({ état: 'non-configurée', raison: 'DATABASE_URL absente' }, { status: 503 })
+  }
+  // `notion` est l'interrupteur de retour en arrière : il n'ouvre jamais Postgres.
+  if (sourceAccès() === 'notion') {
+    return NextResponse.json({ état: 'refusé', raison: 'SOURCE_ACCES vaut notion' }, { status: 409 })
+  }
+  return null
+}
+
+function journalDuRéglage(résultat: RésultatDuRéglage): string {
+  switch (résultat.sorte) {
+    case 'prolongé':
+      return `J0 ${résultat.ancienJ0} → ${résultat.nouveauJ0}`
+    case 'relecture-réglée':
+      return résultat.requise ? 'courriers à la relecture' : 'courriers au client'
+    case 'pas-en-essai':
+      return `refusé, état ${résultat.état}`
+    case 'au-delà-d-aujourdhui':
+      return `refusé, J0 au plus tard le ${résultat.j0Maximal}`
+    default:
+      return résultat.sorte
   }
 }
 
