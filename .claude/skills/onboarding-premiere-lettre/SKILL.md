@@ -30,10 +30,16 @@ Organisation visée : $ARGUMENTS
    - `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
      `{"état":"prêt"}`. Un 401 veut dire que l'environnement de la session ne
      porte pas le secret sur `/api/acces/` : arrête-toi, n'écris rien, et dis
-     qu'il faut autoriser ce chemin dans l'environnement ;
+     qu'il faut autoriser ce chemin dans l'environnement. Un 405 veut dire que
+     cette vérification n'est pas encore déployée : ce n'est pas un refus,
+     poursuis, et le lien pourra au besoin partir par
+     `https://www.signauxfaibles.io/recevoir-mon-lien` ;
    - `GET https://www.signauxfaibles.io/api/veille/contexte?organisation=<page_id
      de la ligne du registre>` doit répondre 200 : il donne aussi la garde
-     d'idempotence (aucune édition de cette organisation).
+     d'idempotence (aucune édition de cette organisation). Un 401 ici, comme
+     partout, veut dire que le secret de l'environnement n'est plus celui du
+     portail (secret changé sur Vercel sans report) : arrête-toi, n'écris rien,
+     et dis qu'il faut reporter la valeur dans l'environnement.
    Si le portail répond 500 en SQLSTATE 42703 ou 42P01 à un appel du run, une
    migration manque : appelle `POST /api/veille/migrer` une fois, puis rejoue
    l'appel.

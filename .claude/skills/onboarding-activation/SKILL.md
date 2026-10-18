@@ -25,9 +25,18 @@ Organisation visée : $ARGUMENTS
 
 3. **Vérifie le portail avant tout travail.** Sans en-tête `Authorization`,
    `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
-   `{"état":"prêt"}`. Un 401 veut dire que l'environnement de la session ne
-   porte pas le secret sur `/api/acces/` : un rattrapage du §1.3 ne pourrait
-   pas envoyer de lien. Dis-le en tête du compte rendu avant d'activer.
+   `{"état":"prêt"}`. Appelle aussi
+   `GET https://www.signauxfaibles.io/api/veille/contexte?organisation=<page_id>`.
+   Lis les refus ainsi, et dis-le en tête du compte rendu avant d'activer :
+   - 401 sur `/api/acces/` seulement : le chemin n'est pas autorisé dans
+     l'environnement ; un rattrapage du §1.3 ne pourrait pas envoyer de lien ;
+   - 401 partout : le secret de l'environnement n'est plus celui du portail
+     (secret changé sur Vercel sans report). Les tâches planifiées échoueront
+     aussi : signale-le comme bloquant pour la première parution ;
+   - 405 sur `GET /api/acces/ouvrir` : vérification non déployée, pas un refus.
+   L'activation dans Notion se fait quand même. Si le lien ne peut pas partir,
+   le repli est la page `https://www.signauxfaibles.io/recevoir-mon-lien`, à
+   indiquer avec l'adresse du lecteur.
 
 4. **Coche « ▶ Activer »** si elle ne l'est pas, puis exécute le §1 :
    - 1.1 garde : statut 4 ou 5, au moins une édition trouvée par la
