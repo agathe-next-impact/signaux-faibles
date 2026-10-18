@@ -222,3 +222,71 @@ export type Organisation = typeof organisations.$inferSelect
 export type Lecteur = typeof lecteurs.$inferSelect
 export type Veille = typeof veilles.$inferSelect
 export type Abonnement = typeof abonnements.$inferSelect
+
+/**
+ * Le journal des courriers que le portail envoie (17 et 18 octobre 2026).
+ *
+ * Une ligne par courrier, **écrite avant l'appel à Gmail** (`prevu`), conclue
+ * après (`envoye` avec l'identifiant du message, ou `echec` avec un code). Elle
+ * répond à la question que les journaux Vercel, éphémères et anonymisés, ne
+ * permettent pas de trancher : tel lecteur a-t-il reçu tel courrier, et quand ?
+ *
+ * L'adresse n'est jamais copiée ici : le lecteur est désigné par `lecteur_id`
+ * quand le portail le connaît, et toujours par l'empreinte de huit caractères
+ * de son adresse (`empreinte`, `lib/portail/debit.ts`), la même que celle des
+ * journaux, pour pouvoir rapprocher les deux.
+ *
+ * Les courriers de parcours (fin d'essai) ne partent **qu'une fois** par
+ * organisation et par destinataire : l'index unique partiel ci-dessous le
+ * garantit, et c'est la réservation de la ligne qui décide de l'envoi, pas une
+ * lecture préalable. Une ligne en `echec` sort de l'index : le passage du
+ * lendemain retente le courrier, au lieu de tenir un refus de Gmail pour un envoi.
+ * Un courrier adressé à la relecture n'a pas de lecteur :
+ * `coalesce` le range sous un identifiant nul, sans quoi Postgres tiendrait deux
+ * valeurs nulles pour distinctes et laisserait partir un doublon.
+ *
+ * Distinct de la table `envois` du schéma cible, qui servira l'envoi des lettres
+ * elles-mêmes au palier 1b.
+ */
+export const sorteCourrier = pgEnum('sorte_courrier', [
+  'lien_acces',
+  'essai_derniere_parution',
+  'essai_tronquee',
+  'alerte_espaces',
+])
+export const étatCourrier = pgEnum('état_courrier', ['prevu', 'envoye', 'echec'])
+
+export const courriers = pgTable(
+  'courriers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sorte: sorteCourrier('sorte').notNull(),
+    organisationId: uuid('organisation_id').references(() => organisations.id),
+    lecteurId: uuid('lecteur_id').references(() => lecteurs.id),
+    /** Empreinte de l'adresse du destinataire, jamais l'adresse. */
+    destinataireEmpreinte: text('destinataire_empreinte').notNull(),
+    /** Ce qui a provoqué l'envoi : `recevoir-mon-lien`, `activation`, `cron`. */
+    déclencheur: text('déclencheur').notNull(),
+    état: étatCourrier('état').notNull().default('prevu'),
+    messageGmail: text('message_gmail'),
+    /** Un code (statut HTTP de Gmail, SQLSTATE), jamais un message libre. */
+    erreur: text('erreur'),
+    prévuLe: horodatage('prévu_le').notNull().defaultNow(),
+    concluLe: horodatage('conclu_le'),
+  },
+  (table) => [
+    index('courriers_prevu_le').on(table.prévuLe),
+    index('courriers_organisation').on(table.organisationId),
+    check('courriers_empreinte_forme', sql`${table.destinataireEmpreinte} ~ '^[0-9a-f]{8}$'`),
+    uniqueIndex('courriers_parcours_unique')
+      .on(
+        table.sorte,
+        table.organisationId,
+        sql`coalesce(${table.lecteurId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+      )
+      .where(sql`${table.sorte} in ('essai_derniere_parution', 'essai_tronquee') and ${table.état} <> 'echec'`),
+  ],
+)
+
+export type Courrier = typeof courriers.$inferSelect
+

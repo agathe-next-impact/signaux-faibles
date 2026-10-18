@@ -374,6 +374,16 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     }
   })
 
+  it('tout courrier passe par le journal : envoyerMessage n’est appelé que par lib/portail/courriers.ts', () => {
+    expect(appelants('envoyerMessage')).toEqual(['lib/email/gmail.ts', 'lib/portail/courriers.ts'])
+    expect(appelants('prévoirCourrier')).toEqual(['lib/base/courriers.ts', 'lib/portail/courriers.ts'])
+    expect(appelants('conclureCourrier')).toEqual(['lib/base/courriers.ts', 'lib/portail/courriers.ts'])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'courriers.ts'), 'utf8')
+    const corps = source.slice(source.indexOf('export async function envoyerCourrier'))
+    expect(corps.indexOf('prévoirCourrier(')).toBeGreaterThan(0)
+    expect(corps.indexOf('prévoirCourrier(')).toBeLessThan(corps.indexOf('envoyerMessage('))
+  })
+
   it('toute route /api/veille commence par la garde du jeton', () => {
     const racine = join(process.cwd(), 'app', 'api', 'veille')
     const routes = readdirSync(racine).map((nom) => join(racine, nom, 'route.ts'))

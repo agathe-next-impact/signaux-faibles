@@ -134,6 +134,24 @@ L'idempotence des courriers. Une ligne est écrite **avant** l'appel Gmail.
 | `prévu_le`, `envoyé_le` | timestamptz | |
 | contrainte | | unique (`run_id`, `lecteur_id`) : un lecteur ne reçoit jamais deux fois la même lettre |
 
+### `courriers` (créée le 18 octobre 2026, migration 0002)
+
+Le journal de tout courrier que le portail envoie : lien d'accès, alerte du soir, courriers de fin d'essai. Une ligne est réservée **avant** l'appel Gmail, puis conclue. Distincte d'`envois`, qui servira la livraison des lettres au palier 1b.
+
+| Colonne | Type | Notes |
+|---|---|---|
+| `id` | uuid | |
+| `sorte` | enum | `lien_acces`, `essai_derniere_parution`, `essai_tronquee`, `alerte_espaces` |
+| `organisation_id` | uuid, référence, nullable | retrouvée par `registre_notion` pour un lien d'accès |
+| `lecteur_id` | uuid, référence, nullable | nul pour un courrier à la relecture ou un lien venu de Notion |
+| `destinataire_empreinte` | text | huit hexadécimaux, la même empreinte que les journaux ; jamais l'adresse |
+| `déclencheur` | text | `recevoir-mon-lien`, `activation`, `cron`, `manuel` |
+| `état` | enum | `prevu`, `envoye`, `echec` |
+| `message_gmail` | text, nullable | identifiant rendu par Gmail |
+| `erreur` | text, nullable | un code (`gmail-403`), jamais un message |
+| `prévu_le`, `conclu_le` | timestamptz | |
+| contrainte | | unique (`sorte`, `organisation_id`, `coalesce(lecteur_id, 0)`) pour les seuls courriers de fin d'essai |
+
 ### `abonnements`
 
 Copie de Stripe, écrite par son webhook seulement.

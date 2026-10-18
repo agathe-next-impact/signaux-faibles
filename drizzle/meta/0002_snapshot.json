@@ -1,0 +1,761 @@
+{
+  "id": "c6d6901d-ea05-40bf-bf55-52205413086b",
+  "prevId": "7d497ccb-23b5-499f-9766-062cbc75713a",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.abonnements": {
+      "name": "abonnements",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_stripe": {
+          "name": "client_stripe",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "abonnement_stripe": {
+          "name": "abonnement_stripe",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état": {
+          "name": "état",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "formule": {
+          "name": "formule",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "période_fin": {
+          "name": "période_fin",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dernier_événement": {
+          "name": "dernier_événement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "événement_le": {
+          "name": "événement_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dernier_type": {
+          "name": "dernier_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reçu_le": {
+          "name": "reçu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "abonnements_organisation": {
+          "name": "abonnements_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "abonnements_organisation_id_organisations_id_fk": {
+          "name": "abonnements_organisation_id_organisations_id_fk",
+          "tableFrom": "abonnements",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "abonnements_abonnement_stripe_unique": {
+          "name": "abonnements_abonnement_stripe_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "abonnement_stripe"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "abonnements_client_stripe_forme": {
+          "name": "abonnements_client_stripe_forme",
+          "value": "\"abonnements\".\"client_stripe\" ~ '^cus_'"
+        },
+        "abonnements_abonnement_stripe_forme": {
+          "name": "abonnements_abonnement_stripe_forme",
+          "value": "\"abonnements\".\"abonnement_stripe\" ~ '^sub_'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.courriers": {
+      "name": "courriers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "sorte": {
+          "name": "sorte",
+          "type": "sorte_courrier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lecteur_id": {
+          "name": "lecteur_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "destinataire_empreinte": {
+          "name": "destinataire_empreinte",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "déclencheur": {
+          "name": "déclencheur",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état": {
+          "name": "état",
+          "type": "état_courrier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'prevu'"
+        },
+        "message_gmail": {
+          "name": "message_gmail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "erreur": {
+          "name": "erreur",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prévu_le": {
+          "name": "prévu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "conclu_le": {
+          "name": "conclu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "courriers_prevu_le": {
+          "name": "courriers_prevu_le",
+          "columns": [
+            {
+              "expression": "prévu_le",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "courriers_organisation": {
+          "name": "courriers_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "courriers_parcours_unique": {
+          "name": "courriers_parcours_unique",
+          "columns": [
+            {
+              "expression": "sorte",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"lecteur_id\", '00000000-0000-0000-0000-000000000000'::uuid)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"courriers\".\"sorte\" in ('essai_derniere_parution', 'essai_tronquee') and \"courriers\".\"état\" <> 'echec'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "courriers_organisation_id_organisations_id_fk": {
+          "name": "courriers_organisation_id_organisations_id_fk",
+          "tableFrom": "courriers",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "courriers_lecteur_id_lecteurs_id_fk": {
+          "name": "courriers_lecteur_id_lecteurs_id_fk",
+          "tableFrom": "courriers",
+          "tableTo": "lecteurs",
+          "columnsFrom": [
+            "lecteur_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "courriers_empreinte_forme": {
+          "name": "courriers_empreinte_forme",
+          "value": "\"courriers\".\"destinataire_empreinte\" ~ '^[0-9a-f]{8}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.lecteurs": {
+      "name": "lecteurs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nom": {
+          "name": "nom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "identifiant_acces": {
+          "name": "identifiant_acces",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actif": {
+          "name": "actif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "tous_les_espaces": {
+          "name": "tous_les_espaces",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "rôle": {
+          "name": "rôle",
+          "type": "rôle_lecteur",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'lecteur'"
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dernière_visite_le": {
+          "name": "dernière_visite_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "lecteurs_organisation_email": {
+          "name": "lecteurs_organisation_email",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"email\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "lecteurs_organisation_id_organisations_id_fk": {
+          "name": "lecteurs_organisation_id_organisations_id_fk",
+          "tableFrom": "lecteurs",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "lecteurs_identifiant_acces_unique": {
+          "name": "lecteurs_identifiant_acces_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "identifiant_acces"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "lecteurs_identifiant_non_vide": {
+          "name": "lecteurs_identifiant_non_vide",
+          "value": "length(trim(\"lecteurs\".\"identifiant_acces\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.organisations": {
+      "name": "organisations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nom": {
+          "name": "nom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url_site": {
+          "name": "url_site",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "page_organisation_notion": {
+          "name": "page_organisation_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registre_notion": {
+          "name": "registre_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "état": {
+          "name": "état",
+          "type": "état_organisation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "demandée_le": {
+          "name": "demandée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activée_le": {
+          "name": "activée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suspendue_le": {
+          "name": "suspendue_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "relecture_requise": {
+          "name": "relecture_requise",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "email_relecture": {
+          "name": "email_relecture",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "créée_le": {
+          "name": "créée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "modifiée_le": {
+          "name": "modifiée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archivée_le": {
+          "name": "archivée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organisations_slug_unique": {
+          "name": "organisations_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        },
+        "organisations_registre_notion_unique": {
+          "name": "organisations_registre_notion_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "registre_notion"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "organisations_slug_non_vide": {
+          "name": "organisations_slug_non_vide",
+          "value": "length(trim(\"organisations\".\"slug\")) > 0"
+        },
+        "organisations_registre_notion_forme": {
+          "name": "organisations_registre_notion_forme",
+          "value": "\"organisations\".\"registre_notion\" is null or \"organisations\".\"registre_notion\" ~ '^[0-9a-f]{32}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.veilles": {
+      "name": "veilles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "libellé": {
+          "name": "libellé",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referentiel_notion": {
+          "name": "referentiel_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jour_parution": {
+          "name": "jour_parution",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "heure_parution": {
+          "name": "heure_parution",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cadence": {
+          "name": "cadence",
+          "type": "cadence_veille",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numéro_courant": {
+          "name": "numéro_courant",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "état": {
+          "name": "état",
+          "type": "état_veille",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        }
+      },
+      "indexes": {
+        "veilles_organisation_type": {
+          "name": "veilles_organisation_type",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "veilles_organisation_id_organisations_id_fk": {
+          "name": "veilles_organisation_id_organisations_id_fk",
+          "tableFrom": "veilles",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "veilles_jour_parution": {
+          "name": "veilles_jour_parution",
+          "value": "\"veilles\".\"jour_parution\" between 1 and 7"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.cadence_veille": {
+      "name": "cadence_veille",
+      "schema": "public",
+      "values": [
+        "hebdomadaire",
+        "bimensuelle",
+        "mensuelle"
+      ]
+    },
+    "public.rôle_lecteur": {
+      "name": "rôle_lecteur",
+      "schema": "public",
+      "values": [
+        "lecteur",
+        "relecteur",
+        "operateur"
+      ]
+    },
+    "public.sorte_courrier": {
+      "name": "sorte_courrier",
+      "schema": "public",
+      "values": [
+        "lien_acces",
+        "essai_derniere_parution",
+        "essai_tronquee",
+        "alerte_espaces"
+      ]
+    },
+    "public.état_courrier": {
+      "name": "état_courrier",
+      "schema": "public",
+      "values": [
+        "prevu",
+        "envoye",
+        "echec"
+      ]
+    },
+    "public.état_organisation": {
+      "name": "état_organisation",
+      "schema": "public",
+      "values": [
+        "demande",
+        "generation",
+        "essai",
+        "abonnee",
+        "suspendue",
+        "ecartee",
+        "test"
+      ]
+    },
+    "public.état_veille": {
+      "name": "état_veille",
+      "schema": "public",
+      "values": [
+        "active",
+        "suspendue",
+        "archivée"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
