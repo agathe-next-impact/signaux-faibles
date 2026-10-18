@@ -1,5 +1,5 @@
 import { revalidateTag } from 'next/cache'
-import { NextResponse, type NextRequest } from 'next/server'
+import { after, NextResponse, type NextRequest } from 'next/server'
 import { composerLienDAccès } from '@/lib/auth/jeton'
 import { composerCourrierDAccès } from '@/lib/email/gmail'
 import { envoyerCourrier } from '@/lib/portail/courriers'
@@ -110,6 +110,7 @@ async function ouvrir(email: string, origine: string | null): Promise<NextRespon
       organisation: accès.organisationId ? { registreNotion: accès.organisationId } : null,
       lecteurId: null,
       unique: false,
+      planifier: after,
     })
 
     // Après l'envoi, pas avant : un diagnostic n'a pas à retarder le courrier,

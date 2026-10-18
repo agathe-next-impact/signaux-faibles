@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { sourceAccès } from '@/lib/auth/source-acces'
+import { baseConfigurée } from '@/lib/base/client'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { env } from '@/lib/env'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
@@ -17,6 +19,14 @@ import { envoyerLesCourriersDeParcours } from '@/lib/portail/parcours-courriers'
 export async function GET(requête: NextRequest): Promise<NextResponse> {
   const refus = refuserSiNonAutorisé(requête, 'parcours')
   if (refus) return refus
+
+  // Le parcours vit dans Postgres. Sans base, ou en `SOURCE_ACCES=notion`
+  // (l'interrupteur de retour en arrière, qui n'ouvre jamais Postgres), il n'y a
+  // rien à faire : 200 et non une erreur, pour que le cron quotidien ne
+  // ressemble pas à une panne.
+  if (!baseConfigurée() || sourceAccès() === 'notion') {
+    return NextResponse.json({ état: 'inactif', raison: 'base non configurée ou SOURCE_ACCES=notion' })
+  }
 
   try {
     const rapport = await envoyerLesCourriersDeParcours({

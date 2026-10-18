@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Base } from '@/lib/base/client'
 import { enregistrerÉvénementDAbonnement } from '@/lib/base/abonnements'
-import { conclureCourrier, courriersRécents, organisationsEnEssai, prévoirCourrier } from '@/lib/base/courriers'
+import { conclureCourrier, courriersDeParcoursEnSouffrance, courriersRécents, organisationsEnEssai, prévoirCourrier } from '@/lib/base/courriers'
 import { lecteurs, organisations } from '@/lib/base/schema'
 import { baseEnMémoire } from './aide/base-en-memoire'
 
@@ -62,6 +62,24 @@ describe('journal des courriers', () => {
     // Relecture : pas de lecteur, et pourtant un seul envoi.
     expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', lecteurId: null }, db)).not.toBeNull()
     expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', lecteurId: null }, db)).toBeNull()
+  })
+
+  it('un courrier de parcours en échec se retente ; un courrier resté sans issue, non, et le contrôle du soir les voit', async () => {
+    const org = await organisation()
+    const [l] = await db.insert(lecteurs).values({ organisationId: org, nom: 'Léa', email: 'lea@x.fr', identifiantAcces: 'f'.repeat(32) }).returning({ id: lecteurs.id })
+    const commun = { organisation: { id: org }, destinataireEmpreinte: '12345678', déclencheur: 'cron', lecteurId: l!.id }
+
+    const premier = await prévoirCourrier({ ...commun, sorte: 'essai_derniere_parution' }, db)
+    await conclureCourrier(premier!, { état: 'echec', erreur: 'gmail-500' }, db)
+    const second = await prévoirCourrier({ ...commun, sorte: 'essai_derniere_parution' }, db)
+    expect(second).not.toBeNull()
+    // Le second reste « prevu » (fonction interrompue) : il bloque le suivant.
+    expect(await prévoirCourrier({ ...commun, sorte: 'essai_derniere_parution' }, db)).toBeNull()
+
+    const dansUneHeure = new Date(Date.now() + 60 * 60 * 1000)
+    const souffrance = await courriersDeParcoursEnSouffrance(dansUneHeure, db)
+    expect(souffrance.map((c) => c.état).sort()).toEqual(['echec', 'prevu'])
+    expect(await courriersDeParcoursEnSouffrance(new Date(), db)).toHaveLength(1)
   })
 
   it('refuse une empreinte mal formée', async () => {

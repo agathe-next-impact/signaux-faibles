@@ -19,4 +19,4 @@ ALTER TABLE "courriers" ADD CONSTRAINT "courriers_organisation_id_organisations_
 ALTER TABLE "courriers" ADD CONSTRAINT "courriers_lecteur_id_lecteurs_id_fk" FOREIGN KEY ("lecteur_id") REFERENCES "public"."lecteurs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "courriers_prevu_le" ON "courriers" USING btree ("prévu_le");--> statement-breakpoint
 CREATE INDEX "courriers_organisation" ON "courriers" USING btree ("organisation_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "courriers_parcours_unique" ON "courriers" USING btree ("sorte","organisation_id",coalesce("lecteur_id", '00000000-0000-0000-0000-000000000000'::uuid)) WHERE "courriers"."sorte" in ('essai_derniere_parution', 'essai_tronquee');
+CREATE UNIQUE INDEX "courriers_parcours_unique" ON "courriers" USING btree ("sorte","organisation_id",coalesce("lecteur_id", '00000000-0000-0000-0000-000000000000'::uuid)) WHERE "courriers"."sorte" in ('essai_derniere_parution', 'essai_tronquee') and "courriers"."état" <> 'echec';

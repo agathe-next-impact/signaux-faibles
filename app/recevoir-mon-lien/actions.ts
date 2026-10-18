@@ -1,6 +1,7 @@
 'use server'
 
 import { headers } from 'next/headers'
+import { after } from 'next/server'
 import { env } from '@/lib/env'
 import { composerLienDAccès } from '@/lib/auth/jeton'
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
@@ -76,6 +77,7 @@ export async function envoyerMonLien(
         organisation: accès.organisationId ? { registreNotion: accès.organisationId } : null,
         lecteurId: null,
         unique: false,
+        planifier: after,
       })
 
       console.info(`[lien] envoyé à ${marque} (${accès.slug}).`)

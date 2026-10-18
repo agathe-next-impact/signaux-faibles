@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
+import { courriersDeParcoursEnSouffrance } from '@/lib/base/courriers'
 import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { lignesDAccèsPourContrôle } from '@/lib/notion/acces'
@@ -102,10 +103,31 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
           ]
         : []
 
+    // Les courriers de fin d'essai en souffrance (18 octobre 2026) : un échec de
+    // Gmail ou une ligne restée `prevu` laisserait un client sans nouvelles, en
+    // silence. Lus seulement quand la base sert le parcours.
+    const défautsDeCourriers: Défaut[] = []
+    if (source !== 'notion' && sonde?.joignable) {
+      try {
+        for (const c of await courriersDeParcoursEnSouffrance(new Date())) {
+          défautsDeCourriers.push({
+            slug: c.slug ?? '(courriers)',
+            code: c.état === 'echec' ? 'courrier-parcours-echec' : 'courrier-parcours-incertain',
+            message:
+              c.état === 'echec'
+                ? `courrier de fin d'essai (${c.sorte}) en échec le ${c.prévuLe.toISOString().slice(0, 10)} : il sera retenté au prochain passage.`
+                : `courrier de fin d'essai (${c.sorte}) resté sans issue depuis le ${c.prévuLe.toISOString().slice(0, 10)} : vérifier dans la boîte d'envoi s'il est parti, il ne sera pas retenté.`,
+          })
+        }
+      } catch (erreur) {
+        console.warn(`[veille/etat] journal des courriers illisible : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      }
+    }
+
     const état: ÉtatDuDispositif = {
       date: aujourdHuiÀParis(),
       espaces,
-      défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase],
+      défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeCourriers],
       lignesSansSlug: sansSlug,
       opérateursActifs: opérateurs.filter((l) => l.actif).length,
     }

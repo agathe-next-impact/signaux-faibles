@@ -1,5 +1,5 @@
 {
-  "id": "701488ad-7d13-4e40-b791-1a02f60aec0b",
+  "id": "c6d6901d-ea05-40bf-bf55-52205413086b",
   "prevId": "7d497ccb-23b5-499f-9766-062cbc75713a",
   "version": "7",
   "dialect": "postgresql",
@@ -262,7 +262,7 @@
             }
           ],
           "isUnique": true,
-          "where": "\"courriers\".\"sorte\" in ('essai_derniere_parution', 'essai_tronquee')",
+          "where": "\"courriers\".\"sorte\" in ('essai_derniere_parution', 'essai_tronquee') and \"courriers\".\"état\" <> 'echec'",
           "concurrently": false,
           "method": "btree",
           "with": {}

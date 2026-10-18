@@ -193,9 +193,13 @@ Les lire avant toute session.
   Gmail ou code d'échec) ; jamais d'adresse dans la table, l'empreinte de huit
   caractères et le `lecteur_id` quand il est connu. Le lien d'accès et l'alerte
   du soir partent même sans journal (base absente, `SOURCE_ACCES=notion`,
-  réservation au-delà de 1,5 s) ; les **courriers de fin d'essai** jamais : ils
-  ne partent qu'une fois par organisation et par destinataire, garanti par
-  l'index `courriers_parcours_unique`. Ces deux courriers (dernière parution
+  réservation au-delà de 300 ms, conclusion confiée à `after()` pour ne pas
+  trahir par le délai qu'une adresse est connue) ; les **courriers de fin
+  d'essai** jamais : réservation attendue jusqu'au bout, un seul envoi par
+  organisation et par destinataire (index `courriers_parcours_unique`, d'où les
+  lignes en `echec` sortent pour être retentées), chaque lecteur revérifié par la
+  façade d'accès (Notion fait foi en mode `double`), et toute ligne en échec ou
+  restée `prevu` remontée par le contrôle du soir. Ces deux courriers (dernière parution
   complète, puis parution réduite à « L'essentiel ») sont envoyés par
   `/api/veille/parcours`, cron quotidien de `vercel.json`, aux lecteurs actifs,
   ou à l'adresse de relecture tant que `relecture_requise` est vrai. Le journal

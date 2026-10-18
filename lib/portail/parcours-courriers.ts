@@ -1,3 +1,4 @@
+import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { organisationsEnEssai } from '@/lib/base/courriers'
 import { composerCourrierDeParcours, courrierDuParcours, type SorteDeParcours } from '@/lib/domaine/courriers-parcours'
 import { étapeDuParcours } from '@/lib/domaine/parcours'
@@ -18,6 +19,11 @@ import { empreinte } from '@/lib/portail/debit'
  * part à l'adresse de relecture de l'organisation, ou à `RELECTEUR_EMAIL`, une
  * seule fois, avec l'objet préfixé ; aucun lecteur ne le reçoit. C'est la même
  * règle que pour les lettres : rien ne part chez un client qu'on n'a pas relu.
+ *
+ * **Chaque lecteur est revérifié par la façade d'accès** avant l'envoi : en mode
+ * `double`, c'est Notion qui fait foi, et la table `lecteurs` n'est alignée qu'à
+ * l'import. Un lecteur révoqué dans Notion depuis le dernier import, ou rattaché
+ * à une autre organisation, ne reçoit rien.
  */
 
 export type RapportDeParcours = {
@@ -74,6 +80,14 @@ export async function envoyerLesCourriersDeParcours(entrée: {
       const { sujet, texte } = contenu(destinataire.nom)
       let issue: string
       try {
+        if (!destinataire.relecture) {
+          const accès = await lireAccèsActifParEmail(destinataire.adresse)
+          const registre = (accès?.organisationId ?? '').replaceAll('-', '').toLowerCase()
+          if (!accès || accès.tousLesEspaces || registre !== organisation.registreNotion) {
+            courriers.push({ slug: organisation.slug, sorte, destinataire: empreinte(destinataire.adresse), issue: 'accès-inactif' })
+            continue
+          }
+        }
         const résultat = await envoyerCourrier({
           message: {
             destinataire: destinataire.adresse,

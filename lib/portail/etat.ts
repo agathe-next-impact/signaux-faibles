@@ -26,6 +26,8 @@ export type CodeDeDéfaut =
   | 'aucune-lettre-publiée'
   | 'contrat-rompu'
   | 'base-injoignable'
+  | 'courrier-parcours-echec'
+  | 'courrier-parcours-incertain'
 
 export type Défaut = {
   readonly slug: string

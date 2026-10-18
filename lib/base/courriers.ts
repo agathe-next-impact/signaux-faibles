@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNotNull, isNull } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { lireAbonnement } from '@/lib/base/abonnements'
@@ -148,6 +148,7 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
     readonly activéeLe: Date
     readonly relectureRequise: boolean
     readonly emailRelecture: string | null
+    readonly registreNotion: string | null
     readonly abonnement: { readonly état: string } | null
     readonly lecteurs: Array<{ readonly id: string; readonly nom: string; readonly email: string }>
   }>
@@ -161,6 +162,7 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
         activéeLe: organisations.activéeLe,
         relectureRequise: organisations.relectureRequise,
         emailRelecture: organisations.emailRelecture,
+        registreNotion: organisations.registreNotion,
       })
       .from(organisations)
       .where(and(eq(organisations.état, 'essai'), isNotNull(organisations.activéeLe), isNull(organisations.archivéeLe)))
@@ -181,4 +183,32 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
     }
     return résultat
   })
+}
+
+/**
+ * Les courriers de fin d'essai en souffrance, pour le contrôle du soir : en
+ * échec sur les sept derniers jours, ou restés `prevu` plus de dix minutes (la
+ * fonction a été interrompue entre la réservation et Gmail : le courrier n'est
+ * plus retenté, puisque la ligne le tient pour pris, et il faut le savoir).
+ */
+export async function courriersDeParcoursEnSouffrance(
+  maintenant: Date,
+  db: Base = base(),
+): Promise<Array<{ readonly slug: string | null; readonly sorte: SorteCourrier; readonly état: string; readonly prévuLe: Date }>> {
+  const dixMinutes = new Date(maintenant.getTime() - 10 * 60 * 1000)
+  const septJours = new Date(maintenant.getTime() - 7 * 24 * 60 * 60 * 1000)
+  return protéger('lecture des courriers en souffrance', () =>
+    db
+      .select({ slug: organisations.slug, sorte: courriers.sorte, état: courriers.état, prévuLe: courriers.prévuLe })
+      .from(courriers)
+      .leftJoin(organisations, eq(courriers.organisationId, organisations.id))
+      .where(
+        and(
+          inArray(courriers.sorte, ['essai_derniere_parution', 'essai_tronquee']),
+          gte(courriers.prévuLe, septJours),
+          or(eq(courriers.état, 'echec'), and(eq(courriers.état, 'prevu'), lt(courriers.prévuLe, dixMinutes))),
+        ),
+      )
+      .orderBy(desc(courriers.prévuLe)),
+  )
 }

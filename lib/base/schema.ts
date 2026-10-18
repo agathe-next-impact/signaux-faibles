@@ -239,7 +239,9 @@ export type Abonnement = typeof abonnements.$inferSelect
  * Les courriers de parcours (fin d'essai) ne partent **qu'une fois** par
  * organisation et par destinataire : l'index unique partiel ci-dessous le
  * garantit, et c'est la réservation de la ligne qui décide de l'envoi, pas une
- * lecture préalable. Un courrier adressé à la relecture n'a pas de lecteur :
+ * lecture préalable. Une ligne en `echec` sort de l'index : le passage du
+ * lendemain retente le courrier, au lieu de tenir un refus de Gmail pour un envoi.
+ * Un courrier adressé à la relecture n'a pas de lecteur :
  * `coalesce` le range sous un identifiant nul, sans quoi Postgres tiendrait deux
  * valeurs nulles pour distinctes et laisserait partir un doublon.
  *
@@ -282,7 +284,7 @@ export const courriers = pgTable(
         table.organisationId,
         sql`coalesce(${table.lecteurId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
       )
-      .where(sql`${table.sorte} in ('essai_derniere_parution', 'essai_tronquee')`),
+      .where(sql`${table.sorte} in ('essai_derniere_parution', 'essai_tronquee') and ${table.état} <> 'echec'`),
   ],
 )
 

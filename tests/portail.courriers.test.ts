@@ -66,6 +66,34 @@ describe('envoyerCourrier', () => {
     expect(envoyer).not.toHaveBeenCalled()
   })
 
+  it('la réservation d’un lien est bornée ; celle d’un courrier de parcours est attendue jusqu’au bout', async () => {
+    vi.useFakeTimers()
+    try {
+      let libérer: (v: string) => void = () => {}
+      prévoir.mockImplementation(() => new Promise<string>((r) => (libérer = r)))
+      const lienEnCours = envoyerCourrier(lien)
+      await vi.advanceTimersByTimeAsync(400)
+      expect(await lienEnCours).toEqual({ sorte: 'envoyé', journalisé: false })
+
+      envoyer.mockClear()
+      const parcoursEnCours = envoyerCourrier(parcours)
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(envoyer).not.toHaveBeenCalled()
+      libérer('c2')
+      expect(await parcoursEnCours).toEqual({ sorte: 'envoyé', journalisé: true })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('la conclusion peut être confiée à after()', async () => {
+    const tâches: Array<() => Promise<void>> = []
+    await envoyerCourrier({ ...lien, planifier: (t) => tâches.push(t) })
+    expect(conclure).not.toHaveBeenCalled()
+    await tâches[0]!()
+    expect(conclure).toHaveBeenCalledWith('c1', { état: 'envoye', messageGmail: 'gm1' })
+  })
+
   it('un refus de Gmail conclut en échec avec le seul statut, et remonte', async () => {
     envoyer.mockRejectedValue(new ErreurDEnvoi(403))
     await expect(envoyerCourrier(lien)).rejects.toThrow()
