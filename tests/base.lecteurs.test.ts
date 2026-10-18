@@ -306,6 +306,17 @@ describe('défauts relevés par la relecture du 16 octobre 2026', () => {
     }
   })
 
+  it('un registre déjà porté en base par un autre slug écarte l’organisation sans faire échouer l’import', async () => {
+    // L'onboarding a ouvert « hermitage-essai » sur ce registre ; la ligne Accès
+    // Notion porte un autre slug pour le même registre.
+    await db.insert(organisations).values({ slug: 'hermitage-essai', nom: 'Hermitage', état: 'essai', registreNotion: REGISTRE_HERMITAGE })
+    const rapport = await appliquerImport(db, planifierImport([ligne(), ligne({ identifiant: 'b'.repeat(32), email: 'k@konica.fr', slug: 'konica', organisationId: REGISTRE_KONICA, organisationLibellé: 'Konica' })]))
+    expect(rapport.écartés.some((é) => é.ligne === 'hermitage')).toBe(true)
+    const slugs = (await db.select({ slug: organisations.slug }).from(organisations)).map((o) => o.slug).sort()
+    expect(slugs).toEqual(['hermitage-essai', 'konica'])
+    expect((await lireLecteurParIdentifiant('b'.repeat(32), db))?.actif).toBe(true)
+  })
+
   it('un slug devenu ambigu ne ferme pas les accès déjà importés', async () => {
     await appliquerImport(db, planifierImport([ligne()]))
     // Une seconde ligne arrive avec l'identifiant de la page organisation.

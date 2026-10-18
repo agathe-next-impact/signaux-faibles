@@ -3,12 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const organisationsEnEssai = vi.fn()
 const envoyerCourrier = vi.fn()
 const lireAccès = vi.fn()
+const fixerJ0 = vi.fn()
+const listerÉditionsPubliées = vi.fn()
 
 vi.mock('@/lib/base/courriers', () => ({ organisationsEnEssai }))
 vi.mock('@/lib/portail/courriers', () => ({ envoyerCourrier }))
 vi.mock('@/lib/auth/source-acces', () => ({ lireAccèsActifParEmail: lireAccès }))
+vi.mock('@/lib/base/organisations', () => ({ fixerJ0 }))
+vi.mock('@/lib/notion/editions', () => ({ listerÉditionsPubliées }))
 
-const { envoyerLesCourriersDeParcours } = await import('@/lib/portail/parcours-courriers')
+const { envoyerLesCourriersDeParcours, j0DesÉditions } = await import('@/lib/portail/parcours-courriers')
 
 const REGISTRE = 'aaaabbbbccccddddeeeeffff00004444'
 // Un lundi : J0 au 28/09 → troisième semaine le 12/10, quatrième le 19/10.
@@ -29,6 +33,8 @@ describe('envoyerLesCourriersDeParcours', () => {
   beforeEach(() => {
     organisationsEnEssai.mockReset()
     envoyerCourrier.mockReset().mockResolvedValue({ sorte: 'envoyé', journalisé: true })
+    fixerJ0.mockReset().mockResolvedValue(true)
+    listerÉditionsPubliées.mockReset().mockResolvedValue([])
     lireAccès.mockReset().mockImplementation(async () => ({ organisationId: REGISTRE, tousLesEspaces: false }))
     vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -80,5 +86,54 @@ describe('envoyerLesCourriersDeParcours', () => {
     envoyerCourrier.mockRejectedValueOnce(new Error('gmail')).mockResolvedValueOnce({ sorte: 'envoyé', journalisé: true })
     const rapport = await appel('2026-10-14')
     expect(rapport.courriers.map((c) => c.issue)).toEqual(['échec', 'envoyé'])
+  })
+
+  it('sans J0 ni lettre publiée : rien, et J0 n’est pas posé', async () => {
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null })])
+    const rapport = await appel('2026-10-14')
+    expect(rapport.courriers).toEqual([])
+    expect(rapport.j0Fixés).toEqual([])
+    expect(fixerJ0).not.toHaveBeenCalled()
+    expect(listerÉditionsPubliées).toHaveBeenCalledWith(REGISTRE)
+  })
+
+  it('sans J0, la première lettre publiée le fixe, et l’étape du jour en découle', async () => {
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null })])
+    listerÉditionsPubliées.mockResolvedValue([{ dateÉdition: '2026-10-05' }, { dateÉdition: '2026-09-28' }, { dateÉdition: 'n/a' }])
+    const rapport = await appel('2026-10-14')
+    expect(fixerJ0).toHaveBeenCalledWith('o1', new Date('2026-09-28T12:00:00Z'))
+    expect(rapport.j0Fixés).toEqual(['acme'])
+    expect(rapport.courriers.map((c) => c.sorte)).toEqual(['essai_derniere_parution', 'essai_derniere_parution'])
+  })
+
+  it('une lecture Notion en échec saute l’organisation sans arrêter le passage', async () => {
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null }), org({ id: 'o2', slug: 'autre' })])
+    listerÉditionsPubliées.mockRejectedValue(new Error('notion'))
+    const rapport = await appel('2026-10-14')
+    expect(fixerJ0).not.toHaveBeenCalled()
+    expect(rapport.courriers.every((c) => c.slug === 'autre')).toBe(true)
+  })
+
+  it('j0DesÉditions prend la plus ancienne date valide, à midi UTC', () => {
+    expect(j0DesÉditions([])).toBeNull()
+    expect(j0DesÉditions([{ dateÉdition: '2026-10-12' }, { dateÉdition: '2026-10-05' }, { dateÉdition: 'n/a' }])?.toISOString()).toBe('2026-10-05T12:00:00.000Z')
+    expect(j0DesÉditions([{ dateÉdition: '2026-10-05' }], new Date('2026-10-20T08:00:00Z'))).toBeNull()
+  })
+
+  it('une lettre antérieure à la semaine d’entrée en essai ne fixe pas J0', async () => {
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null, essaiOuvertLe: new Date('2026-10-14T09:00:00Z') })])
+    listerÉditionsPubliées.mockResolvedValue([{ dateÉdition: '2026-09-07' }, { dateÉdition: '2026-10-12' }])
+    await appel('2026-10-14')
+    // Plancher : lundi 12/10, semaine de l'entrée en essai.
+    expect(fixerJ0).toHaveBeenCalledWith('o1', new Date('2026-10-12T12:00:00Z'))
+  })
+
+  it('une fixation refusée n’envoie rien : l’étape n’est pas calculée sur une date absente de la base', async () => {
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null })])
+    listerÉditionsPubliées.mockResolvedValue([{ dateÉdition: '2026-09-28' }])
+    fixerJ0.mockResolvedValue(false)
+    const rapport = await appel('2026-10-14')
+    expect(rapport.j0Fixés).toEqual([])
+    expect(envoyerCourrier).not.toHaveBeenCalled()
   })
 })

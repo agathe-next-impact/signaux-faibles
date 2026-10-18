@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, lt, or } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { lireAbonnement } from '@/lib/base/abonnements'
@@ -136,7 +136,7 @@ export async function courriersRécents(
 }
 
 /**
- * Les organisations en essai, avec ce que les courriers de parcours doivent
+ * Les organisations en essai, J0 fixé ou non, avec ce que les courriers de parcours doivent
  * savoir : la date d'activation, l'abonnement qui fait foi, la relecture, et
  * leurs lecteurs actifs (hors opérateur, qui n'appartient à aucune).
  */
@@ -145,7 +145,10 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
     readonly id: string
     readonly slug: string
     readonly nom: string
-    readonly activéeLe: Date
+    /** Nul tant que J0 n'est pas fixé (première lettre publiée). */
+    readonly activéeLe: Date | null
+    /** Entrée dans l'essai par l'onboarding ; nulle pour une organisation antérieure. */
+    readonly essaiOuvertLe: Date | null
     readonly relectureRequise: boolean
     readonly emailRelecture: string | null
     readonly registreNotion: string | null
@@ -160,12 +163,13 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
         slug: organisations.slug,
         nom: organisations.nom,
         activéeLe: organisations.activéeLe,
+        essaiOuvertLe: organisations.essaiOuvertLe,
         relectureRequise: organisations.relectureRequise,
         emailRelecture: organisations.emailRelecture,
         registreNotion: organisations.registreNotion,
       })
       .from(organisations)
-      .where(and(eq(organisations.état, 'essai'), isNotNull(organisations.activéeLe), isNull(organisations.archivéeLe)))
+      .where(and(eq(organisations.état, 'essai'), isNull(organisations.archivéeLe)))
 
     const résultat = []
     for (const ligne of lignes) {
@@ -176,7 +180,7 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
         .where(and(eq(lecteurs.organisationId, ligne.id), eq(lecteurs.actif, true), eq(lecteurs.tousLesEspaces, false)))
       résultat.push({
         ...ligne,
-        activéeLe: ligne.activéeLe!,
+        activéeLe: ligne.activéeLe,
         abonnement: abonnement ? { état: abonnement.état } : null,
         lecteurs: actifs.flatMap((l) => (l.email && l.email.includes('@') ? [{ id: l.id, nom: l.nom, email: l.email }] : [])),
       })
