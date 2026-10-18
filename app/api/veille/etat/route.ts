@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
 import { courriersDeParcoursEnSouffrance } from '@/lib/base/courriers'
+import { migrationsEnAttente } from '@/lib/base/migrer'
 import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { lignesDAccèsPourContrôle } from '@/lib/notion/acces'
@@ -103,6 +104,25 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
           ]
         : []
 
+    // Les migrations du dépôt absentes de la base (18 octobre 2026) : le build
+    // de production les applique, mais un écart rendrait les routes qui en
+    // dépendent en 500 sans autre signe. Lu seulement quand la base répond.
+    const défautsDeMigrations: Défaut[] = []
+    if (sonde?.joignable) {
+      try {
+        const manquantes = await migrationsEnAttente()
+        if (manquantes.length > 0) {
+          défautsDeMigrations.push({
+            slug: '(base)',
+            code: 'migrations-en-attente',
+            message: `${manquantes.length === 1 ? 'une migration du dépôt n’est pas appliquée' : `${manquantes.length} migrations du dépôt ne sont pas appliquées`} à la base (${manquantes.join(', ')}) : les routes qui en dépendent échouent. Appeler POST /api/veille/migrer.`,
+          })
+        }
+      } catch (erreur) {
+        console.warn(`[veille/etat] registre des migrations illisible : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      }
+    }
+
     // Les courriers de fin d'essai en souffrance (18 octobre 2026) : un échec de
     // Gmail ou une ligne restée `prevu` laisserait un client sans nouvelles, en
     // silence. Lus seulement quand la base sert le parcours.
@@ -127,7 +147,7 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
     const état: ÉtatDuDispositif = {
       date: aujourdHuiÀParis(),
       espaces,
-      défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeCourriers],
+      défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeMigrations, ...défautsDeCourriers],
       lignesSansSlug: sansSlug,
       opérateursActifs: opérateurs.filter((l) => l.actif).length,
     }

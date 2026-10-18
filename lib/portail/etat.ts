@@ -26,6 +26,7 @@ export type CodeDeDéfaut =
   | 'aucune-lettre-publiée'
   | 'contrat-rompu'
   | 'base-injoignable'
+  | 'migrations-en-attente'
   | 'courrier-parcours-echec'
   | 'courrier-parcours-incertain'
 

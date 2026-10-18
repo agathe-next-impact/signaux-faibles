@@ -196,24 +196,47 @@ existait déjà. Voir `.env.example`.
 
 ## Depuis une tâche Cowork
 
-Les tâches disposent d'un shell ; `curl` suffit. Le jeton est dans la tâche
-comme pour l'activation.
+Les tâches disposent d'un shell ; `curl` suffit. **Aucune tâche ne porte le
+jeton** depuis le 16 octobre 2026 : l'environnement « signaux-faibles-io »
+l'ajoute lui-même à toute requête vers `www.signauxfaibles.io` (en-tête
+`Authorization`, préfixe `Bearer`, chemins `/api/veille/` et `/api/acces/`).
+Une tâche n'ajoute aucun en-tête et n'écrit jamais un jeton dans une commande.
 
 ```sh
 # valider la page qu'on vient de créer
-curl -sS -X POST "$PORTAIL_URL/api/veille/lint" \
-  -H "Authorization: Bearer $ACTIVATION_SECRET" -H "Content-Type: application/json" \
+curl -sS -X POST "https://www.signauxfaibles.io/api/veille/lint" \
+  -H "Content-Type: application/json" \
   -d '{"page":"3dbfe829ce7181529c90d1a670074b3b"}'
 
 # la sélection du jour
-curl -sS -X POST "$PORTAIL_URL/api/veille/calendrier" \
-  -H "Authorization: Bearer $ACTIVATION_SECRET" -H "Content-Type: application/json" \
+curl -sS -X POST "https://www.signauxfaibles.io/api/veille/calendrier" \
+  -H "Content-Type: application/json" \
   -d '{"organisations":[{"slug":"hermitage","jour":"Lundi","cadence":"Hebdomadaire","heure":"6 h 30"}]}'
 
 # le contexte d'une organisation
-curl -sS "$PORTAIL_URL/api/veille/contexte?organisation=3d5fe829ce71810da651f3783a725bd8" \
-  -H "Authorization: Bearer $ACTIVATION_SECRET"
+curl -sS "https://www.signauxfaibles.io/api/veille/contexte?organisation=3d5fe829ce71810da651f3783a725bd8"
 ```
+
+### Lire un 401
+
+- **401 sur `/api/acces/` seulement** : le chemin n'est pas autorisé dans
+  l'environnement. L'ajouter à côté de `/api/veille/`.
+- **401 sur toutes les routes** : le secret de l'environnement n'est plus celui
+  du portail, typiquement après un changement d'`ACTIVATION_SECRET` sur Vercel
+  sans report dans l'environnement (constaté le 18 octobre 2026).
+- **405 sur `GET /api/acces/ouvrir`** : la vérification préalable n'est pas
+  encore déployée ; ce n'est pas un refus.
+
+### Changer `ACTIVATION_SECRET`
+
+Deux endroits, et deux seulement, doivent porter la même valeur : la variable
+Vercel (puis un redéploiement, sans lequel elle n'est pas lue) et le secret de
+l'environnement « signaux-faibles-io » sur claude.ai/code. Les tâches Cowork
+n'ont rien à changer. Une session déjà ouverte garde l'ancien secret : vérifier
+depuis une nouvelle session qu'un appel à `contexte` répond 200. Changer ce
+secret n'invalide aucun lien d'accès (signés par `ACCES_SECRET_HMAC`) ni les
+crons (`CRON_SECRET`). La valeur se range dans un gestionnaire de mots de passe,
+jamais dans une page Notion : les tâches lisent Notion.
 
 ## Ce qu'il reste à faire dans Notion — après déploiement, pas avant
 
@@ -277,6 +300,14 @@ copie la base Accès, plutôt qu'un poste où il faudrait les recopier.
 - `POST /api/veille/migrer` : applique les migrations de `drizzle/`.
   Idempotente. Réponse `{ état: 'à jour' }`, ou `{ état: 'échec', message }`
   avec le seul code SQLSTATE.
+  Le build de production l'applique aussi avant `next build` (18 octobre
+  2026), et le contrôle du soir signale `migrations-en-attente` si le journal
+  du dépôt et la base divergent : cette route reste le geste de rattrapage.
+- `GET /api/acces/ouvrir` : la vérification préalable des commandes
+  d'onboarding. Contrôle le seul jeton, sans corps ni envoi : 200
+  `{ état: 'prêt' }`, 401, ou 503 si le secret n'est pas configuré. Un 401
+  depuis une session Claude veut dire que son environnement ne porte le secret
+  que sur `/api/veille/` : y autoriser aussi `/api/acces/`.
 - `POST /api/veille/importer-acces?a-blanc=1` : le plan d'import, rien n'est
   écrit. Sans `a-blanc`, l'import est écrit en une transaction. Réponse :
   comptes, slugs, libellés, lignes écartées désignées par empreinte ; jamais

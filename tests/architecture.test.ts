@@ -614,3 +614,21 @@ describe('aucun journal ne porte une adresse email en clair', () => {
     expect(fautifs).toEqual([])
   })
 })
+
+describe('le schéma de la base part avec le code', () => {
+  // Le 18 octobre 2026, la migration 0003 est partie en production sans être
+  // appliquée : l'entrée en essai et l'import ont échoué en SQLSTATE 42703.
+  it('le build de production applique les migrations avant next build', () => {
+    const paquet = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
+      scripts: Record<string, string>
+    }
+    expect(paquet.scripts['build']).toMatch(/^tsx scripts\/base-migrer\.ts --deploiement && next build$/)
+  })
+
+  it('le contrôle du soir signale les migrations en attente', () => {
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'etat', 'route.ts'), 'utf8')
+    expect(route).toContain('migrationsEnAttente()')
+    const config = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8')
+    expect(config).toContain("'/api/veille/etat': ['./drizzle/meta/_journal.json']")
+  })
+})
