@@ -55,7 +55,8 @@ au statut `Brouillon`. Vérifier le statut avant l'identifiant.
 
 ## Lancer chaque étape depuis Claude Code
 
-Cinq commandes projet (`.claude/skills/`), une par lancement du cycle. Aucune ne
+Cinq commandes projet (`.claude/skills/`), une par lancement du cycle, décrites
+pour l'usage dans `docs/guide-commandes-onboarding.html`. Aucune ne
 recopie de prompt : chacune ouvre la page Notion « Tâche — Onboarding d'une
 organisation », qui fait foi, et n'en exécute que la section de son étape, sur
 une seule organisation. Chacune coche puis décoche la case ▶ de son étape,
