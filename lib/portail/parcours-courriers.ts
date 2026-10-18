@@ -3,10 +3,10 @@ import { organisationsEnEssai } from '@/lib/base/courriers'
 import { fixerJ0 } from '@/lib/base/organisations'
 import { composerCourrierDeParcours, courrierDuParcours, type SorteDeParcours } from '@/lib/domaine/courriers-parcours'
 import { étapeDuParcours } from '@/lib/domaine/parcours'
-import { estUneDateISO } from '@/lib/domaine/semaines'
+import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
+import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 import { listerÉditionsPubliées } from '@/lib/notion/editions'
 import { envoyerCourrier } from '@/lib/portail/courriers'
-import { identifiantAvecTirets } from '@/lib/portail/garde-veille'
 import { empreinte } from '@/lib/portail/debit'
 
 /**
@@ -31,16 +31,29 @@ import { empreinte } from '@/lib/portail/debit'
  *
  * **J0 est fixé ici** (18 octobre 2026) : une organisation ouverte en essai par
  * l'onboarding (`POST /api/veille/organisations`) n'a pas de date d'activation.
- * Le passage lit ses éditions publiées (lecture cachée, celle des écrans) et,
- * s'il en trouve, pose J0 à la date de la plus ancienne, à midi UTC pour que
- * la semaine ISO de Paris soit celle de la lettre. Une date déjà posée n'est
+ * Le passage lit ses éditions publiées (lecture cachée) et, s'il en trouve
+ * une datée de la semaine d'entrée en essai ou après, pose J0 à la date de la
+ * plus ancienne, à midi UTC pour que la semaine ISO de Paris soit celle de la
+ * lettre. Une date déjà posée n'est
  * jamais déplacée (`fixerJ0`). Tant qu'aucune lettre n'est publiée, l'espace
  * reste en lecture complète et aucun courrier n'est dû.
  */
 
-/** La date d'activation déduite de la première lettre publiée, ou `null`. */
-export function j0DesÉditions(éditions: ReadonlyArray<{ readonly dateÉdition: string }>): Date | null {
-  const dates = éditions.map((é) => é.dateÉdition.slice(0, 10)).filter(estUneDateISO).sort()
+/**
+ * La date d'activation déduite de la première lettre publiée, ou `null`. Une
+ * lettre datée d'avant la semaine d'entrée en essai (test, erreur de statut)
+ * est ignorée : elle raccourcirait l'essai, voire le sauterait entièrement.
+ */
+export function j0DesÉditions(
+  éditions: ReadonlyArray<{ readonly dateÉdition: string }>,
+  essaiOuvertLe: Date | null = null,
+): Date | null {
+  const plancher = essaiOuvertLe ? lundiDeLaSemaine(aujourdHuiÀParis(essaiOuvertLe)) : ''
+  const dates = éditions
+    .map((é) => é.dateÉdition)
+    .filter(estUneDateISO)
+    .filter((date) => date >= plancher)
+    .sort()
   return dates.length > 0 ? new Date(`${dates[0]}T12:00:00Z`) : null
 }
 
@@ -71,10 +84,19 @@ export async function envoyerLesCourriersDeParcours(entrée: {
     if (!activéeLe) {
       if (!organisation.registreNotion) continue
       try {
-        const j0 = j0DesÉditions(await listerÉditionsPubliées(identifiantAvecTirets(organisation.registreNotion)))
+        // Le registre tel que la base le tient (32 hexadécimaux), la même clé
+        // que les écrans en mode `postgres`.
+        const j0 = j0DesÉditions(await listerÉditionsPubliées(organisation.registreNotion), organisation.essaiOuvertLe)
         if (!j0) continue
-        if (await fixerJ0(organisation.id, j0)) j0Fixés.push(organisation.slug)
+        // Une fixation refusée (état changé entre-temps, J0 déjà posé) : rien
+        // n'est calculé sur une date qui n'est pas en base ; repris demain.
+        if (!(await fixerJ0(organisation.id, j0))) continue
+        j0Fixés.push(organisation.slug)
         activéeLe = j0
+        const retard = Math.floor((Date.parse(`${entrée.aujourdHui}T12:00:00Z`) - j0.getTime()) / 86_400_000)
+        if (retard > 7) {
+          console.warn(`[parcours] ${organisation.slug} : J0 fixé ${retard} jours après la première lettre publiée.`)
+        }
       } catch (erreur) {
         console.error(
           `[parcours] ${organisation.slug} : J0 non fixé (${erreur instanceof Error ? erreur.name : 'inconnue'}), repris au prochain passage.`,

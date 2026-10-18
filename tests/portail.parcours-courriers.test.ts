@@ -94,7 +94,7 @@ describe('envoyerLesCourriersDeParcours', () => {
     expect(rapport.courriers).toEqual([])
     expect(rapport.j0Fixés).toEqual([])
     expect(fixerJ0).not.toHaveBeenCalled()
-    expect(listerÉditionsPubliées).toHaveBeenCalledWith('aaaabbbb-cccc-dddd-eeee-ffff00004444')
+    expect(listerÉditionsPubliées).toHaveBeenCalledWith(REGISTRE)
   })
 
   it('sans J0, la première lettre publiée le fixe, et l’étape du jour en découle', async () => {
@@ -116,6 +116,24 @@ describe('envoyerLesCourriersDeParcours', () => {
 
   it('j0DesÉditions prend la plus ancienne date valide, à midi UTC', () => {
     expect(j0DesÉditions([])).toBeNull()
-    expect(j0DesÉditions([{ dateÉdition: '2026-10-12' }, { dateÉdition: '2026-10-05T09:00:00.000+02:00' }])?.toISOString()).toBe('2026-10-05T12:00:00.000Z')
+    expect(j0DesÉditions([{ dateÉdition: '2026-10-12' }, { dateÉdition: '2026-10-05' }, { dateÉdition: 'n/a' }])?.toISOString()).toBe('2026-10-05T12:00:00.000Z')
+    expect(j0DesÉditions([{ dateÉdition: '2026-10-05' }], new Date('2026-10-20T08:00:00Z'))).toBeNull()
+  })
+
+  it('une lettre antérieure à la semaine d’entrée en essai ne fixe pas J0', async () => {
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null, essaiOuvertLe: new Date('2026-10-14T09:00:00Z') })])
+    listerÉditionsPubliées.mockResolvedValue([{ dateÉdition: '2026-09-07' }, { dateÉdition: '2026-10-12' }])
+    await appel('2026-10-14')
+    // Plancher : lundi 12/10, semaine de l'entrée en essai.
+    expect(fixerJ0).toHaveBeenCalledWith('o1', new Date('2026-10-12T12:00:00Z'))
+  })
+
+  it('une fixation refusée n’envoie rien : l’étape n’est pas calculée sur une date absente de la base', async () => {
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null })])
+    listerÉditionsPubliées.mockResolvedValue([{ dateÉdition: '2026-09-28' }])
+    fixerJ0.mockResolvedValue(false)
+    const rapport = await appel('2026-10-14')
+    expect(rapport.j0Fixés).toEqual([])
+    expect(envoyerCourrier).not.toHaveBeenCalled()
   })
 })

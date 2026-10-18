@@ -213,8 +213,23 @@ export async function appliquerImport(db: Base, plan: PlanDImport): Promise<Rapp
 async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
   return db.transaction(async (tx) => {
     const idParSlug = new Map<string, string>()
+    const écartés: Écart[] = [...plan.écartés]
+
+    // Depuis le 18/10/2026, l'onboarding crée aussi des organisations
+    // (`POST /api/veille/organisations`) : un registre peut donc déjà porter un
+    // autre slug en base. L'écrire ferait échouer toute la transaction, pour
+    // tous les clients ; l'organisation est écartée et ses lecteurs préservés.
+    const existants = await tx
+      .select({ slug: organisations.slug, registreNotion: organisations.registreNotion })
+      .from(organisations)
+    const slugParRegistre = new Map(existants.flatMap((o) => (o.registreNotion ? [[o.registreNotion, o.slug] as const] : [])))
 
     for (const organisation of plan.organisations) {
+      const porteur = slugParRegistre.get(organisation.registreNotion)
+      if (porteur && porteur !== organisation.slug) {
+        écartés.push({ raison: `registre déjà porté par le slug « ${porteur} » en base`, ligne: organisation.slug })
+        continue
+      }
       const [ligne] = await tx
         .insert(organisations)
         .values({
@@ -297,7 +312,7 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
       organisations: plan.organisations.length,
       lecteurs: plan.lecteurs.length + plan.opérateurs.length,
       lecteursDésactivés: désactivés.length,
-      écartés: plan.écartés,
+      écartés,
     }
   })
 }

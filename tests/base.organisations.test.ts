@@ -35,7 +35,7 @@ describe('ouverture d’une organisation en essai', () => {
   })
 
   it('ne rétrograde jamais un client historique : abonnée avec un lecteur actif, ou suspendue', async () => {
-    const [h] = await db.insert(organisations).values({ slug: 'hist', nom: 'Hist', état: 'abonnee', registreNotion: REGISTRE }).returning()
+    const [h] = await db.insert(organisations).values({ slug: 'hist', nom: 'Hist', état: 'abonnee', registreNotion: REGISTRE, crééeLe: new Date('2026-10-16T09:00:00Z') }).returning()
     await db.insert(lecteurs).values({ organisationId: h!.id, nom: 'Léa', email: 'lea@h.fr', identifiantAcces: 'a'.repeat(32) })
     expect(await ouvrirEnEssai({ slug: 'hist', nom: 'Hist', registreNotion: REGISTRE }, db)).toEqual({ sorte: 'état-incompatible', état: 'abonnee' })
     await db.insert(organisations).values({ slug: 'susp', nom: 'Susp', état: 'suspendue' })
@@ -43,20 +43,49 @@ describe('ouverture d’une organisation en essai', () => {
     expect((await lire('hist')).état).toBe('abonnee')
   })
 
-  it('reprend une organisation créée par l’import avant l’activation : abonnée, sans J0, sans abonnement, sans lecteur actif', async () => {
-    const [o] = await db.insert(organisations).values({ slug: 'neuve', nom: 'Neuve', état: 'abonnee', relectureRequise: true, registreNotion: REGISTRE }).returning()
-    await db.insert(lecteurs).values({ organisationId: o!.id, nom: 'Léa', email: 'lea@n.fr', identifiantAcces: 'b'.repeat(32), actif: false })
-    expect((await ouvrirEnEssai({ slug: 'neuve', nom: 'Neuve', registreNotion: REGISTRE }, db)).sorte).toBe('passée-en-essai')
-    expect(await lire('neuve')).toMatchObject({ état: 'essai', relectureRequise: false })
+  it('reprend une abonnée née de l’import pendant l’onboarding : récente, après la mise en service, sans J0 ni abonnement', async () => {
+    const maintenant = new Date('2026-10-25T08:00:00Z')
+    const [o] = await db.insert(organisations).values({ slug: 'neuve', nom: 'Neuve', état: 'abonnee', relectureRequise: true, registreNotion: REGISTRE, crééeLe: new Date('2026-10-20T08:00:00Z') }).returning()
+    // Un lecteur actif ne l'empêche pas : l'import a pu suivre la case Actif.
+    await db.insert(lecteurs).values({ organisationId: o!.id, nom: 'Léa', email: 'lea@n.fr', identifiantAcces: 'b'.repeat(32) })
+    expect((await ouvrirEnEssai({ slug: 'neuve', nom: 'Neuve', registreNotion: REGISTRE }, db, maintenant)).sorte).toBe('passée-en-essai')
+    const lue = await lire('neuve')
+    expect(lue).toMatchObject({ état: 'essai', relectureRequise: false })
+    expect(lue.essaiOuvertLe?.toISOString()).toBe(maintenant.toISOString())
   })
 
-  it('une abonnée sans lecteur mais avec un abonnement Stripe reste abonnée', async () => {
-    const [o] = await db.insert(organisations).values({ slug: 'payee', nom: 'Payée', état: 'abonnee', registreNotion: REGISTRE }).returning()
+  it('ne reprend jamais un client historique sans lecteur actif : importé avant la mise en service', async () => {
+    await db.insert(organisations).values({ slug: 'vieux', nom: 'Vieux', état: 'abonnee', registreNotion: REGISTRE, crééeLe: new Date('2026-10-16T09:00:00Z') })
+    expect(await ouvrirEnEssai({ slug: 'vieux', nom: 'Vieux', registreNotion: REGISTRE }, db, new Date('2026-10-20T08:00:00Z'))).toEqual({ sorte: 'état-incompatible', état: 'abonnee' })
+  })
+
+  it('ne reprend pas une abonnée créée il y a plus de quatorze jours', async () => {
+    await db.insert(organisations).values({ slug: 'lente', nom: 'Lente', état: 'abonnee', registreNotion: REGISTRE, crééeLe: new Date('2026-10-19T09:00:00Z') })
+    expect((await ouvrirEnEssai({ slug: 'lente', nom: 'Lente', registreNotion: REGISTRE }, db, new Date('2026-11-10T08:00:00Z'))).sorte).toBe('état-incompatible')
+  })
+
+  it('un rejeu corrige le registre tant que J0 n’est pas posé, puis le refuse', async () => {
+    const r = await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: AUTRE }, db)
+    if (r.sorte !== 'créée') throw new Error(r.sorte)
+    expect((await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: REGISTRE }, db)).sorte).toBe('déjà-en-essai')
+    expect((await lire('acme')).registreNotion).toBe(REGISTRE)
+    await fixerJ0(r.organisationId, new Date('2026-10-19T12:00:00Z'), db)
+    expect(await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: AUTRE }, db)).toEqual({ sorte: 'registre-différent', registreActuel: REGISTRE })
+  })
+
+  it('normalise le registre : tirets et majuscules', async () => {
+    const avecTirets = `${REGISTRE.slice(0, 8)}-${REGISTRE.slice(8, 12)}-${REGISTRE.slice(12, 16)}-${REGISTRE.slice(16, 20)}-${REGISTRE.slice(20)}`.toUpperCase()
+    await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: avecTirets }, db)
+    expect((await lire('acme')).registreNotion).toBe(REGISTRE)
+  })
+
+  it('une abonnée récente mais avec un abonnement Stripe reste abonnée', async () => {
+    const [o] = await db.insert(organisations).values({ slug: 'payee', nom: 'Payée', état: 'abonnee', registreNotion: REGISTRE, crééeLe: new Date('2026-10-20T08:00:00Z') }).returning()
     await db.insert(abonnements).values({
       organisationId: o!.id, clientStripe: 'cus_1', abonnementStripe: 'sub_1', état: 'active',
       dernierÉvénement: 'evt_1', événementLe: new Date(), dernierType: 'customer.subscription.created',
     })
-    expect(await ouvrirEnEssai({ slug: 'payee', nom: 'Payée', registreNotion: REGISTRE }, db)).toEqual({ sorte: 'état-incompatible', état: 'abonnee' })
+    expect(await ouvrirEnEssai({ slug: 'payee', nom: 'Payée', registreNotion: REGISTRE }, db, new Date('2026-10-22T08:00:00Z'))).toEqual({ sorte: 'état-incompatible', état: 'abonnee' })
   })
 
   it('refuse un registre déjà porté par un autre slug', async () => {

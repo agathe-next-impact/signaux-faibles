@@ -147,6 +147,8 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
     readonly nom: string
     /** Nul tant que J0 n'est pas fixé (première lettre publiée). */
     readonly activéeLe: Date | null
+    /** Entrée dans l'essai par l'onboarding ; nulle pour une organisation antérieure. */
+    readonly essaiOuvertLe: Date | null
     readonly relectureRequise: boolean
     readonly emailRelecture: string | null
     readonly registreNotion: string | null
@@ -161,6 +163,7 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
         slug: organisations.slug,
         nom: organisations.nom,
         activéeLe: organisations.activéeLe,
+        essaiOuvertLe: organisations.essaiOuvertLe,
         relectureRequise: organisations.relectureRequise,
         emailRelecture: organisations.emailRelecture,
         registreNotion: organisations.registreNotion,

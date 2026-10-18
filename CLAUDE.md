@@ -211,11 +211,15 @@ Les lire avant toute session.
   `importer-acces` puis `/api/acces/ouvrir` ; `ouvrirEnEssai`
   (`lib/base/organisations.ts`) crée l'organisation à l'état `essai`, sans
   relecture des courriers, ou y fait passer une `demande`, une `generation`, ou
-  une `abonnee` née de l'import avant l'activation (sans J0, sans abonnement,
-  sans lecteur actif). Un client historique n'est jamais rétrogradé
-  (`état-incompatible`). **J0 n'est posé par personne à la main** : le passage
-  quotidien du parcours lit les éditions publiées d'une organisation en essai
-  sans date et fixe `activée_le` à la plus ancienne (`fixerJ0`, une seule fois) ;
+  une `abonnee` née d'un import rejoué pendant l'onboarding (créée après le
+  18/10/2026, il y a moins de quatorze jours, sans J0 ni abonnement). Un client
+  historique n'est jamais rétrogradé (`état-incompatible`) ; un rejeu corrige le
+  registre tant que J0 n'est pas posé (`registre-différent` après). **J0 n'est
+  posé par personne à la main** : le passage quotidien du parcours lit les
+  éditions publiées d'une organisation en essai sans date et fixe `activée_le`
+  à la plus ancienne datée de la semaine d'entrée en essai (`essai_ouvert_le`)
+  ou après (`fixerJ0`, une seule fois) ; l'import écarte une organisation dont
+  le registre est déjà porté en base par un autre slug ;
   avant la première lettre publiée, l'étape est « hors parcours » et la lecture
   complète. La garde d'architecture tient le seul appelant de chacune
 

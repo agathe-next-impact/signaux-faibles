@@ -37,6 +37,7 @@ const STATUT: Record<RésultatDOuverture['sorte'], number> = {
   'déjà-en-essai': 200,
   'état-incompatible': 409,
   'registre-pris': 409,
+  'registre-différent': 409,
 }
 
 export async function POST(requête: NextRequest): Promise<NextResponse> {
@@ -54,8 +55,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   const lue = demande.safeParse(await requête.json().catch(() => null))
   if (!lue.success) return NextResponse.json({ état: 'invalide' }, { status: 400 })
 
-  const { slug, nom } = lue.data
-  const registreNotion = lue.data.registreNotion.replaceAll('-', '').toLowerCase()
+  const { slug, nom, registreNotion } = lue.data
   try {
     const résultat = await ouvrirEnEssai({ slug, nom, registreNotion })
     console.info(`[veille/organisations] ${slug} : ${résultat.sorte}.`)
@@ -72,6 +72,8 @@ function détail(résultat: RésultatDOuverture): Record<string, string> {
       return { étatActuel: résultat.état }
     case 'registre-pris':
       return { slugExistant: résultat.slug }
+    case 'registre-différent':
+      return { registreActuel: résultat.registreActuel }
     default:
       return {}
   }

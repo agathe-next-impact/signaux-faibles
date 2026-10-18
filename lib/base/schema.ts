@@ -72,6 +72,12 @@ export const organisations = pgTable(
   demandéeLe: horodatage('demandée_le'),
   /** Fixe le J0 du parcours d'essai. */
   activéeLe: horodatage('activée_le'),
+  /**
+   * Entrée dans le parcours d'essai par l'onboarding (`ouvrirEnEssai`). J0 ne
+   * peut pas tomber avant le lundi de cette semaine : une lettre publiée plus
+   * tôt (test, erreur) ne raccourcit pas l'essai.
+   */
+  essaiOuvertLe: horodatage('essai_ouvert_le'),
   suspendueLe: horodatage('suspendue_le'),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),

@@ -1,7 +1,7 @@
-import { and, eq, isNull, ne } from 'drizzle-orm'
+import { and, eq, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
-import { abonnements, lecteurs, organisations } from '@/lib/base/schema'
+import { abonnements, organisations } from '@/lib/base/schema'
 
 /**
  * L'entrée d'une nouvelle organisation dans le parcours d'essai (18 octobre
@@ -14,12 +14,13 @@ import { abonnements, lecteurs, organisations } from '@/lib/base/schema'
  * **Un client historique n'est jamais rétrogradé.** Une organisation déjà
  * `abonnee`, `suspendue`, `ecartee` ou `test` garde son état : la route répond
  * `état-incompatible` et ne touche à rien. Seules `demande` et `generation`
- * passent en `essai`, plus un cas étroit : une organisation `abonnee` **créée
- * par l'import avant l'activation**. L'étape A de l'onboarding écrit la ligne
- * Accès, case Actif décochée, et un import rejoué entre-temps crée
- * l'organisation à l'état `abonnee`. On la reconnaît à trois signes réunis :
- * aucune date d'activation, aucun abonnement Stripe, aucun lecteur actif. Un
- * client historique a toujours au moins un lecteur actif.
+ * passent en `essai`, plus un cas étroit : une organisation `abonnee` **née de
+ * l'import après la mise en service de l'essai** (un import rejoué entre
+ * l'étape A de l'onboarding et l'appel de la première lettre). On la reconnaît
+ * à quatre signes réunis : créée après `MISE_EN_SERVICE_DE_L_ESSAI`, il y a
+ * moins de quatorze jours, sans J0, sans aucun abonnement Stripe. Les clients
+ * historiques ont tous été importés avant cette date : aucun ne peut y passer,
+ * même sans lecteur actif.
  *
  * **J0 n'est pas posé ici.** Il est fixé par le passage quotidien du parcours
  * à la date de la première lettre publiée (`fixerJ0`), décision du 18/10/2026 :
@@ -35,22 +36,36 @@ export type RésultatDOuverture =
   | { readonly sorte: 'créée' | 'passée-en-essai' | 'déjà-en-essai'; readonly organisationId: string }
   | { readonly sorte: 'état-incompatible'; readonly état: string }
   | { readonly sorte: 'registre-pris'; readonly slug: string }
+  | { readonly sorte: 'registre-différent'; readonly registreActuel: string }
 
 export async function ouvrirEnEssai(
   entrée: { readonly slug: string; readonly nom: string; readonly registreNotion: string },
   db: Base = base(),
+  maintenant: Date = new Date(),
 ): Promise<RésultatDOuverture> {
+  const registreNotion = entrée.registreNotion.replaceAll('-', '').toLowerCase()
   return protéger('ouverture d’une organisation en essai', () =>
     db.transaction(async (tx) => {
+      // Un verrou unique pour toutes les ouvertures : deux appels simultanés
+      // (rejeu de la tâche) se suivent au lieu de se heurter sur l'unicité du
+      // slug ou du registre, ce qui rendrait une panne au lieu d'un résultat.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('ouvrir-en-essai'))`)
+
       const [autre] = await tx
         .select({ slug: organisations.slug })
         .from(organisations)
-        .where(and(eq(organisations.registreNotion, entrée.registreNotion), ne(organisations.slug, entrée.slug)))
+        .where(and(eq(organisations.registreNotion, registreNotion), ne(organisations.slug, entrée.slug)))
         .limit(1)
       if (autre) return { sorte: 'registre-pris', slug: autre.slug } as const
 
       const [existante] = await tx
-        .select({ id: organisations.id, état: organisations.état })
+        .select({
+          id: organisations.id,
+          état: organisations.état,
+          crééeLe: organisations.crééeLe,
+          activéeLe: organisations.activéeLe,
+          registreNotion: organisations.registreNotion,
+        })
         .from(organisations)
         .where(eq(organisations.slug, entrée.slug))
         .for('update')
@@ -62,46 +77,67 @@ export async function ouvrirEnEssai(
           .values({
             slug: entrée.slug,
             nom: entrée.nom,
-            registreNotion: entrée.registreNotion,
+            registreNotion,
             état: 'essai',
             relectureRequise: false,
+            essaiOuvertLe: maintenant,
           })
           .returning({ id: organisations.id })
         return { sorte: 'créée', organisationId: créée!.id } as const
       }
 
-      if (existante.état === 'essai') return { sorte: 'déjà-en-essai', organisationId: existante.id } as const
-      const néeDeLImport = existante.état === 'abonnee' && (await néeDeLImportAvantActivation(tx, existante.id))
-      if (existante.état !== 'demande' && existante.état !== 'generation' && !néeDeLImport) {
+      if (existante.état === 'essai') {
+        // Un rejeu peut corriger un registre faux (la page organisation collée à
+        // la place de la ligne du registre) tant que J0 n'est pas posé. Après,
+        // le registre est celui des lettres publiées : le changer serait une
+        // autre organisation.
+        if (existante.registreNotion !== registreNotion) {
+          if (existante.activéeLe) return { sorte: 'registre-différent', registreActuel: existante.registreNotion ?? '' } as const
+          await tx
+            .update(organisations)
+            .set({ registreNotion, nom: entrée.nom, modifiéeLe: maintenant })
+            .where(eq(organisations.id, existante.id))
+        }
+        return { sorte: 'déjà-en-essai', organisationId: existante.id } as const
+      }
+
+      const reprise = existante.état === 'abonnee' && (await néeDeLImportPendantLOnboarding(tx, existante, maintenant))
+      if (existante.état !== 'demande' && existante.état !== 'generation' && !reprise) {
         return { sorte: 'état-incompatible', état: existante.état } as const
       }
       await tx
         .update(organisations)
-        .set({ état: 'essai', nom: entrée.nom, registreNotion: entrée.registreNotion, relectureRequise: false, modifiéeLe: new Date() })
+        .set({
+          état: 'essai',
+          nom: entrée.nom,
+          registreNotion,
+          relectureRequise: false,
+          essaiOuvertLe: maintenant,
+          modifiéeLe: maintenant,
+        })
         .where(eq(organisations.id, existante.id))
       return { sorte: 'passée-en-essai', organisationId: existante.id } as const
     }),
   )
 }
 
-async function néeDeLImportAvantActivation(tx: Pick<Base, 'select'>, organisationId: string): Promise<boolean> {
-  const [organisation] = await tx
-    .select({ activéeLe: organisations.activéeLe })
-    .from(organisations)
-    .where(eq(organisations.id, organisationId))
-  if (!organisation || organisation.activéeLe) return false
+const MISE_EN_SERVICE_DE_L_ESSAI = new Date('2026-10-18T00:00:00Z')
+const FENÊTRE_DE_REPRISE_MS = 14 * 24 * 60 * 60 * 1000
+
+async function néeDeLImportPendantLOnboarding(
+  tx: Pick<Base, 'select'>,
+  organisation: { readonly id: string; readonly crééeLe: Date; readonly activéeLe: Date | null },
+  maintenant: Date,
+): Promise<boolean> {
+  if (organisation.activéeLe) return false
+  if (organisation.crééeLe < MISE_EN_SERVICE_DE_L_ESSAI) return false
+  if (maintenant.getTime() - organisation.crééeLe.getTime() > FENÊTRE_DE_REPRISE_MS) return false
   const [abonnement] = await tx
     .select({ id: abonnements.id })
     .from(abonnements)
-    .where(eq(abonnements.organisationId, organisationId))
+    .where(eq(abonnements.organisationId, organisation.id))
     .limit(1)
-  if (abonnement) return false
-  const [actif] = await tx
-    .select({ id: lecteurs.id })
-    .from(lecteurs)
-    .where(and(eq(lecteurs.organisationId, organisationId), eq(lecteurs.actif, true), eq(lecteurs.tousLesEspaces, false)))
-    .limit(1)
-  return !actif
+  return !abonnement
 }
 
 /** Fixe J0 d'une organisation en essai, une seule fois : une date déjà posée n'est jamais déplacée. */
