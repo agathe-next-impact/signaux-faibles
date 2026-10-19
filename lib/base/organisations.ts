@@ -187,7 +187,7 @@ export type Réglage =
 export type RésultatDuRéglage =
   | { readonly sorte: 'prolongé'; readonly ancienJ0: string; readonly nouveauJ0: string }
   | { readonly sorte: 'relecture-réglée'; readonly requise: boolean }
-  | { readonly sorte: 'offre-posée'; readonly offre: Offre; readonly état: string }
+  | { readonly sorte: 'offre-posée'; readonly offre: Offre; readonly étatOrganisation: string }
   | { readonly sorte: 'parutions-réglées'; readonly parutions: number }
   | { readonly sorte: 'mis-en-parcours'; readonly j0: string; readonly parutions: number; readonly restantes: number }
   | { readonly sorte: 'inconnue' }
@@ -230,7 +230,9 @@ export async function réglerLeParcours(
           .update(organisations)
           .set({ offre: réglage.offre, état, modifiéeLe: maintenant })
           .where(eq(organisations.id, organisation.id))
-        return { sorte: 'offre-posée', offre: réglage.offre, état } as const
+        // `étatOrganisation` et non `état` : la route renvoie `état` pour la sorte,
+        // et un même nom écraserait l'autre dans la réponse (constaté le 19/10/2026).
+        return { sorte: 'offre-posée', offre: réglage.offre, étatOrganisation: état } as const
       }
 
       if (réglage.sorte === 'parutions') {

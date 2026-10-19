@@ -179,9 +179,9 @@ describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
   const lire = async (slug: string) => (await db.select().from(organisations).where(eq(organisations.slug, slug)))[0]!
 
   it('pose l’offre, et un accès offert sur un essai passe en abonnée', async () => {
-    expect(await réglerLeParcours('hist', { sorte: 'offre', offre: 'early_adopter' }, db, MAINTENANT)).toEqual({ sorte: 'offre-posée', offre: 'early_adopter', état: 'abonnee' })
+    expect(await réglerLeParcours('hist', { sorte: 'offre', offre: 'early_adopter' }, db, MAINTENANT)).toEqual({ sorte: 'offre-posée', offre: 'early_adopter', étatOrganisation: 'abonnee' })
     expect((await lire('hist')).offre).toBe('early_adopter')
-    expect(await réglerLeParcours('ess', { sorte: 'offre', offre: 'gratuite' }, db, MAINTENANT)).toEqual({ sorte: 'offre-posée', offre: 'gratuite', état: 'abonnee' })
+    expect(await réglerLeParcours('ess', { sorte: 'offre', offre: 'gratuite' }, db, MAINTENANT)).toEqual({ sorte: 'offre-posée', offre: 'gratuite', étatOrganisation: 'abonnee' })
     expect(await lire('ess')).toMatchObject({ offre: 'gratuite', état: 'abonnee' })
   })
 

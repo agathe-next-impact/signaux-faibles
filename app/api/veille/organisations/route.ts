@@ -167,7 +167,7 @@ function journalDuRéglage(résultat: RésultatDuRéglage): string {
     case 'relecture-réglée':
       return résultat.requise ? 'courriers à la relecture' : 'courriers au client'
     case 'offre-posée':
-      return `offre ${résultat.offre}, état ${résultat.état}`
+      return `offre ${résultat.offre}, état ${résultat.étatOrganisation}`
     case 'mis-en-parcours':
       return `J0 ${résultat.j0}, ${résultat.restantes} parution(s) complète(s) restante(s) sur ${résultat.parutions}`
     case 'pas-en-essai':

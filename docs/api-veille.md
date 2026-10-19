@@ -368,7 +368,7 @@ l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
   « accès offert », et une organisation en essai passe `abonnee`.
   `early_adopter` ne propose et n'admet que la formule à 29 € HT par mois,
   sur son propre prix Stripe (`STRIPE_PRIX_EARLY_ADOPTER`). 200 `offre-posée`
-  avec `offre` et `état` ;
+  avec `offre` et `étatOrganisation` ;
 - `{ "slug", "action": "parutions", "parutions": 1..8 }` règle le nombre de
   parutions complètes de l'essai (trois par défaut ; quatre pour un essai à
   J+28). 200 `parutions-réglées` ; 409 `parutions-invalides` ;
