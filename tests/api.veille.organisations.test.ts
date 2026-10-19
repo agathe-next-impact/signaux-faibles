@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const organisations = vi.hoisted(() => ({ ouvrirEnEssai: vi.fn() }))
+const organisations = vi.hoisted(() => ({ ouvrirEnEssai: vi.fn(), réglerLeParcours: vi.fn() }))
 const client = vi.hoisted(() => ({ baseConfigurée: vi.fn() }))
 vi.mock('@/lib/base/organisations', () => organisations)
 vi.mock('@/lib/base/client', () => client)
 
-const { POST } = await import('@/app/api/veille/organisations/route')
+const { PATCH, POST } = await import('@/app/api/veille/organisations/route')
 
 const REGISTRE = '3d5fe829ce71810da651f3783a725bd8'
 const appel = (corps: unknown, jeton = 'secret-de-test') =>
@@ -73,6 +73,67 @@ describe('POST /api/veille/organisations', () => {
   it('une erreur de base rend 502 sans détail', async () => {
     organisations.ouvrirEnEssai.mockRejectedValue(new Error('23505'))
     const réponse = await appel(corps)
+    expect(réponse.status).toBe(502)
+    expect(await réponse.json()).toEqual({ état: 'échec' })
+  })
+})
+
+describe('PATCH /api/veille/organisations', () => {
+  const régler = (corps: unknown, jeton = 'secret-de-test') =>
+    PATCH(
+      new NextRequest('https://www.signauxfaibles.io/api/veille/organisations', {
+        method: 'PATCH',
+        headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json' },
+        body: JSON.stringify(corps),
+      }),
+    )
+
+  it('exige le jeton, une base et un mode qui ouvre Postgres', async () => {
+    const corps = { slug: 'acme', action: 'prolonger', semaines: 1 }
+    expect((await régler(corps, 'mauvais')).status).toBe(401)
+    client.baseConfigurée.mockReturnValue(false)
+    expect((await régler(corps)).status).toBe(503)
+    client.baseConfigurée.mockReturnValue(true)
+    vi.stubEnv('SOURCE_ACCES', 'notion')
+    expect((await régler(corps)).status).toBe(409)
+    expect(organisations.réglerLeParcours).not.toHaveBeenCalled()
+  })
+
+  it('n’accepte que deux réglages, et une à trois semaines', async () => {
+    for (const corps of [
+      { slug: 'acme', action: 'prolonger', semaines: 0 },
+      { slug: 'acme', action: 'prolonger', semaines: 4 },
+      { slug: 'acme', action: 'prolonger', semaines: '2' },
+      { slug: 'acme', action: 'relecture' },
+      { slug: 'acme', action: 'suspendre' },
+      { action: 'prolonger', semaines: 1 },
+    ]) {
+      expect((await régler(corps)).status, JSON.stringify(corps)).toBe(400)
+    }
+    expect(organisations.réglerLeParcours).not.toHaveBeenCalled()
+  })
+
+  it('transmet le réglage et traduit chaque issue en statut HTTP', async () => {
+    const cas: Array<[unknown, unknown, number, Record<string, unknown>]> = [
+      [{ slug: 'acme', action: 'prolonger', semaines: 2 }, { sorte: 'prolongé', ancienJ0: '2026-09-28', nouveauJ0: '2026-10-12' }, 200, { état: 'prolongé', ancienJ0: '2026-09-28', nouveauJ0: '2026-10-12' }],
+      [{ slug: 'acme', action: 'relecture', requise: true }, { sorte: 'relecture-réglée', requise: true }, 200, { état: 'relecture-réglée', requise: true }],
+      [{ slug: 'x', action: 'prolonger', semaines: 1 }, { sorte: 'inconnue' }, 404, { état: 'inconnue' }],
+      [{ slug: 'acme', action: 'prolonger', semaines: 1 }, { sorte: 'sans-j0' }, 409, { état: 'sans-j0' }],
+      [{ slug: 'acme', action: 'prolonger', semaines: 3 }, { sorte: 'au-delà-d-aujourdhui', j0Maximal: '2026-10-12' }, 409, { état: 'au-delà-d-aujourdhui', j0Maximal: '2026-10-12' }],
+    ]
+    for (const [corps, résultat, statut, json] of cas) {
+      organisations.réglerLeParcours.mockResolvedValueOnce(résultat)
+      const réponse = await régler(corps)
+      expect(réponse.status).toBe(statut)
+      expect(await réponse.json()).toEqual(json)
+    }
+    expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(1, 'acme', { sorte: 'prolonger', semaines: 2 })
+    expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(2, 'acme', { sorte: 'relecture', requise: true })
+  })
+
+  it('une erreur de base rend 502 sans détail', async () => {
+    organisations.réglerLeParcours.mockRejectedValue(new Error('40001'))
+    const réponse = await régler({ slug: 'acme', action: 'relecture', requise: false })
     expect(réponse.status).toBe(502)
     expect(await réponse.json()).toEqual({ état: 'échec' })
   })

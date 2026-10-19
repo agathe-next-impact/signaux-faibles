@@ -2,6 +2,7 @@ import { and, eq, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { abonnements, organisations } from '@/lib/base/schema'
+import { dateDeParis } from '@/lib/domaine/parcours'
 
 /**
  * L'entrée d'une nouvelle organisation dans le parcours d'essai (18 octobre
@@ -138,6 +139,88 @@ async function néeDeLImportPendantLOnboarding(
     .where(eq(abonnements.organisationId, organisation.id))
     .limit(1)
   return !abonnement
+}
+
+/**
+ * Les deux réglages que l'opératrice peut poser sur un parcours d'essai
+ * (18 octobre 2026), par `PATCH /api/veille/organisations` :
+ *
+ *   · `prolonger` décale J0 d'une à trois semaines. C'est **le seul écrivain
+ *     de J0 après `fixerJ0`**, et il ne le pose jamais après aujourd'hui (date
+ *     de Paris) : au plus, l'essai repart de la semaine en cours, trois
+ *     parutions complètes devant lui. Une organisation déjà réduite à
+ *     « L'essentiel » ou suspendue par le calendrier retrouve la lecture
+ *     complète si le décalage la ramène dans l'essai. Les courriers déjà
+ *     partis ne repartent pas : le journal en tient un par destinataire.
+ *   · `relecture` envoie les courriers de fin d'essai à l'adresse de relecture
+ *     au lieu du client (ou les lui rend). Il ne change rien au calendrier.
+ *
+ * Rien d'autre n'est réglable ici : l'état de l'organisation, l'abonnement et
+ * le registre restent tenus par leurs propres chemins.
+ */
+export type Réglage =
+  | { readonly sorte: 'prolonger'; readonly semaines: 1 | 2 | 3 }
+  | { readonly sorte: 'relecture'; readonly requise: boolean }
+
+export type RésultatDuRéglage =
+  | { readonly sorte: 'prolongé'; readonly ancienJ0: string; readonly nouveauJ0: string }
+  | { readonly sorte: 'relecture-réglée'; readonly requise: boolean }
+  | { readonly sorte: 'inconnue' }
+  | { readonly sorte: 'pas-en-essai'; readonly état: string }
+  | { readonly sorte: 'sans-j0' }
+  | { readonly sorte: 'au-delà-d-aujourdhui'; readonly j0Maximal: string }
+
+const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000
+
+export async function réglerLeParcours(
+  slug: string,
+  réglage: Réglage,
+  db: Base = base(),
+  maintenant: Date = new Date(),
+): Promise<RésultatDuRéglage> {
+  return protéger('réglage du parcours d’une organisation', () =>
+    db.transaction(async (tx) => {
+      const [organisation] = await tx
+        .select({ id: organisations.id, état: organisations.état, activéeLe: organisations.activéeLe })
+        .from(organisations)
+        .where(eq(organisations.slug, slug))
+        .for('update')
+        .limit(1)
+      if (!organisation) return { sorte: 'inconnue' } as const
+
+      if (réglage.sorte === 'relecture') {
+        await tx
+          .update(organisations)
+          .set({ relectureRequise: réglage.requise, modifiéeLe: maintenant })
+          .where(eq(organisations.id, organisation.id))
+        return { sorte: 'relecture-réglée', requise: réglage.requise } as const
+      }
+
+      if (organisation.état !== 'essai') return { sorte: 'pas-en-essai', état: organisation.état } as const
+      // Sans J0, le calendrier n'a pas démarré : il n'y a rien à prolonger.
+      if (!organisation.activéeLe) return { sorte: 'sans-j0' } as const
+
+      const nouveauJ0 = new Date(organisation.activéeLe.getTime() + réglage.semaines * SEMAINE_MS)
+      const aujourdHui = dateDeParis(maintenant)
+      if (dateDeParis(nouveauJ0) > aujourdHui) {
+        // Le J0 le plus tardif admis est celui qui tombe aujourd'hui ou avant,
+        // à la même heure que l'ancien : semaines entières seulement.
+        const semainesPossibles = Math.floor((maintenant.getTime() - organisation.activéeLe.getTime()) / SEMAINE_MS)
+        const j0Maximal = new Date(organisation.activéeLe.getTime() + Math.max(0, semainesPossibles) * SEMAINE_MS)
+        return { sorte: 'au-delà-d-aujourdhui', j0Maximal: dateDeParis(j0Maximal) } as const
+      }
+
+      await tx
+        .update(organisations)
+        .set({ activéeLe: nouveauJ0, modifiéeLe: maintenant })
+        .where(eq(organisations.id, organisation.id))
+      return {
+        sorte: 'prolongé',
+        ancienJ0: dateDeParis(organisation.activéeLe),
+        nouveauJ0: dateDeParis(nouveauJ0),
+      } as const
+    }),
+  )
 }
 
 /** Fixe J0 d'une organisation en essai, une seule fois : une date déjà posée n'est jamais déplacée. */

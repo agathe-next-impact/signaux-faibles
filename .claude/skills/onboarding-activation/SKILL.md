@@ -46,7 +46,10 @@ Organisation visée : $ARGUMENTS
    - 1.3 espace client : **contrôle** de la ligne « Accès » (identifiant de
      1.1, identifiant d'accès unique, slug, email), et rattrapage seulement si
      l'espace n'a pas été ouvert par la première lettre. Pas de second lien si
-     le premier est déjà parti.
+     le premier est déjà parti. **Si « Invitation manuelle » est cochée**, le
+     1.3 contrôle sans ouvrir ni envoyer, même pour une ligne déjà active :
+     l'espace s'ouvre par `/onboarding-ouvrir-espace`, et l'activation de la
+     veille se fait quand même.
 
    Appels au portail : toujours `https://www.signauxfaibles.io`. **Aucun jeton
    à manipuler** : n'ajoute aucun en-tête `Authorization`, n'écris jamais de

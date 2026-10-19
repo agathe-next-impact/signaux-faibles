@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
-import { fixerJ0, ouvrirEnEssai } from '@/lib/base/organisations'
+import { fixerJ0, ouvrirEnEssai, réglerLeParcours } from '@/lib/base/organisations'
 import { abonnements, lecteurs, organisations } from '@/lib/base/schema'
 import { baseEnMémoire } from './aide/base-en-memoire'
 
@@ -102,5 +102,62 @@ describe('ouverture d’une organisation en essai', () => {
     expect((await lire('acme')).activéeLe?.toISOString()).toBe(j0.toISOString())
     const [h] = await db.insert(organisations).values({ slug: 'hist', nom: 'Hist', état: 'abonnee' }).returning()
     expect(await fixerJ0(h!.id, j0, db)).toBe(false)
+  })
+})
+
+describe('réglages du parcours par l’opératrice', () => {
+  let db: Base
+  let fermer: () => Promise<void>
+  beforeEach(async () => {
+    ;({ db, fermer } = await baseEnMémoire())
+  })
+  afterEach(async () => {
+    await fermer()
+  })
+
+  const lire = async (slug: string) => (await db.select().from(organisations).where(eq(organisations.slug, slug)))[0]!
+  // J0 posé comme le fait le passage quotidien : à midi UTC, le lundi 28 septembre.
+  const J0 = new Date('2026-09-28T12:00:00Z')
+  const enEssai = async (activéeLe: Date | null = J0) => {
+    await db.insert(organisations).values({ slug: 'acme', nom: 'Acme', état: 'essai', registreNotion: REGISTRE, relectureRequise: false, activéeLe })
+  }
+
+  it('décale J0 de semaines entières, à la même heure', async () => {
+    await enEssai()
+    const r = await réglerLeParcours('acme', { sorte: 'prolonger', semaines: 2 }, db, new Date('2026-10-18T09:00:00Z'))
+    expect(r).toEqual({ sorte: 'prolongé', ancienJ0: '2026-09-28', nouveauJ0: '2026-10-12' })
+    expect((await lire('acme')).activéeLe?.toISOString()).toBe('2026-10-12T12:00:00.000Z')
+  })
+
+  it('accepte un J0 qui tombe aujourd’hui, même avant l’heure de l’ancien', async () => {
+    await enEssai()
+    // Lundi 19 octobre à 9 h UTC : le J0 décalé de trois semaines tombe le jour même, à midi.
+    const r = await réglerLeParcours('acme', { sorte: 'prolonger', semaines: 3 }, db, new Date('2026-10-19T09:00:00Z'))
+    expect(r).toEqual({ sorte: 'prolongé', ancienJ0: '2026-09-28', nouveauJ0: '2026-10-19' })
+  })
+
+  it('ne pose jamais J0 après aujourd’hui, et dit jusqu’où il peut aller', async () => {
+    await enEssai()
+    const r = await réglerLeParcours('acme', { sorte: 'prolonger', semaines: 3 }, db, new Date('2026-10-14T09:00:00Z'))
+    expect(r).toEqual({ sorte: 'au-delà-d-aujourdhui', j0Maximal: '2026-10-12' })
+    expect((await lire('acme')).activéeLe?.toISOString()).toBe(J0.toISOString())
+  })
+
+  it('refuse sans J0, hors essai, ou sur un slug inconnu, sans rien écrire', async () => {
+    await enEssai(null)
+    expect(await réglerLeParcours('acme', { sorte: 'prolonger', semaines: 1 }, db)).toEqual({ sorte: 'sans-j0' })
+    await db.insert(organisations).values({ slug: 'hist', nom: 'Hist', état: 'abonnee', activéeLe: J0 })
+    expect(await réglerLeParcours('hist', { sorte: 'prolonger', semaines: 1 }, db)).toEqual({ sorte: 'pas-en-essai', état: 'abonnee' })
+    expect((await lire('hist')).activéeLe?.toISOString()).toBe(J0.toISOString())
+    expect(await réglerLeParcours('personne', { sorte: 'prolonger', semaines: 1 }, db)).toEqual({ sorte: 'inconnue' })
+  })
+
+  it('règle la relecture des courriers sans toucher au calendrier', async () => {
+    await enEssai()
+    expect(await réglerLeParcours('acme', { sorte: 'relecture', requise: true }, db)).toEqual({ sorte: 'relecture-réglée', requise: true })
+    expect(await lire('acme')).toMatchObject({ relectureRequise: true, état: 'essai' })
+    expect((await lire('acme')).activéeLe?.toISOString()).toBe(J0.toISOString())
+    await réglerLeParcours('acme', { sorte: 'relecture', requise: false }, db)
+    expect((await lire('acme')).relectureRequise).toBe(false)
   })
 })

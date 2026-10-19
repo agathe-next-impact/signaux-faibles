@@ -56,6 +56,13 @@ Organisation visée : $ARGUMENTS
    `POST /api/veille/organisations`, « Actif » coché selon le §1.3 (d),
    `POST /api/veille/importer-acces`, `POST /api/acces/ouvrir`.
 
+   **Si « Invitation manuelle » est cochée** sur la ligne du registre, fais
+   `POST /api/veille/organisations` **seulement** : l'organisation entre en
+   essai, mais tu ne coches pas « Actif », tu n'importes pas et tu n'envoies
+   aucun lien. Écris « espace prêt le JJ/MM, invitation manuelle : à ouvrir par
+   `/onboarding-ouvrir-espace` » dans « Dernier lancement manuel ». Dans ce cas,
+   la vérification `GET /api/acces/ouvrir` du point 3 n'est pas bloquante.
+
    Appels au portail : toujours `https://www.signauxfaibles.io` (l'apex perd
    l'en-tête). **Aucun jeton à manipuler** : l'environnement ajoute
    l'autorisation ; n'ajoute aucun en-tête `Authorization` et n'écris jamais de
@@ -69,4 +76,5 @@ Organisation visée : $ARGUMENTS
 
 7. **Notification `[Relecture]` et compte rendu** prévus par le prompt.
    L'étape suivante appartient au relecteur : relire, envoyer le brouillon,
-   puis `/onboarding-activation <nom>`.
+   puis `/onboarding-activation <nom>`. En invitation manuelle, l'opératrice
+   lance aussi `/onboarding-ouvrir-espace <nom>` le jour qu'elle choisit.

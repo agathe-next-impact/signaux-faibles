@@ -384,11 +384,17 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(corps.indexOf('prévoirCourrier(')).toBeLessThan(corps.indexOf('envoyerMessage('))
   })
 
-  it('l’entrée en essai a un seul chemin, et J0 un seul écrivain', () => {
+  it('l’entrée en essai a un seul chemin, et J0 deux écrivains bornés', () => {
     // Ouvrir en essai ne se fait que par la route gardée de l'onboarding ;
-    // J0 n'est posé que par le passage quotidien, d'après la première lettre publiée.
+    // J0 n'est posé que par le passage quotidien, d'après la première lettre publiée,
+    // et ne se déplace que par le réglage de l'opératrice, sur la même route gardée.
     expect(appelants('ouvrirEnEssai')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts'])
     expect(appelants('fixerJ0')).toEqual(['lib/base/organisations.ts', 'lib/portail/parcours-courriers.ts'])
+    expect(appelants('réglerLeParcours')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts'])
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'organisations', 'route.ts'), 'utf8')
+    const patch = route.slice(route.indexOf('export async function PATCH'))
+    expect(patch.indexOf('refuserSiNonAutorisé(requête')).toBeGreaterThan(0)
+    expect(patch.indexOf('refuserSiNonAutorisé(requête')).toBeLessThan(patch.indexOf('réglerLeParcours('))
   })
 
   it('toute route /api/veille commence par la garde du jeton', () => {

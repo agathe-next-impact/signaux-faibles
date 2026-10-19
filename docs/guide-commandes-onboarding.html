@@ -181,7 +181,7 @@ footer { color: var(--ardoise); font-size: 0.9rem; border-top: 1px solid var(--l
   <header style="display:flex;flex-direction:column;gap:14px">
     <span class="label">Signaux faibles · onboarding</span>
     <h1>Commandes d'onboarding</h1>
-    <p class="chapo">Cinq commandes Claude Code, une par lancement du cycle d'équipement d'une organisation. Chacune remplace le geste « cocher la case ▶ puis lancer la tâche », sur une seule organisation à la fois.</p>
+    <p class="chapo">Six commandes Claude Code, une par lancement du cycle d'équipement d'une organisation. Chacune remplace le geste « cocher la case ▶ puis lancer la tâche », sur une seule organisation à la fois.</p>
   </header>
 
   <section>
@@ -218,6 +218,12 @@ footer { color: var(--ardoise); font-size: 0.9rem; border-top: 1px solid var(--l
         <span class="cmd">/onboarding-activation</span>
         <span class="humain">Statut 6, les tâches planifiées prennent le relais.</span>
       </div>
+      <div class="etape" role="listitem">
+        <span class="num">SI INVITATION MANUELLE</span>
+        <strong>Ouvrir l'espace</strong>
+        <span class="cmd">/onboarding-ouvrir-espace</span>
+        <span class="humain">Le jour que vous choisissez, après votre propre message au client.</span>
+      </div>
     </div>
   </section>
 
@@ -234,7 +240,7 @@ footer { color: var(--ardoise); font-size: 0.9rem; border-top: 1px solid var(--l
   </section>
 
   <section>
-    <h2>Les cinq commandes</h2>
+    <h2>Les six commandes</h2>
 
     <article class="commande" id="demande">
       <header>
@@ -342,7 +348,7 @@ footer { color: var(--ardoise); font-size: 0.9rem; border-top: 1px solid var(--l
           <ul>
             <li>Vérifie qu'aucune édition n'existe déjà et que Q1 à Q3 sont validées.</li>
             <li>Refait la collecte entièrement et écrit l'édition n°1 de chaque veille, en <b>brouillon Gmail adressé au client</b>, jamais envoyé par Claude.</li>
-            <li>Fait entrer l'organisation en essai dans le portail, coche « Actif » sur la ligne « Accès » et envoie le lien d'accès au lecteur.</li>
+            <li>Fait entrer l'organisation en essai dans le portail, coche « Actif » sur la ligne « Accès » et envoie le lien d'accès au lecteur. Si « Invitation manuelle » est cochée sur la ligne du registre, elle s'arrête à l'entrée en essai : ni « Actif », ni lien.</li>
             <li>Passe au statut <span class="statut">4 · Première lettre produite — à valider</span>.</li>
           </ul>
         </div>
@@ -372,11 +378,40 @@ footer { color: var(--ardoise); font-size: 0.9rem; border-top: 1px solid var(--l
           <ul>
             <li>Coche « Veille automatique », date l'activation et passe au statut <span class="statut">6 · Veille active</span>.</li>
             <li>Contrôle la ligne « Accès » : bon identifiant d'organisation, identifiant d'accès unique, slug, email.</li>
-            <li>Ouvre l'espace en rattrapage seulement s'il ne l'a pas été à la première lettre. Pas de second lien si le premier est parti.</li>
+            <li>Ouvre l'espace en rattrapage seulement s'il ne l'a pas été à la première lettre. Pas de second lien si le premier est parti. En invitation manuelle, elle contrôle sans ouvrir.</li>
           </ul>
         </div>
         <div class="label">Ensuite</div>
         <div>Rien : les lettres du jour, la revue mensuelle et la réconciliation tournent sur leur planification.</div>
+      </div>
+    </article>
+
+    <article class="commande" id="ouvrir-espace">
+      <header>
+        <span class="label">Ouverture manuelle · statut attendu : 4, 5 ou 6</span>
+        <h3>Ouvrir l'espace et envoyer le lien</h3>
+        <div class="ligne-cmd">
+          <pre>/onboarding-ouvrir-espace La petite vitrine</pre>
+          <button class="copier" type="button">Copier</button>
+        </div>
+      </header>
+      <div class="details">
+        <div class="label">Quand</div>
+        <div>Pour une organisation dont la case « Invitation manuelle » est cochée sur la ligne du registre, le jour où vous voulez que le client reçoive son lien. Cochez la case avant <code>/onboarding-premiere-lettre</code>.</div>
+        <div class="label">Section Notion</div>
+        <div>§1.3 du « Prompt — Balayage », points (d) et (e), et « Entrée dans l'essai » du « Prompt — Première lettre ».</div>
+        <div class="label">Ce qu'elle fait</div>
+        <div>
+          <ul>
+            <li>Vérifie que le portail accepte l'appel avant tout geste : sans quoi elle n'ouvre rien.</li>
+            <li>Contrôle la ligne « Accès », coche « Actif », importe la ligne dans le portail et fait partir le lien.</li>
+            <li>Laisse « Invitation manuelle » cochée, comme trace du choix, et écrit le résultat dans « Dernier lancement manuel ».</li>
+          </ul>
+        </div>
+        <div class="label">À savoir</div>
+        <div>Le lien part toujours du portail : écrivez d'abord votre message au client, puis lancez la commande. L'essai ne démarre qu'à la première lettre publiée ; publier et inviter la même semaine évite d'entamer l'essai d'un client sans accès.</div>
+        <div class="label">Ce qu'elle ne fait pas</div>
+        <div>Elle ne s'applique pas à une organisation sans « Invitation manuelle » : son espace s'ouvre déjà par la première lettre.</div>
       </div>
     </article>
   </section>
