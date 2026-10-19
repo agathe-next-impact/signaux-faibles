@@ -1,6 +1,7 @@
 import { desc, eq } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
+import { abonnementQuiFaitFoi } from '@/lib/base/abonnements'
 import { abonnements, organisations } from '@/lib/base/schema'
 import type { EntréeDuParcours } from '@/lib/domaine/parcours'
 
@@ -19,9 +20,6 @@ import type { EntréeDuParcours } from '@/lib/domaine/parcours'
  * n'a pas encore vu) : l'appelant garde alors la lecture complète.
  */
 
-const OUVERTS = new Set(['trialing', 'active', 'past_due'])
-const FERMÉS = new Set(['canceled', 'unpaid', 'paused'])
-
 export async function lireEntréeDuParcours(
   registreNotion: string,
   db: Base = base(),
@@ -30,7 +28,13 @@ export async function lireEntréeDuParcours(
 
   return protéger('lecture du parcours', async () => {
     const [organisation] = await db
-      .select({ id: organisations.id, état: organisations.état, activéeLe: organisations.activéeLe })
+      .select({
+        id: organisations.id,
+        état: organisations.état,
+        activéeLe: organisations.activéeLe,
+        offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
+      })
       .from(organisations)
       .where(eq(organisations.registreNotion, registreNotion))
       .limit(1)
@@ -41,11 +45,15 @@ export async function lireEntréeDuParcours(
       .from(abonnements)
       .where(eq(abonnements.organisationId, organisation.id))
       .orderBy(desc(abonnements.événementLe))
-    const abonnement =
-      lignes.find((l) => OUVERTS.has(l.état)) ?? lignes.find((l) => FERMÉS.has(l.état)) ?? lignes[0] ?? null
+    const abonnement = abonnementQuiFaitFoi(lignes)
 
     return {
-      organisation: { état: organisation.état, activéeLe: organisation.activéeLe },
+      organisation: {
+        état: organisation.état,
+        activéeLe: organisation.activéeLe,
+        offre: organisation.offre,
+        parutionsDEssai: organisation.parutionsDEssai,
+      },
       abonnement,
     }
   })

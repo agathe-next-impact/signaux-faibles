@@ -231,7 +231,23 @@ Les lire avant toute session.
   (`réglerLeParcours`) décale J0 d'une à trois semaines (`prolonger`), jamais
   au-delà d'aujourd'hui, seulement en essai et une fois J0 posé ; ou envoie les
   courriers de fin d'essai à la relecture plutôt qu'au client (`relecture`).
-  C'est le seul autre écrivain de J0, et il n'est pas réglable autrement
+  C'est le seul autre écrivain de J0, et il n'est pas réglable autrement.
+  **Offre et parcours réglés (19 octobre 2026)** : `organisations.offre`
+  (`standard`, `early_adopter` à 29 € HT par mois sur son propre prix Stripe
+  `STRIPE_PRIX_EARLY_ADOPTER`, `gratuite` = accès offert, jamais de fin
+  d'essai, étape « accès offert ») et `organisations.parutions_d_essai`
+  (trois par défaut, quatre pour un essai à J+28), migration 0004. Le même
+  `réglerLeParcours` porte trois réglages de plus (`offre`, `parutions`,
+  `parcours`), par la route PATCH et par le tableau de l'opératrice. `parcours`
+  est **le chemin assumé pour un client historique qui devient payant** : la
+  date de sa prochaine lettre et le nombre de parutions complètes restantes
+  donnent J0 en semaines entières, la mécanique existante suit (courrier de
+  dernière parution, « L'essentiel », suspension) ; `ouvrirEnEssai` garde sa
+  garde contre la rétrogradation, et un abonné Stripe n'y entre pas. L'écran
+  du client dit alors « votre accès complet prend fin » (`historique`, créée
+  avant la mise en service de l'essai), bannière et page abonnement. La
+  formule admise par la souscription dépend de l'offre, revérifiée dans
+  l'action, et `ChoixDeFormule` ne montre que celle-là
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante
@@ -436,6 +452,34 @@ suivi des dossiers ouverts) · Recommandations · Archives (une entrée par
 semaine) · **Périmètre** (`/[slug]/perimetre`, décidé le 10 septembre 2026
 sous le nom « Cadrage », renommé le 14 septembre en accueillant les acteurs
 suivis). Pas d'autre écran sans discussion.
+
+**Deux écrans d'abonnement, hors des sept (19 octobre 2026).** `/[slug]/abonnement`
+(« Mon abonnement ») n'est pas un écran de veille : il ne lit aucune édition,
+seulement Postgres (`lib/base/situation.ts`, par la clé de cloisonnement), et
+reste ouvert quel que soit le droit de lecture, puisque c'est l'endroit où un
+essai terminé mène ; il est atteint par le pied du rail (`LienMonAbonnement`),
+jamais par un onglet, et `tests/architecture.test.ts` le range parmi les écrans
+ouverts. Il montre l'étape (`libelléDÉtape`, le même libellé que chez
+l'opératrice), la formule et l'échéance lues dans la copie Stripe, les lecteurs
+actifs par leur nom (jamais une adresse), et les boutons S'abonner ou Gérer mon
+abonnement ; l'opératrice en visite le voit tel quel, bandeau compris, et
+l'action refuse son geste. `/espaces/abonnements` est le tableau de
+l'opératrice : une ligne par organisation, gardée par `listerLesAbonnements`
+(privilège « Tous les espaces », garde **dans** la fonction comme pour le
+sélecteur), avec les deux réglages déjà permis par `PATCH /api/veille/organisations`
+(prolonger l'essai, relecture des courriers) en actions serveur
+(`lib/portail/reglages.ts`, `exigerOpérateur` avant `réglerLeParcours`) et un
+lien vers l'abonnement dans Stripe, où seul il se modifie. `tableauDesAbonnements`
+traverse les clients et n'a que ce seul appelant.
+**Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
+lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
+`envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit
+que l'activation) ou en retire un, par identifiant de ligne, jamais par
+adresse, et jamais lui-même (`soi-même`). Plafond de trois actifs tenu par
+`lib/base/ecriture-lecteurs.ts`, comme pour la route. Les actions
+(`lib/portail/lecteurs.ts`) passent par `exigerAccès`, refusent la visite
+opérateur et n'écrivent que si Postgres fait foi (`lecteursModifiables`,
+`SOURCE_ACCES=postgres`) ; sinon l'écran renvoie à l'adresse d'abonnement.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi

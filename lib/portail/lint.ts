@@ -69,6 +69,8 @@ export type Avertissement = {
     | 'aucun-dossier'
     | 'absence-en-prose'
     | 'essentiel-ligne-longue'
+    | 'lettre-maigre'
+    | 'analyse-absente'
   readonly message: string
 }
 
@@ -108,6 +110,43 @@ export const PHRASE_DE_CLÔTURE = 'Ces ajustements ne seront appliqués qu’apr
 export const ADRESSE_DU_CADRAGE = 'agathe@signauxfaibles.io'
 
 const RUBRIQUE_DES_AXES = 'actualites par axe'
+
+/**
+ * Une édition n°1 porte au moins six faits hors encadrés (§6 du prompt de
+ * génération des référentiels, révisé le 19 octobre 2026).
+ *
+ * Les éditions n°1 de La petite vitrine et de Suneido, les 18 et 19 octobre,
+ * comptaient en moyenne 5 paragraphes de faits, contre 26 pour les lettres
+ * régulières : leurs référentiels n'avaient plus de structure de note, et rien
+ * ne le signalait. Le seuil ne vaut que pour l'édition n°1, la seule que le
+ * client lit ligne à ligne et la seule dont le gabarit vient d'être écrit ; une
+ * édition courante qui manque de faits relève du RAS motivé, pas d'une alerte.
+ * C'est un avertissement : un fait ajouté pour le volume serait pire qu'un RAS.
+ */
+export const FAITS_MIN_ÉDITION_N1 = 6
+
+/** Les rubriques de faits hors des axes : signaux et actualité des acteurs. */
+function estRubriqueDeFaits(titre: string): boolean {
+  const t = sansAccent(titre)
+  return (t.startsWith('signaux') || t.includes('acteurs')) && !estTitreDeCadrage(titre)
+}
+
+/** Un bloc qui porte un fait : hors encadré, et avec du texte. */
+function estBlocDeFait(bloc: Bloc): boolean {
+  if (bloc.type !== 'paragraphe' && bloc.type !== 'liste' && bloc.type !== 'citation') return false
+  return texteDuBloc(bloc).trim().length > 0
+}
+
+function nombreDeFaits(document: Document): number {
+  let total = 0
+  for (const rubrique of document.rubriques) {
+    for (const axe of rubrique.axes) total += faitsDe(axe.blocs).filter(estBlocDeFait).length
+    if (estRubriqueDeFaits(rubrique.titre)) {
+      total += faitsDe(rubrique.introduction).filter(estBlocDeFait).length
+    }
+  }
+  return total
+}
 
 /**
  * « L'essentiel » tient en huit lignes de 140 caractères au plus.
@@ -199,6 +238,8 @@ export function contrôlerLaLettre(entrée: {
   readonly titre: string
   readonly blocs: readonly BlocNotion[]
   readonly dossiersBruts: string
+  /** Le numéro de l'édition ; les contrôles de richesse ne visent que la n°1. */
+  readonly numéro?: number | null
 }): Rapport {
   const ruptures: Rupture[] = []
   const avertissements: Avertissement[] = []
@@ -368,6 +409,28 @@ export function contrôlerLaLettre(entrée: {
       message:
         `le bloc de cadrage ne se termine pas par la phrase verbatim « ${PHRASE_DE_CLÔTURE}… » avec l’adresse ${ADRESSE_DU_CADRAGE}. C’est elle qui donne au lecteur le moyen de demander une modification.`,
     })
+  }
+
+  // ── Édition n°1 : la richesse que le gabarit du §6 demande ───────────────
+  if (entrée.numéro === 1) {
+    const faits = nombreDeFaits(document)
+    if (faits < FAITS_MIN_ÉDITION_N1) {
+      avertissements.push({
+        code: 'lettre-maigre',
+        message:
+          `l’édition n°1 ne porte que ${faits} paragraphe(s) de faits hors encadrés, pour ${FAITS_MIN_ÉDITION_N1} au moins. ` +
+          'Vérifier que le §6 du référentiel a sa structure complète, que chaque requête type et chaque entité du corpus ont été requêtées, ' +
+          'et élargir la fenêtre des familles vides (éléments de contexte datés). Jamais de remplissage.',
+      })
+    }
+    if (!document.rubriques.some((rubrique) => sansAccent(rubrique.titre).includes('analyse'))) {
+      avertissements.push({
+        code: 'analyse-absente',
+        message:
+          'l’édition n°1 n’a pas de rubrique de niveau 1 « Analyse de la période » : le §6 du prompt de génération la prévoit, ' +
+          'deux à trois paragraphes qui relient les faits de la période à ce qui menace ou porte l’activité du client.',
+      })
+    }
   }
 
   // ── Références internes : le référentiel n'est jamais communiqué ─────────

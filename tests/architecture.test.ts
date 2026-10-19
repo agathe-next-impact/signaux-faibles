@@ -390,11 +390,58 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // et ne se déplace que par le réglage de l'opératrice, sur la même route gardée.
     expect(appelants('ouvrirEnEssai')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts'])
     expect(appelants('fixerJ0')).toEqual(['lib/base/organisations.ts', 'lib/portail/parcours-courriers.ts'])
-    expect(appelants('réglerLeParcours')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts'])
+    // Depuis le 19 octobre 2026, les mêmes réglages ont un second chemin : les
+    // actions du tableau des abonnements, derrière le privilège opérateur.
+    expect(appelants('réglerLeParcours')).toEqual([
+      'app/api/veille/organisations/route.ts',
+      'lib/base/organisations.ts',
+      'lib/portail/reglages.ts',
+    ])
     const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'organisations', 'route.ts'), 'utf8')
     const patch = route.slice(route.indexOf('export async function PATCH'))
     expect(patch.indexOf('refuserSiNonAutorisé(requête')).toBeGreaterThan(0)
     expect(patch.indexOf('refuserSiNonAutorisé(requête')).toBeLessThan(patch.indexOf('réglerLeParcours('))
+    const actions = readFileSync(join(process.cwd(), 'lib', 'portail', 'reglages.ts'), 'utf8')
+    expect(actions.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(actions.indexOf('exigerOpérateur()')).toBeLessThan(actions.indexOf('réglerLeParcours('))
+  })
+
+  it('les lecteurs ne s’écrivent que par la route gardée et par les actions de l’espace client', () => {
+    // Depuis le 19 octobre 2026, un lecteur ajoute ou retire un lecteur de son
+    // organisation depuis « Mon abonnement ». L'action passe par le contrôle
+    // d'appartenance unique, refuse la visite opérateur, exige que Postgres
+    // fasse foi, et seulement ensuite écrit. Le retrait se fait par identifiant
+    // de ligne, jamais par adresse : la page n'en porte aucune.
+    expect(appelants('créerLecteur')).toEqual([
+      'app/api/veille/lecteurs/route.ts',
+      'lib/base/ecriture-lecteurs.ts',
+      'lib/portail/lecteurs.ts',
+    ])
+    expect(appelants('révoquerLecteurParId')).toEqual(['lib/base/ecriture-lecteurs.ts', 'lib/portail/lecteurs.ts'])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'lecteurs.ts'), 'utf8')
+    for (const [action, écriture] of [
+      ['export async function ajouterLecteur', 'créerLecteur('],
+      ['export async function retirerLecteur', 'révoquerLecteurParId('],
+    ] as const) {
+      const corps = source.slice(source.indexOf(action))
+      const contrôle = corps.indexOf('exigerAccès(slug)')
+      const refus = corps.indexOf('if (accès.enOpérateur)')
+      const source_ = corps.indexOf('lecteursModifiables()')
+      expect(contrôle, action).toBeGreaterThan(0)
+      expect(refus, action).toBeGreaterThan(contrôle)
+      expect(source_, action).toBeGreaterThan(refus)
+      expect(corps.indexOf(écriture), action).toBeGreaterThan(source_)
+    }
+  })
+
+  it('le tableau des abonnements traverse les clients : sa garde est dans l’appartenance', () => {
+    // La lecture Postgres n'a qu'un appelant, le contrôle qui vérifie le
+    // privilège avant ; l'écran n'appelle que ce contrôle. Et l'écran client lit
+    // sa situation par la clé de cloisonnement, par le seul lecteur du portail.
+    expect(appelants('tableauDesAbonnements')).toEqual(['lib/auth/appartenance.ts', 'lib/base/situation.ts'])
+    expect(appelants('listerLesAbonnements')).toEqual(['app/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
+    expect(appelants('lireSituationDAbonnement')).toEqual(['lib/base/situation.ts', 'lib/portail/situation.ts'])
+    expect(appelants('situationDeLEspace')).toEqual(['app/[slug]/abonnement/page.tsx', 'lib/portail/situation.ts'])
   })
 
   it('toute route /api/veille commence par la garde du jeton', () => {
@@ -541,7 +588,14 @@ describe('chaque écran de l’espace obéit au droit de lecture', () => {
     }
   }
   parcourir(racine)
-  const ouvertes = ['page.tsx', join('lettres', 'page.tsx'), join('lettres', '[edition]', 'page.tsx')]
+  // « Mon abonnement » (19 octobre 2026) ne lit aucune édition : il reste ouvert
+  // quel que soit le droit de lecture, c'est l'endroit où un essai terminé mène.
+  const ouvertes = [
+    'page.tsx',
+    join('lettres', 'page.tsx'),
+    join('lettres', '[edition]', 'page.tsx'),
+    join('abonnement', 'page.tsx'),
+  ]
 
   it('les écrans de contenu assemblé exigent la lecture complète', () => {
     const fermées = pages.filter((p) => !ouvertes.includes(p.slice(racine.length + 1)))

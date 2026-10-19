@@ -152,6 +152,8 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
     readonly relectureRequise: boolean
     readonly emailRelecture: string | null
     readonly registreNotion: string | null
+    readonly offre: 'standard' | 'early_adopter' | 'gratuite'
+    readonly parutionsDEssai: number
     readonly abonnement: { readonly état: string } | null
     readonly lecteurs: Array<{ readonly id: string; readonly nom: string; readonly email: string }>
   }>
@@ -163,6 +165,8 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
         slug: organisations.slug,
         nom: organisations.nom,
         activéeLe: organisations.activéeLe,
+        offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
         essaiOuvertLe: organisations.essaiOuvertLe,
         relectureRequise: organisations.relectureRequise,
         emailRelecture: organisations.emailRelecture,
@@ -181,6 +185,8 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
       résultat.push({
         ...ligne,
         activéeLe: ligne.activéeLe,
+        offre: ligne.offre,
+        parutionsDEssai: ligne.parutionsDEssai,
         abonnement: abonnement ? { état: abonnement.état } : null,
         lecteurs: actifs.flatMap((l) => (l.email && l.email.includes('@') ? [{ id: l.id, nom: l.nom, email: l.email }] : [])),
       })

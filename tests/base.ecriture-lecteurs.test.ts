@@ -3,7 +3,13 @@ import { drizzle } from 'drizzle-orm/pglite'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Base } from '@/lib/base/client'
-import { changerActivation, créerLecteur, sonderLaBase, tirerIdentifiantDAccès } from '@/lib/base/ecriture-lecteurs'
+import {
+  changerActivation,
+  créerLecteur,
+  révoquerLecteurParId,
+  sonderLaBase,
+  tirerIdentifiantDAccès,
+} from '@/lib/base/ecriture-lecteurs'
 import { lireLecteurParIdentifiant } from '@/lib/base/lecteurs'
 import { lecteurs, organisations } from '@/lib/base/schema'
 import { baseEnMémoire } from './aide/base-en-memoire'
@@ -127,5 +133,52 @@ describe('écriture des lecteurs (palier 1a-bis)', () => {
     } finally {
       await client.close()
     }
+  })
+})
+
+describe('retrait d’un lecteur depuis l’espace client (19 octobre 2026)', () => {
+  let db: Base
+  let fermer: () => Promise<void>
+
+  beforeEach(async () => {
+    ;({ db, fermer } = await baseEnMémoire())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await db.insert(organisations).values([
+      { slug: 'hermitage', nom: 'L’Hermitage', état: 'abonnee', registreNotion: '3d5fe829ce71810da651f3783a725bd8' },
+      { slug: 'autre', nom: 'Autre', état: 'abonnee', registreNotion: '3d5fe829ce71810da651f3783a725bd9' },
+    ])
+    await créerLecteur({ slug: 'hermitage', nom: 'Claire', email: 'claire@hermitage.fr' }, db)
+    await créerLecteur({ slug: 'hermitage', nom: 'Jean', email: 'jean@hermitage.fr' }, db)
+    await créerLecteur({ slug: 'autre', nom: 'Léa', email: 'lea@autre.fr' }, db)
+  })
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await fermer()
+  })
+
+  const idDe = async (email: string) => {
+    const [ligne] = await db.select({ id: lecteurs.id }).from(lecteurs).where(eq(lecteurs.email, email))
+    return ligne!.id
+  }
+
+  it('révoque par identifiant de ligne, puis ne change plus rien', async () => {
+    const jean = await idDe('jean@hermitage.fr')
+    expect(await révoquerLecteurParId({ slug: 'hermitage', lecteurId: jean, demandeur: 'claire@hermitage.fr' }, db)).toEqual({ sorte: 'révoqué' })
+    expect(await révoquerLecteurParId({ slug: 'hermitage', lecteurId: jean, demandeur: 'claire@hermitage.fr' }, db)).toEqual({ sorte: 'inchangé' })
+    const [ligne] = await db.select({ actif: lecteurs.actif }).from(lecteurs).where(eq(lecteurs.id, jean))
+    expect(ligne?.actif).toBe(false)
+  })
+
+  it('refuse que le demandeur se retire lui-même, casse ignorée', async () => {
+    const claire = await idDe('claire@hermitage.fr')
+    expect(await révoquerLecteurParId({ slug: 'hermitage', lecteurId: claire, demandeur: 'CLAIRE@hermitage.fr' }, db)).toEqual({ sorte: 'soi-même' })
+  })
+
+  it('un lecteur d’un autre client, ou un identifiant mal formé, est inconnu', async () => {
+    const léa = await idDe('lea@autre.fr')
+    expect(await révoquerLecteurParId({ slug: 'hermitage', lecteurId: léa, demandeur: null }, db)).toEqual({ sorte: 'lecteur-inconnu' })
+    expect(await révoquerLecteurParId({ slug: 'hermitage', lecteurId: 'pas-un-uuid', demandeur: null }, db)).toEqual({ sorte: 'lecteur-inconnu' })
+    const [ligne] = await db.select({ actif: lecteurs.actif }).from(lecteurs).where(eq(lecteurs.id, léa))
+    expect(ligne?.actif).toBe(true)
   })
 })

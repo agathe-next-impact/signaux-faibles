@@ -33,7 +33,7 @@ import {
  * de paiement ne prouve rien ; l'événement signé, si.
  */
 
-const FORMULES = new Set<Formule>(['mensuelle', 'annuelle'])
+const FORMULES = new Set<Formule>(['mensuelle', 'annuelle', 'early_adopter'])
 
 function slugDu(données: FormData): string {
   const slug = données.get('slug')
@@ -47,7 +47,7 @@ export async function souscrire(données: FormData): Promise<void> {
   if (typeof formule !== 'string' || !FORMULES.has(formule as Formule)) notFound()
 
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) redirect(`/${accès.slug}?abonnement=operateur`)
+  if (accès.enOpérateur) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
 
   const destination = await pageDePaiement(accès, formule as Formule)
   // `redirect` lève une exception de contrôle : appelé hors de tout `try`.
@@ -57,7 +57,7 @@ export async function souscrire(données: FormData): Promise<void> {
 export async function gérerLAbonnement(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) redirect(`/${accès.slug}?abonnement=operateur`)
+  if (accès.enOpérateur) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
 
   const destination = await espaceDeFacturation(accès)
   redirect(destination)
@@ -66,7 +66,7 @@ export async function gérerLAbonnement(données: FormData): Promise<void> {
 type AccèsFacturé = { readonly slug: string; readonly organisationId: string; readonly email: string | null }
 
 async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise<string> {
-  const indisponible = `/${accès.slug}?abonnement=indisponible`
+  const indisponible = `/${accès.slug}/abonnement?abonnement=indisponible`
   const configuration = configurationStripe()
   if (!configuration || !baseConfigurée()) return indisponible
   if (!cléAccordéeAuMode(configuration.cléSecrète, process.env['STRIPE_MODE'] === 'reel')) {
@@ -84,6 +84,17 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
     // facturation sert à changer de formule.
     if (facturation.abonnement?.ouvert) {
       return await urlDeFacturation(configuration, facturation.abonnement.clientStripe, accès.slug)
+    }
+    // L'offre posée par l'opératrice décide de la formule admise : un accès
+    // offert ne paie pas, un early adopter ne paie que son tarif, les autres
+    // jamais le sien. Le formulaire ne propose que la bonne, mais il vient du
+    // navigateur : la décision est ici.
+    if (facturation.offre === 'gratuite') return `/${accès.slug}/abonnement?abonnement=offerte`
+    const admise = facturation.offre === 'early_adopter' ? formule === 'early_adopter' : formule !== 'early_adopter'
+    if (!admise) return `/${accès.slug}/abonnement?abonnement=formule`
+    if (formule === 'early_adopter' && !configuration.prix.early_adopter) {
+      console.error('[abonnement] STRIPE_PRIX_EARLY_ADOPTER absente : formule early adopter indisponible.')
+      return indisponible
     }
 
     const session = await clientStripe(configuration).checkout.sessions.create(
@@ -110,12 +121,12 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
 }
 
 async function espaceDeFacturation(accès: AccèsFacturé): Promise<string> {
-  const indisponible = `/${accès.slug}?abonnement=indisponible`
+  const indisponible = `/${accès.slug}/abonnement?abonnement=indisponible`
   const configuration = configurationStripe()
   if (!configuration || !baseConfigurée()) return indisponible
   try {
     const facturation = await lireFacturation(accès.organisationId)
-    if (!facturation?.abonnement) return `/${accès.slug}?abonnement=aucun`
+    if (!facturation?.abonnement) return `/${accès.slug}/abonnement?abonnement=aucun`
     return await urlDeFacturation(configuration, facturation.abonnement.clientStripe, accès.slug)
   } catch (erreur) {
     console.error(`[abonnement] ${accès.slug} : espace de facturation impossible (${nomDErreur(erreur)}).`)

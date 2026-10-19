@@ -106,7 +106,7 @@ export async function envoyerLesCourriersDeParcours(entrée: {
     }
 
     const étape = étapeDuParcours({
-      organisation: { état: 'essai', activéeLe },
+      organisation: { état: 'essai', activéeLe, offre: organisation.offre, parutionsDEssai: organisation.parutionsDEssai },
       abonnement: organisation.abonnement,
       aujourdHui: entrée.aujourdHui,
     })
@@ -115,6 +115,8 @@ export async function envoyerLesCourriersDeParcours(entrée: {
 
     const contenu = (prénomOuNom: string) =>
       composerCourrierDeParcours({
+        parutions: organisation.parutionsDEssai,
+        offre: organisation.offre,
         sorte,
         prénomOuNom,
         organisation: organisation.nom,

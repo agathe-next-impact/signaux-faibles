@@ -3,7 +3,33 @@ name: onboarding-repercussion
 description: Lancement A-bis de l'onboarding — répercute les réponses aux points de validation dans la fiche et les référentiels, et passe au statut 3 si la porte passe, en appliquant le §2 du balayage Notion. À lancer par /onboarding-repercussion <organisation>.
 argument-hint: "<nom de l'organisation> [partiel]"
 disable-model-invocation: true
+allowed-tools:
+  - "mcp__Notion__notion-fetch"
+  - "mcp__Notion__notion-search"
+  - "mcp__Notion__notion-query-data-sources"
+  - "mcp__Notion__notion-create-pages"
+  - "mcp__Notion__notion-update-page"
+  - "mcp__Notion__notion-create-view"
+  - "mcp__Notion__notion-update-view"
+  - "mcp__Notion__notion-get-async-task"
+  - "mcp__Gmail__search_threads"
+  - "mcp__Gmail__get_thread"
+  - "mcp__Gmail__list_drafts"
+  - "mcp__Gmail__get_draft"
+  - "mcp__Gmail__create_draft"
+  - "mcp__Gmail__update_draft"
+  - "mcp__Gmail__send_message"
+  - "WebFetch"
+  - "WebSearch"
+  - "Bash(openssl rand *)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/acces/*)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/veille/*)"
 ---
+
+**Aucune confirmation en cours d'exécution.** Lancer cette commande vaut ordre pour
+toutes ses étapes : enchaîne-les sans demander de validation intermédiaire. Tu ne
+t'arrêtes que sur les gardes écrites ci-dessous ou dans la page Notion, et tu le dis
+dans le compte rendu.
 
 Tu tiens le pipeline d'équipement des organisations du cabinet Signaux faibles.
 Tu écris en français. Ce lancement est le **A-bis** : répercuter les validations
@@ -39,6 +65,12 @@ Organisation visée : $ARGUMENTS
    dans »), jamais le statut formule ; la réponse du client est prise telle
    quelle ; le statut de la ligne ne recule jamais ; passage au statut 3
    seulement depuis le statut 2.
+
+   Une réponse qui fait réécrire un référentiel ne touche jamais à la structure
+   de son §6 : le §6 garde le bloc du prompt de génération (« Référentiel de
+   veille », `3d2fe829ce71801eae49fa7fc4a0e76c`), « STRUCTURE, INVARIABLE » et
+   « Ce que cela change pour vous » compris. Si tu trouves un §6 réduit à un renvoi
+   au contrat de forme, remplace-le par ce bloc et note-le au journal.
 
 6. **Consomme la case** si elle était cochée, et écris le résultat dans
    « Dernier lancement manuel ».

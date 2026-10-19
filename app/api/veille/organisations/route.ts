@@ -5,6 +5,7 @@ import { baseConfigurée } from '@/lib/base/client'
 import {
   ouvrirEnEssai,
   réglerLeParcours,
+  type Réglage,
   type RésultatDOuverture,
   type RésultatDuRéglage,
 } from '@/lib/base/organisations'
@@ -33,6 +34,9 @@ import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/ga
  *   PATCH /api/veille/organisations
  *   { "slug": "acme", "action": "prolonger", "semaines": 1 | 2 | 3 }
  *   { "slug": "acme", "action": "relecture", "requise": true | false }
+ *   { "slug": "acme", "action": "offre", "offre": "standard" | "early_adopter" | "gratuite" }
+ *   { "slug": "acme", "action": "parutions", "parutions": 3 }
+ *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
  *
  * Les deux réglages de l'opératrice sur un parcours d'essai (`réglerLeParcours`) :
  * décaler J0, jamais au-delà d'aujourd'hui, ou faire partir les courriers de fin
@@ -51,15 +55,33 @@ const réglage = z.discriminatedUnion('action', [
     semaines: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   }),
   z.object({ slug: z.string().trim().min(1), action: z.literal('relecture'), requise: z.boolean() }),
+  z.object({
+    slug: z.string().trim().min(1),
+    action: z.literal('offre'),
+    offre: z.enum(['standard', 'early_adopter', 'gratuite']),
+  }),
+  z.object({ slug: z.string().trim().min(1), action: z.literal('parutions'), parutions: z.number().int().min(1).max(8) }),
+  z.object({
+    slug: z.string().trim().min(1),
+    action: z.literal('parcours'),
+    prochaineLettre: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    restantes: z.number().int().min(1).max(8),
+  }),
 ])
 
 const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
   prolongé: 200,
   'relecture-réglée': 200,
+  'offre-posée': 200,
+  'parutions-réglées': 200,
+  'mis-en-parcours': 200,
   inconnue: 404,
   'pas-en-essai': 409,
   'sans-j0': 409,
   'au-delà-d-aujourdhui': 409,
+  'abonnée-stripe': 409,
+  'parutions-invalides': 409,
+  'date-invalide': 400,
 }
 
 const STATUT: Record<RésultatDOuverture['sorte'], number> = {
@@ -102,12 +124,7 @@ export async function PATCH(requête: NextRequest): Promise<NextResponse> {
 
   const demande = lue.data
   try {
-    const résultat = await réglerLeParcours(
-      demande.slug,
-      demande.action === 'prolonger'
-        ? { sorte: 'prolonger', semaines: demande.semaines }
-        : { sorte: 'relecture', requise: demande.requise },
-    )
+    const résultat = await réglerLeParcours(demande.slug, enRéglage(demande))
     console.info(`[veille/organisations] ${demande.slug} : ${demande.action}, ${journalDuRéglage(résultat)}.`)
     const { sorte, ...reste } = résultat
     return NextResponse.json({ état: sorte, ...reste }, { status: STATUT_DU_RÉGLAGE[sorte] })
@@ -128,12 +145,31 @@ function baseIndisponible(): NextResponse | null {
   return null
 }
 
+function enRéglage(demande: z.infer<typeof réglage>): Réglage {
+  switch (demande.action) {
+    case 'prolonger':
+      return { sorte: 'prolonger', semaines: demande.semaines }
+    case 'relecture':
+      return { sorte: 'relecture', requise: demande.requise }
+    case 'offre':
+      return { sorte: 'offre', offre: demande.offre }
+    case 'parutions':
+      return { sorte: 'parutions', parutions: demande.parutions }
+    case 'parcours':
+      return { sorte: 'parcours', prochaineLettre: demande.prochaineLettre, restantes: demande.restantes }
+  }
+}
+
 function journalDuRéglage(résultat: RésultatDuRéglage): string {
   switch (résultat.sorte) {
     case 'prolongé':
       return `J0 ${résultat.ancienJ0} → ${résultat.nouveauJ0}`
     case 'relecture-réglée':
       return résultat.requise ? 'courriers à la relecture' : 'courriers au client'
+    case 'offre-posée':
+      return `offre ${résultat.offre}, état ${résultat.état}`
+    case 'mis-en-parcours':
+      return `J0 ${résultat.j0}, ${résultat.restantes} parution(s) complète(s) restante(s) sur ${résultat.parutions}`
     case 'pas-en-essai':
       return `refusé, état ${résultat.état}`
     case 'au-delà-d-aujourdhui':

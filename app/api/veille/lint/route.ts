@@ -61,6 +61,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
       titre: édition.titre,
       blocs,
       dossiersBruts: édition.dossiersOuvertsBruts,
+      numéro: édition.numéro,
     })
 
     console.info(

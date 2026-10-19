@@ -44,6 +44,17 @@ export const étatOrganisation = pgEnum('état_organisation', [
   'test',
 ])
 
+/**
+ * L'offre d'une organisation (19 octobre 2026) : ce qu'elle paie, ou non.
+ *   · `standard` : les formules de l'offre du 17 octobre, 89 € ou 890 € HT ;
+ *   · `early_adopter` : la seule formule à 29 € HT par mois, réservée par
+ *     l'opératrice à une organisation nommée ;
+ *   · `gratuite` : accès offert, aucune ligne Stripe, jamais de fin d'essai.
+ * Avant elle, « abonnée sans ligne Stripe » confondait l'accès offert et
+ * l'abonnement facturé par virement.
+ */
+export const offreOrganisation = pgEnum('offre_organisation', ['standard', 'early_adopter', 'gratuite'])
+
 /** Une par client, prospect ou organisation de test. */
 export const organisations = pgTable(
   'organisations',
@@ -79,6 +90,13 @@ export const organisations = pgTable(
    */
   essaiOuvertLe: horodatage('essai_ouvert_le'),
   suspendueLe: horodatage('suspendue_le'),
+  offre: offreOrganisation('offre').notNull().default('standard'),
+  /**
+   * Parutions complètes de l'essai avant « L'essentiel » seul : trois par
+   * défaut (J0, J+7, J+14), réglable par l'opératrice pour qu'un essai à J+28
+   * ne soit pas un cas codé en dur.
+   */
+  parutionsDEssai: smallint('parutions_d_essai').notNull().default(3),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),
   emailRelecture: text('email_relecture'),
@@ -94,6 +112,7 @@ export const organisations = pgTable(
       'organisations_registre_notion_forme',
       sql`${table.registreNotion} is null or ${table.registreNotion} ~ '^[0-9a-f]{32}$'`,
     ),
+    check('organisations_parutions_d_essai', sql`${table.parutionsDEssai} between 1 and 8`),
   ],
 )
 

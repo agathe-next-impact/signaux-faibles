@@ -52,6 +52,6 @@ describe('migrationsEnAttente', () => {
     )
     const manquantes = await migrationsEnAttente(base.db)
     expect(manquantes).toHaveLength(1)
-    expect(manquantes[0]).toMatch(/^0003_/)
+    expect(manquantes[0]).toMatch(/^0004_/)
   })
 })

@@ -331,3 +331,61 @@ describe('contrôlerLaLettre — sur la lettre réelle d’Infralliance', () => 
     expect(rapport.avertissements.map((a) => a.code)).toContain('axes-hors-rubrique')
   })
 })
+
+describe('contrôlerLaLettre — la richesse d’une édition n°1', () => {
+  // Les 18 et 19 octobre 2026, les éditions n°1 de La petite vitrine et de
+  // Suneido comptaient en moyenne 5 paragraphes de faits, contre 26 pour les
+  // lettres régulières : leurs référentiels avaient perdu la structure de note.
+  const avecNuméro = (blocs: BlocNotion[], numéro: number | null) =>
+    contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES, numéro })
+
+  /** La lettre conforme, avec `faits` paragraphes de plus et une analyse si demandé. */
+  function lettreN1(faits: number, analyse: boolean): BlocNotion[] {
+    const blocs = lettreConforme()
+    const rang = blocs.findIndex((b) => b.type === 'heading_2') + 1
+    const ajouts = Array.from({ length: faits }, (_, i) => p(`Fait daté numéro ${i + 1}, du 14 octobre.`))
+    blocs.splice(rang, 0, ...ajouts)
+    if (analyse) {
+      const cadrage = blocs.findIndex(
+        (b) => b.type === 'heading_1' && String((b.heading_1 as { rich_text: { plain_text: string }[] }).rich_text[0]?.plain_text).includes('cadrage'),
+      )
+      blocs.splice(cadrage, 0, h1('Analyse de la période'), p('Une thèse, reliée aux faits.'))
+    }
+    return blocs
+  }
+
+  it('une n°1 maigre et sans analyse : deux avertissements, toujours conforme', () => {
+    const rapport = avecNuméro(lettreConforme(), 1)
+    expect(rapport.conforme).toBe(true)
+    const codes = rapport.avertissements.map((a) => a.code)
+    expect(codes).toContain('lettre-maigre')
+    expect(codes).toContain('analyse-absente')
+    expect(rapport.avertissements.find((a) => a.code === 'lettre-maigre')?.message).toContain('2 paragraphe(s)')
+  })
+
+  it('une n°1 de six faits avec son analyse : rien à signaler', () => {
+    const rapport = avecNuméro(lettreN1(4, true), 1)
+    expect(rapport.avertissements).toEqual([])
+  })
+
+  it('les encadrés ne comptent pas comme des faits', () => {
+    const blocs = lettreN1(0, true)
+    const rang = blocs.findIndex((b) => b.type === 'heading_2') + 1
+    blocs.splice(rang, 0, ...Array.from({ length: 6 }, () => encadré('Rien publié depuis le 3 juillet.')))
+    const rapport = avecNuméro(blocs, 1)
+    expect(rapport.avertissements.map((a) => a.code)).toContain('lettre-maigre')
+  })
+
+  it('les faits des rubriques de signaux comptent', () => {
+    const blocs = lettreN1(0, true)
+    const rang = blocs.findIndex((b) => b.type === 'heading_1' && String((b.heading_1 as { rich_text: { plain_text: string }[] }).rich_text[0]?.plain_text).includes('recommandation'))
+    blocs.splice(rang, 0, h1('Signaux des niches commerciales'), p('Un.'), p('Deux.'), p('Trois.'), p('Quatre.'))
+    const rapport = avecNuméro(blocs, 1)
+    expect(rapport.avertissements.map((a) => a.code)).not.toContain('lettre-maigre')
+  })
+
+  it('une édition courante n’est pas visée', () => {
+    expect(avecNuméro(lettreConforme(), 7).avertissements).toEqual([])
+    expect(avecNuméro(lettreConforme(), null).avertissements).toEqual([])
+  })
+})

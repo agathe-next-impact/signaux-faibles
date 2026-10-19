@@ -3,6 +3,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { lecteurs, organisations } from '@/lib/base/schema'
+import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 
 /**
  * Les écritures des lecteurs, palier 1a-bis : créer, révoquer, réactiver.
@@ -24,14 +25,13 @@ import { lecteurs, organisations } from '@/lib/base/schema'
 export type RésultatÉcriture =
   | { readonly sorte: 'créé' | 'révoqué' | 'réactivé' | 'inchangé' }
   | { readonly sorte: 'organisation-inconnue' | 'lecteur-inconnu' | 'déjà-inscrit' | 'plafond-atteint' }
+  /** Le demandeur voulait retirer son propre accès : refusé, il se fermerait la porte. */
+  | { readonly sorte: 'soi-même' }
 
-/**
- * Trois lecteurs actifs au plus par organisation : c'est l'offre (décision du
- * 17 octobre 2026, `docs/decision-portail-moteur.md`). Pour en ajouter un, on en
- * révoque un autre. L'opérateur global n'est rattaché à aucune organisation et
- * n'entre donc pas dans le compte.
- */
-export const LECTEURS_ACTIFS_MAX = 3
+// Le plafond est celui de l'offre (décision du 17 octobre 2026,
+// `docs/decision-portail-moteur.md`), écrit dans `lib/domaine/offre.ts` avec les
+// prix ; réexporté ici pour la route des lecteurs et ses tests.
+export { LECTEURS_ACTIFS_MAX }
 
 const adresse = (email: string) => email.trim().toLowerCase()
 
@@ -116,6 +116,42 @@ export async function changerActivation(
 
     await db.update(lecteurs).set({ actif: demande.actif }).where(eq(lecteurs.id, ligne.id))
     return { sorte: demande.actif ? 'réactivé' : 'révoqué' }
+  })
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Révoque un lecteur désigné par son identifiant de ligne, depuis l'espace
+ * client (19 octobre 2026). L'écran liste ses lecteurs par leur nom et ne
+ * porte aucune adresse : c'est donc l'identifiant de ligne qui voyage dans le
+ * formulaire, et il n'ouvre rien, à la différence de l'identifiant d'accès.
+ *
+ * Le lecteur doit appartenir à l'organisation du slug : un identifiant d'un
+ * autre client est `lecteur-inconnu`, sans dire qu'il existe. Le demandeur ne
+ * peut pas se retirer lui-même (`soi-même`) : un espace dont le dernier lecteur
+ * se serait révoqué n'aurait plus personne pour le rouvrir.
+ */
+export async function révoquerLecteurParId(
+  demande: { readonly slug: string; readonly lecteurId: string; readonly demandeur: string | null },
+  db: Base = base(),
+): Promise<RésultatÉcriture> {
+  if (!UUID.test(demande.lecteurId)) return { sorte: 'lecteur-inconnu' }
+  return protéger('révocation d’un lecteur par identifiant', async () => {
+    const [ligne] = await db
+      .select({ id: lecteurs.id, actif: lecteurs.actif, email: lecteurs.email })
+      .from(lecteurs)
+      .innerJoin(organisations, eq(lecteurs.organisationId, organisations.id))
+      .where(and(eq(organisations.slug, demande.slug), eq(lecteurs.id, demande.lecteurId)))
+      .limit(1)
+    if (!ligne) return { sorte: 'lecteur-inconnu' }
+    if (demande.demandeur && ligne.email && adresse(ligne.email) === adresse(demande.demandeur)) {
+      return { sorte: 'soi-même' }
+    }
+    if (!ligne.actif) return { sorte: 'inchangé' }
+
+    await db.update(lecteurs).set({ actif: false }).where(eq(lecteurs.id, ligne.id))
+    return { sorte: 'révoqué' }
   })
 }
 

@@ -3,7 +3,7 @@ import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
 import { lireEntréeDuParcours } from '@/lib/base/parcours'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { étapeDuParcours, lectureAutorisée, type Étape } from '@/lib/domaine/parcours'
+import { étapeDuParcours, lectureAutorisée, type Offre, type Étape } from '@/lib/domaine/parcours'
 
 /**
  * Ce qu'un espace a le droit de montrer aujourd'hui : tout, « L'essentiel »
@@ -35,9 +35,11 @@ export type Lecture = {
   readonly lecture: 'complète' | 'essentiel' | 'aucune'
   /** L'étape calculée, ou `null` quand la lecture complète vient d'un doute ou de l'opérateur. */
   readonly étape: Étape | null
+  /** L'offre de l'organisation, lue avec l'étape ; `null` dans les mêmes cas. */
+  readonly offre: Offre | null
 }
 
-const COMPLÈTE: Lecture = { lecture: 'complète', étape: null }
+const COMPLÈTE: Lecture = { lecture: 'complète', étape: null, offre: null }
 
 /** Au-delà, la lecture complète est servie : une page ne doit pas attendre la base. */
 export const DÉLAI_DE_LECTURE_MS = 400
@@ -69,7 +71,7 @@ const lectureMémoïsée = cache(async (organisationId: string): Promise<Lecture
     }
     if (!entrée) return COMPLÈTE
     const étape = étapeDuParcours({ ...entrée, aujourdHui: aujourdHuiÀParis() })
-    return { lecture: lectureAutorisée(étape), étape }
+    return { lecture: lectureAutorisée(étape), étape, offre: entrée.organisation.offre }
   } catch (erreur) {
     console.warn(
       `[lecture] parcours illisible pour ${espace.organisationId}, lecture complète servie : ` +

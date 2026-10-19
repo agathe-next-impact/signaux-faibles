@@ -3,9 +3,12 @@ import { composerCourrierDeParcours, courrierDuParcours } from '@/lib/domaine/co
 
 describe('courrierDuParcours', () => {
   it('ne déclenche qu’à la dernière parution complète et à la parution réduite', () => {
-    expect(courrierDuParcours({ étape: 'essai', parution: 1 })).toBeNull()
-    expect(courrierDuParcours({ étape: 'essai', parution: 2 })).toBeNull()
-    expect(courrierDuParcours({ étape: 'essai', parution: 3 })).toBe('essai_derniere_parution')
+    expect(courrierDuParcours({ étape: 'essai', parution: 1, parutions: 3 })).toBeNull()
+    expect(courrierDuParcours({ étape: 'essai', parution: 2, parutions: 3 })).toBeNull()
+    expect(courrierDuParcours({ étape: 'essai', parution: 3, parutions: 3 })).toBe('essai_derniere_parution')
+    // Quatre parutions réglées : la troisième n'est plus la dernière.
+    expect(courrierDuParcours({ étape: 'essai', parution: 3, parutions: 4 })).toBeNull()
+    expect(courrierDuParcours({ étape: 'essai', parution: 4, parutions: 4 })).toBe('essai_derniere_parution')
     expect(courrierDuParcours({ étape: 'tronquee' })).toBe('essai_tronquee')
     expect(courrierDuParcours({ étape: 'suspendue', manuelle: false })).toBeNull()
     expect(courrierDuParcours({ étape: 'abonnee', source: 'stripe', paiementEnRetard: false })).toBeNull()
@@ -14,7 +17,14 @@ describe('courrierDuParcours', () => {
 })
 
 describe('composerCourrierDeParcours', () => {
-  const base = { prénomOuNom: 'Léa', organisation: 'Acme', slug: 'acme', portailUrl: 'https://www.signauxfaibles.io/' }
+  const base = {
+    prénomOuNom: 'Léa',
+    organisation: 'Acme',
+    slug: 'acme',
+    portailUrl: 'https://www.signauxfaibles.io/',
+    parutions: 3,
+    offre: 'standard' as const,
+  }
 
   for (const sorte of ['essai_derniere_parution', 'essai_tronquee'] as const) {
     it(`${sorte} : liens, prix, et aucune tournure interdite`, () => {
@@ -29,6 +39,14 @@ describe('composerCourrierDeParcours', () => {
       expect(sujet).not.toMatch(/[A-Z]{3,}/)
     })
   }
+
+  it('écrit le nombre de parutions réglé, et le tarif early adopter quand c’est l’offre', () => {
+    const quatre = composerCourrierDeParcours({ ...base, sorte: 'essai_derniere_parution', parutions: 4 }).texte
+    expect(quatre).toContain('quatre parutions complètes')
+    const early = composerCourrierDeParcours({ ...base, sorte: 'essai_tronquee', offre: 'early_adopter' }).texte
+    expect(early).toContain('29 € HT par mois')
+    expect(early).not.toContain('890 € HT par an')
+  })
 
   it('salue sans nom quand il manque', () => {
     expect(composerCourrierDeParcours({ ...base, prénomOuNom: ' ', sorte: 'essai_tronquee' }).texte.startsWith('Bonjour,')).toBe(true)

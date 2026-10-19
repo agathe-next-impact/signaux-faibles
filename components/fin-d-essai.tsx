@@ -2,6 +2,7 @@ import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { PurgeHorsLigne } from '@/components/purge-hors-ligne'
 import { ChoixDeFormule, RetourDAbonnement } from '@/components/abonnement'
 import { ADRESSE_D_ABONNEMENT } from '@/lib/domaine/offre'
+import type { Offre } from '@/lib/domaine/parcours'
 
 /**
  * La vue d'ensemble d'un espace dont l'essai est terminé (palier 1c).
@@ -20,10 +21,12 @@ export function FinDEssai({
   lecture,
   suspenduAlaMain,
   retour,
+  offre = 'standard',
 }: {
   slug: string
   lecture: 'essentiel' | 'aucune'
   suspenduAlaMain: boolean
+  offre?: Offre
   /** `?abonnement=` : retour de la page de paiement, ou refus. */
   retour?: string | undefined
 }) {
@@ -59,7 +62,7 @@ export function FinDEssai({
         <Panneau ton="rose">
           {lecture === 'essentiel' ? (
             <p className="text-encre">
-              Vos trois premières parutions étaient complètes. Cette semaine, chaque lettre est réduite à
+              Vos premières parutions étaient complètes. Cette semaine, chaque lettre est réduite à
               sa rubrique « L’essentiel ». Les lettres complètes, les axes, les acteurs, les
               recommandations et vos archives sont réservés aux abonnés.
             </p>
@@ -75,7 +78,7 @@ export function FinDEssai({
           <p className="text-ardoise">
             L’abonnement couvre votre organisation, ses deux veilles et trois lecteurs.
           </p>
-          <ChoixDeFormule slug={slug} />
+          <ChoixDeFormule slug={slug} offre={offre} />
           <p className="text-ardoise">
             Paiement sécurisé par Stripe, facture à chaque échéance. Pour un bon de commande ou
             un virement, écrivez à{' '}
