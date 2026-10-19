@@ -3,7 +3,7 @@ import { ChoixDeFormule, GérerLAbonnement, RetourDAbonnement } from '@/componen
 import { Case, EntêteÉcran, Grille, Panneau } from '@/components/coquille'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { ADRESSE_D_ABONNEMENT, LECTEURS_ACTIFS_MAX, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
-import { dateLongueDeParis, libelléDÉtape, PARUTIONS_D_ESSAI, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
+import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
 import { ajouterLecteur, retirerLecteur } from '@/lib/portail/lecteurs'
 import { lecteursModifiables, situationDeLEspace } from '@/lib/portail/situation'
 
@@ -70,11 +70,14 @@ export default async function MonAbonnement({
         })
       : null)
 
+  const offre = situation?.organisation.offre ?? 'standard'
+  const historique = situation?.organisation.historique ?? false
   const abonnéStripe = étape?.étape === 'abonnee' && étape.source === 'stripe'
+  const offert = étape?.étape === 'abonnee' && étape.source === 'offerte'
   const suspenduÀLaMain = étape?.étape === 'suspendue' && étape.manuelle
   // S'abonner a un sens tant qu'on ne l'est pas, et qu'aucune suspension posée à
   // la main ne prime : à un abonné suspendu, proposer de payer serait absurde.
-  const peutSouscrire = étape?.étape !== 'abonnee' && !suspenduÀLaMain
+  const peutSouscrire = étape?.étape !== 'abonnee' && !suspenduÀLaMain && offre !== 'gratuite'
   const gestion = lecteursModifiables() && situation !== null
   const auPlafond = situation !== null && situation.lecteurs.length >= LECTEURS_ACTIFS_MAX
 
@@ -90,7 +93,7 @@ export default async function MonAbonnement({
         <RetourDAbonnement motif={retour} />
 
         <Panneau ton={étape?.étape === 'suspendue' || étape?.étape === 'tronquee' ? 'rose' : 'ardoise'}>
-          <p className="text-encre">{phraseDÉtape(étape, situation?.organisation.activéeLe ?? null)}</p>
+          <p className="text-encre">{phraseDÉtape(étape, situation?.organisation.activéeLe ?? null, historique)}</p>
         </Panneau>
 
         <section className="flex flex-col gap-3">
@@ -126,6 +129,15 @@ export default async function MonAbonnement({
               </p>
               <GérerLAbonnement slug={accès.slug} />
             </>
+          ) : offert ? (
+            <p className="text-ardoise">
+              Votre accès est offert : il n’y a rien à payer, et rien ne se ferme. Pour toute question,
+              écrivez à{' '}
+              <a className="text-encre underline" href={`mailto:${ADRESSE_D_ABONNEMENT}`}>
+                {ADRESSE_D_ABONNEMENT}
+              </a>
+              .
+            </p>
           ) : étape?.étape === 'abonnee' ? (
             <p className="text-ardoise">
               Votre organisation est abonnée sur bon de commande ou par virement. Pour toute
@@ -141,7 +153,7 @@ export default async function MonAbonnement({
                 L’abonnement couvre votre organisation, ses deux veilles et {LECTEURS_ACTIFS_MAX}{' '}
                 lecteurs.
               </p>
-              <ChoixDeFormule slug={accès.slug} />
+              <ChoixDeFormule slug={accès.slug} offre={offre} />
               <p className="text-ardoise">
                 Paiement sécurisé par Stripe, facture à chaque échéance. Pour un bon de commande ou un
                 virement, écrivez à{' '}
@@ -263,14 +275,25 @@ export default async function MonAbonnement({
 }
 
 /** La phrase du panneau, par étape ; aucune ne promet ce que seul Stripe confirme. */
-function phraseDÉtape(étape: Étape | null, activéeLe: Date | null): string {
+function phraseDÉtape(étape: Étape | null, activéeLe: Date | null, historique: boolean): string {
   if (!étape) return 'La situation de votre abonnement est momentanément indisponible. Réessayez dans quelques minutes.'
   switch (étape.étape) {
     case 'essai': {
-      const restantes = PARUTIONS_D_ESSAI - étape.parution
+      const restantes = étape.parutions - étape.parution
+      if (historique) {
+        // Un client d'avant l'offre, entré dans le parcours par l'opératrice :
+        // son accès était complet jusqu'ici, et ce n'est pas un essai.
+        return (
+          'Votre accès complet prend fin.' +
+          (restantes > 0
+            ? ` Il vous reste ${restantes} parution${restantes > 1 ? 's' : ''} complète${restantes > 1 ? 's' : ''} après celle-ci.`
+            : ' Cette parution est la dernière complète.') +
+          ' La semaine suivante, sans abonnement, chaque lettre est réduite à « L’essentiel », puis votre espace est suspendu. Vos lettres et vos archives restent conservées.'
+        )
+      }
       const depuis = activéeLe ? ` Votre essai a commencé le ${dateLongueDeParis(activéeLe)}.` : ''
       return (
-        `Votre essai comprend ${PARUTIONS_D_ESSAI} parutions complètes ; celle-ci est la ${étape.parution}e` +
+        `Votre essai comprend ${étape.parutions} parutions complètes ; celle-ci est la ${étape.parution}e` +
         (restantes > 0 ? `, il en reste ${restantes}.` : ', la dernière.') +
         depuis +
         ' La semaine suivante, sans abonnement, chaque lettre est réduite à « L’essentiel ».'
@@ -282,6 +305,7 @@ function phraseDÉtape(étape: Étape | null, activéeLe: Date | null): string {
       if (étape.paiementEnRetard) {
         return 'Votre organisation est abonnée. Le dernier paiement n’a pas abouti : Stripe le représente pendant quelques jours, et votre espace reste ouvert entre-temps.'
       }
+      if (étape.source === 'offerte') return 'Votre accès est offert. Votre espace est ouvert en entier, sans échéance.'
       return 'Votre organisation est abonnée. Votre espace est ouvert en entier.'
     case 'suspendue':
       return étape.manuelle

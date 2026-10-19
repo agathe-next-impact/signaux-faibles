@@ -26,30 +26,30 @@ afterEach(() => vi.restoreAllMocks())
 
 describe('lectureDeLEspace', () => {
   it('complète pendant l’essai, l’essentiel la semaine suivante, rien au-delà', async () => {
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(1) }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(1), offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('complète')
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(3) }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(3), offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('essentiel')
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(6) }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(6), offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('aucune')
   })
 
   it('un abonnement ouvert rend la lecture complète', async () => {
     base.lireEntréeDuParcours.mockResolvedValue({
-      organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(6) },
+      organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(6), offre: 'standard', parutionsDEssai: 3 },
       abonnement: { état: 'active' },
     })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('complète')
   })
 
   it('un client historique garde la lecture complète', async () => {
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'abonnee', activéeLe: null }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'abonnee', activéeLe: null, offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('complète')
   })
 
   it('dans le doute, la lecture reste complète : base absente, injoignable, organisation inconnue', async () => {
     base.baseConfigurée.mockReturnValue(false)
-    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null })
+    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null, offre: null })
     expect(base.lireEntréeDuParcours).not.toHaveBeenCalled()
 
     base.baseConfigurée.mockReturnValue(true)
@@ -62,7 +62,7 @@ describe('lectureDeLEspace', () => {
 
   it('en mode notion, Postgres n’est jamais ouvert', async () => {
     base.sourceAccès.mockReturnValue('notion')
-    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null })
+    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null, offre: null })
     expect(base.lireEntréeDuParcours).not.toHaveBeenCalled()
   })
 
@@ -71,12 +71,12 @@ describe('lectureDeLEspace', () => {
     base.lireEntréeDuParcours.mockReturnValue(new Promise(() => {}))
     const promesse = lectureDeLEspace(ESPACE)
     await vi.advanceTimersByTimeAsync(450)
-    expect(await promesse).toEqual({ lecture: 'complète', étape: null })
+    expect(await promesse).toEqual({ lecture: 'complète', étape: null, offre: null })
     vi.useRealTimers()
   })
 
   it('l’opérateur lit toujours tout, sans même interroger la base', async () => {
-    expect(await lectureDeLEspace({ ...ESPACE, enOpérateur: true })).toEqual({ lecture: 'complète', étape: null })
+    expect(await lectureDeLEspace({ ...ESPACE, enOpérateur: true })).toEqual({ lecture: 'complète', étape: null, offre: null })
     expect(base.lireEntréeDuParcours).not.toHaveBeenCalled()
   })
 })

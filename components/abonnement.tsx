@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
-import { PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import type { Offre } from '@/lib/domaine/parcours'
 
 /**
  * Le chemin vers « Mon abonnement », dans le pied du rail (19 octobre 2026).
@@ -29,8 +30,23 @@ export function LienMonAbonnement({ slug }: { slug: string }) {
  * l'espace. L'annuelle porte son équivalent mensuel : c'est la seule
  * comparaison que le lecteur fait de tête, autant la faire pour lui.
  */
-export function ChoixDeFormule({ slug }: { slug: string }) {
+export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; offre?: Offre }) {
   const équivalent = (PRIX_ANNUEL_HT / 12).toLocaleString('fr-FR', { maximumFractionDigits: 2 })
+  // L'early adopter (19 octobre 2026) ne voit que sa formule : afficher 89 €
+  // à qui paiera 29 € serait faux. L'action serveur revérifie l'offre.
+  if (offre === 'early_adopter') {
+    return (
+      <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
+        <Formule
+          slug={slug}
+          formule="early_adopter"
+          intitulé="Early adopter"
+          prix={`${PRIX_EARLY_ADOPTER_HT} € HT par mois`}
+          détail="Tarif réservé à votre organisation. Sans engagement, résiliable à tout moment."
+        />
+      </div>
+    )
+  }
   return (
     <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
       <Formule
@@ -60,7 +76,7 @@ function Formule({
   détail,
 }: {
   slug: string
-  formule: 'mensuelle' | 'annuelle'
+  formule: 'mensuelle' | 'annuelle' | 'early_adopter'
   intitulé: string
   prix: string
   détail: string
@@ -113,7 +129,11 @@ export function RetourDAbonnement({ motif }: { motif: string | undefined }) {
           ? 'Accès opérateur : la souscription et la facturation sont réservées aux lecteurs de l’organisation.'
           : motif === 'aucun'
             ? 'Aucun abonnement n’est encore associé à votre organisation.'
-            : null
+            : motif === 'offerte'
+              ? 'Votre accès est offert : il n’y a rien à payer.'
+              : motif === 'formule'
+                ? 'Cette formule n’est pas celle de votre organisation. Choisissez celle qui vous est proposée.'
+                : null
   if (!texte) return null
   return (
     <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
@@ -128,10 +148,10 @@ export function RetourDAbonnement({ motif }: { motif: string | undefined }) {
  * bord reste le contenu ; l'offre ne passe pas devant ce que le lecteur vient
  * lire.
  */
-export function LigneDEssai({ parution }: { parution: 1 | 2 | 3 }) {
+export function LigneDEssai({ parution, parutions }: { parution: number; parutions: number }) {
   return (
     <p className="label-mono text-ardoise">
-      essai · parution {parution} sur 3 ·{' '}
+      {parution === parutions ? 'dernière parution complète' : `essai · parution ${parution} sur ${parutions}`} ·{' '}
       <a href="#abonnement" className="text-encre underline underline-offset-2">
         s’abonner
       </a>
@@ -139,20 +159,37 @@ export function LigneDEssai({ parution }: { parution: 1 | 2 | 3 }) {
   )
 }
 
-export function OffreDEssai({ slug, parution }: { slug: string; parution: 1 | 2 | 3 }) {
-  const restantes = 3 - parution
+export function OffreDEssai({
+  slug,
+  parution,
+  parutions,
+  offre = 'standard',
+  historique = false,
+}: {
+  slug: string
+  parution: number
+  parutions: number
+  offre?: Offre
+  /** Un client d'avant l'offre, entré dans le parcours par l'opératrice : son accès était complet jusqu'ici. */
+  historique?: boolean
+}) {
+  const restantes = parutions - parution
   return (
     <section id="abonnement" className="mt-12 flex max-w-3xl flex-col gap-4">
       <h2 className="font-titre text-h3 font-semibold text-encre">S’abonner</h2>
       <p className="text-ardoise">
-        {restantes > 0
-          ? `Votre essai comprend trois parutions complètes ; il en reste ${restantes} après celle-ci.`
-          : 'C’est la dernière parution complète de votre essai.'}{' '}
+        {historique
+          ? restantes > 0
+            ? `Votre accès complet prend fin : il vous reste ${restantes} parution${restantes > 1 ? 's' : ''} complète${restantes > 1 ? 's' : ''} après celle-ci.`
+            : 'Votre accès complet prend fin : c’est votre dernière parution complète.'
+          : restantes > 0
+            ? `Votre essai comprend ${parutions} parutions complètes ; il en reste ${restantes} après celle-ci.`
+            : 'C’est la dernière parution complète de votre essai.'}{' '}
         La semaine suivante, sans abonnement, chaque lettre est réduite à sa rubrique
         « L’essentiel ». L’abonnement couvre votre organisation, ses deux veilles et trois
         lecteurs.
       </p>
-      <ChoixDeFormule slug={slug} />
+      <ChoixDeFormule slug={slug} offre={offre} />
     </section>
   )
 }

@@ -33,17 +33,25 @@ export const PARUTIONS_D_ESSAI = 3
 
 export type ÉtatOrganisation = 'demande' | 'generation' | 'essai' | 'abonnee' | 'suspendue' | 'ecartee' | 'test'
 
+/** L'offre posée par l'opératrice (19 octobre 2026) : standard, early adopter, ou accès offert. */
+export type Offre = 'standard' | 'early_adopter' | 'gratuite'
+
 export type Étape =
-  /** Une parution complète de l'essai ; `parution` vaut 1, 2 ou 3. */
-  | { readonly étape: 'essai'; readonly parution: 1 | 2 | 3 }
+  /** Une parution complète de l'essai ; `parution` va de 1 à `parutions`, le nombre réglé pour l'organisation. */
+  | { readonly étape: 'essai'; readonly parution: number; readonly parutions: number }
   /** La semaine qui suit l'essai, sans abonnement : « L'essentiel » seul. */
   | { readonly étape: 'tronquee' }
   /**
-   * Abonnée. `stripe` : un abonnement Stripe ouvert. `hors-stripe` : les clients
-   * historiques, importés à l'état `abonnee` sans ligne `abonnements`, qui
-   * reçoivent leurs lettres comme avant (`docs/schema-donnees.md`).
+   * Abonnée. `stripe` : un abonnement Stripe ouvert. `offerte` : l'accès est
+   * offert (`offre = gratuite`), sans ligne Stripe ni fin d'essai. `hors-stripe` :
+   * les clients historiques, importés à l'état `abonnee` sans ligne `abonnements`,
+   * facturés hors ligne (`docs/schema-donnees.md`).
    */
-  | { readonly étape: 'abonnee'; readonly source: 'stripe' | 'hors-stripe'; readonly paiementEnRetard: boolean }
+  | {
+      readonly étape: 'abonnee'
+      readonly source: 'stripe' | 'hors-stripe' | 'offerte'
+      readonly paiementEnRetard: boolean
+    }
   /**
    * Au-delà de J+21 sans abonnement (`manuelle: false`), ou suspendue à la main
    * par l'opérateur (`manuelle: true`, qui prime sur Stripe).
@@ -57,6 +65,9 @@ export type EntréeDuParcours = {
     readonly état: ÉtatOrganisation
     /** Fixe J0. */
     readonly activéeLe: Date | null
+    readonly offre: Offre
+    /** Parutions complètes de l'essai avant « L'essentiel » seul ; trois par défaut. */
+    readonly parutionsDEssai: number
   }
   /** L'état de l'abonnement tel que Stripe le donne, ou `null` s'il n'y en a pas. */
   readonly abonnement: { readonly état: string } | null
@@ -97,6 +108,10 @@ export function étapeDuParcours({ organisation, abonnement, aujourdHui }: Entr�
   if (organisation.état === 'ecartee') return { étape: 'hors-parcours', raison: 'écartée' }
   if (organisation.état === 'test') return { étape: 'hors-parcours', raison: 'organisation de test' }
 
+  // L'accès offert (19 octobre 2026) l'emporte sur le calendrier comme sur
+  // Stripe : rien ne se ferme, aucun courrier de fin d'essai ne part.
+  if (organisation.offre === 'gratuite') return { étape: 'abonnee', source: 'offerte', paiementEnRetard: false }
+
   // Un abonnement Stripe ouvert l'emporte ensuite sur le calendrier : une
   // organisation qui paie n'est jamais suspendue par la date. `past_due` en fait
   // partie : Stripe relance le paiement pendant quelques jours, et couper l'espace
@@ -128,10 +143,11 @@ export function étapeDuParcours({ organisation, abonnement, aujourdHui }: Entr�
     return { étape: 'hors-parcours', raison: 'aucune date d’activation' }
   }
 
+  const parutions = organisation.parutionsDEssai
   const semaines = semainesÉcoulées(dateDeParis(organisation.activéeLe), aujourdHui)
   if (semaines < 0) return { étape: 'hors-parcours', raison: 'activation dans le futur' }
-  if (semaines < PARUTIONS_D_ESSAI) return { étape: 'essai', parution: (semaines + 1) as 1 | 2 | 3 }
-  if (semaines === PARUTIONS_D_ESSAI) return { étape: 'tronquee' }
+  if (semaines < parutions) return { étape: 'essai', parution: semaines + 1, parutions }
+  if (semaines === parutions) return { étape: 'tronquee' }
   return { étape: 'suspendue', manuelle: false }
 }
 
@@ -143,11 +159,12 @@ export function étapeDuParcours({ organisation, abonnement, aujourdHui }: Entr�
 export function libelléDÉtape(étape: Étape): string {
   switch (étape.étape) {
     case 'essai':
-      return `essai · parution ${étape.parution} sur ${PARUTIONS_D_ESSAI}`
+      return `essai · parution ${étape.parution} sur ${étape.parutions}`
     case 'tronquee':
       return 'fin d’essai · l’essentiel seul'
     case 'abonnee':
       if (étape.paiementEnRetard) return 'abonnée · paiement en retard'
+      if (étape.source === 'offerte') return 'accès offert'
       return étape.source === 'stripe' ? 'abonnée' : 'abonnée · hors stripe'
     case 'suspendue':
       return étape.manuelle ? 'suspendue par l’opératrice' : 'suspendue · essai terminé'

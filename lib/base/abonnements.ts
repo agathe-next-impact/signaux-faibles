@@ -193,12 +193,14 @@ export async function lireFacturation(
   db: Base = base(),
 ): Promise<{
   readonly organisationId: string
+  /** L'offre posée : la formule admise en dépend. */
+  readonly offre: 'standard' | 'early_adopter' | 'gratuite'
   readonly abonnement: { readonly clientStripe: string; readonly état: string; readonly ouvert: boolean } | null
 } | null> {
   if (!/^[0-9a-f]{32}$/.test(registreNotion)) return null
   return protéger('lecture de la facturation', async () => {
     const [organisation] = await db
-      .select({ id: organisations.id })
+      .select({ id: organisations.id, offre: organisations.offre })
       .from(organisations)
       .where(eq(organisations.registreNotion, registreNotion))
       .limit(1)
@@ -206,6 +208,7 @@ export async function lireFacturation(
     const abonnement = await lireAbonnement(organisation.id, db)
     return {
       organisationId: organisation.id,
+      offre: organisation.offre,
       abonnement: abonnement
         ? { clientStripe: abonnement.clientStripe, état: abonnement.état, ouvert: ÉTATS_OUVERTS.has(abonnement.état) }
         : null,

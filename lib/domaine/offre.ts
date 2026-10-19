@@ -6,6 +6,8 @@
  */
 export const PRIX_MENSUEL_HT = 89
 export const PRIX_ANNUEL_HT = 890
+/** Tarif réservé par l'opératrice à une organisation nommée (`offre = early_adopter`), mensuel seul. */
+export const PRIX_EARLY_ADOPTER_HT = 29
 /** Pour un bon de commande, un virement, ou quand la souscription en ligne est indisponible. */
 export const ADRESSE_D_ABONNEMENT = 'agathe@signauxfaibles.io'
 /**

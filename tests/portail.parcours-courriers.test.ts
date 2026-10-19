@@ -20,7 +20,7 @@ const activéeLe = new Date('2026-09-28T08:00:00Z')
 
 function org(sur: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 'o1', slug: 'acme', nom: 'Acme', activéeLe, relectureRequise: false, emailRelecture: null,
+    id: 'o1', slug: 'acme', nom: 'Acme', activéeLe, relectureRequise: false, emailRelecture: null, offre: 'standard', parutionsDEssai: 3,
     registreNotion: REGISTRE, abonnement: null,
     lecteurs: [{ id: 'l1', nom: 'Léa', email: 'lea@acme.fr' }, { id: 'l2', nom: 'Paul', email: 'paul@acme.fr' }],
     ...sur,

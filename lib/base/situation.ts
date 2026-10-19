@@ -2,8 +2,9 @@ import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { abonnementQuiFaitFoi } from '@/lib/base/abonnements'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
+import { MISE_EN_SERVICE_DE_L_ESSAI } from '@/lib/base/organisations'
 import { abonnements, lecteurs, organisations } from '@/lib/base/schema'
-import type { ÉtatOrganisation } from '@/lib/domaine/parcours'
+import type { Offre, ÉtatOrganisation } from '@/lib/domaine/parcours'
 
 /**
  * La situation d'abonnement, telle que deux écrans la montrent (19 octobre
@@ -32,6 +33,10 @@ export type SituationDAbonnement = {
     readonly état: ÉtatOrganisation
     readonly activéeLe: Date | null
     readonly essaiOuvertLe: Date | null
+    readonly offre: Offre
+    readonly parutionsDEssai: number
+    /** Importée avant la mise en service de l'essai : un client d'avant l'offre. */
+    readonly historique: boolean
   }
   readonly abonnement: AbonnementLu | null
   /**
@@ -66,6 +71,9 @@ export async function lireSituationDAbonnement(
         état: organisations.état,
         activéeLe: organisations.activéeLe,
         essaiOuvertLe: organisations.essaiOuvertLe,
+        offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
+        crééeLe: organisations.crééeLe,
       })
       .from(organisations)
       .where(and(eq(organisations.registreNotion, registreNotion), isNull(organisations.archivéeLe)))
@@ -91,6 +99,9 @@ export async function lireSituationDAbonnement(
         état: organisation.état,
         activéeLe: organisation.activéeLe,
         essaiOuvertLe: organisation.essaiOuvertLe,
+        offre: organisation.offre,
+        parutionsDEssai: organisation.parutionsDEssai,
+        historique: organisation.crééeLe < MISE_EN_SERVICE_DE_L_ESSAI,
       },
       abonnement: abonnement ? { ...abonnement, formule: formuleLue(abonnement.formule) } : null,
       lecteurs: actifs,
@@ -105,6 +116,8 @@ export type LigneDAbonnement = {
   readonly activéeLe: Date | null
   readonly essaiOuvertLe: Date | null
   readonly relectureRequise: boolean
+  readonly offre: Offre
+  readonly parutionsDEssai: number
   readonly abonnement: (AbonnementLu & { readonly abonnementStripe: string }) | null
   readonly lecteursActifs: number
 }
@@ -131,6 +144,8 @@ export async function tableauDesAbonnements(db: Base = base()): Promise<LigneDAb
           activéeLe: organisations.activéeLe,
           essaiOuvertLe: organisations.essaiOuvertLe,
           relectureRequise: organisations.relectureRequise,
+          offre: organisations.offre,
+          parutionsDEssai: organisations.parutionsDEssai,
         })
         .from(organisations)
         .where(isNull(organisations.archivéeLe))
@@ -170,6 +185,8 @@ export async function tableauDesAbonnements(db: Base = base()): Promise<LigneDAb
           activéeLe: ligne.activéeLe,
           essaiOuvertLe: ligne.essaiOuvertLe,
           relectureRequise: ligne.relectureRequise,
+          offre: ligne.offre,
+          parutionsDEssai: ligne.parutionsDEssai,
           abonnement: abonnement
             ? {
                 abonnementStripe: abonnement.abonnementStripe,

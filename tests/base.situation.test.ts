@@ -55,7 +55,7 @@ describe('situation d’abonnement', () => {
 
     const situation = await lireSituationDAbonnement(REGISTRE, db)
     expect(situation).toEqual({
-      organisation: { état: 'essai', activéeLe: J0, essaiOuvertLe: null },
+      organisation: { état: 'essai', activéeLe: J0, essaiOuvertLe: null, offre: 'standard', parutionsDEssai: 3, historique: false },
       abonnement: { état: 'active', formule: 'annuelle', périodeFin: new Date('2027-10-21T00:00:00Z') },
       lecteurs: [
         { id: expect.stringMatching(/^[0-9a-f-]{36}$/), nom: 'Ana' },
@@ -101,7 +101,7 @@ describe('situation d’abonnement', () => {
 
     const lignes = await tableauDesAbonnements(db)
     expect(lignes.map((l) => l.slug)).toEqual(['alpha', 'beta'])
-    expect(lignes[0]).toMatchObject({ état: 'essai', activéeLe: J0, relectureRequise: true, abonnement: null, lecteursActifs: 2 })
+    expect(lignes[0]).toMatchObject({ état: 'essai', activéeLe: J0, relectureRequise: true, offre: 'standard', parutionsDEssai: 3, abonnement: null, lecteursActifs: 2 })
     expect(lignes[1]).toMatchObject({
       état: 'abonnee',
       abonnement: { abonnementStripe: 'sub_b', état: 'past_due', formule: 'mensuelle', périodeFin: null },

@@ -2,7 +2,8 @@ import { and, eq, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { abonnements, organisations } from '@/lib/base/schema'
-import { dateDeParis } from '@/lib/domaine/parcours'
+import { dateDeParis, type Offre } from '@/lib/domaine/parcours'
+import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 
 /**
  * L'entrée d'une nouvelle organisation dans le parcours d'essai (18 octobre
@@ -122,7 +123,8 @@ export async function ouvrirEnEssai(
   )
 }
 
-const MISE_EN_SERVICE_DE_L_ESSAI = new Date('2026-10-18T00:00:00Z')
+/** Les organisations importées avant cette date sont les clients historiques, d'avant l'offre. */
+export const MISE_EN_SERVICE_DE_L_ESSAI = new Date('2026-10-18T00:00:00Z')
 const FENÊTRE_DE_REPRISE_MS = 14 * 24 * 60 * 60 * 1000
 
 async function néeDeLImportPendantLOnboarding(
@@ -158,19 +160,47 @@ async function néeDeLImportPendantLOnboarding(
  * Rien d'autre n'est réglable ici : l'état de l'organisation, l'abonnement et
  * le registre restent tenus par leurs propres chemins.
  */
+/**
+ * Trois réglages de plus le 19 octobre 2026, par le même écrivain :
+ *   · `offre` pose l'offre (standard, early adopter, accès offert). Un accès
+ *     offert sur une organisation en essai la passe `abonnee` : rien ne doit
+ *     plus se fermer pour elle ;
+ *   · `parutions` règle le nombre de parutions complètes de l'essai (un essai à
+ *     J+28 en compte quatre) ;
+ *   · `parcours` fait entrer une organisation dans le parcours à une date
+ *     choisie : la date de sa prochaine lettre et le nombre de parutions
+ *     complètes qu'il lui reste, dont celle-là. J0 en découle, en semaines
+ *     entières, et la mécanique existante fait le reste (courrier de dernière
+ *     parution, « L'essentiel » seul, suspension). C'est **le chemin assumé
+ *     pour un client historique qui devient payant** : `ouvrirEnEssai` refuse
+ *     exprès de rétrograder un `abonnee`, et cette garde reste intacte ; ici,
+ *     c'est une décision d'opératrice, derrière son privilège. Une
+ *     organisation dont un abonnement Stripe est ouvert n'y entre pas.
+ */
 export type Réglage =
   | { readonly sorte: 'prolonger'; readonly semaines: 1 | 2 | 3 }
   | { readonly sorte: 'relecture'; readonly requise: boolean }
+  | { readonly sorte: 'offre'; readonly offre: Offre }
+  | { readonly sorte: 'parutions'; readonly parutions: number }
+  | { readonly sorte: 'parcours'; readonly prochaineLettre: string; readonly restantes: number }
 
 export type RésultatDuRéglage =
   | { readonly sorte: 'prolongé'; readonly ancienJ0: string; readonly nouveauJ0: string }
   | { readonly sorte: 'relecture-réglée'; readonly requise: boolean }
+  | { readonly sorte: 'offre-posée'; readonly offre: Offre; readonly état: string }
+  | { readonly sorte: 'parutions-réglées'; readonly parutions: number }
+  | { readonly sorte: 'mis-en-parcours'; readonly j0: string; readonly parutions: number; readonly restantes: number }
   | { readonly sorte: 'inconnue' }
   | { readonly sorte: 'pas-en-essai'; readonly état: string }
   | { readonly sorte: 'sans-j0' }
   | { readonly sorte: 'au-delà-d-aujourdhui'; readonly j0Maximal: string }
+  | { readonly sorte: 'abonnée-stripe' }
+  | { readonly sorte: 'parutions-invalides'; readonly parutions: number }
+  | { readonly sorte: 'date-invalide' }
 
 const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000
+const PARUTIONS_MAX = 8
+const ÉTATS_STRIPE_OUVERTS = new Set(['trialing', 'active', 'past_due'])
 
 export async function réglerLeParcours(
   slug: string,
@@ -181,12 +211,69 @@ export async function réglerLeParcours(
   return protéger('réglage du parcours d’une organisation', () =>
     db.transaction(async (tx) => {
       const [organisation] = await tx
-        .select({ id: organisations.id, état: organisations.état, activéeLe: organisations.activéeLe })
+        .select({
+          id: organisations.id,
+          état: organisations.état,
+          activéeLe: organisations.activéeLe,
+          essaiOuvertLe: organisations.essaiOuvertLe,
+          parutionsDEssai: organisations.parutionsDEssai,
+        })
         .from(organisations)
         .where(eq(organisations.slug, slug))
         .for('update')
         .limit(1)
       if (!organisation) return { sorte: 'inconnue' } as const
+
+      if (réglage.sorte === 'offre') {
+        const état = réglage.offre === 'gratuite' && organisation.état === 'essai' ? 'abonnee' : organisation.état
+        await tx
+          .update(organisations)
+          .set({ offre: réglage.offre, état, modifiéeLe: maintenant })
+          .where(eq(organisations.id, organisation.id))
+        return { sorte: 'offre-posée', offre: réglage.offre, état } as const
+      }
+
+      if (réglage.sorte === 'parutions') {
+        if (!Number.isInteger(réglage.parutions) || réglage.parutions < 1 || réglage.parutions > PARUTIONS_MAX) {
+          return { sorte: 'parutions-invalides', parutions: organisation.parutionsDEssai } as const
+        }
+        await tx
+          .update(organisations)
+          .set({ parutionsDEssai: réglage.parutions, modifiéeLe: maintenant })
+          .where(eq(organisations.id, organisation.id))
+        return { sorte: 'parutions-réglées', parutions: réglage.parutions } as const
+      }
+
+      if (réglage.sorte === 'parcours') {
+        if (organisation.état !== 'essai' && organisation.état !== 'abonnee') {
+          return { sorte: 'pas-en-essai', état: organisation.état } as const
+        }
+        const ouverts = await tx
+          .select({ état: abonnements.état })
+          .from(abonnements)
+          .where(eq(abonnements.organisationId, organisation.id))
+        if (ouverts.some((a) => ÉTATS_STRIPE_OUVERTS.has(a.état))) return { sorte: 'abonnée-stripe' } as const
+        const parutions = organisation.parutionsDEssai
+        if (!Number.isInteger(réglage.restantes) || réglage.restantes < 1 || réglage.restantes > parutions) {
+          return { sorte: 'parutions-invalides', parutions } as const
+        }
+        if (!estUneDateISO(réglage.prochaineLettre)) return { sorte: 'date-invalide' } as const
+        // J0 est le lundi de la semaine de la prochaine lettre, reculé d'autant
+        // de semaines qu'il y a déjà eu de parutions « complètes » à compter :
+        // avec trois parutions et une restante, J0 tombe deux semaines avant.
+        const lundi = Date.parse(`${lundiDeLaSemaine(réglage.prochaineLettre)}T06:00:00Z`)
+        const j0 = new Date(lundi - (parutions - réglage.restantes) * SEMAINE_MS)
+        await tx
+          .update(organisations)
+          .set({
+            état: 'essai',
+            activéeLe: j0,
+            essaiOuvertLe: organisation.essaiOuvertLe ?? maintenant,
+            modifiéeLe: maintenant,
+          })
+          .where(eq(organisations.id, organisation.id))
+        return { sorte: 'mis-en-parcours', j0: dateDeParis(j0), parutions, restantes: réglage.restantes } as const
+      }
 
       if (réglage.sorte === 'relecture') {
         await tx

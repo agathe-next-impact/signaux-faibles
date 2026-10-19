@@ -51,6 +51,34 @@ export async function prolongerLEssai(données: FormData): Promise<void> {
   await appliquer(slug, `prolonger de ${semaines}`, { sorte: 'prolonger', semaines })
 }
 
+export async function poserLOffre(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const offre = données.get('offre')
+  if (offre !== 'standard' && offre !== 'early_adopter' && offre !== 'gratuite') notFound()
+  await appliquer(slug, `offre ${offre}`, { sorte: 'offre', offre })
+}
+
+export async function réglerLesParutions(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const parutions = Number(données.get('parutions'))
+  if (!Number.isInteger(parutions) || parutions < 1 || parutions > 8) notFound()
+  await appliquer(slug, `${parutions} parutions d'essai`, { sorte: 'parutions', parutions })
+}
+
+/** Un client historique entre dans le parcours : date de sa prochaine lettre, parutions complètes qu'il lui reste. */
+export async function mettreEnParcours(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const prochaineLettre = données.get('prochaineLettre')
+  const restantes = Number(données.get('restantes'))
+  if (typeof prochaineLettre !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(prochaineLettre)) notFound()
+  if (!Number.isInteger(restantes) || restantes < 1 || restantes > 8) notFound()
+  await appliquer(slug, `mise en parcours, lettre du ${prochaineLettre}, ${restantes} restante(s)`, {
+    sorte: 'parcours',
+    prochaineLettre,
+    restantes,
+  })
+}
+
 export async function réglerLaRelecture(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const requise = données.get('requise')

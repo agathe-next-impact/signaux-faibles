@@ -33,7 +33,7 @@ import {
  * de paiement ne prouve rien ; l'événement signé, si.
  */
 
-const FORMULES = new Set<Formule>(['mensuelle', 'annuelle'])
+const FORMULES = new Set<Formule>(['mensuelle', 'annuelle', 'early_adopter'])
 
 function slugDu(données: FormData): string {
   const slug = données.get('slug')
@@ -84,6 +84,17 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
     // facturation sert à changer de formule.
     if (facturation.abonnement?.ouvert) {
       return await urlDeFacturation(configuration, facturation.abonnement.clientStripe, accès.slug)
+    }
+    // L'offre posée par l'opératrice décide de la formule admise : un accès
+    // offert ne paie pas, un early adopter ne paie que son tarif, les autres
+    // jamais le sien. Le formulaire ne propose que la bonne, mais il vient du
+    // navigateur : la décision est ici.
+    if (facturation.offre === 'gratuite') return `/${accès.slug}/abonnement?abonnement=offerte`
+    const admise = facturation.offre === 'early_adopter' ? formule === 'early_adopter' : formule !== 'early_adopter'
+    if (!admise) return `/${accès.slug}/abonnement?abonnement=formule`
+    if (formule === 'early_adopter' && !configuration.prix.early_adopter) {
+      console.error('[abonnement] STRIPE_PRIX_EARLY_ADOPTER absente : formule early adopter indisponible.')
+      return indisponible
     }
 
     const session = await clientStripe(configuration).checkout.sessions.create(

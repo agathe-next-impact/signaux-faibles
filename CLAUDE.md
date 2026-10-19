@@ -231,7 +231,23 @@ Les lire avant toute session.
   (`réglerLeParcours`) décale J0 d'une à trois semaines (`prolonger`), jamais
   au-delà d'aujourd'hui, seulement en essai et une fois J0 posé ; ou envoie les
   courriers de fin d'essai à la relecture plutôt qu'au client (`relecture`).
-  C'est le seul autre écrivain de J0, et il n'est pas réglable autrement
+  C'est le seul autre écrivain de J0, et il n'est pas réglable autrement.
+  **Offre et parcours réglés (19 octobre 2026)** : `organisations.offre`
+  (`standard`, `early_adopter` à 29 € HT par mois sur son propre prix Stripe
+  `STRIPE_PRIX_EARLY_ADOPTER`, `gratuite` = accès offert, jamais de fin
+  d'essai, étape « accès offert ») et `organisations.parutions_d_essai`
+  (trois par défaut, quatre pour un essai à J+28), migration 0004. Le même
+  `réglerLeParcours` porte trois réglages de plus (`offre`, `parutions`,
+  `parcours`), par la route PATCH et par le tableau de l'opératrice. `parcours`
+  est **le chemin assumé pour un client historique qui devient payant** : la
+  date de sa prochaine lettre et le nombre de parutions complètes restantes
+  donnent J0 en semaines entières, la mécanique existante suit (courrier de
+  dernière parution, « L'essentiel », suspension) ; `ouvrirEnEssai` garde sa
+  garde contre la rétrogradation, et un abonné Stripe n'y entre pas. L'écran
+  du client dit alors « votre accès complet prend fin » (`historique`, créée
+  avant la mise en service de l'essai), bannière et page abonnement. La
+  formule admise par la souscription dépend de l'offre, revérifiée dans
+  l'action, et `ChoixDeFormule` ne montre que celle-là
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

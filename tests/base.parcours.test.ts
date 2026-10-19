@@ -25,7 +25,10 @@ describe('lireEntréeDuParcours', () => {
       .insert(organisations)
       .values({ slug: 'p', nom: 'P', état: 'essai', activéeLe: activée, registreNotion: REGISTRE })
       .returning({ id: organisations.id })
-    expect(await lireEntréeDuParcours(REGISTRE, db)).toEqual({ organisation: { état: 'essai', activéeLe: activée }, abonnement: null })
+    expect(await lireEntréeDuParcours(REGISTRE, db)).toEqual({
+      organisation: { état: 'essai', activéeLe: activée, offre: 'standard', parutionsDEssai: 3 },
+      abonnement: null,
+    })
 
     const commun = { organisationId: o!.id, clientStripe: 'cus_1', formule: 'mensuelle' as const, périodeFin: null, type: 'customer.subscription.updated' }
     await enregistrerÉvénementDAbonnement({ ...commun, abonnementStripe: 'sub_1', état: 'canceled', événementId: 'e1', événementLe: new Date('2026-10-20T00:00:00Z') }, db)
@@ -59,7 +62,7 @@ describe('lireFacturation', () => {
       .insert(organisations)
       .values({ slug: 'f', nom: 'F', état: 'essai', registreNotion: REGISTRE })
       .returning({ id: organisations.id })
-    expect(await lireFacturation(REGISTRE, db)).toEqual({ organisationId: o!.id, abonnement: null })
+    expect(await lireFacturation(REGISTRE, db)).toEqual({ organisationId: o!.id, offre: 'standard', abonnement: null })
 
     const commun = { organisationId: o!.id, clientStripe: 'cus_9', formule: 'mensuelle' as const, périodeFin: null, type: 'customer.subscription.updated' }
     await enregistrerÉvénementDAbonnement({ ...commun, abonnementStripe: 'sub_9', état: 'canceled', événementId: 'e1', événementLe: new Date('2026-10-20T00:00:00Z') }, db)

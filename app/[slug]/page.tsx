@@ -42,10 +42,10 @@ export default async function VueDEnsemble({
   searchParams: Promise<{ abonnement?: string | string[] }>
 }) {
   const { slug } = await params
-  const { accès, lecture, étape } = await exigerLecture(slug)
+  const { accès, lecture, étape, offre } = await exigerLecture(slug)
   const brut = (await searchParams).abonnement
   const retour = typeof brut === 'string' ? brut : undefined
-  const essai = étape?.étape === 'essai' ? étape.parution : null
+  const essai = étape?.étape === 'essai' ? étape : null
 
   // Fin d'essai (palier 1c) : le tableau de bord assemble des passages de
   // plusieurs lettres, il n'est donc montré qu'en lecture complète.
@@ -56,6 +56,7 @@ export default async function VueDEnsemble({
         lecture={lecture}
         suspenduAlaMain={étape?.étape === 'suspendue' && étape.manuelle}
         retour={retour}
+        offre={offre ?? 'standard'}
       />
     )
   }
@@ -137,7 +138,7 @@ export default async function VueDEnsemble({
 
       {essai ? (
         <div className="mt-2">
-          <LigneDEssai parution={essai} />
+          <LigneDEssai parution={essai.parution} parutions={essai.parutions} />
         </div>
       ) : null}
       {retour ? (
@@ -282,7 +283,9 @@ export default async function VueDEnsemble({
         )}
       </section>
 
-      {essai ? <OffreDEssai slug={accès.slug} parution={essai} /> : null}
+      {essai ? (
+        <OffreDEssai slug={accès.slug} parution={essai.parution} parutions={essai.parutions} offre={offre ?? 'standard'} />
+      ) : null}
     </>
   )
 }

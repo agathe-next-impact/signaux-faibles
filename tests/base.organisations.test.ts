@@ -161,3 +161,64 @@ describe('réglages du parcours par l’opératrice', () => {
     expect((await lire('acme')).relectureRequise).toBe(false)
   })
 })
+
+describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
+  let db: Base
+  let fermer: () => Promise<void>
+  const MAINTENANT = new Date('2026-10-19T10:00:00Z')
+  beforeEach(async () => {
+    ;({ db, fermer } = await baseEnMémoire())
+    await db.insert(organisations).values([
+      { slug: 'hist', nom: 'Hist', état: 'abonnee', registreNotion: REGISTRE, crééeLe: new Date('2026-10-16T09:00:00Z') },
+      { slug: 'ess', nom: 'Ess', état: 'essai', registreNotion: AUTRE, activéeLe: new Date('2026-10-12T06:00:00Z') },
+    ])
+  })
+  afterEach(async () => {
+    await fermer()
+  })
+  const lire = async (slug: string) => (await db.select().from(organisations).where(eq(organisations.slug, slug)))[0]!
+
+  it('pose l’offre, et un accès offert sur un essai passe en abonnée', async () => {
+    expect(await réglerLeParcours('hist', { sorte: 'offre', offre: 'early_adopter' }, db, MAINTENANT)).toEqual({ sorte: 'offre-posée', offre: 'early_adopter', état: 'abonnee' })
+    expect((await lire('hist')).offre).toBe('early_adopter')
+    expect(await réglerLeParcours('ess', { sorte: 'offre', offre: 'gratuite' }, db, MAINTENANT)).toEqual({ sorte: 'offre-posée', offre: 'gratuite', état: 'abonnee' })
+    expect(await lire('ess')).toMatchObject({ offre: 'gratuite', état: 'abonnee' })
+  })
+
+  it('règle les parutions complètes, dans les bornes', async () => {
+    expect(await réglerLeParcours('ess', { sorte: 'parutions', parutions: 4 }, db, MAINTENANT)).toEqual({ sorte: 'parutions-réglées', parutions: 4 })
+    expect((await lire('ess')).parutionsDEssai).toBe(4)
+    expect(await réglerLeParcours('ess', { sorte: 'parutions', parutions: 9 }, db, MAINTENANT)).toEqual({ sorte: 'parutions-invalides', parutions: 4 })
+  })
+
+  it('fait entrer un client historique dans le parcours : J0 déduit de la prochaine lettre et des parutions restantes', async () => {
+    // Prochaine lettre le jeudi 22 octobre, une seule parution complète restante
+    // sur trois : J0 tombe le lundi 5 octobre, deux semaines avant le lundi 19.
+    const r = await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)
+    expect(r).toEqual({ sorte: 'mis-en-parcours', j0: '2026-10-05', parutions: 3, restantes: 1 })
+    const o = await lire('hist')
+    expect(o).toMatchObject({ état: 'essai', essaiOuvertLe: MAINTENANT })
+    expect(o.activéeLe?.toISOString()).toBe('2026-10-05T06:00:00.000Z')
+    // Deux restantes : J0 une semaine avant.
+    const r2 = await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 2 }, db, MAINTENANT)
+    expect(r2).toMatchObject({ sorte: 'mis-en-parcours', j0: '2026-10-12' })
+  })
+
+  it('refuse la mise en parcours d’un abonné Stripe, d’un état hors parcours, ou de restantes hors bornes', async () => {
+    const [o] = await db.select({ id: organisations.id }).from(organisations).where(eq(organisations.slug, 'hist'))
+    await db.insert(abonnements).values({
+      organisationId: o!.id,
+      clientStripe: 'cus_1',
+      abonnementStripe: 'sub_1',
+      état: 'active',
+      dernierÉvénement: 'e1',
+      événementLe: MAINTENANT,
+      dernierType: 'customer.subscription.updated',
+    })
+    expect(await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'abonnée-stripe' })
+    expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 4 }, db, MAINTENANT)).toEqual({ sorte: 'parutions-invalides', parutions: 3 })
+    expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '22/10/2026', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'date-invalide' })
+    await db.update(organisations).set({ état: 'ecartee' }).where(eq(organisations.slug, 'ess'))
+    expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'pas-en-essai', état: 'ecartee' })
+  })
+})

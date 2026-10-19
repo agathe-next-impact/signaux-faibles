@@ -7,7 +7,7 @@ import type { LigneDAbonnement } from '@/lib/base/situation'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
-import { prolongerLEssai, réglerLaRelecture } from '@/lib/portail/reglages'
+import { mettreEnParcours, poserLOffre, prolongerLEssai, réglerLaRelecture, réglerLesParutions } from '@/lib/portail/reglages'
 import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
 
 export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
@@ -34,7 +34,21 @@ const MESSAGES: Record<string, string> = {
   'pas-en-essai': 'Cette organisation n’est pas en essai : rien à prolonger.',
   'sans-j0': 'J0 n’est pas encore posé : rien à prolonger.',
   'au-delà-d-aujourdhui': 'Ce décalage mettrait J0 après aujourd’hui : refusé.',
+  'offre-posée': 'Offre posée.',
+  'parutions-réglées': 'Nombre de parutions complètes réglé.',
+  'mis-en-parcours': 'Entrée dans le parcours : J0 est posé, la mécanique de fin d’essai suit.',
+  'abonnée-stripe': 'Un abonnement Stripe est ouvert : cette organisation n’entre pas dans le parcours.',
+  'parutions-invalides': 'Nombre de parutions hors bornes (1 à 8, et pas plus de restantes que de parutions).',
+  'date-invalide': 'Date de prochaine lettre invalide.',
   échec: 'La base n’a pas répondu : réglage non appliqué.',
+}
+
+/** Le lundi de la semaine prochaine, valeur par défaut du champ « prochaine lettre ». */
+function lundiProchain(aujourdHui: string): string {
+  const date = new Date(`${aujourdHui}T00:00:00Z`)
+  const jour = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + (8 - jour))
+  return date.toISOString().slice(0, 10)
 }
 
 export default async function Abonnements({
@@ -86,7 +100,7 @@ export default async function Abonnements({
           <table className="w-full border-collapse text-corps">
             <thead>
               <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
-                {['organisation', 'état', 'étape', 'j0', 'stripe', 'lecteurs', 'courriers', 'réglages'].map(
+                {['organisation', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers', 'réglages'].map(
                   (entête) => (
                     <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
                       {entête}
@@ -117,11 +131,20 @@ function Ligne({
   modeRéel: boolean
 }) {
   const étape = étapeDuParcours({
-    organisation: { état: ligne.état, activéeLe: ligne.activéeLe },
+    organisation: {
+      état: ligne.état,
+      activéeLe: ligne.activéeLe,
+      offre: ligne.offre,
+      parutionsDEssai: ligne.parutionsDEssai,
+    },
     abonnement: ligne.abonnement,
     aujourdHui,
   })
   const prolongeable = ligne.état === 'essai' && ligne.activéeLe !== null
+  const abonnéStripe = étape.étape === 'abonnee' && étape.source === 'stripe'
+  const peutEntrer = (ligne.état === 'essai' || ligne.état === 'abonnee') && !abonnéStripe && ligne.offre !== 'gratuite'
+  const champ = 'rounded-douce border border-gris-ligne bg-blanc px-2 py-1 text-corps text-encre'
+  const bouton = 'rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc'
   const auPlafond = ligne.lecteursActifs >= LECTEURS_ACTIFS_MAX
 
   return (
@@ -142,6 +165,19 @@ function Ligne({
             essai ouvert le {dateLongueDeParis(ligne.essaiOuvertLe)}
           </>
         ) : null}
+      </td>
+      <td className="px-4 py-3">
+        <form action={poserLOffre} className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="slug" value={ligne.slug} />
+          <select name="offre" defaultValue={ligne.offre} className={champ} aria-label="Offre">
+            <option value="standard">standard</option>
+            <option value="early_adopter">early adopter</option>
+            <option value="gratuite">accès offert</option>
+          </select>
+          <button type="submit" className={bouton}>
+            Poser
+          </button>
+        </form>
       </td>
       <td className="label-mono px-4 py-3 text-ardoise">
         {ligne.abonnement ? (
@@ -177,24 +213,62 @@ function Ligne({
         </form>
       </td>
       <td className="px-4 py-3">
-        {prolongeable ? (
-          <form action={prolongerLEssai} className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-3">
+          <form action={réglerLesParutions} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="slug" value={ligne.slug} />
             <label className="label-mono text-ardoise">
-              prolonger de{' '}
-              <select name="semaines" defaultValue="1" className="rounded-douce border border-gris-ligne bg-blanc px-2 py-1 text-corps text-encre">
-                <option value="1">1 semaine</option>
-                <option value="2">2 semaines</option>
-                <option value="3">3 semaines</option>
+              parutions complètes{' '}
+              <select name="parutions" defaultValue={String(ligne.parutionsDEssai)} className={champ}>
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
               </select>
             </label>
-            <button type="submit" className="rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc">
-              Appliquer
+            <button type="submit" className={bouton}>
+              Régler
             </button>
           </form>
-        ) : (
-          <p className="label-mono text-ardoise">·</p>
-        )}
+          {prolongeable ? (
+            <form action={prolongerLEssai} className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="slug" value={ligne.slug} />
+              <label className="label-mono text-ardoise">
+                prolonger de{' '}
+                <select name="semaines" defaultValue="1" className={champ}>
+                  <option value="1">1 semaine</option>
+                  <option value="2">2 semaines</option>
+                  <option value="3">3 semaines</option>
+                </select>
+              </label>
+              <button type="submit" className={bouton}>
+                Appliquer
+              </button>
+            </form>
+          ) : null}
+          {peutEntrer ? (
+            <form action={mettreEnParcours} className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="slug" value={ligne.slug} />
+              <label className="label-mono text-ardoise">
+                prochaine lettre le{' '}
+                <input type="date" name="prochaineLettre" defaultValue={lundiProchain(aujourdHui)} className={champ} />
+              </label>
+              <label className="label-mono text-ardoise">
+                encore{' '}
+                <select name="restantes" defaultValue="1" className={champ}>
+                  {Array.from({ length: ligne.parutionsDEssai }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} complète{n > 1 ? 's' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" className={bouton}>
+                Mettre en parcours
+              </button>
+            </form>
+          ) : null}
+        </div>
       </td>
     </tr>
   )

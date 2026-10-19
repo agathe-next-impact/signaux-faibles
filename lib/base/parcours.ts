@@ -28,7 +28,13 @@ export async function lireEntréeDuParcours(
 
   return protéger('lecture du parcours', async () => {
     const [organisation] = await db
-      .select({ id: organisations.id, état: organisations.état, activéeLe: organisations.activéeLe })
+      .select({
+        id: organisations.id,
+        état: organisations.état,
+        activéeLe: organisations.activéeLe,
+        offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
+      })
       .from(organisations)
       .where(eq(organisations.registreNotion, registreNotion))
       .limit(1)
@@ -42,7 +48,12 @@ export async function lireEntréeDuParcours(
     const abonnement = abonnementQuiFaitFoi(lignes)
 
     return {
-      organisation: { état: organisation.état, activéeLe: organisation.activéeLe },
+      organisation: {
+        état: organisation.état,
+        activéeLe: organisation.activéeLe,
+        offre: organisation.offre,
+        parutionsDEssai: organisation.parutionsDEssai,
+      },
       abonnement,
     }
   })
