@@ -311,7 +311,12 @@ export async function prospectionsÀSynchroniser(db: Base = base()): Promise<Pro
 export type ProspectionEnCours = {
   readonly id: string
   readonly statut: StatutProspection
-  readonly organisation: { readonly état: (typeof organisations.état.enumValues)[number]; readonly activéeLe: Date | null }
+  readonly organisation: {
+    readonly état: (typeof organisations.état.enumValues)[number]
+    readonly activéeLe: Date | null
+    readonly offre: (typeof organisations.offre.enumValues)[number]
+    readonly parutionsDEssai: number
+  }
   readonly abonnement: { readonly état: string } | null
 }
 
@@ -328,6 +333,8 @@ export async function prospectionsEnCours(db: Base = base()): Promise<Prospectio
         organisationId: organisations.id,
         état: organisations.état,
         activéeLe: organisations.activéeLe,
+        offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
       })
       .from(prospections)
       .innerJoin(organisations, eq(prospections.organisationId, organisations.id))
@@ -340,7 +347,7 @@ export async function prospectionsEnCours(db: Base = base()): Promise<Prospectio
       résultat.push({
         id: ligne.id,
         statut: ligne.statut,
-        organisation: { état: ligne.état, activéeLe: ligne.activéeLe },
+        organisation: { état: ligne.état, activéeLe: ligne.activéeLe, offre: ligne.offre, parutionsDEssai: ligne.parutionsDEssai },
         abonnement: abonnement ? { état: abonnement.état } : null,
       })
     }
