@@ -1,6 +1,6 @@
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { FinDEssai } from '@/components/fin-d-essai'
-import { LigneDEssai, OffreDEssai, RetourDAbonnement } from '@/components/abonnement'
+import { OffreDEssai, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
@@ -136,11 +136,6 @@ export default async function VueDEnsemble({
         état={`à jour · ${courante.libellé}`}
       />
 
-      {essai ? (
-        <div className="mt-2">
-          <LigneDEssai parution={essai.parution} parutions={essai.parutions} />
-        </div>
-      ) : null}
       {retour ? (
         <div className="mt-6 max-w-prose">
           <RetourDAbonnement motif={retour} />

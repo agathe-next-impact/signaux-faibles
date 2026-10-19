@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { exigerLecture } from '@/lib/auth/appartenance'
+import { BandeauAbonnement } from '@/components/abonnement'
 import { Coquille } from '@/components/coquille'
 import { ongletsDe, semainesPubliées } from '@/lib/portail/semaine'
 
@@ -39,7 +40,7 @@ async function Garde({
   children: React.ReactNode
 }) {
   const { slug } = await params
-  const { accès, lecture } = await exigerLecture(slug)
+  const { accès, lecture, étape } = await exigerLecture(slug)
 
   // Les compteurs du rail se lisent dans la requête de liste, déjà nécessaire :
   // aucun corps de note n'est chargé pour les afficher.
@@ -81,6 +82,10 @@ async function Garde({
         archives: semaines.length,
       }, lecture)}
     >
+      {/* Tant que l'organisation n'est ni abonnée ni en accès offert, chaque
+          écran le dit et mène à l'abonnement (19 octobre 2026). Le layout le
+          porte pour qu'aucun écran ne puisse l'oublier. */}
+      <BandeauAbonnement slug={accès.slug} étape={étape} />
       {children}
     </Coquille>
   )

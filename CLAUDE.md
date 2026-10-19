@@ -247,7 +247,13 @@ Les lire avant toute session.
   du client dit alors « votre accès complet prend fin » (`historique`, créée
   avant la mise en service de l'essai), bannière et page abonnement. La
   formule admise par la souscription dépend de l'offre, revérifiée dans
-  l'action, et `ChoixDeFormule` ne montre que celle-là
+  l'action, et `ChoixDeFormule` ne montre que celle-là.
+  **Le bandeau d'abonnement** (`BandeauAbonnement`, 19 octobre 2026) est rendu
+  par le layout de l'espace, donc sur chaque écran, tant que l'organisation
+  n'est ni abonnée (Stripe, hors ligne ou offerte) ni suspendue à la main :
+  essai en cours ou pas encore commencé, lettres réduites, espace suspendu par
+  le calendrier. Il mène à « Mon abonnement » ; `tests/architecture.test.ts`
+  vérifie qu'il précède `{children}`
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

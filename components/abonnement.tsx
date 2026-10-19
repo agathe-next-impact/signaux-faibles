@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
 import { PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
-import type { Offre } from '@/lib/domaine/parcours'
+import type { Offre, Étape } from '@/lib/domaine/parcours'
 
 /**
  * Le chemin vers « Mon abonnement », dans le pied du rail (19 octobre 2026).
@@ -143,20 +143,52 @@ export function RetourDAbonnement({ motif }: { motif: string | undefined }) {
 }
 
 /**
- * L'essai en cours, sur la vue d'ensemble : une ligne en tête, qui dit où en
- * est l'essai, et les formules en pied d'écran (`#abonnement`). Le tableau de
- * bord reste le contenu ; l'offre ne passe pas devant ce que le lecteur vient
- * lire.
+ * Le bandeau d'abonnement (19 octobre 2026), rendu par le layout de l'espace
+ * et donc visible sur chaque écran, tant que l'organisation n'est ni abonnée
+ * ni en accès offert : essai en cours, essai pas encore commencé, lettres
+ * réduites, espace suspendu par le calendrier. Il dit où en est le client et
+ * mène à « Mon abonnement ». Rien pour une organisation abonnée (Stripe, hors
+ * ligne ou offerte), suspendue à la main (ce n'est pas une affaire de
+ * paiement), écartée ou de test.
+ *
+ * En rose, parce que c'est la seule couleur de signal de la charte, et parce
+ * qu'un bandeau qu'on peut ne pas voir n'informe pas.
  */
-export function LigneDEssai({ parution, parutions }: { parution: number; parutions: number }) {
+export function BandeauAbonnement({ slug, étape }: { slug: string; étape: Étape | null }) {
+  const texte = texteDuBandeau(étape)
+  if (!texte) return null
   return (
-    <p className="label-mono text-ardoise">
-      {parution === parutions ? 'dernière parution complète' : `essai · parution ${parution} sur ${parutions}`} ·{' '}
-      <a href="#abonnement" className="text-encre underline underline-offset-2">
+    <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border border-rose bg-fond-rose px-4 py-3">
+      <p className="text-encre">{texte}</p>
+      <Link href={`/${slug}/abonnement`} className="label-mono text-rose underline underline-offset-2">
         s’abonner
-      </a>
-    </p>
+      </Link>
+    </div>
   )
+}
+
+function texteDuBandeau(étape: Étape | null): string | null {
+  if (!étape) return null
+  switch (étape.étape) {
+    case 'essai': {
+      const restantes = étape.parutions - étape.parution
+      return restantes > 0
+        ? `Essai en cours, parution ${étape.parution} sur ${étape.parutions} : il vous reste ${restantes} parution${restantes > 1 ? 's' : ''} complète${restantes > 1 ? 's' : ''}. Ensuite, un abonnement est nécessaire pour continuer.`
+        : `Dernière parution complète de votre essai (${étape.parution} sur ${étape.parutions}). Un abonnement est nécessaire pour continuer.`
+    }
+    case 'tronquee':
+      return 'Votre essai est terminé : vos lettres sont réduites à « L’essentiel ». Un abonnement est nécessaire pour continuer.'
+    case 'suspendue':
+      return étape.manuelle ? null : 'Votre essai est terminé et votre espace est suspendu. Un abonnement est nécessaire pour continuer.'
+    case 'hors-parcours':
+      return étape.raison === 'pas encore activée' ||
+        étape.raison === 'aucune date d’activation' ||
+        étape.raison === 'activation dans le futur'
+        ? 'Votre essai commence avec votre première lettre. Au-delà de ses parutions complètes, un abonnement est nécessaire pour continuer.'
+        : null
+    case 'abonnee':
+      return null
+  }
 }
 
 export function OffreDEssai({

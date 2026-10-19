@@ -622,6 +622,13 @@ describe('chaque écran de l’espace obéit au droit de lecture', () => {
     expect(sw).not.toContain("const VERSION = 'v1'")
   })
 
+  it('le bandeau d’abonnement est porté par le layout, donc par chaque écran', () => {
+    const layout = readFileSync(join(process.cwd(), 'app', '[slug]', 'layout.tsx'), 'utf8')
+    expect(layout).toContain('<BandeauAbonnement slug={accès.slug} étape={étape} />')
+    // `{children}` figure deux fois : l'enveloppe Suspense, puis la coquille, la seule qui compte.
+    expect(layout.indexOf('<BandeauAbonnement')).toBeLessThan(layout.lastIndexOf('{children}'))
+  })
+
   it('la lettre tronque le document avant de le rendre', () => {
     const source = readFileSync(join(process.cwd(), 'components', 'note.tsx'), 'utf8')
     expect(source).toContain('tronquerÀLEssentiel(construireDocument(blocs))')
