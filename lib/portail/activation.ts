@@ -55,14 +55,8 @@ export function interpréterDemande(demande: {
   readonly autorisation: string | null | undefined
   readonly secret: string | undefined
 }): DécisionActivation {
-  if (!demande.secret) return { sorte: 'non-configurée' }
-
-  const porté = /^Bearer (.+)$/.exec(demande.autorisation ?? '')?.[1]
-  if (!porté) return { sorte: 'refusée', raison: 'en-tête Authorization absent ou mal formé' }
-
-  if (!égalEnTempsConstant(porté, demande.secret)) {
-    return { sorte: 'refusée', raison: 'jeton invalide' }
-  }
+  const jeton = vérifierJeton(demande)
+  if (jeton.sorte !== 'prêt') return jeton
 
   let charge: unknown
   try {
@@ -81,6 +75,34 @@ export function interpréterDemande(demande: {
   }
 
   return { sorte: 'ouvrir', email }
+}
+
+/**
+ * Le seul contrôle du jeton, sans corps ni envoi.
+ *
+ * Il sert la demande d'ouverture et la vérification préalable (`GET
+ * /api/acces/ouvrir`, 18 octobre 2026) : les commandes d'onboarding s'assurent
+ * que leur environnement porte bien le jeton sur cette route **avant** de
+ * produire une lettre, au lieu de découvrir le 401 après la collecte. Un corps
+ * vide en POST ne le permettait pas, puisqu'il rend 401 lui aussi.
+ */
+export function vérifierJeton(demande: {
+  readonly autorisation: string | null | undefined
+  readonly secret: string | undefined
+}):
+  | { readonly sorte: 'non-configurée' }
+  | { readonly sorte: 'refusée'; readonly raison: string }
+  | { readonly sorte: 'prêt' } {
+  if (!demande.secret) return { sorte: 'non-configurée' }
+
+  const porté = /^Bearer (.+)$/.exec(demande.autorisation ?? '')?.[1]
+  if (!porté) return { sorte: 'refusée', raison: 'en-tête Authorization absent ou mal formé' }
+
+  if (!égalEnTempsConstant(porté, demande.secret)) {
+    return { sorte: 'refusée', raison: 'jeton invalide' }
+  }
+
+  return { sorte: 'prêt' }
 }
 
 export function égalEnTempsConstant(reçu: string, attendu: string): boolean {

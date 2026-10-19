@@ -116,7 +116,12 @@ Les lire avant toute session.
   (WebSocket, pour les transactions interactives). Schéma dans
   `lib/base/schema.ts`, migrations SQL générées par `pnpm base:generer <nom>`
   dans `drizzle/`, relues et commitées comme du code, appliquées par
-  `pnpm base:migrer`. Les tests tournent sur une vraie base Postgres en
+  `pnpm base:migrer` — et, depuis le 18 octobre 2026, **par le build de
+  production lui-même** (`tsx scripts/base-migrer.ts --deploiement && next
+  build`, production seule, sans effet en aperçu ni en local) : la migration
+  0003 était partie sans être appliquée et l'onboarding avait échoué en
+  SQLSTATE 42703. Le contrôle du soir signale tout écart entre le journal du
+  dépôt et la base (`migrations-en-attente`). Les tests tournent sur une vraie base Postgres en
   mémoire (PGlite, `tests/aide/base-en-memoire.ts`) avec ces mêmes
   migrations. `DATABASE_URL` est lue directement dans `process.env` : une
   page qui ne touche pas Postgres ne tombe pas parce que la base n'existe pas

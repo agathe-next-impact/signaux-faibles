@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { interpréterDemande } from '@/lib/portail/activation'
+import { interpréterDemande, vérifierJeton } from '@/lib/portail/activation'
 
 /**
  * La route d'ouverture est appelée par une tâche qui vit hors du dépôt, et elle
@@ -91,5 +91,22 @@ describe('interpréterDemande', () => {
       secret: SECRET,
     })
     expect(décision).toEqual({ sorte: 'refusée', raison: 'jeton invalide' })
+  })
+})
+
+describe('vérifierJeton', () => {
+  // La vérification préalable des commandes d'onboarding (GET /api/acces/ouvrir) :
+  // le jeton seul, sans corps, pour savoir avant la collecte si le lien pourra partir.
+  it('rend prêt pour le bon jeton', () => {
+    expect(vérifierJeton({ autorisation: `Bearer ${SECRET}`, secret: SECRET })).toEqual({ sorte: 'prêt' })
+  })
+
+  it('refuse un jeton absent ou faux', () => {
+    expect(vérifierJeton({ autorisation: null, secret: SECRET }).sorte).toBe('refusée')
+    expect(vérifierJeton({ autorisation: 'Bearer autre-chose', secret: SECRET }).sorte).toBe('refusée')
+  })
+
+  it('se déclare non configurée sans secret', () => {
+    expect(vérifierJeton({ autorisation: `Bearer ${SECRET}`, secret: undefined })).toEqual({ sorte: 'non-configurée' })
   })
 })

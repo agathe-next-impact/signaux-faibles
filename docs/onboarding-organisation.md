@@ -52,3 +52,27 @@ ce document ne décrit que la part du portail.*
 
 Un espace vide a d'abord une autre cause, plus fréquente : des lettres encore
 au statut `Brouillon`. Vérifier le statut avant l'identifiant.
+
+## Lancer chaque étape depuis Claude Code
+
+Cinq commandes projet (`.claude/skills/`), une par lancement du cycle, décrites
+pour l'usage dans `docs/guide-commandes-onboarding.html`. Aucune ne
+recopie de prompt : chacune ouvre la page Notion « Tâche — Onboarding d'une
+organisation », qui fait foi, et n'en exécute que la section de son étape, sur
+une seule organisation. Chacune coche puis décoche la case ▶ de son étape,
+pour que le registre garde la trace du lancement. Le modèle ne les déclenche
+jamais de lui-même (`disable-model-invocation`).
+
+| Commande | Étape | Statut attendu |
+|---|---|---|
+| `/onboarding-demande Organisation : … · URL : …` | 1, enregistrer la demande | aucune ligne |
+| `/onboarding-referentiels <nom>` | A, balayage §3 | 1 |
+| `/onboarding-repercussion <nom> [partiel]` | A-bis, balayage §2 | 2 à 5 |
+| `/onboarding-premiere-lettre <nom>` | B, première lettre | 3 |
+| `/onboarding-activation <nom>` | activation, balayage §1 | 4 ou 5 |
+
+Les deux dernières vérifient d'abord, par `GET /api/acces/ouvrir`, que le
+lien pourra partir : elles s'arrêtent avant la collecte plutôt qu'après.
+Les appels au portail des deux dernières (`/api/veille/*`, `/api/acces/ouvrir`)
+demandent une session sur l'environnement « signaux-faibles-io » : ailleurs,
+ils reçoivent 401 ou 403, et la commande le dit au lieu de chercher un jeton.
