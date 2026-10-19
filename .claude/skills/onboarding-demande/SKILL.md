@@ -3,7 +3,33 @@ name: onboarding-demande
 description: Étape 1 de l'onboarding d'une organisation, à la place du formulaire — enregistre la demande dans le registre Notion et coche « ▶ Générer les référentiels (A) ». À lancer par /onboarding-demande, jamais de soi-même.
 argument-hint: "Organisation : <nom> · URL : <site> [· Email du lecteur final : <adresse>] [· Lecteur final : <nom>]"
 disable-model-invocation: true
+allowed-tools:
+  - "mcp__Notion__notion-fetch"
+  - "mcp__Notion__notion-search"
+  - "mcp__Notion__notion-query-data-sources"
+  - "mcp__Notion__notion-create-pages"
+  - "mcp__Notion__notion-update-page"
+  - "mcp__Notion__notion-create-view"
+  - "mcp__Notion__notion-update-view"
+  - "mcp__Notion__notion-get-async-task"
+  - "mcp__Gmail__search_threads"
+  - "mcp__Gmail__get_thread"
+  - "mcp__Gmail__list_drafts"
+  - "mcp__Gmail__get_draft"
+  - "mcp__Gmail__create_draft"
+  - "mcp__Gmail__update_draft"
+  - "mcp__Gmail__send_message"
+  - "WebFetch"
+  - "WebSearch"
+  - "Bash(openssl rand *)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/acces/*)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/veille/*)"
 ---
+
+**Aucune confirmation en cours d'exécution.** Lancer cette commande vaut ordre pour
+toutes ses étapes : enchaîne-les sans demander de validation intermédiaire. Tu ne
+t'arrêtes que sur les gardes écrites ci-dessous ou dans la page Notion, et tu le dis
+dans le compte rendu.
 
 Tu es l'agent de veille du cabinet Signaux faibles. Tu écris en français. Tu fais
 l'étape 1 de l'onboarding : tu enregistres la demande dans le registre et tu

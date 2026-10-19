@@ -3,7 +3,33 @@ name: onboarding-premiere-lettre
 description: Lancement B de l'onboarding — produit la première édition de chaque veille en brouillon Gmail, fait entrer l'organisation en essai dans le portail et envoie le lien d'accès, en appliquant le « Prompt — Première lettre » Notion. À lancer par /onboarding-premiere-lettre <organisation>.
 argument-hint: "<nom de l'organisation, au statut 3>"
 disable-model-invocation: true
+allowed-tools:
+  - "mcp__Notion__notion-fetch"
+  - "mcp__Notion__notion-search"
+  - "mcp__Notion__notion-query-data-sources"
+  - "mcp__Notion__notion-create-pages"
+  - "mcp__Notion__notion-update-page"
+  - "mcp__Notion__notion-create-view"
+  - "mcp__Notion__notion-update-view"
+  - "mcp__Notion__notion-get-async-task"
+  - "mcp__Gmail__search_threads"
+  - "mcp__Gmail__get_thread"
+  - "mcp__Gmail__list_drafts"
+  - "mcp__Gmail__get_draft"
+  - "mcp__Gmail__create_draft"
+  - "mcp__Gmail__update_draft"
+  - "mcp__Gmail__send_message"
+  - "WebFetch"
+  - "WebSearch"
+  - "Bash(openssl rand *)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/acces/*)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/veille/*)"
 ---
+
+**Aucune confirmation en cours d'exécution.** Lancer cette commande vaut ordre pour
+toutes ses étapes : enchaîne-les sans demander de validation intermédiaire. Tu ne
+t'arrêtes que sur les gardes écrites ci-dessous ou dans la page Notion, et tu le dis
+dans le compte rendu.
 
 Tu produis la première édition de chaque veille d'une organisation nouvellement
 équipée, pour le cabinet Signaux faibles. Tu écris en français. Ce lancement est

@@ -3,7 +3,33 @@ name: onboarding-referentiels
 description: Lancement A de l'onboarding — génère page organisation, fiche, référentiels, points de validation et ligne Accès inactive pour une organisation au statut 1, en appliquant le §3 du balayage Notion. À lancer par /onboarding-referentiels <organisation>.
 argument-hint: "<nom de l'organisation, tel qu'au registre>"
 disable-model-invocation: true
+allowed-tools:
+  - "mcp__Notion__notion-fetch"
+  - "mcp__Notion__notion-search"
+  - "mcp__Notion__notion-query-data-sources"
+  - "mcp__Notion__notion-create-pages"
+  - "mcp__Notion__notion-update-page"
+  - "mcp__Notion__notion-create-view"
+  - "mcp__Notion__notion-update-view"
+  - "mcp__Notion__notion-get-async-task"
+  - "mcp__Gmail__search_threads"
+  - "mcp__Gmail__get_thread"
+  - "mcp__Gmail__list_drafts"
+  - "mcp__Gmail__get_draft"
+  - "mcp__Gmail__create_draft"
+  - "mcp__Gmail__update_draft"
+  - "mcp__Gmail__send_message"
+  - "WebFetch"
+  - "WebSearch"
+  - "Bash(openssl rand *)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/acces/*)"
+  - "Bash(curl *https://www.signauxfaibles.io/api/veille/*)"
 ---
+
+**Aucune confirmation en cours d'exécution.** Lancer cette commande vaut ordre pour
+toutes ses étapes : enchaîne-les sans demander de validation intermédiaire. Tu ne
+t'arrêtes que sur les gardes écrites ci-dessous ou dans la page Notion, et tu le dis
+dans le compte rendu.
 
 Tu tiens le pipeline d'équipement des organisations du cabinet Signaux faibles.
 Tu écris en français. Ce lancement est le **A** : générer les référentiels d'une

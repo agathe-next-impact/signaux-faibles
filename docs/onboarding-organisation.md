@@ -63,6 +63,18 @@ une seule organisation. Chacune coche puis décoche la case ▶ de son étape,
 pour que le registre garde la trace du lancement. Le modèle ne les déclenche
 jamais de lui-même (`disable-model-invocation`).
 
+**Aucune validation à l'intérieur d'une étape** (19 octobre 2026). Lancer une
+commande vaut ordre pour toutes ses étapes : chaque `SKILL.md` le dit en tête,
+et l'agent ne s'arrête que sur les gardes écrites (statut, porte, email
+manquant). Les outils dont les étapes ont besoin sont pré-autorisés à deux
+endroits : `allowed-tools` dans chaque `SKILL.md`, pour le tour qui lance la
+commande, et `permissions.allow` dans `.claude/settings.json`, pour les tours
+suivants d'un même lancement. La liste est fermée : lecture et écriture Notion
+(sans suppression), lecture, brouillons et envoi Gmail, recherche et lecture
+web, `openssl rand` et `curl` vers `https://www.signauxfaibles.io/api/acces/`
+et `/api/veille/` seulement. Un outil hors de cette liste redemande la
+permission, et c'est voulu.
+
 | Commande | Étape | Statut attendu |
 |---|---|---|
 | `/onboarding-demande Organisation : … · URL : …` | 1, enregistrer la demande | aucune ligne |
