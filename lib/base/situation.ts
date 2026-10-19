@@ -34,8 +34,11 @@ export type SituationDAbonnement = {
     readonly essaiOuvertLe: Date | null
   }
   readonly abonnement: AbonnementLu | null
-  /** Les lecteurs actifs de l'organisation, par leur nom seul. */
-  readonly lecteurs: ReadonlyArray<{ readonly nom: string }>
+  /**
+   * Les lecteurs actifs de l'organisation, par leur nom seul. L'identifiant est
+   * celui de la ligne, pour le retrait depuis l'écran ; jamais l'identifiant d'accès.
+   */
+  readonly lecteurs: ReadonlyArray<{ readonly id: string; readonly nom: string }>
 }
 
 function formuleLue(formule: string | null): 'mensuelle' | 'annuelle' | null {
@@ -76,7 +79,7 @@ export async function lireSituationDAbonnement(
         .where(eq(abonnements.organisationId, organisation.id))
         .orderBy(desc(abonnements.événementLe)),
       db
-        .select({ nom: lecteurs.nom })
+        .select({ id: lecteurs.id, nom: lecteurs.nom })
         .from(lecteurs)
         .where(and(eq(lecteurs.organisationId, organisation.id), eq(lecteurs.actif, true)))
         .orderBy(asc(lecteurs.nom)),

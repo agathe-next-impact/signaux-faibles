@@ -406,6 +406,34 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(actions.indexOf('exigerOpérateur()')).toBeLessThan(actions.indexOf('réglerLeParcours('))
   })
 
+  it('les lecteurs ne s’écrivent que par la route gardée et par les actions de l’espace client', () => {
+    // Depuis le 19 octobre 2026, un lecteur ajoute ou retire un lecteur de son
+    // organisation depuis « Mon abonnement ». L'action passe par le contrôle
+    // d'appartenance unique, refuse la visite opérateur, exige que Postgres
+    // fasse foi, et seulement ensuite écrit. Le retrait se fait par identifiant
+    // de ligne, jamais par adresse : la page n'en porte aucune.
+    expect(appelants('créerLecteur')).toEqual([
+      'app/api/veille/lecteurs/route.ts',
+      'lib/base/ecriture-lecteurs.ts',
+      'lib/portail/lecteurs.ts',
+    ])
+    expect(appelants('révoquerLecteurParId')).toEqual(['lib/base/ecriture-lecteurs.ts', 'lib/portail/lecteurs.ts'])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'lecteurs.ts'), 'utf8')
+    for (const [action, écriture] of [
+      ['export async function ajouterLecteur', 'créerLecteur('],
+      ['export async function retirerLecteur', 'révoquerLecteurParId('],
+    ] as const) {
+      const corps = source.slice(source.indexOf(action))
+      const contrôle = corps.indexOf('exigerAccès(slug)')
+      const refus = corps.indexOf('if (accès.enOpérateur)')
+      const source_ = corps.indexOf('lecteursModifiables()')
+      expect(contrôle, action).toBeGreaterThan(0)
+      expect(refus, action).toBeGreaterThan(contrôle)
+      expect(source_, action).toBeGreaterThan(refus)
+      expect(corps.indexOf(écriture), action).toBeGreaterThan(source_)
+    }
+  })
+
   it('le tableau des abonnements traverse les clients : sa garde est dans l’appartenance', () => {
     // La lecture Postgres n'a qu'un appelant, le contrôle qui vérifie le
     // privilège avant ; l'écran n'appelle que ce contrôle. Et l'écran client lit

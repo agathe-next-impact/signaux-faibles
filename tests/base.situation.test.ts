@@ -57,7 +57,10 @@ describe('situation d’abonnement', () => {
     expect(situation).toEqual({
       organisation: { état: 'essai', activéeLe: J0, essaiOuvertLe: null },
       abonnement: { état: 'active', formule: 'annuelle', périodeFin: new Date('2027-10-21T00:00:00Z') },
-      lecteurs: [{ nom: 'Ana' }, { nom: 'Zoé' }],
+      lecteurs: [
+        { id: expect.stringMatching(/^[0-9a-f-]{36}$/), nom: 'Ana' },
+        { id: expect.stringMatching(/^[0-9a-f-]{36}$/), nom: 'Zoé' },
+      ],
     })
     expect(JSON.stringify(situation)).not.toContain('@')
   })

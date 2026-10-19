@@ -455,6 +455,15 @@ sélecteur), avec les deux réglages déjà permis par `PATCH /api/veille/organi
 (`lib/portail/reglages.ts`, `exigerOpérateur` avant `réglerLeParcours`) et un
 lien vers l'abonnement dans Stripe, où seul il se modifie. `tableauDesAbonnements`
 traverse les clients et n'a que ce seul appelant.
+**Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
+lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
+`envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit
+que l'activation) ou en retire un, par identifiant de ligne, jamais par
+adresse, et jamais lui-même (`soi-même`). Plafond de trois actifs tenu par
+`lib/base/ecriture-lecteurs.ts`, comme pour la route. Les actions
+(`lib/portail/lecteurs.ts`) passent par `exigerAccès`, refusent la visite
+opérateur et n'écrivent que si Postgres fait foi (`lecteursModifiables`,
+`SOURCE_ACCES=postgres`) ; sinon l'écran renvoie à l'adresse d'abonnement.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi

@@ -4,7 +4,8 @@ import { Case, EntêteÉcran, Grille, Panneau } from '@/components/coquille'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { ADRESSE_D_ABONNEMENT, LECTEURS_ACTIFS_MAX, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { dateLongueDeParis, libelléDÉtape, PARUTIONS_D_ESSAI, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
-import { situationDeLEspace } from '@/lib/portail/situation'
+import { ajouterLecteur, retirerLecteur } from '@/lib/portail/lecteurs'
+import { lecteursModifiables, situationDeLEspace } from '@/lib/portail/situation'
 
 /**
  * Mon abonnement (19 octobre 2026) : où en est l'organisation, ce qu'elle
@@ -17,22 +18,42 @@ import { situationDeLEspace } from '@/lib/portail/situation'
  * de `tests/architecture.test.ts`.
  *
  * L'opératrice en visite le voit tel quel, bandeau compris : les boutons sont
- * là, et l'action les refuse (`lib/portail/abonnement.ts`), pour qu'elle voie
- * ce que le client voit sans pouvoir engager l'organisation.
+ * là, et les actions les refusent (`lib/portail/abonnement.ts`,
+ * `lib/portail/lecteurs.ts`), pour qu'elle voie ce que le client voit sans
+ * pouvoir engager l'organisation.
  *
- * Aucune adresse email n'y figure : les lecteurs sont nommés, pas adressés.
+ * Aucune adresse email n'y figure : les lecteurs sont nommés, pas adressés, et
+ * le retrait désigne une ligne par son identifiant.
  */
+const MESSAGES_LECTEURS: Record<string, string> = {
+  ajoute: 'Lecteur ajouté : son lien d’accès vient de partir.',
+  reactive: 'Ce lecteur était inscrit puis retiré : il est de nouveau actif, son lien vient de partir.',
+  deja: 'Cette adresse est déjà inscrite et active.',
+  plafond: `${LECTEURS_ACTIFS_MAX} lecteurs actifs au plus : retirez-en un pour en ajouter un.`,
+  retire: 'Lecteur retiré : son lien ne fonctionne plus.',
+  'soi-meme': 'Vous ne pouvez pas retirer votre propre accès.',
+  inconnu: 'Ce lecteur n’existe pas, ou n’est pas dans votre organisation.',
+  invalide: 'Nom ou adresse manquants ou invalides.',
+  operateur: 'Accès opérateur : les lecteurs se gèrent par les lecteurs de l’organisation.',
+  indisponible: `La gestion des lecteurs en ligne n’est pas encore ouverte. Écrivez à ${ADRESSE_D_ABONNEMENT}.`,
+  echec: 'La base n’a pas répondu : rien n’a été modifié.',
+  'lien-non-envoye':
+    'Lecteur ajouté, mais son lien n’a pas pu partir : il peut le demander sur « recevoir mon lien ».',
+  debit: 'Lecteur ajouté. Un lien vient déjà de partir à cette adresse : le suivant dans dix minutes.',
+}
+
 export default async function MonAbonnement({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ abonnement?: string | string[] }>
+  searchParams: Promise<{ abonnement?: string | string[]; lecteurs?: string | string[] }>
 }) {
   const { slug } = await params
   const { accès, étape: étapeLue } = await exigerLecture(slug)
-  const brut = (await searchParams).abonnement
-  const retour = typeof brut === 'string' ? brut : undefined
+  const paramètres = await searchParams
+  const retour = typeof paramètres.abonnement === 'string' ? paramètres.abonnement : undefined
+  const issueLecteurs = typeof paramètres.lecteurs === 'string' ? MESSAGES_LECTEURS[paramètres.lecteurs] : undefined
 
   const situation = await situationDeLEspace(accès.organisationId)
   // L'opérateur en visite n'a pas d'étape calculée par la lecture (elle lui est
@@ -54,6 +75,8 @@ export default async function MonAbonnement({
   // S'abonner a un sens tant qu'on ne l'est pas, et qu'aucune suspension posée à
   // la main ne prime : à un abonné suspendu, proposer de payer serait absurde.
   const peutSouscrire = étape?.étape !== 'abonnee' && !suspenduÀLaMain
+  const gestion = lecteursModifiables() && situation !== null
+  const auPlafond = situation !== null && situation.lecteurs.length >= LECTEURS_ACTIFS_MAX
 
   return (
     <>
@@ -139,21 +162,37 @@ export default async function MonAbonnement({
           )}
         </section>
 
-        <section className="flex flex-col gap-3">
+        <section id="lecteurs" className="flex flex-col gap-3">
           <h2 className="font-titre text-h3 font-semibold text-encre">Lecteurs</h2>
+          {issueLecteurs ? (
+            <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
+              {issueLecteurs}
+            </p>
+          ) : null}
           {situation ? (
             <>
               <p className="label-mono text-ardoise">
-                {situation.lecteurs.length} sur {LECTEURS_ACTIFS_MAX} lecteur
-                {LECTEURS_ACTIFS_MAX > 1 ? 's' : ''} actif{LECTEURS_ACTIFS_MAX > 1 ? 's' : ''}
+                {situation.lecteurs.length} sur {LECTEURS_ACTIFS_MAX} lecteurs actifs
               </p>
               {situation.lecteurs.length === 0 ? (
                 <p className="text-ardoise">Aucun lecteur actif n’est rattaché à votre organisation.</p>
               ) : (
                 <ul className="flex flex-col divide-y divide-gris-ligne border border-gris-ligne">
                   {situation.lecteurs.map((lecteur) => (
-                    <li key={lecteur.nom} className="px-5 py-3 text-encre">
-                      {lecteur.nom}
+                    <li key={lecteur.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                      <span className="text-encre">{lecteur.nom}</span>
+                      {gestion ? (
+                        <form action={retirerLecteur}>
+                          <input type="hidden" name="slug" value={accès.slug} />
+                          <input type="hidden" name="lecteur" value={lecteur.id} />
+                          <button
+                            type="submit"
+                            className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2"
+                          >
+                            Retirer
+                          </button>
+                        </form>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -163,13 +202,60 @@ export default async function MonAbonnement({
             <p className="text-ardoise">La liste des lecteurs est momentanément indisponible.</p>
           )}
           <p className="text-ardoise">
-            Chaque lecteur reçoit son propre lien d’accès, personnel. Pour ajouter ou retirer un
-            lecteur, écrivez à{' '}
-            <a className="text-encre underline" href={`mailto:${ADRESSE_D_ABONNEMENT}`}>
-              {ADRESSE_D_ABONNEMENT}
-            </a>
-            .
+            Chaque lecteur reçoit son propre lien d’accès, personnel et à ne pas transférer.
           </p>
+          {gestion ? (
+            auPlafond ? (
+              <p className="text-ardoise">
+                Votre organisation a ses {LECTEURS_ACTIFS_MAX} lecteurs. Pour en ajouter un, retirez-en un
+                d’abord.
+              </p>
+            ) : (
+              <form action={ajouterLecteur} className="flex flex-col gap-3 border border-gris-ligne bg-blanc p-5">
+                <input type="hidden" name="slug" value={accès.slug} />
+                <p className="label-mono text-ardoise">ajouter un lecteur</p>
+                <label className="flex flex-col gap-1 text-ardoise">
+                  Nom
+                  <input
+                    type="text"
+                    name="nom"
+                    required
+                    maxLength={200}
+                    autoComplete="off"
+                    className="rounded-douce border border-gris-ligne bg-blanc px-3 py-2 text-corps text-encre"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-ardoise">
+                  Adresse email
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    maxLength={320}
+                    autoComplete="off"
+                    className="rounded-douce border border-gris-ligne bg-blanc px-3 py-2 text-corps text-encre"
+                  />
+                </label>
+                <p className="text-ardoise">
+                  Son lien d’accès lui est envoyé aussitôt, à cette adresse.
+                </p>
+                <button
+                  type="submit"
+                  className="self-start rounded-douce bg-encre px-4 py-2 text-corps font-medium text-blanc"
+                >
+                  Ajouter et envoyer le lien
+                </button>
+              </form>
+            )
+          ) : (
+            <p className="text-ardoise">
+              Pour ajouter ou retirer un lecteur, écrivez à{' '}
+              <a className="text-encre underline" href={`mailto:${ADRESSE_D_ABONNEMENT}`}>
+                {ADRESSE_D_ABONNEMENT}
+              </a>
+              .
+            </p>
+          )}
         </section>
       </div>
     </>

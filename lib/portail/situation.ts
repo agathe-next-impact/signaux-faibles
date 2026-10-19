@@ -22,3 +22,14 @@ export async function situationDeLEspace(organisationId: string): Promise<Situat
     return null
   }
 }
+
+/**
+ * Les lecteurs se gèrent depuis l'écran seulement quand Postgres fait foi
+ * (`SOURCE_ACCES=postgres`), comme pour `POST /api/veille/lecteurs` : avant la
+ * bascule, un lecteur créé ici seulement ne pourrait pas entrer, et une
+ * révocation faite ici seulement ne fermerait rien. L'écran renvoie alors à
+ * l'adresse d'abonnement.
+ */
+export function lecteursModifiables(): boolean {
+  return baseConfigurée() && sourceAccès() === 'postgres'
+}
