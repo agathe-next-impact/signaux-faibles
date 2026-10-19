@@ -73,6 +73,14 @@ Organisation visée : $ARGUMENTS
    réduits à un renvoi, en octobre 2026, ont donné des lettres trois fois plus
    maigres que les autres.
 
+   **Le §1 de chaque référentiel compte de 4 à 6 familles** (point 8 de
+   l'autocontrôle du prompt) : chaque famille devient un axe de la lettre. En
+   dessous de quatre, scinde une famille qui mêle deux logiques d'impact ou active
+   une famille générique que le profil déclenche, avec ses sources, son critère
+   FORT et ses requêtes ; au-dessus de six, fusionne celles qui partagent leurs
+   sources. Le référentiel écosystème de Suneido, livré à trois familles, a donné
+   une première lettre à trois axes.
+
 5. **Consomme la case.** En fin de run, réussi ou non, décoche « ▶ Générer les
    référentiels (A) » et écris le résultat dans « Dernier lancement manuel ».
 
