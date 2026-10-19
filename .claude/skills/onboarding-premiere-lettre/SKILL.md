@@ -91,6 +91,27 @@ Organisation visée : $ARGUMENTS
    `/onboarding-ouvrir-espace` » dans « Dernier lancement manuel ». Dans ce cas,
    la vérification `GET /api/acces/ouvrir` du point 3 n'est pas bloquante.
 
+   **Si « Origine » vaut « Prospection »** (19 octobre 2026, lettre 1 envoyée
+   par lemlist sans sollicitation, `docs/prospection-lemlist.md`), le cas
+   prime sur « Invitation manuelle » :
+   - `POST /api/veille/organisations` avec `"origine": "prospection"` : l'essai
+     n'ouvrira qu'à la première visite du prospect, J0 à la première lettre
+     publiée à partir de cette semaine ;
+   - **le lecteur doit exister** : crée la ligne « Accès » (« Actif » coché,
+     identifiant neuf, `openssl rand -hex 16`) et fais `POST /api/veille/importer-acces`,
+     sinon le webhook lemlist ne rattachera rien et « recevoir mon lien » ne
+     répondra pas au prospect ;
+   - **n'appelle pas** `POST /api/acces/ouvrir` : le lien ne part que si le
+     prospect le demande sur « recevoir mon lien » ;
+   - **aucun brouillon Gmail au prospect** : la lettre 1 est publiée dans
+     « Éditions de veille » (statut Envoyé, pour le portail) et c'est lemlist qui
+     l'annonce ; le brouillon de contrôle va à l'adresse de relecture seulement ;
+   - ne coche pas « ▶ Activer » et laisse « Veille automatique » décochée : les
+     lettres suivantes attendent l'activation, que la tâche « Prospection ·
+     synchronisation » constate et applique ;
+   - écris dans « Dernier lancement manuel » : « lettre 1 publiée le JJ/MM,
+     prospection : en attente d'activation ».
+
    Appels au portail : toujours `https://www.signauxfaibles.io` (l'apex perd
    l'en-tête). **Aucun jeton à manipuler** : l'environnement ajoute
    l'autorisation ; n'ajoute aucun en-tête `Authorization` et n'écris jamais de

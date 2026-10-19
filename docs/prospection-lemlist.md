@@ -8,7 +8,7 @@ Trois acteurs, et aucun ne fait le travail d'un autre.
 
 | Qui | Fait | Ne fait jamais |
 |---|---|---|
-| **La tâche de prospection** (Cowork, connecteur lemlist et Notion) | Constitue le lot du lundi, déclenche l'onboarding, contrôle la lettre 1, écrit les variables lemlist des contacts (`sfUrl`, `sfLienLettre`, `sfFaitMarquant`), lit `GET /api/veille/prospection` pour le score et le registre Notion | Lancer une campagne, ajouter un contact à une campagne, envoyer un email : ces trois gestes restent à l'opératrice |
+| **La tâche de prospection** (Cowork, connecteur lemlist et Notion) | Constitue le lot du lundi, déclenche l'onboarding, contrôle la lettre 1, écrit les variables lemlist des contacts (`sfUrl`, `sfEssentiel`, `sfFaitMarquant`), lit `GET /api/veille/prospection` pour le score et le registre Notion | Lancer une campagne, ajouter un contact à une campagne, envoyer un email : ces trois gestes restent à l'opératrice |
 | **Le portail** | Reçoit les webhooks lemlist, rattache un lead à un lecteur, journalise, arrête la séquence à la première visite, tient `sfStatut` à jour | Ajouter un contact à une campagne, lancer quoi que ce soit, écrire dans Notion |
 | **lemlist** | Envoie la lettre 1 et les relances, mesure ouvertures, clics, réponses, désinscriptions, et les pousse au portail | Rien d'autre : lemlist n'est pas le registre |
 
@@ -46,7 +46,7 @@ tâche de prospection ──▶ GET /api/veille/prospection ──▶ score, reg
 | Champ | Écrit par | Contenu |
 |---|---|---|
 | `sfUrl` | tâche | site du prospect, clé de l'onboarding |
-| `sfLienLettre` | tâche | URL publique de la lettre 1 (ou de la page de démonstration) |
+| `sfEssentiel` | tâche | « L'essentiel » de la lettre 1 (les huit lignes au plus que mesure le validateur), en texte brut ; le corps du mail 1. Le portail n'a pas de page publique de lettre : le prospect lit l'essentiel dans le mail et le reste dans son espace |
 | `sfFaitMarquant` | tâche | le fait daté repris dans la relance J+4 |
 | `sfStatut` | **portail** | `envoye`, `actif`, `abonne`, `expire`, `resilie`, `rebondi`, `desinscrit` |
 
