@@ -8,7 +8,7 @@ Trois acteurs, et aucun ne fait le travail d'un autre.
 
 | Qui | Fait | Ne fait jamais |
 |---|---|---|
-| **La tâche de prospection** (Cowork, connecteur lemlist et Notion) | Constitue le lot du lundi, déclenche l'onboarding, contrôle la lettre 1, écrit les variables lemlist des contacts (`sfLienLettre`, `sfFaitMarquant`, `sfUrl`, `sfPack`), lit `GET /api/veille/prospection` pour le score et le registre Notion | Lancer une campagne, ajouter un contact à une campagne, envoyer un email : ces trois gestes restent à l'opératrice |
+| **La tâche de prospection** (Cowork, connecteur lemlist et Notion) | Constitue le lot du lundi, déclenche l'onboarding, contrôle la lettre 1, écrit les variables lemlist des contacts (`sfUrl`, `sfLienLettre`, `sfFaitMarquant`), lit `GET /api/veille/prospection` pour le score et le registre Notion | Lancer une campagne, ajouter un contact à une campagne, envoyer un email : ces trois gestes restent à l'opératrice |
 | **Le portail** | Reçoit les webhooks lemlist, rattache un lead à un lecteur, journalise, arrête la séquence à la première visite, tient `sfStatut` à jour | Ajouter un contact à une campagne, lancer quoi que ce soit, écrire dans Notion |
 | **lemlist** | Envoie la lettre 1 et les relances, mesure ouvertures, clics, réponses, désinscriptions, et les pousse au portail | Rien d'autre : lemlist n'est pas le registre |
 
@@ -37,12 +37,11 @@ tâche de prospection ──▶ GET /api/veille/prospection ──▶ score, reg
 | Champ | Écrit par | Contenu |
 |---|---|---|
 | `sfUrl` | tâche | site du prospect, clé de l'onboarding |
-| `sfPack` | tâche | slug du pack Sentinelle |
 | `sfLienLettre` | tâche | URL publique de la lettre 1 (ou de la page de démonstration) |
 | `sfFaitMarquant` | tâche | le fait daté repris dans la relance J+4 |
 | `sfStatut` | **portail** | `envoye`, `actif`, `abonne`, `expire`, `resilie`, `rebondi`, `desinscrit` |
 
-Les campagnes se nomment « SF · [pack] », une par pack, séquence à trois emails (lettre 1 à J0, relance J+4, relance J+10), arrêt automatique sur réponse. Une condition de séquence sur `sfStatut` n'est pas nécessaire : le portail arrête la séquence en marquant le lead intéressé.
+Les campagnes se nomment « SF · [secteur de ciblage] » (Conseil, Industrie, ÉSS…), le secteur étant un critère de liste et non un produit : chaque lettre 1 est construite depuis le site du prospect par l'onboarding. Séquence à trois emails (lettre 1 à J0, relance J+4, relance J+10), arrêt automatique sur réponse. Une condition de séquence sur `sfStatut` n'est pas nécessaire : le portail arrête la séquence en marquant le lead intéressé.
 
 ## Mise en service
 
