@@ -76,7 +76,14 @@ Lettres de veille »).
 le rendrait sur la page de l'axe et le citerait sur celle de chaque acteur
 nommé, comme un fait ; depuis le 21 septembre 2026, le RAS motivé, les sources
 non ouvertes et les notes de méthode s'écrivent en encadré),
-`essentiel-ligne-longue`.
+`essentiel-ligne-longue`, et, pour l'édition n°1 seulement (19 octobre 2026),
+`lettre-maigre` (moins de six paragraphes de faits hors encadrés, dans les
+axes, les rubriques de signaux et l'actualité des acteurs) et `analyse-absente`
+(aucune rubrique de niveau 1 dont le titre contient « analyse »). Ces deux-là
+viennent du §6 du prompt de génération des référentiels : les éditions n°1 de
+La petite vitrine et de Suneido comptaient 5 paragraphes de faits en moyenne,
+contre 26 pour les lettres régulières, sans que rien ne le signale. Le contrôle
+du soir ne passe pas le numéro et ne les émet donc jamais.
 
 ### « L'essentiel » : 8 lignes de 140 caractères au plus
 

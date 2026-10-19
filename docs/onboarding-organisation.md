@@ -71,9 +71,27 @@ endroits : `allowed-tools` dans chaque `SKILL.md`, pour le tour qui lance la
 commande, et `permissions.allow` dans `.claude/settings.json`, pour les tours
 suivants d'un même lancement. La liste est fermée : lecture et écriture Notion
 (sans suppression), lecture, brouillons et envoi Gmail, recherche et lecture
-web, `openssl rand` et `curl` vers `https://www.signauxfaibles.io/api/acces/`
-et `/api/veille/` seulement. Un outil hors de cette liste redemande la
-permission, et c'est voulu.
+web, `openssl rand`, `curl` vers `https://www.signauxfaibles.io/api/acces/`
+et `/api/veille/` seulement, et `node scripts/lire-page.mjs`, qui lit avec le
+Chromium de la session une source que la récupération simple ne lit pas. Un
+outil hors de cette liste redemande la permission, et c'est voulu.
+
+**Le §6 des référentiels fixe la richesse des lettres** (19 octobre 2026). Le
+prompt des lettres rédige « selon le §6 du référentiel, sans variation de
+structure ». Le §3.6 du balayage renvoyait au « prompt correspondant » sans le
+nommer ; les référentiels de La petite vitrine et de Suneido en sont sortis avec
+un §6 réduit à un renvoi au contrat de forme, et leurs éditions n°1 comptaient
+en moyenne 5 paragraphes de faits, contre 26 pour les lettres régulières. Le
+§3.6 désigne désormais le prompt de génération (page Notion « Référentiel de
+veille », `3d2fe829ce71801eae49fa7fc4a0e76c`), dont le §6 est recopié verbatim :
+treize rubriques, faits de 1 à 3 paragraphes avec « Ce que cela change pour
+vous », analyse de la période, six faits datés au moins, tenus par
+l'élargissement de la fenêtre et jamais par du remplissage. Les commandes
+`/onboarding-referentiels`, `/onboarding-repercussion` et
+`/onboarding-premiere-lettre` contrôlent ce §6 ; la dernière tient en outre la
+grille de collecte dans un fichier, élargit la fenêtre d'une famille vide et
+rouvre au navigateur une source en échec. Le validateur du portail avertit
+(`lettre-maigre`, `analyse-absente`) quand une lettre reste en deçà.
 
 | Commande | Étape | Statut attendu |
 |---|---|---|

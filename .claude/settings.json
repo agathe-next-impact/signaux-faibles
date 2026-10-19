@@ -21,6 +21,7 @@
       "Bash(openssl rand *)",
       "Bash(curl *https://www.signauxfaibles.io/api/acces/*)",
       "Bash(curl *https://www.signauxfaibles.io/api/veille/*)",
+      "Bash(node scripts/lire-page.mjs *)",
       "Read(//root/.claude/projects/**)"
     ]
   }

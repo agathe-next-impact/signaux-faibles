@@ -66,6 +66,12 @@ Organisation visée : $ARGUMENTS
    quelle ; le statut de la ligne ne recule jamais ; passage au statut 3
    seulement depuis le statut 2.
 
+   Une réponse qui fait réécrire un référentiel ne touche jamais à la structure
+   de son §6 : le §6 garde le bloc du prompt de génération (« Référentiel de
+   veille », `3d2fe829ce71801eae49fa7fc4a0e76c`), « STRUCTURE, INVARIABLE » et
+   « Ce que cela change pour vous » compris. Si tu trouves un §6 réduit à un renvoi
+   au contrat de forme, remplace-le par ce bloc et note-le au journal.
+
 6. **Consomme la case** si elle était cochée, et écris le résultat dans
    « Dernier lancement manuel ».
 

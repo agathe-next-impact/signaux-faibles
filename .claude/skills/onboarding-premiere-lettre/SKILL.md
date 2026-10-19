@@ -24,6 +24,8 @@ allowed-tools:
   - "Bash(openssl rand *)"
   - "Bash(curl *https://www.signauxfaibles.io/api/acces/*)"
   - "Bash(curl *https://www.signauxfaibles.io/api/veille/*)"
+  - "Bash(node scripts/lire-page.mjs *)"
+  - "Agent"
 ---
 
 **Aucune confirmation en cours d'exécution.** Lancer cette commande vaut ordre pour
@@ -96,6 +98,44 @@ Organisation visée : $ARGUMENTS
    tourne pas sur l'environnement « signaux-faibles-io » ou que le chemin n'y
    est pas autorisé : dis-le en tête du compte rendu, sans chercher le jeton
    ailleurs.
+
+   **Avant la collecte, contrôle le §6 des deux référentiels.** S'il ne contient
+   pas « STRUCTURE, INVARIABLE » et « Ce que cela change pour vous », il a été
+   réduit à un renvoi au contrat de forme : remplace-le par le bloc §6 du prompt
+   de génération (« Référentiel de veille », `3d2fe829ce71801eae49fa7fc4a0e76c`),
+   note-le au journal du référentiel et dans « Amendements au référentiel ». C'est
+   ce §6 qui fixe les rubriques et la profondeur de la lettre ; le contrat de forme
+   ne dit que la forme.
+
+   **La collecte, sans raccourci** (étapes 1 et 1bis de « Tâche — Lettres de
+   veille ») :
+   - tiens la **grille de collecte dans un fichier** du répertoire de travail
+     temporaire de la session, une ligne par source nommée, dossier, entité du
+     corpus, requête type, échéance, extrait fourni et alerte, avec son état
+     (OUVERTE, REQUÊTÉE, FOURNIE, NON OUVERTE et sa raison). Aucune rédaction tant
+     qu'une ligne est vide. La note de méthode et le pied de la lettre se tirent
+     de ce fichier, jamais de mémoire : une lettre n'affirme pas qu'une requête a
+     été lancée si la grille ne le porte pas ;
+   - lance **chaque requête type** des deux référentiels, une par une, et requête
+     **chaque entité du corpus** une par une ;
+   - une source qui ne répond pas, ou dont le contenu n'est pas lisible, est
+     rouverte avec le navigateur, `node scripts/lire-page.mjs <url>`, avant
+     d'être classée « non ouverte » ; la raison écrite est celle du second essai ;
+   - **une famille vide dans la fenêtre nominale fait élargir la fenêtre**, famille
+     par famille, comme le prévoit l'étape 1 du prompt : les faits antérieurs
+     entrent comme « élément de contexte, non nouveau », datés, la case « Fenêtre
+     élargie » est cochée et la note de méthode le dit. Le volume minimal du §6
+     (six faits datés hors encadrés) se tient par l'élargissement, jamais par du
+     remplissage ;
+   - la collecte est longue : confie-la, famille par famille, à des agents
+     (`Agent`) qui rendent leurs lignes de grille et leurs faits sourcés, pour que
+     la rédaction ne se fasse pas dans un contexte saturé. Tu restes seul à écrire
+     dans Notion et dans Gmail.
+
+   **Avant le lint**, compte les paragraphes de faits hors encadrés et vérifie la
+   présence de chaque rubrique du §6 (dont « Analyse de la période »). Une rubrique
+   absente ou un volume sous le minimal sans fenêtre élargie : la lettre n'est pas
+   prête. Le lint du portail le signale aussi, en avertissement.
 
 6. **Consomme la case** en fin de run, lettre produite ou non, et écris le
    résultat dans « Dernier lancement manuel ».

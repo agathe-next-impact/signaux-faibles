@@ -41,8 +41,10 @@ Organisation visée : $ARGUMENTS
    organisation (prompts A et B) » (`3d5fe829ce718112a40cfcaf55d3fd76`) en
    entier : « Le cycle », le préambule du « Prompt — Balayage » et son **§3**
    (3.0 à 3.8, dont 3.7bis). C'est ce §3 que tu exécutes, **tel qu'il est écrit
-   dans Notion aujourd'hui** ; cette commande ne fait que le cibler. Si la page
-   est inaccessible, n'écris rien et arrête-toi.
+   dans Notion aujourd'hui** ; cette commande ne fait que le cibler. Ouvre aussi,
+   **en entier**, le prompt de génération que le §3.6 applique : page « Référentiel
+   de veille » (`3d2fe829ce71801eae49fa7fc4a0e76c`), section « 2. Le prompt ». Si
+   l'une des deux pages est inaccessible, n'écris rien et arrête-toi.
 
 2. **Trouve la ligne.** Dans le registre
    (`collection://4ae154b9-0bca-42f3-9e2e-e546a40dd77f`), la ligne dont
@@ -61,6 +63,15 @@ Organisation visée : $ARGUMENTS
    création. La ligne « Accès » du 3.7bis est créée **inactive**, avec
    l'identifiant de la **ligne du registre**, jamais celui de la page
    organisation.
+
+   **Le §6 de chaque référentiel recopie le bloc §6 du prompt de génération,
+   verbatim**, variables substituées : la structure en treize rubriques, les faits
+   de 1 à 3 paragraphes avec « Ce que cela change pour vous », l'analyse, le volume
+   minimal. Il ne se réduit jamais à un renvoi au contrat de forme, qui ne dit que
+   la forme. Avant de livrer, relis chaque §6 : s'il ne contient pas « STRUCTURE,
+   INVARIABLE » et « Ce que cela change pour vous », il est à refaire. Les deux §6
+   réduits à un renvoi, en octobre 2026, ont donné des lettres trois fois plus
+   maigres que les autres.
 
 5. **Consomme la case.** En fin de run, réussi ou non, décoche « ▶ Générer les
    référentiels (A) » et écris le résultat dans « Dernier lancement manuel ».
