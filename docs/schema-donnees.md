@@ -173,6 +173,25 @@ Copie de Stripe, écrite par son webhook seulement.
 
 Créée par la migration `0001_palier_1c_abonnements` ; écrite par `lib/base/abonnements.ts`, appelé du seul webhook `app/api/webhooks/stripe`, qui vérifie la signature avec le SDK Stripe (`STRIPE_WEBHOOK_SECRET`). L'organisation est lue dans `metadata.organisation_id` de l'abonnement, posée par le portail à la création du paiement ; jamais déduite d'une adresse ou d'un nom de client.
 
+### `prospections` et `événements_prospection` (créées le 19 octobre 2026, migration 0005)
+
+Une ligne de `prospections` par lead lemlist, c'est-à-dire par adresse engagée dans une campagne de prospection (lettre 1 non sollicitée, puis relances). Elle tient ce que lemlist et le portail ne savent pas l'un sans l'autre : où en est le prospect, et quel lead lemlist le porte. Écrite par le webhook lemlist, par la première visite d'un lecteur et par la synchronisation quotidienne ; lue par `GET /api/veille/prospection`. Le détail est dans `docs/prospection-lemlist.md`.
+
+| Colonne | Type | Notes |
+|---|---|---|
+| `id` | uuid | |
+| `organisation_id`, `lecteur_id` | uuid, référence, nullables | nuls tant qu'aucun lecteur actif ne porte l'adresse du lead ; rattachés au premier événement, ou à la première visite |
+| `destinataire_empreinte` | text | huit hexadécimaux ; jamais l'adresse |
+| `campagne_lemlist`, `lead_lemlist`, `contact_lemlist` | text, nullables | `cam_…`, `lea_…` (unique), `con_…` ; apportés par le webhook |
+| `statut` | enum | `envoye`, `actif`, `abonne`, `expire`, `resilie`, `rebondi`, `desinscrit` (final) |
+| `statut_le` | timestamptz | |
+| `séquence_arrêtée_le` | timestamptz, nullable | posée quand lemlist a accepté d'arrêter la séquence |
+| `synchronisé_statut`, `synchronisé_le` | enum, timestamptz, nullables | le dernier statut écrit chez lemlist ; tant qu'il diffère de `statut`, la synchronisation retente |
+| `erreur_synchro` | text, nullable | un code (`lemlist-503`, `lemlist-réseau`), jamais un message |
+| `dernier_événement_le`, `créée_le`, `modifiée_le` | timestamptz | |
+
+`événements_prospection` : le journal des webhooks, une ligne par activité lemlist (`activité_lemlist` unique, `act_…`), avec `type` (`emailsSent`, `emailsOpened`…), `étape` de la séquence, `survenu_le`, `reçu_le`. Le score d'un prospect se calcule dans la tâche à partir de ces comptes.
+
 ### `sources` (palier 3)
 
 | Colonne | Type | Notes |

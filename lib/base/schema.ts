@@ -315,3 +315,100 @@ export const courriers = pgTable(
 
 export type Courrier = typeof courriers.$inferSelect
 
+/**
+ * La prospection par lemlist (19 octobre 2026, liaison « portail ↔ lemlist »).
+ *
+ * Une ligne par lead lemlist, c'est-à-dire par adresse engagée dans une
+ * campagne de prospection : la lettre 1 envoyée sans sollicitation, puis les
+ * relances. Le portail tient ici deux choses que lemlist et lui ne peuvent pas
+ * savoir l'un sans l'autre : **où en est le prospect** (il a ouvert son espace,
+ * il s'est abonné, son essai a expiré, il s'est désinscrit) et **quel lead
+ * lemlist le porte**, pour pouvoir arrêter la séquence à la seconde où il
+ * s'active et tenir à jour ses variables.
+ *
+ * L'adresse n'est jamais copiée ici, comme dans `courriers` : le lecteur est
+ * désigné par `lecteur_id` quand le rattachement a réussi, et toujours par
+ * l'empreinte de huit caractères. Les identifiants lemlist (`lea_…`, `cam_…`,
+ * `con_…`) ne sont pas des données personnelles.
+ *
+ * Le statut est **stocké**, à la différence de l'étape du parcours : il décrit
+ * ce que lemlist doit savoir et quand on le lui a dit, pas un droit de lecture.
+ * `synchronisé_statut` est le dernier statut effectivement écrit chez lemlist ;
+ * tant qu'il diffère de `statut`, la synchronisation quotidienne retente.
+ * `désinscrit` est final : rien ne l'écrase, et la tâche de prospection doit
+ * le lire avant de recontacter une adresse.
+ */
+export const statutProspection = pgEnum('statut_prospection', [
+  'envoye',
+  'actif',
+  'abonne',
+  'expire',
+  'resilie',
+  'rebondi',
+  'desinscrit',
+])
+
+export const prospections = pgTable(
+  'prospections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** Nulle quand aucun lecteur du portail ne porte l'adresse du lead. */
+    organisationId: uuid('organisation_id').references(() => organisations.id),
+    lecteurId: uuid('lecteur_id').references(() => lecteurs.id),
+    /** Empreinte de l'adresse du lead, jamais l'adresse. */
+    destinataireEmpreinte: text('destinataire_empreinte').notNull(),
+    campagneLemlist: text('campagne_lemlist'),
+    /** L'identifiant du lead dans la campagne (`lea_…`), par lequel les variables s'écrivent. */
+    leadLemlist: text('lead_lemlist').unique(),
+    contactLemlist: text('contact_lemlist'),
+    statut: statutProspection('statut').notNull().default('envoye'),
+    statutLe: horodatage('statut_le').notNull().defaultNow(),
+    /** Posée quand la séquence lemlist a été arrêtée (lead marqué intéressé). */
+    séquenceArrêtéeLe: horodatage('séquence_arrêtée_le'),
+    /** Le dernier statut écrit dans les variables lemlist ; nul tant qu'aucune écriture n'a réussi. */
+    synchroniséStatut: statutProspection('synchronisé_statut'),
+    synchroniséLe: horodatage('synchronisé_le'),
+    /** Un code (`lemlist-404`, `lemlist-réseau`), jamais un message. */
+    erreurSynchro: text('erreur_synchro'),
+    dernierÉvénementLe: horodatage('dernier_événement_le'),
+    crééeLe: horodatage('créée_le').notNull().defaultNow(),
+    modifiéeLe: horodatage('modifiée_le').notNull().defaultNow(),
+  },
+  (table) => [
+    index('prospections_empreinte').on(table.destinataireEmpreinte),
+    index('prospections_organisation').on(table.organisationId),
+    check('prospections_empreinte_forme', sql`${table.destinataireEmpreinte} ~ '^[0-9a-f]{8}$'`),
+    check('prospections_lead_forme', sql`${table.leadLemlist} is null or ${table.leadLemlist} ~ '^lea_'`),
+    check('prospections_campagne_forme', sql`${table.campagneLemlist} is null or ${table.campagneLemlist} ~ '^cam_'`),
+  ],
+)
+
+/**
+ * Le journal des événements que lemlist envoie par webhook : lettre envoyée,
+ * ouverte, lien cliqué, réponse, rebond, désinscription. Un événement est
+ * reconnu à son identifiant d'activité lemlist (`act_…`) : une livraison
+ * répétée est ignorée. C'est de ce journal que la tâche de prospection tire le
+ * score d'un prospect ; le portail ne le calcule pas.
+ */
+export const événementsProspection = pgTable(
+  'événements_prospection',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    prospectionId: uuid('prospection_id')
+      .notNull()
+      .references(() => prospections.id),
+    activitéLemlist: text('activité_lemlist').notNull().unique(),
+    /** Tel que lemlist le nomme : `emailsSent`, `emailsOpened`, `emailsClicked`… */
+    type: text('type').notNull(),
+    /** Numéro de l'étape de la séquence, quand lemlist le donne. */
+    étape: smallint('étape'),
+    /** La date de l'événement chez lemlist. */
+    survenuLe: horodatage('survenu_le').notNull(),
+    reçuLe: horodatage('reçu_le').notNull().defaultNow(),
+  },
+  (table) => [index('événements_prospection_prospection').on(table.prospectionId)],
+)
+
+export type Prospection = typeof prospections.$inferSelect
+export type ÉvénementProspection = typeof événementsProspection.$inferSelect
+

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { migrationsEnAttente, migrationsNonAppliquées } from '@/lib/base/migrer'
@@ -52,6 +54,8 @@ describe('migrationsEnAttente', () => {
     )
     const manquantes = await migrationsEnAttente(base.db)
     expect(manquantes).toHaveLength(1)
-    expect(manquantes[0]).toMatch(/^0004_/)
+    // La dernière du journal du dépôt, quelle qu'elle soit : le test ne doit pas se réécrire à chaque migration.
+    const journalDuDépôt = JSON.parse(readFileSync(join(process.cwd(), 'drizzle', 'meta', '_journal.json'), 'utf8')) as { entries: Array<{ tag: string }> }
+    expect(manquantes[0]).toBe(journalDuDépôt.entries.at(-1)?.tag)
   })
 })

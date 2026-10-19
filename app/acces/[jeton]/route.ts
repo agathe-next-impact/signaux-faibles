@@ -1,8 +1,9 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { after, NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/lib/env'
 import { vérifierJeton } from '@/lib/auth/jeton'
 import { attributsDuCookie, NOM_DU_COOKIE } from '@/lib/auth/session'
 import { lireAccèsParIdentifiant } from '@/lib/auth/source-acces'
+import { signalerVisite } from '@/lib/portail/prospection'
 
 /**
  * La seule URL où le jeton apparaît.
@@ -38,6 +39,17 @@ export async function GET(
 
   const réponse = NextResponse.redirect(new URL(destination, requête.url))
   réponse.cookies.set(NOM_DU_COOKIE, decodeURIComponent(jeton), attributsDuCookie())
+
+  // La première visite est l'activation au sens de la prospection : lemlist
+  // doit arrêter ses relances. Hors du chemin de la réponse, et sans jamais
+  // la retarder ni la faire échouer (19 octobre 2026). `signalerVisite` ne lève
+  // jamais ; hors d'une requête Next (les tests), `after` n'existe pas et la
+  // tâche part directement.
+  try {
+    after(() => signalerVisite(identifiant))
+  } catch {
+    void signalerVisite(identifiant)
+  }
 
   return réponse
 }

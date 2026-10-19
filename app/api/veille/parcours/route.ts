@@ -5,16 +5,20 @@ import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { env } from '@/lib/env'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { envoyerLesCourriersDeParcours } from '@/lib/portail/parcours-courriers'
+import { synchroniserLaProspection } from '@/lib/portail/prospection'
 
 /**
- * Les courriers de fin d'essai, une fois par jour.
+ * Les courriers de fin d'essai, une fois par jour, puis la synchronisation de
+ * la prospection avec lemlist (19 octobre 2026).
  *
  *   GET /api/veille/parcours
  *   Authorization: Bearer <CRON_SECRET ou ACTIVATION_SECRET>
  *
  * Appelée par le cron de `vercel.json`. Rejouable : un courrier déjà réservé
- * dans le journal n'est jamais renvoyé. Rend le rapport du passage, sans aucune
- * adresse (empreintes seulement).
+ * dans le journal n'est jamais renvoyé, et lemlist ne reçoit que ce qu'il ne
+ * sait pas encore. Rend le rapport du passage, sans aucune adresse (empreintes
+ * seulement). La synchronisation vient après les courriers et ne peut pas les
+ * empêcher : son échec est rapporté, pas levé.
  */
 export async function GET(requête: NextRequest): Promise<NextResponse> {
   const refus = refuserSiNonAutorisé(requête, 'parcours')
@@ -29,12 +33,17 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
   }
 
   try {
+    const aujourdHui = aujourdHuiÀParis()
     const rapport = await envoyerLesCourriersDeParcours({
-      aujourdHui: aujourdHuiÀParis(),
+      aujourdHui,
       portailUrl: env().PORTAIL_URL,
       relecteurParDéfaut: process.env['RELECTEUR_EMAIL'] || undefined,
     })
-    return NextResponse.json({ état: 'passé', ...rapport })
+    const prospection = await synchroniserLaProspection({ aujourdHui }).catch((erreur: unknown) => {
+      console.error(`[veille/parcours] prospection non synchronisée : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return { état: 'erreur' as const }
+    })
+    return NextResponse.json({ état: 'passé', ...rapport, prospection })
   } catch (erreur) {
     // L'erreur sort de lib/base sans donnée : seulement un code.
     console.error(`[veille/parcours] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

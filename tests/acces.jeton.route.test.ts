@@ -10,8 +10,10 @@ import { signerJeton } from '@/lib/auth/jeton'
 const SECRET = 'un-secret-de-test-suffisamment-long-pour-etre-realiste'
 
 const source = vi.hoisted(() => ({ lireAccèsParIdentifiant: vi.fn() }))
+const prospection = vi.hoisted(() => ({ signalerVisite: vi.fn(async () => undefined) }))
 vi.mock('@/lib/auth/source-acces', () => source)
 vi.mock('@/lib/env', () => ({ env: () => ({ ACCES_SECRET_HMAC: SECRET }) }))
+vi.mock('@/lib/portail/prospection', () => prospection)
 
 const { GET } = await import('@/app/acces/[jeton]/route')
 
@@ -37,10 +39,11 @@ beforeEach(() => vi.resetAllMocks())
 afterEach(() => vi.restoreAllMocks())
 
 describe('GET /acces/[jeton]', () => {
-  it('mène un lecteur à son espace', async () => {
+  it('mène un lecteur à son espace, et signale la visite à la prospection', async () => {
     source.lireAccèsParIdentifiant.mockResolvedValue(accès())
     const réponse = await ouvrir('a'.repeat(32))
     expect(new URL(réponse.headers.get('location') ?? '').pathname).toBe('/hermitage')
+    expect(prospection.signalerVisite).toHaveBeenCalledWith('a'.repeat(32))
   })
 
   it('mène l’opérateur au sélecteur, même avec le slug d’un client sur sa ligne', async () => {
@@ -59,5 +62,13 @@ describe('GET /acces/[jeton]', () => {
     source.lireAccèsParIdentifiant.mockResolvedValue(accès({ tousLesEspaces: true, actif: false }))
     const réponse = await ouvrir('d'.repeat(32))
     expect(new URL(réponse.headers.get('location') ?? '').pathname).toBe('/recevoir-mon-lien')
+  })
+})
+
+describe('la visite n’est signalée qu’après une ouverture réussie', () => {
+  it('un jeton invalide ne signale rien', async () => {
+    source.lireAccèsParIdentifiant.mockResolvedValue(null)
+    await ouvrir('e'.repeat(32))
+    expect(prospection.signalerVisite).not.toHaveBeenCalled()
   })
 })
