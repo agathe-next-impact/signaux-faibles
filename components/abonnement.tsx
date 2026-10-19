@@ -1,5 +1,23 @@
+import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
 import { PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+
+/**
+ * Le chemin vers « Mon abonnement », dans le pied du rail (19 octobre 2026).
+ * Toujours présent, quel que soit le droit de lecture : un espace suspendu
+ * doit encore mener à l'endroit où l'on s'abonne. Ce n'est pas un onglet : les
+ * onglets sont les écrans de veille, et le menu de pied en porte déjà sept.
+ */
+export function LienMonAbonnement({ slug }: { slug: string }) {
+  return (
+    <Link
+      href={`/${slug}/abonnement`}
+      className="self-start text-label text-ardoise underline decoration-gris-ligne underline-offset-2"
+    >
+      Mon abonnement
+    </Link>
+  )
+}
 
 /**
  * Les boutons d'abonnement (palier 1c). De vrais formulaires, comme

@@ -1,6 +1,7 @@
 import { desc, eq } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
+import { abonnementQuiFaitFoi } from '@/lib/base/abonnements'
 import { abonnements, organisations } from '@/lib/base/schema'
 import type { EntréeDuParcours } from '@/lib/domaine/parcours'
 
@@ -18,9 +19,6 @@ import type { EntréeDuParcours } from '@/lib/domaine/parcours'
  * Rend `null` si l'organisation n'est pas dans Postgres (un client que l'import
  * n'a pas encore vu) : l'appelant garde alors la lecture complète.
  */
-
-const OUVERTS = new Set(['trialing', 'active', 'past_due'])
-const FERMÉS = new Set(['canceled', 'unpaid', 'paused'])
 
 export async function lireEntréeDuParcours(
   registreNotion: string,
@@ -41,8 +39,7 @@ export async function lireEntréeDuParcours(
       .from(abonnements)
       .where(eq(abonnements.organisationId, organisation.id))
       .orderBy(desc(abonnements.événementLe))
-    const abonnement =
-      lignes.find((l) => OUVERTS.has(l.état)) ?? lignes.find((l) => FERMÉS.has(l.état)) ?? lignes[0] ?? null
+    const abonnement = abonnementQuiFaitFoi(lignes)
 
     return {
       organisation: { état: organisation.état, activéeLe: organisation.activéeLe },

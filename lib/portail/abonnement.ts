@@ -47,7 +47,7 @@ export async function souscrire(données: FormData): Promise<void> {
   if (typeof formule !== 'string' || !FORMULES.has(formule as Formule)) notFound()
 
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) redirect(`/${accès.slug}?abonnement=operateur`)
+  if (accès.enOpérateur) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
 
   const destination = await pageDePaiement(accès, formule as Formule)
   // `redirect` lève une exception de contrôle : appelé hors de tout `try`.
@@ -57,7 +57,7 @@ export async function souscrire(données: FormData): Promise<void> {
 export async function gérerLAbonnement(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) redirect(`/${accès.slug}?abonnement=operateur`)
+  if (accès.enOpérateur) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
 
   const destination = await espaceDeFacturation(accès)
   redirect(destination)
@@ -66,7 +66,7 @@ export async function gérerLAbonnement(données: FormData): Promise<void> {
 type AccèsFacturé = { readonly slug: string; readonly organisationId: string; readonly email: string | null }
 
 async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise<string> {
-  const indisponible = `/${accès.slug}?abonnement=indisponible`
+  const indisponible = `/${accès.slug}/abonnement?abonnement=indisponible`
   const configuration = configurationStripe()
   if (!configuration || !baseConfigurée()) return indisponible
   if (!cléAccordéeAuMode(configuration.cléSecrète, process.env['STRIPE_MODE'] === 'reel')) {
@@ -110,12 +110,12 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
 }
 
 async function espaceDeFacturation(accès: AccèsFacturé): Promise<string> {
-  const indisponible = `/${accès.slug}?abonnement=indisponible`
+  const indisponible = `/${accès.slug}/abonnement?abonnement=indisponible`
   const configuration = configurationStripe()
   if (!configuration || !baseConfigurée()) return indisponible
   try {
     const facturation = await lireFacturation(accès.organisationId)
-    if (!facturation?.abonnement) return `/${accès.slug}?abonnement=aucun`
+    if (!facturation?.abonnement) return `/${accès.slug}/abonnement?abonnement=aucun`
     return await urlDeFacturation(configuration, facturation.abonnement.clientStripe, accès.slug)
   } catch (erreur) {
     console.error(`[abonnement] ${accès.slug} : espace de facturation impossible (${nomDErreur(erreur)}).`)

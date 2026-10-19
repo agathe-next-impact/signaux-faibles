@@ -158,13 +158,23 @@ export async function lireAbonnement(organisationId: string, db: Base = base()):
       .from(abonnements)
       .where(eq(abonnements.organisationId, organisationId))
       .orderBy(desc(abonnements.événementLe))
-    return (
-      lignes.find((l) => ÉTATS_OUVERTS.has(l.état)) ??
-      lignes.find((l) => ÉTATS_FERMÉS.has(l.état)) ??
-      lignes[0] ??
-      null
-    )
+    return abonnementQuiFaitFoi(lignes)
   })
+}
+
+/**
+ * La règle de `lireAbonnement`, seule, sur des lignes déjà lues **du plus
+ * récent au plus ancien** : un ouvert, sinon le dernier fermé, sinon le plus
+ * récent. Partagée avec le parcours et la situation, pour qu'une seule
+ * écriture de la règle existe.
+ */
+export function abonnementQuiFaitFoi<T extends { readonly état: string }>(lignes: readonly T[]): T | null {
+  return (
+    lignes.find((l) => ÉTATS_OUVERTS.has(l.état)) ??
+    lignes.find((l) => ÉTATS_FERMÉS.has(l.état)) ??
+    lignes[0] ??
+    null
+  )
 }
 
 /**

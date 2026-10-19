@@ -3,6 +3,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { lecteurs, organisations } from '@/lib/base/schema'
+import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 
 /**
  * Les écritures des lecteurs, palier 1a-bis : créer, révoquer, réactiver.
@@ -25,13 +26,10 @@ export type RésultatÉcriture =
   | { readonly sorte: 'créé' | 'révoqué' | 'réactivé' | 'inchangé' }
   | { readonly sorte: 'organisation-inconnue' | 'lecteur-inconnu' | 'déjà-inscrit' | 'plafond-atteint' }
 
-/**
- * Trois lecteurs actifs au plus par organisation : c'est l'offre (décision du
- * 17 octobre 2026, `docs/decision-portail-moteur.md`). Pour en ajouter un, on en
- * révoque un autre. L'opérateur global n'est rattaché à aucune organisation et
- * n'entre donc pas dans le compte.
- */
-export const LECTEURS_ACTIFS_MAX = 3
+// Le plafond est celui de l'offre (décision du 17 octobre 2026,
+// `docs/decision-portail-moteur.md`), écrit dans `lib/domaine/offre.ts` avec les
+// prix ; réexporté ici pour la route des lecteurs et ses tests.
+export { LECTEURS_ACTIFS_MAX }
 
 const adresse = (email: string) => email.trim().toLowerCase()
 

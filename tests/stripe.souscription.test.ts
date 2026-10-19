@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cléAccordéeAuMode,
   configurationStripe,
+  lienTableauDeBordStripe,
   paramètresDeFacturation,
   paramètresDePaiement,
   type ConfigurationStripe,
@@ -102,5 +103,12 @@ describe('paramètresDeFacturation', () => {
       locale: 'fr',
       return_url: 'https://www.signauxfaibles.io/k',
     })
+  })
+})
+
+describe('lienTableauDeBordStripe', () => {
+  it('mène à l’abonnement, en test ou en réel selon le mode', () => {
+    expect(lienTableauDeBordStripe('sub_123', false)).toBe('https://dashboard.stripe.com/test/subscriptions/sub_123')
+    expect(lienTableauDeBordStripe('sub_123', true)).toBe('https://dashboard.stripe.com/subscriptions/sub_123')
   })
 })

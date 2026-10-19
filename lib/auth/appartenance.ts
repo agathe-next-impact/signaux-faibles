@@ -5,7 +5,10 @@ import {
   espacesOuverts,
 } from '@/lib/auth/source-acces'
 import type { Accès, Espace } from '@/lib/notion/acces'
+import { sourceAccès } from '@/lib/auth/source-acces'
 import { identifiantDeLaSession } from '@/lib/auth/session'
+import { baseConfigurée } from '@/lib/base/client'
+import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
 import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
 
 /**
@@ -127,12 +130,40 @@ export async function listerLesEspaces(): Promise<{
   readonly accès: Accès
   readonly espaces: Espace[]
 }> {
+  const accès = await exigerOpérateur()
+  return { accès, espaces: await espacesOuverts() }
+}
+
+/**
+ * Le privilège opérateur, seul, pour ce qui ne se rapporte à aucun espace :
+ * le sélecteur, le tableau des abonnements et ses réglages. Même ordre que
+ * `exigerAccès` : session, ligne active, puis la case « Tous les espaces », et
+ * `notFound` sans elle, pour ne pas confirmer que la page existe.
+ */
+export async function exigerOpérateur(): Promise<Accès> {
   const identifiant = await identifiantDeLaSession()
   if (!identifiant) redirect('/recevoir-mon-lien')
 
   const accès = await lireAccèsParIdentifiant(identifiant)
   if (!accès || !accès.actif) redirect('/recevoir-mon-lien?revoque=1')
   if (!accès.tousLesEspaces) notFound()
+  return accès
+}
 
-  return { accès, espaces: await espacesOuverts() }
+/**
+ * Le tableau des abonnements de l'opératrice (19 octobre 2026).
+ *
+ * Comme `listerLesEspaces`, la garde est **dans** la fonction : la lecture
+ * traverse les clients, et `tableauDesAbonnements` n'a pas d'autre appelant
+ * (`tests/architecture.test.ts`). `lignes` vaut `null` quand Postgres n'est pas
+ * en service (`SOURCE_ACCES=notion`, base absente) : l'écran le dit, au lieu de
+ * montrer un tableau vide qu'on prendrait pour « aucun abonnement ».
+ */
+export async function listerLesAbonnements(): Promise<{
+  readonly accès: Accès
+  readonly lignes: LigneDAbonnement[] | null
+}> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null }
+  return { accès, lignes: await tableauDesAbonnements() }
 }

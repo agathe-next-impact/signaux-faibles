@@ -136,6 +136,32 @@ export function étapeDuParcours({ organisation, abonnement, aujourdHui }: Entr�
 }
 
 /**
+ * Le libellé d'une étape, le même sur l'écran « Mon abonnement » du client et
+ * sur le tableau de l'opératrice : une étape nommée de deux façons finirait par
+ * se lire comme deux étapes. En minuscules, pour la police mono des labels.
+ */
+export function libelléDÉtape(étape: Étape): string {
+  switch (étape.étape) {
+    case 'essai':
+      return `essai · parution ${étape.parution} sur ${PARUTIONS_D_ESSAI}`
+    case 'tronquee':
+      return 'fin d’essai · l’essentiel seul'
+    case 'abonnee':
+      if (étape.paiementEnRetard) return 'abonnée · paiement en retard'
+      return étape.source === 'stripe' ? 'abonnée' : 'abonnée · hors stripe'
+    case 'suspendue':
+      return étape.manuelle ? 'suspendue par l’opératrice' : 'suspendue · essai terminé'
+    case 'hors-parcours':
+      return `hors parcours · ${étape.raison}`
+  }
+}
+
+/** Une date en toutes lettres, en heure de Paris : « 5 octobre 2026 ». */
+export function dateLongueDeParis(instant: Date): string {
+  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeZone: 'Europe/Paris' }).format(instant)
+}
+
+/**
  * Ce que l'étape permet de lire : tout, « L'essentiel » seul, ou rien.
  *
  * Une organisation hors parcours garde la lecture complète, y compris sur une

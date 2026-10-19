@@ -149,6 +149,15 @@ export function paramètresDePaiement(entrée: {
   }
 }
 
+/**
+ * La page d'un abonnement dans le tableau de bord Stripe, pour l'opératrice.
+ * C'est là, et nulle part dans le portail, que l'abonnement se modifie : le
+ * portail n'en tient qu'une copie, écrite par le webhook.
+ */
+export function lienTableauDeBordStripe(abonnementStripe: string, modeRéel: boolean): string {
+  return `https://dashboard.stripe.com/${modeRéel ? '' : 'test/'}subscriptions/${abonnementStripe}`
+}
+
 /** L'espace de facturation Stripe d'un abonné : factures, moyen de paiement, résiliation. */
 export function paramètresDeFacturation(entrée: {
   readonly configuration: ConfigurationStripe

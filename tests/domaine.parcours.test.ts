@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { dateDeParis, étapeDuParcours, lectureAutorisée, semainesÉcoulées, type EntréeDuParcours } from '@/lib/domaine/parcours'
+import {
+  dateDeParis,
+  dateLongueDeParis,
+  libelléDÉtape,
+  étapeDuParcours,
+  lectureAutorisée,
+  semainesÉcoulées,
+  type EntréeDuParcours,
+} from '@/lib/domaine/parcours'
 
 /**
  * Le parcours d'essai de l'offre du 17 octobre 2026 : trois parutions
@@ -110,5 +118,25 @@ describe('lectureAutorisée', () => {
     expect(lectureAutorisée({ étape: 'abonnee', source: 'stripe', paiementEnRetard: false })).toBe('complète')
     expect(lectureAutorisée({ étape: 'tronquee' })).toBe('essentiel')
     expect(lectureAutorisée({ étape: 'suspendue', manuelle: false })).toBe('aucune')
+  })
+})
+
+describe('libelléDÉtape', () => {
+  it('nomme chaque étape en minuscules, pour la police mono des labels', () => {
+    expect(libelléDÉtape({ étape: 'essai', parution: 2 })).toBe('essai · parution 2 sur 3')
+    expect(libelléDÉtape({ étape: 'tronquee' })).toBe('fin d’essai · l’essentiel seul')
+    expect(libelléDÉtape({ étape: 'abonnee', source: 'stripe', paiementEnRetard: false })).toBe('abonnée')
+    expect(libelléDÉtape({ étape: 'abonnee', source: 'hors-stripe', paiementEnRetard: false })).toBe('abonnée · hors stripe')
+    expect(libelléDÉtape({ étape: 'abonnee', source: 'stripe', paiementEnRetard: true })).toBe('abonnée · paiement en retard')
+    expect(libelléDÉtape({ étape: 'suspendue', manuelle: true })).toBe('suspendue par l’opératrice')
+    expect(libelléDÉtape({ étape: 'suspendue', manuelle: false })).toBe('suspendue · essai terminé')
+    expect(libelléDÉtape({ étape: 'hors-parcours', raison: 'pas encore activée' })).toBe('hors parcours · pas encore activée')
+  })
+})
+
+describe('dateLongueDeParis', () => {
+  it('écrit la date en toutes lettres, en heure de Paris', () => {
+    // 23 h 30 UTC le 4 octobre : déjà le 5 à Paris.
+    expect(dateLongueDeParis(new Date('2026-10-04T23:30:00Z'))).toBe('5 octobre 2026')
   })
 })

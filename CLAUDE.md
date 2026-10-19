@@ -437,6 +437,25 @@ semaine) · **Périmètre** (`/[slug]/perimetre`, décidé le 10 septembre 2026
 sous le nom « Cadrage », renommé le 14 septembre en accueillant les acteurs
 suivis). Pas d'autre écran sans discussion.
 
+**Deux écrans d'abonnement, hors des sept (19 octobre 2026).** `/[slug]/abonnement`
+(« Mon abonnement ») n'est pas un écran de veille : il ne lit aucune édition,
+seulement Postgres (`lib/base/situation.ts`, par la clé de cloisonnement), et
+reste ouvert quel que soit le droit de lecture, puisque c'est l'endroit où un
+essai terminé mène ; il est atteint par le pied du rail (`LienMonAbonnement`),
+jamais par un onglet, et `tests/architecture.test.ts` le range parmi les écrans
+ouverts. Il montre l'étape (`libelléDÉtape`, le même libellé que chez
+l'opératrice), la formule et l'échéance lues dans la copie Stripe, les lecteurs
+actifs par leur nom (jamais une adresse), et les boutons S'abonner ou Gérer mon
+abonnement ; l'opératrice en visite le voit tel quel, bandeau compris, et
+l'action refuse son geste. `/espaces/abonnements` est le tableau de
+l'opératrice : une ligne par organisation, gardée par `listerLesAbonnements`
+(privilège « Tous les espaces », garde **dans** la fonction comme pour le
+sélecteur), avec les deux réglages déjà permis par `PATCH /api/veille/organisations`
+(prolonger l'essai, relecture des courriers) en actions serveur
+(`lib/portail/reglages.ts`, `exigerOpérateur` avant `réglerLeParcours`) et un
+lien vers l'abonnement dans Stripe, où seul il se modifie. `tableauDesAbonnements`
+traverse les clients et n'a que ce seul appelant.
+
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
 parle la veille » et « qui bouge » —, et surtout leur coût n'a rien à voir :
