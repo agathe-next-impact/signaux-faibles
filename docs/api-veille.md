@@ -360,6 +360,29 @@ client dont l'onboarding ou la souscription prend du retard, sans écrire en bas
   courriers de fin d'essai à l'adresse de relecture (`true`) ou au client
   (`false`), sans toucher au calendrier. 200 `relecture-réglée`.
 
+Trois réglages de plus le 19 octobre 2026, sur la même route, que le tableau de
+l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
+
+- `{ "slug", "action": "offre", "offre": "standard" | "early_adopter" | "gratuite" }`
+  pose l'offre. `gratuite` est l'accès offert : jamais de fin d'essai, étape
+  « accès offert », et une organisation en essai passe `abonnee`.
+  `early_adopter` ne propose et n'admet que la formule à 29 € HT par mois,
+  sur son propre prix Stripe (`STRIPE_PRIX_EARLY_ADOPTER`). 200 `offre-posée`
+  avec `offre` et `état` ;
+- `{ "slug", "action": "parutions", "parutions": 1..8 }` règle le nombre de
+  parutions complètes de l'essai (trois par défaut ; quatre pour un essai à
+  J+28). 200 `parutions-réglées` ; 409 `parutions-invalides` ;
+- `{ "slug", "action": "parcours", "prochaineLettre": "AAAA-MM-JJ", "restantes": n }`
+  fait entrer une organisation dans le parcours à une date choisie : J0 est le
+  lundi de la semaine de la prochaine lettre, reculé de `parutions − restantes`
+  semaines, et la mécanique existante suit (courrier de dernière parution,
+  « L'essentiel », suspension). **C'est le chemin pour un client historique
+  qui devient payant** ; `ouvrirEnEssai` garde sa garde contre la
+  rétrogradation. 200 `mis-en-parcours` avec `j0`, `parutions`, `restantes` ;
+  409 `abonnée-stripe` (un abonnement Stripe est ouvert), 409 `pas-en-essai`
+  (état hors `essai` et `abonnee`), 409 `parutions-invalides` (plus de
+  restantes que de parutions), 400 `date-invalide`.
+
 404 `inconnue` pour un slug absent. Un espace réduit à « L'essentiel » ou
 suspendu par le calendrier retrouve la lecture complète si le décalage le
 ramène dans l'essai. Un courrier de fin d'essai déjà parti ne repart pas : le
