@@ -83,6 +83,9 @@ export async function envoyerLesCourriersDeParcours(entrée: {
     let activéeLe = organisation.activéeLe
     if (!activéeLe) {
       if (!organisation.registreNotion) continue
+      // Entrée par prospection : l'essai n'ouvre qu'à la première visite, qui
+      // pose `essai_ouvert_le`. Avant, la lettre 1 est publiée mais ne compte pas.
+      if (organisation.entréeParProspection && !organisation.essaiOuvertLe) continue
       try {
         // Le registre tel que la base le tient (32 hexadécimaux), la même clé
         // que les écrans en mode `postgres`.

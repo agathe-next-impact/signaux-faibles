@@ -16,7 +16,12 @@ import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/ga
  *
  *   POST /api/veille/organisations
  *   Authorization: Bearer <ACTIVATION_SECRET>
- *   { "slug": "acme", "nom": "Acme", "registreNotion": "<page_id de la ligne du registre>" }
+ *   { "slug": "acme", "nom": "Acme", "registreNotion": "<page_id de la ligne du registre>", "origine": "demande" | "prospection" }
+ *
+ * `origine: "prospection"` (19 octobre 2026) : la lettre 1 part de lemlist
+ * sans sollicitation, et l'essai n'ouvre qu'à la **première visite** du
+ * lecteur ; `essai_ouvert_le` reste nul jusque-là, J0 n'est pas fixé, et les
+ * lettres publiées avant la visite ne comptent pas dans l'essai.
  *
  * Appelée par l'onboarding Cowork (étape B), **avant** `POST
  * /api/veille/importer-acces` puis `POST /api/acces/ouvrir`. Sans elle,
@@ -46,6 +51,8 @@ const demande = z.object({
   slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   nom: z.string().trim().min(1).max(200),
   registreNotion: z.string().trim().refine(identifiantNotionValide),
+  /** `prospection` : la lettre 1 part sans sollicitation, l'essai n'ouvre qu'à la première visite. */
+  origine: z.enum(['demande', 'prospection']).optional(),
 })
 
 const réglage = z.discriminatedUnion('action', [
@@ -102,9 +109,9 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   const lue = demande.safeParse(await requête.json().catch(() => null))
   if (!lue.success) return NextResponse.json({ état: 'invalide' }, { status: 400 })
 
-  const { slug, nom, registreNotion } = lue.data
+  const { slug, nom, registreNotion, origine } = lue.data
   try {
-    const résultat = await ouvrirEnEssai({ slug, nom, registreNotion })
+    const résultat = await ouvrirEnEssai({ slug, nom, registreNotion, prospection: origine === 'prospection' })
     console.info(`[veille/organisations] ${slug} : ${résultat.sorte}.`)
     return NextResponse.json({ état: résultat.sorte, ...détail(résultat) }, { status: STATUT[résultat.sorte] })
   } catch (erreur) {

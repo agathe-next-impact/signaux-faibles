@@ -30,7 +30,8 @@ Une par client, prospect ou organisation de test.
 | `registre_notion` | text, nullable | identifiant de l'ancienne ligne du registre, celui que portent les éditions ; conservé tant que des éditions Notion le référencent |
 | `état` | enum | `demande`, `generation`, `essai`, `abonnee`, `suspendue`, `ecartee`, `test` |
 | `demandée_le`, `activée_le`, `suspendue_le` | timestamptz, nullable | `activée_le` fixe J0 du parcours ; posée une seule fois par le passage quotidien, à la date de la première lettre publiée (`fixerJ0`) |
-| `essai_ouvert_le` | timestamptz, nullable | entrée dans l'essai par l'onboarding (`ouvrirEnEssai`) ; plancher de J0 (lundi de cette semaine) |
+| `essai_ouvert_le` | timestamptz, nullable | entrée dans l'essai par l'onboarding (`ouvrirEnEssai`) ; plancher de J0 (lundi de cette semaine). Nulle pour une entrée par prospection tant que le lecteur n'a pas fait sa première visite |
+| `entrée_par_prospection` | boolean, défaut faux | lettre 1 partie sans sollicitation (migration 0006) ; l'essai n'ouvre qu'à la première visite, qui pose `essai_ouvert_le` |
 | `relecture_requise` | boolean, défaut vrai | tant que vrai, les envois vont à l'adresse de relecture |
 | `email_relecture` | text, nullable | vide : l'adresse par défaut de l'environnement |
 | `créée_le`, `modifiée_le`, `archivée_le` | timestamptz | |

@@ -55,6 +55,17 @@ describe('prospection (portail)', () => {
     return o!.id
   }
 
+  it('la première visite ouvre l’essai d’une organisation entrée par prospection', async () => {
+    const [o] = await db
+      .insert(organisations)
+      .values({ slug: 'prospect', nom: 'Prospect', état: 'essai', entréeParProspection: true, essaiOuvertLe: null })
+      .returning({ id: organisations.id })
+    await db.insert(lecteurs).values({ organisationId: o!.id, nom: 'Serge', email: 'serge@suneido.fr', identifiantAcces: 'b'.repeat(32) })
+    await signalerVisite('b'.repeat(32), { db, lemlist: null })
+    const [lue] = await db.select({ essaiOuvertLe: organisations.essaiOuvertLe }).from(organisations)
+    expect(lue?.essaiOuvertLe).not.toBeNull()
+  })
+
   it('l’activation arrête la séquence et écrit le statut, une seule fois', async () => {
     await organisationEnEssai()
     await traiterÉvénementLemlist(événement(), { db })

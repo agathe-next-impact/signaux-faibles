@@ -4,6 +4,7 @@ import {
   enregistrerVisite,
   journaliserÉvénement,
   noterLaSynchro,
+  ouvrirLEssaiÀLaVisite,
   passerAuStatut,
   prospectionDuLecteur,
   prospectionsEnCours,
@@ -140,6 +141,22 @@ describe('prospection (Postgres)', () => {
     const [lue] = await prospectionsRécentes(new Date(0), db)
     expect(lue?.erreurSynchro).toBeNull()
     expect(lue?.séquenceArrêtéeLe).not.toBeNull()
+  })
+
+  it('l’essai d’une organisation entrée par prospection n’ouvre qu’à la première visite, une seule fois', async () => {
+    const [o] = await db
+      .insert(organisations)
+      .values({ slug: 'prospect', nom: 'Prospect', état: 'essai', entréeParProspection: true, essaiOuvertLe: null })
+      .returning({ id: organisations.id })
+    const visite = new Date('2026-10-20T09:00:00Z')
+    expect(await ouvrirLEssaiÀLaVisite(o!.id, visite, db)).toBe(true)
+    expect(await ouvrirLEssaiÀLaVisite(o!.id, new Date('2026-10-21T09:00:00Z'), db)).toBe(false)
+    const [lue] = await db.select({ essaiOuvertLe: organisations.essaiOuvertLe }).from(organisations)
+    expect(lue?.essaiOuvertLe?.toISOString()).toBe(visite.toISOString())
+
+    // Une organisation entrée par une demande a déjà son essai ouvert : rien ne bouge.
+    const classique = await organisation('essai')
+    expect(await ouvrirLEssaiÀLaVisite(classique, visite, db)).toBe(false)
   })
 
   it('donne aux prospections en cours ce qu’il faut pour calculer l’étape du parcours', async () => {

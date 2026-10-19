@@ -4,6 +4,7 @@ import {
   enregistrerVisite,
   journaliserÉvénement,
   noterLaSynchro,
+  ouvrirLEssaiÀLaVisite,
   passerAuStatut,
   prospectionDuLecteur,
   prospectionsEnCours,
@@ -79,8 +80,14 @@ export async function signalerVisite(identifiantAcces: string, dépendances: Dé
   try {
     if (!dépendances.db && !prospectionActive()) return
     const db = dépendances.db ?? base()
-    const visite = await enregistrerVisite(identifiantAcces, new Date(), db)
+    const maintenant = new Date()
+    const visite = await enregistrerVisite(identifiantAcces, maintenant, db)
     if (!visite || !visite.première) return
+
+    // Entrée par prospection : c'est cette visite qui ouvre le mois d'essai.
+    if (visite.organisationId && (await ouvrirLEssaiÀLaVisite(visite.organisationId, maintenant, db))) {
+      console.info('[prospection] essai ouvert à la première visite.')
+    }
 
     const ligne = await prospectionDuLecteur(
       { id: visite.lecteurId, organisationId: visite.organisationId, empreinte: visite.email ? empreinte(visite.email) : null },
