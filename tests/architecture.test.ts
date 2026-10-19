@@ -686,3 +686,80 @@ describe('le schéma de la base part avec le code', () => {
     expect(config).toContain("'/api/veille/etat': ['./drizzle/meta/_journal.json']")
   })
 })
+
+/**
+ * La prospection par lemlist (19 octobre 2026) tient à trois frontières.
+ *
+ * Un seul module parle à l'API lemlist, et il n'a que deux gestes : arrêter une
+ * séquence, écrire des variables. Un seul module les appelle, l'orchestration
+ * de la prospection, qui est aussi la seule à écrire dans les tables de
+ * prospection. Et la seule lecture ouverte au dispositif passe par sa route
+ * `/api/veille/prospection`. Le portail n'ajoute jamais un contact à une
+ * campagne et ne lance rien : ce serait le signe que la prospection a changé de
+ * mains sans discussion.
+ */
+describe('la prospection par lemlist reste à sa place', () => {
+  const sources = (): Array<{ chemin: string; source: string }> => {
+    const trouvés: Array<{ chemin: string; source: string }> = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (/\.tsx?$/.test(entrée.name)) trouvés.push({ chemin: relatif(chemin), source: readFileSync(chemin, 'utf8') })
+      }
+    }
+    for (const racine of ['app', 'components', 'lib']) parcourir(join(process.cwd(), racine))
+    return trouvés
+  }
+  const appelants = (motif: string | RegExp) =>
+    sources()
+      .filter(({ source }) => (typeof motif === 'string' ? source.includes(motif) : motif.test(source)))
+      .map(({ chemin }) => chemin)
+      .sort()
+
+  it('seul lib/lemlist/client.ts connaît l’adresse de l’API lemlist', () => {
+    expect(appelants('api.lemlist.com')).toEqual(['lib/lemlist/client.ts'])
+  })
+
+  it('le client lemlist n’a que deux gestes, et un seul appelant', () => {
+    for (const geste of ['arrêterLaSéquence', 'écrireVariables']) {
+      // `\b` ne connaît pas les lettres accentuées : la frontière de mot est écrite à la main.
+      expect(appelants(new RegExp(`(?<![\\p{L}\\p{N}_$])${geste}(?![\\p{L}\\p{N}_$])`, 'u')), geste).toEqual(['lib/lemlist/client.ts', 'lib/portail/prospection.ts'])
+    }
+    const client = readFileSync(join(process.cwd(), 'lib', 'lemlist', 'client.ts'), 'utf8')
+    // Ni création de lead, ni lancement de campagne, ni suppression : rien de plus que ce qui est documenté ici.
+    expect(client).not.toMatch(/'DELETE'|\/campaigns\/[^']*\/start|\/leads\/[^']*\/launch/)
+    expect(client.match(/requête\('(?:POST|PATCH)'/g)).toHaveLength(2)
+  })
+
+  it('les écritures de prospection ne viennent que de l’orchestration', () => {
+    for (const fonction of ['rattacherLead(', 'journaliserÉvénement(', 'enregistrerVisite(', 'passerAuStatut(', 'noterLaSynchro(', 'prospectionsÀSynchroniser(', 'prospectionsEnCours(']) {
+      expect(appelants(fonction), fonction).toEqual(['lib/base/prospection.ts', 'lib/portail/prospection.ts'])
+    }
+    expect(appelants('prospectionsRécentes(')).toEqual(['app/api/veille/prospection/route.ts', 'lib/base/prospection.ts'])
+  })
+
+  it('la visite n’est signalée que par la route du lien d’accès, et la synchronisation que par le cron du parcours', () => {
+    expect(appelants('signalerVisite(')).toEqual(['app/acces/[jeton]/route.ts', 'lib/portail/prospection.ts'])
+    expect(appelants('synchroniserLaProspection(')).toEqual(['app/api/veille/parcours/route.ts', 'lib/portail/prospection.ts'])
+    expect(appelants('traiterÉvénementLemlist(')).toEqual(['app/api/webhooks/lemlist/route.ts', 'lib/portail/prospection.ts'])
+  })
+
+  it('le webhook lemlist vérifie le secret avant d’écrire, et lit ce secret directement', () => {
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'webhooks', 'lemlist', 'route.ts'), 'utf8')
+    expect(route.indexOf('interpréterLivraisonLemlist(')).toBeLessThan(route.indexOf('traiterÉvénementLemlist('))
+    expect(route).toContain("process.env['LEMLIST_WEBHOOK_SECRET']")
+    expect(route).not.toContain('env()')
+    // Il ne répond jamais à lemlist par un appel à lemlist : pas d'importation du client.
+    expect(route).not.toContain('lib/lemlist/client')
+  })
+
+  it('la route du lien d’accès signale la visite après la pose du cookie, hors du chemin de la réponse', () => {
+    const route = readFileSync(join(process.cwd(), 'app', 'acces', '[jeton]', 'route.ts'), 'utf8')
+    expect(route.indexOf('cookies.set(')).toBeLessThan(route.indexOf('signalerVisite('))
+    expect(route).toContain('after(() => signalerVisite(identifiant))')
+  })
+})

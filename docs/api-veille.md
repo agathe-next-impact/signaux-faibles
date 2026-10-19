@@ -409,3 +409,62 @@ journaux ; après une création, le lien part par `POST /api/acces/ouvrir`
 lecteursActifs }`, où `base` vaut `joignable`, `injoignable` ou `non
 configurée`. En mode `postgres`, une base injoignable est un défaut
 (`base-injoignable`), notifié comme les autres.
+
+## Prospection par lemlist (19 octobre 2026)
+
+Le portail et lemlist se parlent dans les deux sens, et une tâche Cowork lit
+ce que le portail en sait. Le détail, les champs lemlist et la mise en
+service sont dans `docs/prospection-lemlist.md`.
+
+### `GET /api/veille/prospection?jours=30` — l'état de la prospection
+
+Gardée par le jeton. Une ligne par lead lemlist modifié dans la fenêtre :
+
+```json
+{
+  "état": "lu", "jours": 30, "nombre": 2,
+  "prospections": [{
+    "id": "…", "slug": "suneido", "destinataireEmpreinte": "9f3a2c1b",
+    "campagneLemlist": "cam_…", "leadLemlist": "lea_…",
+    "statut": "actif", "statutLe": "2026-10-20T08:12:00.000Z",
+    "séquenceArrêtéeLe": "2026-10-20T08:12:01.000Z",
+    "synchroniséStatut": "actif", "erreurSynchro": null,
+    "dernierÉvénementLe": "2026-10-19T07:00:00.000Z", "crééeLe": "…",
+    "événements": { "emailsSent": 1, "emailsOpened": 2, "emailsClicked": 1 }
+  }]
+}
+```
+
+Statuts : `envoye` (lettre 1 partie), `actif` (le prospect a ouvert son
+espace), `abonne`, `expire` (essai fini sans abonnement), `resilie`,
+`rebondi` (adresse en erreur), `desinscrit` (**final** : à lire avant de
+recontacter une adresse). Le score d'un prospect se calcule dans la tâche, à
+partir des comptes d'événements ; le portail ne le calcule pas. Aucune adresse
+dans la réponse : `slug` et empreinte suffisent à rapprocher la ligne d'un
+contact lemlist, dont la tâche a l'adresse par le connecteur.
+
+### `POST /api/webhooks/lemlist` — ce que lemlist dit au portail
+
+Pas de jeton : la livraison est authentifiée par le champ `secret` que lemlist
+renvoie dans chaque corps, comparé à `LEMLIST_WEBHOOK_SECRET`. 401 sans secret
+ou avec un secret faux ; 500 sur une panne de la base (lemlist relivre) ; 200
+pour tout le reste. Le premier événement d'un lead rattache son adresse au
+lecteur actif qui la porte (en minuscules, organisation en prospection de
+préférence) ; les suivants s'ajoutent au journal, une fois chacun (identifiant
+d'activité `act_…`). Une désinscription (`emailsUnsubscribed`,
+`entityUnsubscribed`, `emailsNotInterested`) rend le statut `desinscrit`.
+
+### Ce que le portail dit à lemlist
+
+- **À la première visite d'un lecteur** (`/acces/[jeton]`, hors du chemin de la
+  réponse) : le lead est marqué intéressé dans sa campagne, ce qui arrête la
+  séquence, et `sfStatut` passe à `actif`.
+- **Chaque jour**, dans `GET /api/veille/parcours` après les courriers de fin
+  d'essai : `abonne`, `expire` et `resilie` sont déduits de l'étape du parcours,
+  et tout ce que lemlist ne sait pas encore lui est écrit, y compris ce qui a
+  échoué la veille. La réponse du cron porte `prospection : { examinées,
+  passées, synchronisées, enAttente, échecs }`.
+
+Sans `LEMLIST_API_KEY`, rien ne part : la prospection est tenue dans Postgres
+et `enAttente` compte ce qui attend. Le portail n'ajoute jamais un contact à
+une campagne et ne lance rien : c'est le rôle de la tâche de prospection.

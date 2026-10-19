@@ -59,6 +59,12 @@ const schema = z.object({
   STRIPE_PRIX_MENSUEL: facultative(z.string().min(1)),
   STRIPE_PRIX_ANNUEL: facultative(z.string().min(1)),
   STRIPE_TAUX_TVA: facultative(z.string().min(1)),
+  // Prospection par lemlist (19 octobre 2026) : lues directement dans
+  // `process.env` par `lib/lemlist/client.ts` et par le webhook lemlist, comme
+  // les secrets Stripe. Sans clé, rien ne part vers lemlist ; sans secret, le
+  // webhook refuse les livraisons. Aucune page ne tombe.
+  LEMLIST_API_KEY: facultative(z.string().min(1)),
+  LEMLIST_WEBHOOK_SECRET: facultative(z.string().min(16)),
   GMAIL_EXPEDITEUR: z.email(),
   GMAIL_EXPEDITEUR_NOM: z.preprocess(
     (valeur) => (valeur === '' ? undefined : valeur),

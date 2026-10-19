@@ -248,6 +248,24 @@ Les lire avant toute session.
   avant la mise en service de l'essai), bannière et page abonnement. La
   formule admise par la souscription dépend de l'offre, revérifiée dans
   l'action, et `ChoixDeFormule` ne montre que celle-là
+- **Prospection par lemlist** (19 octobre 2026, `docs/prospection-lemlist.md`) :
+  la lettre 1 part de lemlist sans sollicitation ; le portail en tient l'état
+  dans `prospections` et le journal des webhooks dans
+  `événements_prospection` (migration 0005), jamais l'adresse (empreinte et
+  `lecteur_id`). Trois entrées, dans `lib/portail/prospection.ts` seulement :
+  le webhook `app/api/webhooks/lemlist` (secret renvoyé dans le corps, comparé
+  à `LEMLIST_WEBHOOK_SECRET` en temps constant, lu dans `process.env`) ; la
+  **première visite** d'un lecteur sur `/acces/[jeton]`, qui est l'activation
+  et arrête la séquence lemlist (lead marqué intéressé) dans `after()`, sans
+  jamais toucher à la réponse ; et la synchronisation quotidienne dans
+  `/api/veille/parcours`, qui déduit `abonne`, `expire` et `resilie` de
+  `étapeDuParcours` et écrit `sfStatut` chez lemlist. Le client
+  (`lib/lemlist/client.ts`) n'a que deux gestes, arrêter une séquence et écrire
+  des variables : **le portail n'ajoute jamais un contact à une campagne et ne
+  lance rien**, c'est le rôle de la tâche de prospection. Le jeton d'accès ne
+  voyage pas dans lemlist : le bouton de la lettre 1 mène à « recevoir mon
+  lien ». `desinscrit` est final. Sans `LEMLIST_API_KEY`, tout est tenu dans
+  Postgres et rien ne part. `tests/architecture.test.ts` tient ces frontières
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante
