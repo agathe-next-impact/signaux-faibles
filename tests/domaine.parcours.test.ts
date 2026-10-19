@@ -140,7 +140,10 @@ describe('libelléDÉtape', () => {
     expect(libelléDÉtape({ étape: 'abonnee', source: 'stripe', paiementEnRetard: true })).toBe('abonnée · paiement en retard')
     expect(libelléDÉtape({ étape: 'suspendue', manuelle: true })).toBe('suspendue par l’opératrice')
     expect(libelléDÉtape({ étape: 'suspendue', manuelle: false })).toBe('suspendue · essai terminé')
-    expect(libelléDÉtape({ étape: 'hors-parcours', raison: 'pas encore activée' })).toBe('hors parcours · pas encore activée')
+    // Le client voit ce libellé : jamais une raison interne.
+    expect(libelléDÉtape({ étape: 'hors-parcours', raison: 'pas encore activée' })).toBe('essai · avant la première lettre')
+    expect(libelléDÉtape({ étape: 'hors-parcours', raison: 'aucune date d’activation' })).toBe('essai · avant la première lettre')
+    expect(libelléDÉtape({ étape: 'hors-parcours', raison: 'organisation de test' })).toBe('organisation de test')
   })
 })
 

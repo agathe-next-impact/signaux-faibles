@@ -169,7 +169,22 @@ export function libelléDÉtape(étape: Étape): string {
     case 'suspendue':
       return étape.manuelle ? 'suspendue par l’opératrice' : 'suspendue · essai terminé'
     case 'hors-parcours':
-      return `hors parcours · ${étape.raison}`
+      // Le client lit ce libellé dans son espace : une raison interne
+      // (« aucune date d'activation ») ne lui dit rien. En essai avant la
+      // première lettre, c'est un essai qui n'a pas commencé, et c'est tout.
+      switch (étape.raison) {
+        case 'pas encore activée':
+        case 'aucune date d’activation':
+          return 'essai · avant la première lettre'
+        case 'activation dans le futur':
+          return 'essai · à venir'
+        case 'écartée':
+          return 'écartée'
+        case 'organisation de test':
+          return 'organisation de test'
+        default:
+          return `hors parcours · ${étape.raison}`
+      }
   }
 }
 
