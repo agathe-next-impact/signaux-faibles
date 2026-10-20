@@ -69,4 +69,9 @@ describe('interpréterLivraisonLemlist', () => {
     const décision = livraison({ _id: 'act_2', type: 'entityUnsubscribed', email: 'serge@suneido.fr' })
     expect(décision).toMatchObject({ sorte: 'événement', événement: { email: 'serge@suneido.fr', campagne: null, lead: null } })
   })
+
+  it('retient la désinscription d’une seule adresse, émise depuis le 30 mars 2026', () => {
+    const décision = livraison({ _id: 'act_3', type: 'variableUnsubscribed', email: 'serge@suneido.fr' })
+    expect(décision).toMatchObject({ sorte: 'événement', événement: { type: 'variableUnsubscribed' } })
+  })
 })

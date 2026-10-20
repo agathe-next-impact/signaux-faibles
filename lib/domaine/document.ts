@@ -311,6 +311,53 @@ export function construireDocument(blocs: readonly BlocNotion[]): Document {
   return { préambule: préambule.vider(), ...détacherLePérimètre(rubriques) }
 }
 
+/** Un élément de la lettre telle qu'elle s'écrit, de haut en bas. */
+export type ÉlémentDeLettre =
+  | { readonly type: 'rubrique'; readonly titre: string }
+  | {
+      readonly type: 'axe'
+      readonly titre: string
+      readonly numéro: number | null
+      readonly niveau: NiveauImpact | null
+    }
+  | Bloc
+
+/**
+ * La lettre dans l'ordre de la page, sans rien détacher.
+ *
+ * `construireDocument` sert les écrans : il range la note en rubriques et en
+ * axes, et sort du corps le cadrage et les acteurs suivis, qui ont leur écran.
+ * Le courriel de la lettre est l'inverse : c'est la lettre entière, telle que
+ * le lecteur la reçoit, cadrage compris — le bloc « Ajustements du cadrage »
+ * lui est dû, il y trouve l'adresse où demander une modification. Mêmes
+ * conversions de blocs, même lecture des titres d'axes, et aucune coupe.
+ */
+export function suiteDeLaLettre(blocs: readonly BlocNotion[]): ÉlémentDeLettre[] {
+  const suite: ÉlémentDeLettre[] = []
+  let pile = new Pile()
+  const vider = (): void => {
+    suite.push(...pile.vider())
+    pile = new Pile()
+  }
+
+  for (const bloc of blocs) {
+    if (bloc.type === 'heading_1') {
+      vider()
+      suite.push({ type: 'rubrique', titre: texteDeSegments(lireSegments(contenu(bloc)['rich_text'])) })
+      continue
+    }
+    if (bloc.type === 'heading_2') {
+      vider()
+      const { axe, numéro, niveau } = lireTitreDAxe(texteDeSegments(lireSegments(contenu(bloc)['rich_text'])))
+      suite.push({ type: 'axe', titre: axe, numéro, niveau })
+      continue
+    }
+    pile.ajouter(bloc)
+  }
+  vider()
+  return suite
+}
+
 /** La rubrique de cadrage : convention partagée avec le validateur, voir `lib/domaine/texte.ts`. */
 const estRubriqueDeCadrage = estTitreDeCadrage
 

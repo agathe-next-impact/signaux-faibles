@@ -80,7 +80,10 @@ Organisation visée : $ARGUMENTS
    d'idempotence (aucune édition existante pour cette organisation), porte
    (Q1–Q3 sans « [hypothèse] », veilles déterminées, priorité 1 répercutée),
    collecte refaite intégralement, éditions n°1 en **brouillon Gmail adressé au
-   client** — jamais envoyées par toi —, puis, dans cet ordre,
+   client** — jamais envoyées par toi, et mises en forme par le portail
+   (`POST /api/veille/courriel`, `sorte: "lettre"`, après le lint : `html` et
+   `texte` de la réponse vont tels quels dans `htmlBody` et `body`) —, puis,
+   dans cet ordre,
    `POST /api/veille/organisations`, « Actif » coché selon le §1.3 (d),
    `POST /api/veille/importer-acces`, `POST /api/acces/ouvrir`.
 

@@ -56,7 +56,37 @@ describe('composerMessage', () => {
   })
 })
 
+describe('composerMessage avec une version HTML', () => {
+  it('part en multipart/alternative : le texte d’abord, le HTML ensuite', () => {
+    const brut = composerMessage(
+      { destinataire: 'j@e.test', sujet: 'Votre lien', texte: 'Bonjour,', html: '<p>Bonjour,</p>' },
+      'a@b.test',
+      'signauxfaibles',
+    )
+    expect(brut).toMatch(/Content-Type: multipart\/alternative; boundary="([^"]+)"/)
+    const frontière = /boundary="([^"]+)"/.exec(brut)?.[1] ?? ''
+    const parties = brut.split(`--${frontière}`)
+    expect(parties).toHaveLength(4)
+    expect(parties[1]).toContain('Content-Type: text/plain; charset="UTF-8"')
+    expect(parties[2]).toContain('Content-Type: text/html; charset="UTF-8"')
+    expect(Buffer.from(parties[2]!.split('\r\n\r\n')[1]!, 'base64').toString('utf8')).toBe('<p>Bonjour,</p>')
+    expect(brut).not.toMatch(/[^\r]\n/)
+  })
+})
+
 describe('composerCourrierDAccès', () => {
+  it('porte le lien dans un courriel à la charte, bouton et lien en clair', () => {
+    const message = composerCourrierDAccès('Jean', 'https://www.signauxfaibles.io/acces/abc.def', { destinataire: 'jean@exemple.test' })
+    expect(message.destinataire).toBe('jean@exemple.test')
+    expect(message.html).toContain('href="https://www.signauxfaibles.io/acces/abc.def"')
+    expect(message.html).toContain('Ouvrir mon espace')
+    expect(message.html).toContain('Bonjour Jean,')
+    expect(message.html).toContain('Ne le transférez pas')
+    expect(message.html).not.toContain('Se désinscrire')
+    // Le logo et le pied pointent vers la racine du lien, jamais vers une adresse codée en dur.
+    expect(message.html).toContain('href="https://www.signauxfaibles.io"')
+  })
+
   it('porte le lien et avertit contre le transfert', () => {
     const message = composerCourrierDAccès('Jean', 'https://signauxfaibles.io/acces/abc.def')
     expect(message.texte).toContain('https://signauxfaibles.io/acces/abc.def')

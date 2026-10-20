@@ -1,0 +1,24 @@
+Ce que nous avons relevé pour vous.
+Une lettre rédigée à partir de votre site, sans engagement.
+
+Bonjour {{firstName}},
+
+Nous avons préparé une première lettre de veille pour {{companyName}}, à partir de votre site et des sources publiques de votre secteur. En voici l’essentiel.
+
+L’ESSENTIEL
+
+{{sfEssentiel}}
+
+La lettre complète, avec ses sources datées et le suivi de vos concurrents, vous attend dans un espace personnel. Il reste ouvert un mois à compter de votre première visite, sans engagement.
+
+Lire ma lettre complète :
+https://www.signauxfaibles.io/recevoir-mon-lien
+
+Indiquez votre adresse : votre lien personnel arrive par email, sans mot de passe ni carte bancaire.
+
+Bien à vous,
+Agathe
+Fondatrice · Signaux Faibles
+
+--
+Signaux Faibles · signauxfaibles.io · contact@signauxfaibles.io

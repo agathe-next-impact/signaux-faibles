@@ -69,7 +69,7 @@ export async function envoyerMonLien(
         env().ACCES_SECRET_HMAC,
         env().PORTAIL_URL,
       )
-      const courrier = composerCourrierDAccès(accès.nom, lien)
+      const courrier = composerCourrierDAccès(accès.nom, lien, { destinataire: accès.email })
       await envoyerCourrier({
         message: { ...courrier, destinataire: accès.email },
         sorte: 'lien_acces',

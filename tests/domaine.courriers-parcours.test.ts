@@ -38,6 +38,18 @@ describe('composerCourrierDeParcours', () => {
       expect(sujet).toMatch(/^[A-ZÉ]/u)
       expect(sujet).not.toMatch(/[A-Z]{3,}/)
     })
+
+    it(`${sorte} : le même courriel à la charte, bouton vers l’abonnement et pied client`, () => {
+      const { html } = composerCourrierDeParcours({ ...base, sorte, destinataire: 'lea@acme.test', adressePostale: '1 place Exemple' })
+      expect(html).toContain('href="https://www.signauxfaibles.io/acme/abonnement"')
+      expect(html.match(/class="btn-primary/g)).toHaveLength(1)
+      expect(html).toContain('href="https://www.signauxfaibles.io/recevoir-mon-lien"')
+      expect(html).toContain('89 € HT par mois')
+      expect(html).toContain('lea@acme.test')
+      expect(html).toContain('Gérer mon abonnement')
+      expect(html).toContain('1 place Exemple')
+      expect(html).not.toContain('—')
+    })
   }
 
   it('écrit le nombre de parutions réglé, et le tarif early adopter quand c’est l’offre', () => {

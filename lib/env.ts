@@ -30,6 +30,8 @@ const schema = z.object({
   // pas à tomber parce que l'abonnement au webhook n'a pas encore eu lieu.
   NOTION_WEBHOOK_SECRET: facultative(z.string().min(1)),
   ACCES_SECRET_HMAC: z.string().min(32),
+  /** Adresse postale de l'éditeur, en pied des courriels client (facultative). */
+  ADRESSE_POSTALE: facultative(z.string().min(1)),
   PORTAIL_URL: z.url(),
   // Trois façons de fournir le compte de service, de la plus sûre à la plus
   // fragile. Le fichier JSON entier est à préférer : il tient sur une ligne,

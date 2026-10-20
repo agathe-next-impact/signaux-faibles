@@ -132,6 +132,7 @@ function statutInduit(type: string, courant: StatutProspection): StatutProspecti
   switch (type) {
     case 'emailsUnsubscribed':
     case 'entityUnsubscribed':
+    case 'variableUnsubscribed':
     case 'emailsNotInterested':
       return 'desinscrit'
     case 'emailsBounced':

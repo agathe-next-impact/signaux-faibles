@@ -321,11 +321,36 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     return trouvés.sort()
   }
 
-  it('lireÉditionDeTravail n’est appelée que par le validateur', () => {
+  it('lireÉditionDeTravail n’est appelée que par le validateur et la mise en forme du courriel', () => {
     expect(appelants('lireÉditionDeTravail')).toEqual([
+      'app/api/veille/courriel/route.ts',
       'app/api/veille/lint/route.ts',
       'lib/notion/travail.ts',
     ])
+  })
+
+  /**
+   * Tout courriel client sort du gabarit de la charte (20 octobre 2026). Un
+   * appelant hors de `lib/email/` ou des courriers de parcours composerait un
+   * courriel ailleurs, et finirait par réinventer une couleur ou un bouton.
+   */
+  it('composerCourriel n’est appelé que par les compositeurs de courriels', () => {
+    expect(appelants('composerCourriel')).toEqual([
+      'lib/domaine/courriers-parcours.ts',
+      'lib/email/gabarit.ts',
+      'lib/email/gmail.ts',
+      'lib/email/lemlist.ts',
+      'lib/email/lettre.ts',
+      'lib/email/message.ts',
+    ])
+  })
+
+  it('la mise en forme d’une lettre refuse une lettre non conforme avant de la composer', () => {
+    const corps = readFileSync(join(process.cwd(), 'app/api/veille/courriel/route.ts'), 'utf8')
+    expect(corps.indexOf('contrôlerLaLettre(')).toBeGreaterThan(0)
+    expect(corps.indexOf('contrôlerLaLettre(')).toBeLessThan(corps.indexOf('composerLettre('))
+    expect(corps).not.toContain('revalidateTag(')
+    expect(corps).not.toContain('envoyerCourrier(')
   })
 
   it('listerÉditionsDeTravail n’est appelée que par le contexte', () => {

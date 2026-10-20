@@ -104,6 +104,15 @@ describe('prospection (Postgres)', () => {
     expect(lue?.événements).toEqual({ emailsSent: 1, emailsOpened: 1, emailsBounced: 1, emailsUnsubscribed: 1, emailsClicked: 1 })
   })
 
+  it('la désinscription d’une seule adresse est finale, comme celle du contact', async () => {
+    const { id } = await rattacherLead(reçu(), db)
+    const base = { survenuLe: new Date('2026-10-19T07:00:00Z'), étape: 1 }
+    expect(await journaliserÉvénement(id, { ...base, activité: 'act_v', type: 'variableUnsubscribed' }, db)).toEqual({
+      sorte: 'enregistré',
+      statut: 'desinscrit',
+    })
+  })
+
   it('la première visite d’un lecteur est reconnue une seule fois', async () => {
     const org = await organisation()
     const id = await lecteur(org, 'serge@suneido.fr', 'a'.repeat(32))
