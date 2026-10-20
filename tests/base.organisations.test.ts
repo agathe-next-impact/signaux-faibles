@@ -28,6 +28,17 @@ describe('ouverture d’une organisation en essai', () => {
     expect((await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: REGISTRE }, db)).sorte).toBe('déjà-en-essai')
   })
 
+  it('entrée par prospection : essai créé sans date d’ouverture, qui attend la première visite', async () => {
+    const r = await ouvrirEnEssai({ slug: 'prospect', nom: 'Prospect', registreNotion: REGISTRE, prospection: true }, db)
+    expect(r.sorte).toBe('créée')
+    expect(await lire('prospect')).toMatchObject({ état: 'essai', activéeLe: null, essaiOuvertLe: null, entréeParProspection: true })
+    const classique = await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: 'b'.repeat(32) }, db)
+    expect(classique.sorte).toBe('créée')
+    const o = await lire('acme')
+    expect(o.entréeParProspection).toBe(false)
+    expect(o.essaiOuvertLe).not.toBeNull()
+  })
+
   it('fait passer demande et génération en essai', async () => {
     await db.insert(organisations).values({ slug: 'gen', nom: 'Gen', état: 'generation' })
     expect((await ouvrirEnEssai({ slug: 'gen', nom: 'Gen SA', registreNotion: REGISTRE }, db)).sorte).toBe('passée-en-essai')

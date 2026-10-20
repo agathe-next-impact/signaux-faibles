@@ -1,0 +1,1 @@
+ALTER TABLE "organisations" ADD COLUMN "entrée_par_prospection" boolean DEFAULT false NOT NULL;

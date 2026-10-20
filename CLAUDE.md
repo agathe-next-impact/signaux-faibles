@@ -265,7 +265,14 @@ Les lire avant toute session.
   lance rien**, c'est le rôle de la tâche de prospection. Le jeton d'accès ne
   voyage pas dans lemlist : le bouton de la lettre 1 mène à « recevoir mon
   lien ». `desinscrit` est final. Sans `LEMLIST_API_KEY`, tout est tenu dans
-  Postgres et rien ne part. `tests/architecture.test.ts` tient ces frontières
+  Postgres et rien ne part. **Le mois d'essai d'une entrée par prospection
+  commence à la première visite** (`origine: "prospection"` sur
+  `POST /api/veille/organisations`, colonne `entrée_par_prospection`,
+  migration 0006) : `essai_ouvert_le` reste nul jusqu'à la visite, qui le pose
+  (`ouvrirLEssaiÀLaVisite`), et J0 est la première lettre publiée à partir de
+  cette semaine ; la lettre 1 publiée avant ne compte pas, et l'onboarding par
+  prospection n'appelle pas `/api/acces/ouvrir`. `tests/architecture.test.ts`
+  tient ces frontières
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

@@ -454,6 +454,18 @@ préférence) ; les suivants s'ajoutent au journal, une fois chacun (identifiant
 d'activité `act_…`). Une désinscription (`emailsUnsubscribed`,
 `entityUnsubscribed`, `emailsNotInterested`) rend le statut `desinscrit`.
 
+### Entrée par prospection : `origine: "prospection"`
+
+`POST /api/veille/organisations` accepte `"origine": "prospection"`. L'organisation
+est créée en essai **sans date d'ouverture** : la lettre 1 est publiée et envoyée
+par lemlist, mais l'essai n'ouvre qu'à la **première visite** du lecteur sur son
+lien d'accès, qui pose `essai_ouvert_le`. J0 est alors la première lettre
+publiée à partir de la semaine de cette visite ; une lettre publiée avant ne
+compte pas. Sans visite, l'organisation reste hors parcours, en lecture
+complète, et ne reçoit aucun courrier de fin d'essai. L'onboarding par
+prospection **n'appelle pas** `POST /api/acces/ouvrir` : le lien ne part que
+quand le prospect le demande sur « recevoir mon lien ».
+
 ### Ce que le portail dit à lemlist
 
 - **À la première visite d'un lecteur** (`/acces/[jeton]`, hors du chemin de la

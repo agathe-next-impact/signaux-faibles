@@ -43,6 +43,13 @@
       "when": 1792419114561,
       "tag": "0005_prospection",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792419992515,
+      "tag": "0006_prospection_essai_a_la_visite",
+      "breakpoints": true
     }
   ]
 }

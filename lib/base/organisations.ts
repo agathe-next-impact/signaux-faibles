@@ -41,7 +41,13 @@ export type RésultatDOuverture =
   | { readonly sorte: 'registre-différent'; readonly registreActuel: string }
 
 export async function ouvrirEnEssai(
-  entrée: { readonly slug: string; readonly nom: string; readonly registreNotion: string },
+  entrée: {
+    readonly slug: string
+    readonly nom: string
+    readonly registreNotion: string
+    /** Entrée par prospection : l'essai n'ouvre qu'à la première visite (`essai_ouvert_le` reste nul). */
+    readonly prospection?: boolean
+  },
   db: Base = base(),
   maintenant: Date = new Date(),
 ): Promise<RésultatDOuverture> {
@@ -82,7 +88,8 @@ export async function ouvrirEnEssai(
             registreNotion,
             état: 'essai',
             relectureRequise: false,
-            essaiOuvertLe: maintenant,
+            essaiOuvertLe: entrée.prospection ? null : maintenant,
+            entréeParProspection: entrée.prospection === true,
           })
           .returning({ id: organisations.id })
         return { sorte: 'créée', organisationId: créée!.id } as const
@@ -114,7 +121,8 @@ export async function ouvrirEnEssai(
           nom: entrée.nom,
           registreNotion,
           relectureRequise: false,
-          essaiOuvertLe: maintenant,
+          essaiOuvertLe: entrée.prospection ? null : maintenant,
+          entréeParProspection: entrée.prospection === true,
           modifiéeLe: maintenant,
         })
         .where(eq(organisations.id, existante.id))

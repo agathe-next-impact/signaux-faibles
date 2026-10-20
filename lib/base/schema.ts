@@ -89,6 +89,13 @@ export const organisations = pgTable(
    * tôt (test, erreur) ne raccourcit pas l'essai.
    */
   essaiOuvertLe: horodatage('essai_ouvert_le'),
+  /**
+   * Entrée par prospection (19 octobre 2026) : la lettre 1 est partie sans
+   * sollicitation, et l'essai n'ouvre qu'à la **première visite** du lecteur.
+   * Tant que `essai_ouvert_le` est nul, J0 n'est pas fixé et aucune lettre
+   * publiée avant la visite ne compte dans l'essai.
+   */
+  entréeParProspection: boolean('entrée_par_prospection').notNull().default(false),
   suspendueLe: horodatage('suspendue_le'),
   offre: offreOrganisation('offre').notNull().default('standard'),
   /**

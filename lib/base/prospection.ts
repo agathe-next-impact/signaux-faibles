@@ -201,6 +201,31 @@ export async function enregistrerVisite(
   })
 }
 
+/**
+ * Ouvre l'essai d'une organisation entrée par prospection, à la première visite
+ * de son lecteur : `essai_ouvert_le` reçoit la date de la visite, et J0 sera la
+ * première lettre publiée à partir de cette semaine (`j0DesÉditions`). Sans
+ * effet sur une organisation déjà ouverte ou entrée par une demande. Rend
+ * `true` quand l'essai vient d'ouvrir.
+ */
+export async function ouvrirLEssaiÀLaVisite(organisationId: string, maintenant: Date = new Date(), db: Base = base()): Promise<boolean> {
+  return protéger('ouverture de l’essai à la visite', async () => {
+    const lignes = await db
+      .update(organisations)
+      .set({ essaiOuvertLe: maintenant, modifiéeLe: maintenant })
+      .where(
+        and(
+          eq(organisations.id, organisationId),
+          eq(organisations.entréeParProspection, true),
+          eq(organisations.état, 'essai'),
+          isNull(organisations.essaiOuvertLe),
+        ),
+      )
+      .returning({ id: organisations.id })
+    return lignes.length > 0
+  })
+}
+
 /** La prospection d'un lecteur, ou celle de son adresse si le rattachement avait échoué. */
 export async function prospectionDuLecteur(
   lecteur: { readonly id: string; readonly organisationId: string | null; readonly empreinte: string | null },

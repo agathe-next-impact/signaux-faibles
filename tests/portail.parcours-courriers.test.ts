@@ -106,6 +106,21 @@ describe('envoyerLesCourriersDeParcours', () => {
     expect(rapport.courriers.map((c) => c.sorte)).toEqual(['essai_derniere_parution', 'essai_derniere_parution'])
   })
 
+  it('entrée par prospection : J0 attend la première visite, puis ne compte que les lettres à partir de cette semaine', async () => {
+    // Lettre 1 publiée le 28/09, sans visite : rien, J0 reste libre.
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null, essaiOuvertLe: null, entréeParProspection: true })])
+    listerÉditionsPubliées.mockResolvedValue([{ dateÉdition: '2026-09-28' }, { dateÉdition: '2026-10-05' }])
+    const avant = await appel('2026-10-14')
+    expect(fixerJ0).not.toHaveBeenCalled()
+    expect(avant.j0Fixés).toEqual([])
+
+    // Première visite le 7/10 (semaine du 5/10) : J0 = la lettre du 5/10, pas celle du 28/09.
+    organisationsEnEssai.mockResolvedValue([org({ activéeLe: null, essaiOuvertLe: new Date('2026-10-07T09:00:00Z'), entréeParProspection: true })])
+    const après = await appel('2026-10-14')
+    expect(fixerJ0).toHaveBeenCalledWith('o1', new Date('2026-10-05T12:00:00Z'))
+    expect(après.j0Fixés).toEqual(['acme'])
+  })
+
   it('une lecture Notion en échec saute l’organisation sans arrêter le passage', async () => {
     organisationsEnEssai.mockResolvedValue([org({ activéeLe: null }), org({ id: 'o2', slug: 'autre' })])
     listerÉditionsPubliées.mockRejectedValue(new Error('notion'))
