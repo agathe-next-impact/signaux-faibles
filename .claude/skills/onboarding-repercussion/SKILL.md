@@ -63,8 +63,8 @@ Organisation visée : $ARGUMENTS
    points de priorité 1 manquent, ne répercute rien et liste ce qui manque.
 
 4 bis. **Contexte client.** Si l'argument porte « contexte », ou si
-   « ▶ Mettre à jour le contexte » est déjà cochée, exécute la file
-   « CONTEXTE À RÉPERCUTER » du §2 pour cette organisation, statuts 2 à 6
+   « ▶ Mettre à jour le contexte » est déjà cochée, exécute le §2bis du
+   balayage (« File du contexte à répercuter ») pour cette organisation, statuts 2 à 6
    compris : les champs déclarés du registre (« Objectifs de veille »,
    « Offre déclarée », « Acteurs déclarés », « Contexte client », Q1 à Q3)
    sont appliqués à la fiche et aux deux référentiels selon la hiérarchie des
