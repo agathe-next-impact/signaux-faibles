@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "base:generer": "drizzle-kit generate --name",
     "base:migrer": "tsx scripts/base-migrer.ts",
-    "base:importer-acces": "tsx scripts/importer-acces.ts"
+    "base:importer-acces": "tsx scripts/importer-acces.ts",
+    "emails:lemlist": "tsx scripts/emails-lemlist.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.2.0",

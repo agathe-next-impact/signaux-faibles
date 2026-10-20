@@ -6,6 +6,7 @@ import { étapeDuParcours } from '@/lib/domaine/parcours'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 import { listerÉditionsPubliées } from '@/lib/notion/editions'
+import { adressePostale } from '@/lib/email/gmail'
 import { envoyerCourrier } from '@/lib/portail/courriers'
 import { empreinte } from '@/lib/portail/debit'
 
@@ -116,8 +117,10 @@ export async function envoyerLesCourriersDeParcours(entrée: {
     const sorte = courrierDuParcours(étape)
     if (!sorte) continue
 
-    const contenu = (prénomOuNom: string) =>
+    const contenu = (prénomOuNom: string, destinataire: string | null) =>
       composerCourrierDeParcours({
+        destinataire,
+        adressePostale: adressePostale(),
         parutions: organisation.parutionsDEssai,
         offre: organisation.offre,
         sorte,
@@ -141,7 +144,7 @@ export async function envoyerLesCourriersDeParcours(entrée: {
     }
 
     for (const destinataire of destinataires) {
-      const { sujet, texte } = contenu(destinataire.nom)
+      const { sujet, texte, html } = contenu(destinataire.nom, destinataire.relecture ? null : destinataire.adresse)
       let issue: string
       try {
         if (!destinataire.relecture) {
@@ -157,6 +160,7 @@ export async function envoyerLesCourriersDeParcours(entrée: {
             destinataire: destinataire.adresse,
             sujet: destinataire.relecture ? `[Relecture, pour ${organisation.slug}] ${sujet}` : sujet,
             texte,
+            html,
           },
           sorte,
           déclencheur: 'cron',

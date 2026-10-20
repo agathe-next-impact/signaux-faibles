@@ -160,7 +160,7 @@ async function envoyerLeLien(email: string, registreNotion: string): Promise<'en
     }
     const lien = composerLienDAccès(lecteur.identifiant, env().ACCES_SECRET_HMAC, env().PORTAIL_URL)
     await envoyerCourrier({
-      message: { ...composerCourrierDAccès(lecteur.nom, lien), destinataire: lecteur.email },
+      message: { ...composerCourrierDAccès(lecteur.nom, lien, { destinataire: lecteur.email }), destinataire: lecteur.email },
       sorte: 'lien_acces',
       déclencheur: 'espace-client',
       organisation: { registreNotion },

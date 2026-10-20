@@ -1,3 +1,4 @@
+import { composerCourriel, corpsDeParagraphes, dateDuJour, type Courriel } from '@/lib/email/gabarit'
 import { createSign } from 'node:crypto'
 import { env } from '@/lib/env'
 
@@ -234,6 +235,23 @@ export type Message = {
   readonly destinataire: string
   readonly sujet: string
   readonly texte: string
+  /**
+   * La version HTML, composée par le gabarit (`lib/email/gabarit.ts`). Avec
+   * elle, le message part en `multipart/alternative` : le texte reste la partie
+   * lue par les clients qui n'affichent pas le HTML, et par les filtres.
+   */
+  readonly html?: string
+}
+
+/** Une partie MIME en base64, lignes de 76 caractères (RFC 2045). */
+function partieBase64(typeDeContenu: string, contenu: string): string[] {
+  const base64 = Buffer.from(contenu, 'utf8').toString('base64')
+  return [
+    `Content-Type: ${typeDeContenu}; charset="UTF-8"`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    ...(base64.match(/.{1,76}/g) ?? ['']),
+  ]
 }
 
 /** Compose le message RFC 2822. Exposé pour être testé sans réseau. */
@@ -242,17 +260,28 @@ export function composerMessage(
   expéditeur: string,
   nomExpéditeur: string,
 ): string {
-  const lignes = [
+  const entêtes = [
     `From: ${entêteEncodé(nomExpéditeur)} <${expéditeur}>`,
     `To: ${message.destinataire}`,
     `Subject: ${entêteEncodé(message.sujet)}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
-    'Content-Transfer-Encoding: base64',
-    '',
-    Buffer.from(message.texte, 'utf8').toString('base64'),
   ]
-  return lignes.join('\r\n')
+  if (!message.html) {
+    return [...entêtes, ...partieBase64('text/plain', message.texte)].join('\r\n')
+  }
+  // Une frontière qui ne peut apparaître ni dans le base64 ni dans les en-têtes.
+  const frontière = `=_signauxfaibles_${Buffer.from(message.sujet + message.destinataire).toString('hex').slice(0, 24)}`
+  return [
+    ...entêtes,
+    `Content-Type: multipart/alternative; boundary="${frontière}"`,
+    '',
+    `--${frontière}`,
+    ...partieBase64('text/plain', message.texte),
+    `--${frontière}`,
+    ...partieBase64('text/html', message.html),
+    `--${frontière}--`,
+    '',
+  ].join('\r\n')
 }
 
 /**
@@ -295,13 +324,59 @@ export class ErreurDEnvoi extends Error {
   }
 }
 
-/** Le courrier qui porte le lien, premier envoi et renvoi confondus. */
-export function composerCourrierDAccès(prénomOuNom: string, lien: string): Message {
-  const salutation = prénomOuNom.trim().length > 0 ? `Bonjour ${prénomOuNom.trim()},` : 'Bonjour,'
+/**
+ * L'adresse postale de l'éditeur, en pied de chaque courriel client. Facultative
+ * et lue directement dans l'environnement, comme les autres pièces qui ne
+ * doivent faire tomber aucun envoi : sans elle, le pied s'arrête au crédit.
+ */
+export function adressePostale(): string | null {
+  const valeur = process.env['ADRESSE_POSTALE']?.trim()
+  return valeur ? valeur : null
+}
+
+/**
+ * Le courrier qui porte le lien, premier envoi et renvoi confondus, au gabarit
+ * de la charte (`lib/email/gabarit.ts`). La racine du portail est celle du lien
+ * lui-même : aucune adresse codée en dur.
+ */
+export function composerCourrierDAccès(
+  prénomOuNom: string,
+  lien: string,
+  options: { readonly destinataire?: string; readonly aujourdHui?: Date } = {},
+): Message {
+  const nom = prénomOuNom.trim()
+  const salutation = nom.length > 0 ? `Bonjour ${nom},` : 'Bonjour,'
+  const racine = (() => {
+    try {
+      return new URL(lien).origin
+    } catch {
+      return 'https://signauxfaibles.io'
+    }
+  })()
+  const courriel: Courriel = {
+    objet: 'Votre lien vers le portail signauxfaibles',
+    préheader: 'Votre lien personnel vers vos lettres de veille, à garder en favori.',
+    typeEnvoi: 'Accès',
+    date: dateDuJour(options.aujourdHui),
+    surtitre: 'Votre espace',
+    titre: 'Votre lien personnel.',
+    accroche: 'Il reste valable : gardez-le en favori.',
+    salutation,
+    corps: corpsDeParagraphes([
+      'Voici votre lien personnel vers le portail Signaux Faibles. Il ouvre votre espace sans mot de passe et reste valable : vous pouvez le garder en favori et y revenir chaque semaine.',
+      'Vos lettres y apparaissent dès leur parution, avec leurs archives et le suivi des acteurs.',
+    ]),
+    action: { libellé: 'Ouvrir mon espace', url: lien },
+    réassurance: 'Ce lien vous est propre. Ne le transférez pas : la personne qui l’ouvrirait verrait vos éditions.',
+    lienEnClair: true,
+    pied: { sorte: 'accès', destinataire: options.destinataire ?? null },
+    racine,
+    adressePostale: adressePostale(),
+  }
 
   return {
-    destinataire: '',
-    sujet: 'Votre lien vers le portail signauxfaibles',
+    destinataire: options.destinataire ?? '',
+    sujet: courriel.objet,
     texte: [
       salutation,
       '',
@@ -315,5 +390,6 @@ export function composerCourrierDAccès(prénomOuNom: string, lien: string): Mes
       '',
       'signauxfaibles',
     ].join('\n'),
+    html: composerCourriel(courriel),
   }
 }
