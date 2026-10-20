@@ -212,8 +212,10 @@ Les lire avant toute session.
   `tests/architecture.test.ts` vérifie le seul appelant d'`envoyerMessage` et
   l'ordre réservation puis envoi.
   **Entrée en essai** (18 octobre 2026) : l'onboarding Cowork (étape B) appelle
-  `POST /api/veille/organisations` `{ slug, nom, registreNotion }` **avant**
-  `importer-acces` puis `/api/acces/ouvrir` ; `ouvrirEnEssai`
+  `POST /api/veille/organisations` `{ slug, nom, registreNotion }` ; l'activation
+  appelle ensuite `importer-acces` puis `/api/acces/ouvrir`, **jamais avant la
+  publication de la première lettre** (au moins une édition `Envoyé`, décision
+  du 20 octobre 2026 : un lien plus tôt mène à un espace vide) ; `ouvrirEnEssai`
   (`lib/base/organisations.ts`) crée l'organisation à l'état `essai`, sans
   relecture des courriers, ou y fait passer une `demande`, une `generation`, ou
   une `abonnee` née d'un import rejoué pendant l'onboarding (créée après le

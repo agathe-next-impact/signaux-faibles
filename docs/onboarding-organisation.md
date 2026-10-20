@@ -13,9 +13,9 @@ ce document ne décrit que la part du portail.*
 | 1 · Demande reçue | rien |
 | 2 · Référentiels générés | le §3.7bis crée la ligne « Accès », case Actif **décochée**, avec l'identifiant de la **ligne du registre** : le portail ne voit rien |
 | 3 · Référentiels validés | rien |
-| 4 · Première lettre produite | la tâche « Onboarding : première lettre » appelle, dans cet ordre, `POST /api/veille/organisations` (entrée en essai), coche Actif, `POST /api/veille/importer-acces`, puis `POST /api/acces/ouvrir` (lien d'accès) |
+| 4 · Première lettre produite | la tâche « Onboarding : première lettre » appelle `POST /api/veille/organisations` (entrée en essai) et contrôle la ligne « Accès », **laissée inactive** : aucun lien ne part avant la publication (décision du 20 octobre 2026) |
 | première lettre envoyée par la relectrice | la réconciliation passe l'édition en `Envoyé` ; le lendemain matin, `/api/veille/parcours` fixe **J0** à sa date |
-| 6 · Veille active | rien de plus : l'activation ne conditionne pas l'accès |
+| 6 · Veille active | l'activation ouvre l'espace si une édition est `Envoyé` : coche Actif, `POST /api/veille/importer-acces`, puis `POST /api/acces/ouvrir` (lien d'accès). Sinon l'espace attend et s'ouvre par `/onboarding-ouvrir-espace` |
 
 ## Les appels, et ce qu'ils garantissent
 
@@ -100,13 +100,14 @@ rouvre au navigateur une source en échec. Le validateur du portail avertit
 | `/onboarding-repercussion <nom> [partiel]` | A-bis, balayage §2 | 2 à 5 |
 | `/onboarding-premiere-lettre <nom>` | B, première lettre | 3 |
 | `/onboarding-activation <nom>` | activation, balayage §1 | 4 ou 5 |
-| `/onboarding-ouvrir-espace <nom>` | ouverture manuelle de l'espace, §1.3 (d) et (e) | 4, 5 ou 6, « Invitation manuelle » cochée |
+| `/onboarding-ouvrir-espace <nom>` | ouverture manuelle de l'espace, §1.3 (d) et (e), après la première publication | 4, 5 ou 6, une édition `Envoyé` |
 
 **Invitation manuelle** (18 octobre 2026). La case du même nom, sur la ligne du
-registre, retient l'ouverture de l'espace : l'étape B fait entrer
-l'organisation en essai (`POST /api/veille/organisations`) mais ne coche pas
-« Actif » et n'envoie aucun lien, et le §1.3 de l'activation contrôle sans
-ouvrir. L'opératrice lance `/onboarding-ouvrir-espace` le jour qu'elle choisit :
+registre, retient l'ouverture de l'espace au-delà de la publication : l'étape
+B fait entrer l'organisation en essai (`POST /api/veille/organisations`) sans
+cocher « Actif » ni envoyer de lien, comme pour toute organisation depuis le
+20 octobre 2026, et le §1.3 de l'activation contrôle sans ouvrir, même si une
+lettre est publiée. L'opératrice lance `/onboarding-ouvrir-espace` le jour qu'elle choisit :
 contrôle, « Actif », import, puis `POST /api/acces/ouvrir`. Le lien part
 toujours du portail, la clé qui le signe ne le quittant pas : on écrit au
 client d'abord, puis on lance la commande. L'essai ne démarre qu'à la première
@@ -114,8 +115,9 @@ lettre publiée ; publier et inviter la même semaine évite d'entamer l'essai
 d'un client qui n'a pas encore d'accès, sinon
 `PATCH /api/veille/organisations` `{ "action": "prolonger" }` rattrape l'écart.
 
-Les deux dernières vérifient d'abord, par `GET /api/acces/ouvrir`, que le
-lien pourra partir : elles s'arrêtent avant la collecte plutôt qu'après.
+Elles vérifient d'abord, par `GET /api/acces/ouvrir`, que le lien pourra
+partir. La première lettre n'en envoie plus : pour elle, un refus est signalé,
+non bloquant. `/onboarding-ouvrir-espace` exige en plus une édition `Envoyé`.
 Les appels au portail des deux dernières (`/api/veille/*`, `/api/acces/ouvrir`)
 demandent une session sur l'environnement « signaux-faibles-io » : ailleurs,
 ils reçoivent 401 ou 403, et la commande le dit au lieu de chercher un jeton.
