@@ -53,7 +53,7 @@ Organisation visée : $ARGUMENTS
 3. **Garde de statut.** Statuts 2, 3, 4 ou 5 seulement. Au statut 6, la
    répercussion des validations appartient à la revue mensuelle : dis-le et
    arrête-toi, sauf si l'argument dit explicitement de forcer, ou s'il porte
-   « contexte » (voir 4 bis). Au statut 1 : renvoie à `/onboarding-referentiels`.
+   « contexte » (voir 4 bis, §2bis du balayage). Au statut 1 : renvoie à `/onboarding-referentiels`.
 
 4. **La porte de la priorité 1.** Le §2 ne traite l'organisation que si tous
    ses points « 1 · Scoring » ont une « Valeur corrigée » ; les points
