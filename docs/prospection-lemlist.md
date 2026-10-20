@@ -50,14 +50,32 @@ tâche de prospection ──▶ GET /api/veille/prospection ──▶ score, reg
 | `sfFaitMarquant` | tâche | le fait daté repris dans la relance J+4 |
 | `sfStatut` | **portail** | `envoye`, `actif`, `abonne`, `expire`, `resilie`, `rebondi`, `desinscrit` |
 
-Les campagnes se nomment « SF · [secteur de ciblage] » (Conseil, Industrie, ÉSS…), le secteur étant un critère de liste et non un produit : chaque lettre 1 est construite depuis le site du prospect par l'onboarding. Séquence à trois emails (lettre 1 à J0, relance J+4, relance J+10), arrêt automatique sur réponse. Une condition de séquence sur `sfStatut` n'est pas nécessaire : le portail arrête la séquence en marquant le lead intéressé.
+Les campagnes se nomment « SF · [secteur de ciblage] » (Conseil, Industrie, ÉSS…), le secteur étant un critère de liste et non un produit : chaque lettre 1 est construite depuis le site du prospect par l'onboarding. Séquence à trois emails (lettre 1 à J0, relance J+4, relance J+10), arrêt automatique sur réponse.
+
+Les trois emails sont au gabarit de la charte, générés par `pnpm emails:lemlist` dans `docs/emails/lemlist/` (`sf-1-lettre.html`, `sf-2-relance-j4.html`, `sf-3-relance-j10.html`, avec leur version texte) : coller chaque fichier dans la vue Code de son étape, puis poser le lien de désinscription de lemlist sur « Se désinscrire en un clic » (+ Add › Add unsubscribe link). Mode d'emploi complet : `docs/emails/README.md`. Une condition de séquence sur `sfStatut` n'est pas nécessaire : le portail arrête la séquence en marquant le lead intéressé.
 
 ## Mise en service
 
 1. Variables Vercel : `LEMLIST_API_KEY` (clé API lemlist) et `LEMLIST_WEBHOOK_SECRET` (`openssl rand -hex 24`). Sans la première, rien ne part ; sans la seconde, le webhook refuse tout.
 2. Déployer (la migration 0005 part avec le build).
-3. Créer les webhooks lemlist vers `https://signauxfaibles.io/api/webhooks/lemlist`, avec le secret dans le champ `secret`. Un seul webhook sans `type` reçoit tous les événements ; le portail ignore ceux qu'il ne suit pas. Le connecteur lemlist (`create_webhook`) sait le faire.
+3. Créer les webhooks lemlist (types suivis : `emailsSent`, `emailsOpened`, `emailsClicked`, `emailsReplied`, `emailsBounced`, `emailsInterested`, `emailsNotInterested`, `emailsUnsubscribed`, `entityUnsubscribed`, `variableUnsubscribed`) vers `https://signauxfaibles.io/api/webhooks/lemlist`, avec le secret dans le champ `secret`. Un seul webhook sans `type` reçoit tous les événements ; le portail ignore ceux qu'il ne suit pas. Le connecteur lemlist (`create_webhook`) sait le faire.
 4. Lot pilote de dix contacts : lettre 1, ouverture d'un espace, vérifier dans lemlist que la séquence s'arrête et que `sfStatut` passe à `actif`, puis dans `GET /api/veille/prospection` que les événements arrivent.
+
+## Pilote par Gmail, sans lemlist (20 octobre 2026)
+
+Décision d'Agathe : pas d'abonnement lemlist pour le pilote. Les trois emails de la séquence partent de Gmail, déposés en brouillons par les tâches et envoyés par l'opératrice, comme les lettres clients. Le registre le dit par « Prospection · canal » = Gmail.
+
+| Étape | Qui | Comment |
+|---|---|---|
+| Lettre 1 | tâche du lundi | `POST /api/veille/courriel` `{ "sorte": "prospection", "étape": 1, "prénom", "entreprise", "essentiel" }`, brouillon Gmail à « Email du lecteur final », « Prospection · dernier email » = Lettre 1, « lettre 1 envoyée le » = jour du brouillon |
+| Relance J+4 | tâche de synchronisation | même route, `étape: 2` avec `faitMarquant`, si aucune réponse ni activation ; « dernier email » = Relance J+4 |
+| Relance J+10 | tâche de synchronisation | `étape: 3` ; « dernier email » = Relance J+10 |
+| Activation | portail | la première visite ouvre l'essai **et crée la ligne de prospection, déjà `actif`** (`créerProspectionÀLaVisite`) : sans webhook, personne d'autre ne la créerait, et la synchronisation ne verrait jamais l'activation |
+| Désinscription | opératrice | le pied dit « répondez STOP » ; une réponse STOP passe la ligne en `desinscrit` au registre, motif « désinscrit », statut 0 |
+
+Le portail n'envoie rien de plus qu'avant : sans `LEMLIST_API_KEY`, aucun appel à lemlist. Ce qui manque pendant le pilote : les ouvertures et les clics (score vide), le rebond détecté (Gmail renvoie un message d'erreur à l'opératrice) et la désinscription en un clic.
+
+**Passer à lemlist ensuite** : poser `LEMLIST_API_KEY` et `LEMLIST_WEBHOOK_SECRET`, créer le webhook (`POST /api/hooks` avec `secret`, le connecteur ne sait pas poser de secret), coller les trois fichiers de `docs/emails/lemlist/` dans la campagne, et remettre l'étape 4 d'origine de la tâche du lundi. Une prospection née par Gmail et retrouvée par un webhook est complétée par l'empreinte, sans doublon.
 
 ## Ce que le contrôle du soir ne voit pas encore
 

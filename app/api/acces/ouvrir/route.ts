@@ -127,7 +127,7 @@ async function ouvrir(email: string, origine: string | null): Promise<NextRespon
       env().ACCES_SECRET_HMAC,
       env().PORTAIL_URL,
     )
-    const courrier = composerCourrierDAccès(accès.nom, lien)
+    const courrier = composerCourrierDAccès(accès.nom, lien, { destinataire: accès.email })
     await envoyerCourrier({
       message: { ...courrier, destinataire: accès.email },
       sorte: 'lien_acces',

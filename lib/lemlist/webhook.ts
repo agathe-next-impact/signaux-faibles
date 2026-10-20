@@ -50,7 +50,12 @@ export const TYPES_SUIVIS = [
   'emailsInterested',
   'emailsNotInterested',
   'emailsUnsubscribed',
+  // Depuis le 30 mars 2026, une désinscription de contact n'émet plus
+  // `emailsUnsubscribed` : `entityUnsubscribed` pour le contact entier,
+  // `variableUnsubscribed` pour une seule de ses adresses (aide lemlist,
+  // « Migrate from the legacy unsubscribe endpoints », phase 3).
   'entityUnsubscribed',
+  'variableUnsubscribed',
 ] as const
 export type TypeSuivi = (typeof TYPES_SUIVIS)[number]
 

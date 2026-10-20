@@ -1,0 +1,21 @@
+Un fait qui mérite votre attention.
+
+Bonjour {{firstName}},
+
+Dans la lettre préparée pour {{companyName}}, un fait daté mérite votre attention :
+
+{{sfFaitMarquant}}
+
+Il est sourcé dans votre lettre complète, avec les autres faits de la semaine et vos concurrents suivis. Votre espace est prêt.
+
+Lire ma lettre complète :
+https://www.signauxfaibles.io/recevoir-mon-lien
+
+Indiquez votre adresse : votre lien personnel arrive par email, sans mot de passe ni carte bancaire.
+
+Bien à vous,
+Agathe
+Fondatrice · Signaux Faibles
+
+--
+Signaux Faibles · signauxfaibles.io · contact@signauxfaibles.io

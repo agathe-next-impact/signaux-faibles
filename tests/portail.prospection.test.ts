@@ -66,6 +66,34 @@ describe('prospection (portail)', () => {
     expect(lue?.essaiOuvertLe).not.toBeNull()
   })
 
+  it('sans lemlist, la première visite crée la prospection, déjà active, une seule fois', async () => {
+    const [o] = await db
+      .insert(organisations)
+      .values({ slug: 'pilote', nom: 'Pilote', état: 'essai', entréeParProspection: true, essaiOuvertLe: null })
+      .returning({ id: organisations.id })
+    await db.insert(lecteurs).values({ organisationId: o!.id, nom: 'Serge', email: 'Serge@Pilote.fr', identifiantAcces: 'c'.repeat(32) })
+
+    await signalerVisite('c'.repeat(32), { db, lemlist: null })
+    const lignes = await prospectionsRécentes(new Date(0), db)
+    expect(lignes).toHaveLength(1)
+    expect(lignes[0]).toMatchObject({ slug: 'pilote', statut: 'actif' })
+
+    await signalerVisite('c'.repeat(32), { db, lemlist: null })
+    expect(await prospectionsRécentes(new Date(0), db)).toHaveLength(1)
+
+    // Si lemlist arrive ensuite, son premier webhook complète la même ligne.
+    await traiterÉvénementLemlist(événement({ email: 'serge@pilote.fr' }), { db })
+    const après = await prospectionsRécentes(new Date(0), db)
+    expect(après).toHaveLength(1)
+    expect(après[0]).toMatchObject({ statut: 'actif' })
+  })
+
+  it('une organisation entrée par une demande n’a pas de prospection à sa première visite', async () => {
+    await organisationEnEssai()
+    await signalerVisite('a'.repeat(32), { db, lemlist: null })
+    expect(await prospectionsRécentes(new Date(0), db)).toEqual([])
+  })
+
   it('l’activation arrête la séquence et écrit le statut, une seule fois', async () => {
     await organisationEnEssai()
     await traiterÉvénementLemlist(événement(), { db })

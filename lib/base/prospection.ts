@@ -132,6 +132,7 @@ function statutInduit(type: string, courant: StatutProspection): StatutProspecti
   switch (type) {
     case 'emailsUnsubscribed':
     case 'entityUnsubscribed':
+    case 'variableUnsubscribed':
     case 'emailsNotInterested':
       return 'desinscrit'
     case 'emailsBounced':
@@ -223,6 +224,39 @@ export async function ouvrirLEssaiÀLaVisite(organisationId: string, maintenant:
       )
       .returning({ id: organisations.id })
     return lignes.length > 0
+  })
+}
+
+/**
+ * La prospection d'un prospect écrit sans lemlist (pilote par Gmail, 20 octobre
+ * 2026), née à sa première visite, déjà `actif`.
+ *
+ * Sans lemlist, aucun webhook ne crée la ligne à l'envoi de la lettre 1 : sans
+ * elle, la synchronisation ne verrait jamais le prospect s'activer et ne
+ * lancerait pas sa veille. Elle est donc créée ici, sans identifiant lemlist.
+ * Si lemlist arrive ensuite, le premier webhook retrouve la ligne par
+ * l'empreinte (`rattacherLead`, lignes sans lead) et la complète.
+ */
+export async function créerProspectionÀLaVisite(
+  lecteur: { readonly id: string; readonly organisationId: string; readonly empreinte: string },
+  maintenant: Date = new Date(),
+  db: Base = base(),
+): Promise<string> {
+  return protéger('création d’une prospection à la visite', async () => {
+    const [ligne] = await db
+      .insert(prospections)
+      .values({
+        organisationId: lecteur.organisationId,
+        lecteurId: lecteur.id,
+        destinataireEmpreinte: lecteur.empreinte,
+        statut: 'actif',
+        statutLe: maintenant,
+        crééeLe: maintenant,
+        modifiéeLe: maintenant,
+      })
+      .returning({ id: prospections.id })
+    if (!ligne) throw new Error('insertion sans ligne rendue')
+    return ligne.id
   })
 }
 

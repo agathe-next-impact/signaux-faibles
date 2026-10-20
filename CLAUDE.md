@@ -273,6 +273,25 @@ Les lire avant toute session.
   cette semaine ; la lettre 1 publiée avant ne compte pas, et l'onboarding par
   prospection n'appelle pas `/api/acces/ouvrir`. `tests/architecture.test.ts`
   tient ces frontières
+- **Courriels client à la charte** (20 octobre 2026, `docs/emails/README.md`) :
+  tout courriel vers un client ou un prospect sort de `lib/email/gabarit.ts`,
+  traduction en code du template v1.0 (`docs/emails/charte/`) ; aucun modèle
+  n'écrit plus de HTML pour un client. Les courriers du portail (lien d'accès,
+  fin d'essai) partent en `multipart/alternative`. Les lettres et le point
+  mensuel sont mis en forme par `POST /api/veille/courriel` (`lettre` : la page
+  lue dans son ordre par `suiteDeLaLettre`, cadrage compris, refusée en 422 si
+  le lint ne passe pas ; `message` : le template champ par champ) ; la tâche
+  pose `html` et `texte` tels quels dans le brouillon Gmail. Les trois emails
+  lemlist sont générés par `pnpm emails:lemlist` dans `docs/emails/lemlist/`,
+  et le test vérifie qu'ils n'ont pas été retouchés. Le rose ne colore jamais
+  un texte, un seul bouton, trois badges ; une image Notion n'entre jamais dans
+  un courriel. `ADRESSE_POSTALE` (facultative) porte l'adresse du pied.
+  `tests/architecture.test.ts` tient le seul gabarit. **Pilote de prospection
+  par Gmail** (20 octobre 2026, sans abonnement lemlist) : les trois emails de
+  la séquence sortent de la même route (`sorte: "prospection"`), en brouillons
+  Gmail, désinscription par réponse « STOP » ; la première visite d'un prospect
+  crée sa ligne `prospections`, déjà `actif` (`créerProspectionÀLaVisite`),
+  qu'aucun webhook ne crée sans lemlist
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

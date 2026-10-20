@@ -1,0 +1,20 @@
+Votre lettre reste disponible.
+Quinze jours encore, puis nous n’écrirons plus.
+
+Bonjour {{firstName}},
+
+La lettre de veille préparée pour {{companyName}} reste disponible quinze jours. Passé ce délai, nous la retirons et nous ne vous écrirons plus.
+
+Si la veille vous intéresse, votre espace est à un clic, et le mois d’essai ne commence qu’à votre première visite.
+
+Lire ma lettre complète :
+https://www.signauxfaibles.io/recevoir-mon-lien
+
+Indiquez votre adresse : votre lien personnel arrive par email, sans mot de passe ni carte bancaire.
+
+Bien à vous,
+Agathe
+Fondatrice · Signaux Faibles
+
+--
+Signaux Faibles · signauxfaibles.io · contact@signauxfaibles.io

@@ -116,6 +116,40 @@ ou identifiant illisible.
 Ce que le validateur accepte, le portail l'affiche. Il n'y a pas de troisième
 lecture : `lib/portail/lint.ts` appelle les mêmes fonctions que les écrans.
 
+## `POST /api/veille/courriel` — mettre un courriel client à la charte
+
+*20 octobre 2026.* Les tâches n'écrivent plus de HTML pour un client : elles
+demandent la forme au portail, qui la tire du gabarit de la charte
+(`lib/email/gabarit.ts`, `docs/emails/README.md`). La route n'envoie rien et
+n'écrit nulle part.
+
+```
+POST /api/veille/courriel
+{ "sorte": "lettre", "page": "<page_id>", "slug": "acme", "organisation": "Acme", "objet": "Veille Acme : Concurrentiel, lundi 19 octobre" }
+{ "sorte": "message", "slug": "acme", "organisation": "Acme", "objet": "…", "préheader": "…",
+  "surtitre": "Point mensuel", "titre": "…", "accroche": "…", "salutation": "Bonjour,",
+  "paragraphes": ["…"], "points": [{ "niveau": "MOYEN", "titre": "…", "texte": "…", "méta": "…" }],
+  "action": { "libellé": "Répondre aux questions", "url": "https://…" }, "réassurance": "…" }
+{ "sorte": "prospection", "étape": 1 | 2 | 3, "prénom": "Serge", "entreprise": "Suneido",
+  "essentiel": "…" (étape 1), "faitMarquant": "…" (étape 2) }
+```
+
+`prospection` (20 octobre 2026) : un email de la séquence de prospection,
+rempli pour Gmail (pilote sans lemlist, `docs/prospection-lemlist.md`), avec
+une désinscription par réponse « STOP ».
+
+Réponse `200` : `{ état: "composé", objet, html, texte, octets }`, et
+`avertissement` au-delà de 92 Ko (Gmail masque la fin d'un message de plus de
+102 Ko). La tâche pose `html` dans `htmlBody` et `texte` dans `body` de
+`mcp__Gmail__create_draft`, **sans retoucher ni l'un ni l'autre**.
+
+`lettre` : la page est lue avec le parseur de production, tous statuts, et
+contrôlée comme par le lint ; **une lettre non conforme rend `422`**
+(`non-conforme`, avec les ruptures) et n'est pas mise en forme. À appeler après
+un lint conforme : c'est lui qui a expiré le cache de la page. `message` : trois
+points au plus, badges FORT / MOYEN / RAS seulement, adresses https ; un champ
+hors règle rend `400` en le nommant. `404` : page inconnue.
+
 ## `POST /api/veille/calendrier` — la sélection du jour
 
 ```
@@ -452,7 +486,10 @@ pour tout le reste. Le premier événement d'un lead rattache son adresse au
 lecteur actif qui la porte (en minuscules, organisation en prospection de
 préférence) ; les suivants s'ajoutent au journal, une fois chacun (identifiant
 d'activité `act_…`). Une désinscription (`emailsUnsubscribed`,
-`entityUnsubscribed`, `emailsNotInterested`) rend le statut `desinscrit`.
+`entityUnsubscribed`, `variableUnsubscribed`, `emailsNotInterested`) rend le
+statut `desinscrit`. Depuis le 30 mars 2026, lemlist n'émet plus
+`emailsUnsubscribed` pour un contact désinscrit, mais `entityUnsubscribed` (le
+contact) ou `variableUnsubscribed` (une de ses adresses).
 
 ### Entrée par prospection : `origine: "prospection"`
 
