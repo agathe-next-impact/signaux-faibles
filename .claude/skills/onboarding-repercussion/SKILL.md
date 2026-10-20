@@ -1,7 +1,7 @@
 ---
 name: onboarding-repercussion
 description: Lancement A-bis de l'onboarding — répercute les réponses aux points de validation dans la fiche et les référentiels, et passe au statut 3 si la porte passe, en appliquant le §2 du balayage Notion. À lancer par /onboarding-repercussion <organisation>.
-argument-hint: "<nom de l'organisation> [partiel]"
+argument-hint: "<nom de l'organisation> [partiel | contexte]"
 disable-model-invocation: true
 allowed-tools:
   - "mcp__Notion__notion-fetch"
@@ -51,15 +51,28 @@ Organisation visée : $ARGUMENTS
    le balayage.
 
 3. **Garde de statut.** Statuts 2, 3, 4 ou 5 seulement. Au statut 6, la
-   répercussion appartient à la revue mensuelle : dis-le et arrête-toi, sauf si
-   l'argument dit explicitement de forcer. Au statut 1 : renvoie à
-   `/onboarding-referentiels`.
+   répercussion des validations appartient à la revue mensuelle : dis-le et
+   arrête-toi, sauf si l'argument dit explicitement de forcer, ou s'il porte
+   « contexte » (voir 4 bis). Au statut 1 : renvoie à `/onboarding-referentiels`.
 
-4. **La porte des priorités 1 et 2.** Le §2 ne traite l'organisation que si
-   tous ses points « 1 · Scoring » et « 2 · Fiche » ont une « Valeur corrigée ».
+4. **La porte de la priorité 1.** Le §2 ne traite l'organisation que si tous
+   ses points « 1 · Scoring » ont une « Valeur corrigée » ; les points
+   « 2 · Fiche » ne bloquent pas, ils sont répercutés s'ils ont une réponse.
    Si l'argument porte « partiel », coche « ▶ Répercuter les validations
    (A-bis) » : le §2 force alors une répercussion partielle. Sinon, et si des
-   points manquent, ne répercute rien et liste ce qui manque.
+   points de priorité 1 manquent, ne répercute rien et liste ce qui manque.
+
+4 bis. **Contexte client.** Si l'argument porte « contexte », ou si
+   « ▶ Mettre à jour le contexte » est déjà cochée, exécute la file
+   « CONTEXTE À RÉPERCUTER » du §2 pour cette organisation, statuts 2 à 6
+   compris : les champs déclarés du registre (« Objectifs de veille »,
+   « Offre déclarée », « Acteurs déclarés », « Contexte client », Q1 à Q3)
+   sont appliqués à la fiche et aux deux référentiels selon la hiérarchie des
+   sources écrite en tête du balayage. Une déclaration « non publiée » cadre le
+   scoring et n'est jamais présentée comme publique. Tu n'écris jamais dans
+   « Valeur corrigée » ; un point déjà répondu que la déclaration touche est
+   signalé « à reconfirmer ». Le statut ne change pas. Coche la case avant,
+   décoche-la après.
 
 5. **Exécute le §2** : lis les deux champs (« Valeur corrigée », « Répercuté
    dans »), jamais le statut formule ; la réponse du client est prise telle

@@ -1,7 +1,7 @@
 ---
 name: onboarding-demande
 description: Étape 1 de l'onboarding d'une organisation, à la place du formulaire — enregistre la demande dans le registre Notion et coche « ▶ Générer les référentiels (A) ». À lancer par /onboarding-demande, jamais de soi-même.
-argument-hint: "Organisation : <nom> · URL : <site> [· Email du lecteur final : <adresse>] [· Lecteur final : <nom>]"
+argument-hint: "Organisation : <nom> · URL : <site> · Objectifs de veille : <ce que la veille doit permettre, ou « à proposer »> [· Email du lecteur final : <adresse>] [· Lecteur final : <nom>] [· Offre déclarée : …] [· Acteurs déclarés : …] [· Contexte client : …]"
 disable-model-invocation: true
 allowed-tools:
   - "mcp__Notion__notion-fetch"
@@ -26,10 +26,11 @@ allowed-tools:
   - "Bash(curl *https://www.signauxfaibles.io/api/veille/*)"
 ---
 
-**Aucune confirmation en cours d'exécution.** Lancer cette commande vaut ordre pour
-toutes ses étapes : enchaîne-les sans demander de validation intermédiaire. Tu ne
-t'arrêtes que sur les gardes écrites ci-dessous ou dans la page Notion, et tu le dis
-dans le compte rendu.
+**Aucune confirmation en cours d'exécution, une seule question.** Lancer cette
+commande vaut ordre pour toutes ses étapes : enchaîne-les sans demander de
+validation intermédiaire. La seule question admise est celle des objectifs de
+veille (étape 1 bis). Tu ne t'arrêtes que sur les gardes écrites ci-dessous ou
+dans la page Notion, et tu le dis dans le compte rendu.
 
 Tu es l'agent de veille du cabinet Signaux faibles. Tu écris en français. Tu fais
 l'étape 1 de l'onboarding : tu enregistres la demande dans le registre et tu
@@ -42,6 +43,15 @@ Demande reçue : $ARGUMENTS
    Elle peut porter « Email du lecteur final », « Lecteur final » et des
    précisions. Si le nom ou l'URL manque, n'écris rien : dis ce qui manque et
    arrête-toi.
+
+1 bis. **La question des objectifs de veille.** Si la demande ne porte pas
+   « Objectifs de veille », pose une seule question avant d'écrire quoi que ce
+   soit : « Que doit permettre cette veille au client : quelles décisions
+   éclairer, quels sujets ne pas manquer ? Répondez « à proposer » pour que
+   l'agent formule une hypothèse, soumise en point de validation. » Sans
+   personne pour répondre (lancement par une tâche planifiée), laisse le champ
+   vide : l'étape A formulera l'hypothèse et le point de validation. « À
+   proposer » laisse aussi le champ vide. N'invente jamais d'objectif.
 
 2. **Lis la règle avant d'écrire.** Ouvre dans Notion la page « Tâche —
    Onboarding d'une organisation (prompts A et B) »
@@ -62,13 +72,18 @@ Demande reçue : $ARGUMENTS
    - URL du site = l'adresse donnée, complétée en `https://` si le schéma manque ;
    - Email du lecteur final = l'adresse donnée, sinon vide ;
    - Lecteur final = le nom donné, sinon vide ;
+   - Objectifs de veille = la réponse à l'étape 1 bis, telle quelle, sinon vide ;
    - Statut = « 1 · Demande reçue » ;
    - ▶ Générer les référentiels (A) = cochée.
 
    Pas d'autre champ, pas même le Slug : le §3 du balayage le fait. N'invente
    aucune valeur. Une précision qui correspond à un autre champ du registre
-   (Marché ou métier, Périmètre géographique, Veilles à installer) s'écrit telle
-   quelle ; sinon elle est ignorée. Relis la ligne créée et vérifie chaque
+   (Marché ou métier, Périmètre géographique, Veilles à installer, Offre
+   déclarée, Acteurs déclarés, Contexte client, Q1 à Q3) s'écrit telle quelle ;
+   sinon elle est ignorée. Une offre donnée sans « publiée » ou « non publiée »
+   s'écrit avec « publication : à préciser » et la date du jour. Ces champs
+   déclarés priment sur le site à l'étape A (hiérarchie des sources du
+   balayage). Relis la ligne créée et vérifie chaque
    valeur. Ne crée jamais de ligne « Accès » : le §3.7bis la crée, inactive.
 
 5. **Compte rendu, court** : le lien de la ligne, les valeurs écrites, et
