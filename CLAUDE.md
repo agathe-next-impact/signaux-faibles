@@ -286,7 +286,12 @@ Les lire avant toute session.
   et le test vérifie qu'ils n'ont pas été retouchés. Le rose ne colore jamais
   un texte, un seul bouton, trois badges ; une image Notion n'entre jamais dans
   un courriel. `ADRESSE_POSTALE` (facultative) porte l'adresse du pied.
-  `tests/architecture.test.ts` tient le seul gabarit
+  `tests/architecture.test.ts` tient le seul gabarit. **Pilote de prospection
+  par Gmail** (20 octobre 2026, sans abonnement lemlist) : les trois emails de
+  la séquence sortent de la même route (`sorte: "prospection"`), en brouillons
+  Gmail, désinscription par réponse « STOP » ; la première visite d'un prospect
+  crée sa ligne `prospections`, déjà `actif` (`créerProspectionÀLaVisite`),
+  qu'aucun webhook ne crée sans lemlist
 
 Avant d'utiliser une fonctionnalité de l'API Notion ou de Next.js
 (`use cache`, `cacheLife`, `proxy.ts`), vérifier la documentation courante

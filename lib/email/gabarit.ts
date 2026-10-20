@@ -251,7 +251,13 @@ export type Pied =
   /** Le lien d'accès : transactionnel, aucune désinscription à proposer. */
   | { readonly sorte: 'accès'; readonly destinataire: string | null }
   /** Un prospect (lemlist) : désinscription en un clic fournie par l'outil. */
-  | { readonly sorte: 'prospect'; readonly motif: string; readonly désinscription: string }
+  | {
+      readonly sorte: 'prospect'
+      readonly motif: string
+      readonly désinscription: string
+      /** « Se désinscrire en un clic » par défaut (lien lemlist) ; « Se désinscrire » pour un lien mailto. */
+      readonly libelléDésinscription?: string
+    }
 
 export type Courriel = {
   readonly objet: string
@@ -372,7 +378,7 @@ function piedDePage(c: Courriel): Html {
         lienGris('Nous écrire', contact)
       break
     case 'prospect':
-      mentions = `${échapper(c.pied.motif)}<br>\n          ${lienGris('Se désinscrire en un clic', c.pied.désinscription)}`
+      mentions = `${échapper(c.pied.motif)}<br>\n          ${lienGris(c.pied.libelléDésinscription ?? 'Se désinscrire en un clic', c.pied.désinscription)}`
       break
   }
 

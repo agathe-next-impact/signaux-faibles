@@ -4,6 +4,7 @@ import {
   composerCourriel,
   composerTexte,
   joindre,
+  échapper,
   paragraphe,
   type Courriel,
 } from '@/lib/email/gabarit'
@@ -62,7 +63,21 @@ type ÉtapeLemlist = {
   readonly courriel: Courriel
 }
 
-export function étapesLemlist(racinePortail: string, adressePostale: string | null): readonly ÉtapeLemlist[] {
+/** Comment le prospect se désinscrit : lien en un clic de lemlist, ou réponse STOP par Gmail. */
+export type Désinscription = {
+  readonly url: string
+  readonly libellé: string
+  /** Phrase ajoutée au motif du pied. */
+  readonly consigne: string | null
+}
+
+const DÉSINSCRIPTION_LEMLIST: Désinscription = { url: ANCRE_DE_DÉSINSCRIPTION, libellé: 'Se désinscrire en un clic', consigne: null }
+
+export function étapesLemlist(
+  racinePortail: string,
+  adressePostale: string | null,
+  désinscription: Désinscription = DÉSINSCRIPTION_LEMLIST,
+): readonly ÉtapeLemlist[] {
   const racine = racinePortail.replace(/\/+$/, '')
   const action = { libellé: 'Lire ma lettre complète', url: `${racine}/recevoir-mon-lien` }
   const réassurance = 'Indiquez votre adresse : votre lien personnel arrive par email, sans mot de passe ni carte bancaire.'
@@ -75,9 +90,14 @@ export function étapesLemlist(racinePortail: string, adressePostale: string | n
     signature: { formule: 'Bien à vous,', nom: 'Agathe', rôle: 'Fondatrice' },
     pied: {
       sorte: 'prospect' as const,
-      motif:
+      motif: [
         'Vous recevez cet email parce qu’une lettre de veille a été préparée pour {{companyName}} à partir de son site public. Votre adresse ne sert qu’à cet envoi.',
-      désinscription: ANCRE_DE_DÉSINSCRIPTION,
+        désinscription.consigne,
+      ]
+        .filter(Boolean)
+        .join(' '),
+      désinscription: désinscription.url,
+      libelléDésinscription: désinscription.libellé,
     },
     racine,
     adressePostale,
@@ -192,4 +212,59 @@ export function fichierLemlist(étape: ÉtapeLemlist): string {
 
 export function texteLemlist(étape: ÉtapeLemlist): string {
   return composerTexte(étape.courriel)
+}
+
+// ── Le pilote par Gmail (20 octobre 2026) ──────────────────────────────────────
+
+/**
+ * Les mêmes trois emails, remplis pour un prospect et prêts à déposer en
+ * brouillon Gmail, quand la prospection se fait sans lemlist.
+ *
+ * Seule la désinscription change : pas de lien en un clic, mais une réponse
+ * « STOP » à l'expéditeur, que l'opératrice reporte au registre ; c'est le
+ * moyen d'opposition simple qu'admet la prospection entre entreprises. Les
+ * valeurs remplacent les variables lemlist après composition, échappées comme
+ * tout texte du gabarit : un nom d'entreprise ne peut pas injecter de HTML.
+ */
+export type ValeursDeProspection = {
+  readonly étape: 1 | 2 | 3
+  readonly prénom: string | null
+  readonly entreprise: string
+  readonly essentiel: string | null
+  readonly faitMarquant: string | null
+}
+
+export const ADRESSE_DE_PROSPECTION = 'agathe@signauxfaibles.io'
+
+function désinscriptionGmail(): Désinscription {
+  return {
+    url: `mailto:${ADRESSE_DE_PROSPECTION}?subject=STOP`,
+    libellé: 'Se désinscrire',
+    consigne: 'Pour ne plus recevoir de message, répondez STOP.',
+  }
+}
+
+export function composerProspection(
+  valeurs: ValeursDeProspection,
+  contexte: { readonly portailUrl: string; readonly adressePostale: string | null },
+): { readonly objet: string; readonly html: string; readonly texte: string } {
+  const étape = étapesLemlist(contexte.portailUrl, contexte.adressePostale, désinscriptionGmail())[valeurs.étape - 1]
+  if (!étape) throw new Error(`étape ${valeurs.étape} inconnue`)
+  if (valeurs.étape === 1 && !valeurs.essentiel?.trim()) throw new Error('« essentiel » requis pour l’étape 1')
+  if (valeurs.étape === 2 && !valeurs.faitMarquant?.trim()) throw new Error('« faitMarquant » requis pour l’étape 2')
+
+  const prénom = valeurs.prénom?.trim() ?? ''
+  const remplir = (texte: string, échapperValeur: (v: string) => string) =>
+    texte
+      .replaceAll('Bonjour {{firstName}},', prénom ? `Bonjour ${échapperValeur(prénom)},` : 'Bonjour,')
+      .replaceAll('{{firstName}}', échapperValeur(prénom))
+      .replaceAll('{{companyName}}', échapperValeur(valeurs.entreprise.trim()))
+      .replaceAll('{{sfEssentiel}}', échapperValeur(valeurs.essentiel?.trim() ?? ''))
+      .replaceAll('{{sfFaitMarquant}}', échapperValeur(valeurs.faitMarquant?.trim() ?? ''))
+
+  return {
+    objet: remplir(étape.objet, (v) => v),
+    html: remplir(composerCourriel(étape.courriel), échapper),
+    texte: remplir(composerTexte(étape.courriel), (v) => v),
+  }
 }

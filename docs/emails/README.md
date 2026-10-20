@@ -14,6 +14,7 @@ Tout courriel qui part vers un client ou un prospect sort du gabarit en code, `l
 | Lettre de veille, première lettre comprise | `composerLettre`, `lib/email/lettre.ts`, par `POST /api/veille/courriel` (`sorte: "lettre"`) | brouillon Gmail créé par la tâche, envoyé par l'opératrice | client |
 | Point mensuel de la revue | `composerMessageClient`, `lib/email/message.ts`, par `POST /api/veille/courriel` (`sorte: "message"`) | brouillon Gmail créé par la revue, envoyé par l'opératrice | client |
 | Prospection : lettre 1 (J0), relance J+4, relance J+10 | `lib/email/lemlist.ts`, fichiers générés dans `docs/emails/lemlist/` | lemlist | prospect : désinscription en un clic de lemlist |
+| Prospection, pilote par Gmail | `composerProspection`, `lib/email/lemlist.ts`, par `POST /api/veille/courriel` (`sorte: "prospection"`) | brouillon Gmail créé par les tâches de prospection, envoyé par l'opératrice | prospect : réponse « STOP » |
 
 L'alerte du soir (`[Veille] Espaces clients`) et les notifications de relecture vont à l'opératrice seule : elles restent en texte brut.
 

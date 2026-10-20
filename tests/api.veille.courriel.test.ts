@@ -138,4 +138,15 @@ describe('POST /api/veille/courriel', () => {
     expect(raison).toContain('points')
     expect(raison).toContain('action.url')
   })
+
+  it('compose un email de prospection pour Gmail, et exige l’essentiel à l’étape 1', async () => {
+    const réponse = await appel({ sorte: 'prospection', étape: 1, prénom: 'Serge', entreprise: 'Suneido', essentiel: 'Un fait daté.' })
+    expect(réponse.status).toBe(200)
+    const corps = await réponse.json()
+    expect(corps.objet).toBe('Suneido : ce que votre veille a relevé cette semaine')
+    expect(corps.html).toContain('répondez STOP')
+    const sansEssentiel = await appel({ sorte: 'prospection', étape: 1, entreprise: 'Suneido' })
+    expect(sansEssentiel.status).toBe(400)
+    expect((await sansEssentiel.json()).raison).toContain('essentiel')
+  })
 })

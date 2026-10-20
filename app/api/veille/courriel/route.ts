@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { SEUIL_GMAIL_OCTETS } from '@/lib/email/gabarit'
 import { adressePostale } from '@/lib/email/gmail'
+import { composerProspection } from '@/lib/email/lemlist'
 import { composerLettre } from '@/lib/email/lettre'
 import { SCHÉMA_MESSAGE, composerMessageClient } from '@/lib/email/message'
 import { env } from '@/lib/env'
@@ -32,6 +33,12 @@ import { contrôlerLaLettre } from '@/lib/portail/lint'
  * cache de la page : cette route ne tient aucun pouvoir d'invalidation.
  *
  * `message` : le template rempli champ par champ (point mensuel de la revue).
+ *
+ * `prospection` : l'un des trois emails de la séquence (lettre 1, relance J+4,
+ * relance J+10), rempli pour un prospect, à déposer en brouillon Gmail quand
+ * la prospection se fait sans lemlist. Désinscription par réponse « STOP ».
+ *   { "sorte": "prospection", "étape": 1, "prénom": "Serge", "entreprise": "Suneido",
+ *     "essentiel": "…", "faitMarquant": "…" }
  * Les règles de la charte sont dans le schéma (`lib/email/message.ts`).
  *
  * Au-delà de 102 Ko, Gmail masque la fin du message : `octets` est rendu, et
@@ -47,7 +54,24 @@ const LETTRE = z.object({
   objet: z.string().trim().min(1).max(160).nullish(),
 })
 
-const DEMANDE = z.discriminatedUnion('sorte', [LETTRE, SCHÉMA_MESSAGE.extend({ sorte: z.literal('message') })])
+/** Un email de prospection rempli pour Gmail (pilote sans lemlist, 20 octobre 2026). */
+const PROSPECTION = z
+  .object({
+    sorte: z.literal('prospection'),
+    étape: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    prénom: z.string().trim().max(60).nullish(),
+    entreprise: z.string().trim().min(1).max(120),
+    essentiel: z.string().trim().max(1400).nullish(),
+    faitMarquant: z.string().trim().max(300).nullish(),
+  })
+  .refine((d) => d.étape !== 1 || Boolean(d.essentiel), { message: 'requis pour l’étape 1', path: ['essentiel'] })
+  .refine((d) => d.étape !== 2 || Boolean(d.faitMarquant), { message: 'requis pour l’étape 2', path: ['faitMarquant'] })
+
+const DEMANDE = z.discriminatedUnion('sorte', [
+  LETTRE,
+  SCHÉMA_MESSAGE.extend({ sorte: z.literal('message') }),
+  PROSPECTION,
+])
 
 function réponse(objet: string, html: string, texte: string): NextResponse {
   const octets = Buffer.byteLength(html, 'utf8')
@@ -88,6 +112,21 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
 
   try {
     const portailUrl = env().PORTAIL_URL
+
+    if (demande.sorte === 'prospection') {
+      const courriel = composerProspection(
+        {
+          étape: demande.étape,
+          prénom: demande.prénom ?? null,
+          entreprise: demande.entreprise,
+          essentiel: demande.essentiel ?? null,
+          faitMarquant: demande.faitMarquant ?? null,
+        },
+        { portailUrl, adressePostale: adressePostale() },
+      )
+      console.info(`[veille/courriel] prospection, étape ${demande.étape}, composée.`)
+      return réponse(courriel.objet, courriel.html, courriel.texte)
+    }
 
     if (demande.sorte === 'message') {
       const { html, texte } = composerMessageClient(demande, { portailUrl, adressePostale: adressePostale() })

@@ -130,7 +130,13 @@ POST /api/veille/courriel
   "surtitre": "Point mensuel", "titre": "…", "accroche": "…", "salutation": "Bonjour,",
   "paragraphes": ["…"], "points": [{ "niveau": "MOYEN", "titre": "…", "texte": "…", "méta": "…" }],
   "action": { "libellé": "Répondre aux questions", "url": "https://…" }, "réassurance": "…" }
+{ "sorte": "prospection", "étape": 1 | 2 | 3, "prénom": "Serge", "entreprise": "Suneido",
+  "essentiel": "…" (étape 1), "faitMarquant": "…" (étape 2) }
 ```
+
+`prospection` (20 octobre 2026) : un email de la séquence de prospection,
+rempli pour Gmail (pilote sans lemlist, `docs/prospection-lemlist.md`), avec
+une désinscription par réponse « STOP ».
 
 Réponse `200` : `{ état: "composé", objet, html, texte, octets }`, et
 `avertissement` au-delà de 92 Ko (Gmail masque la fin d'un message de plus de

@@ -1,6 +1,7 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { base, baseConfigurée, type Base } from '@/lib/base/client'
 import {
+  créerProspectionÀLaVisite,
   enregistrerVisite,
   journaliserÉvénement,
   noterLaSynchro,
@@ -85,15 +86,21 @@ export async function signalerVisite(identifiantAcces: string, dépendances: Dé
     if (!visite || !visite.première) return
 
     // Entrée par prospection : c'est cette visite qui ouvre le mois d'essai.
-    if (visite.organisationId && (await ouvrirLEssaiÀLaVisite(visite.organisationId, maintenant, db))) {
-      console.info('[prospection] essai ouvert à la première visite.')
-    }
+    const essaiOuvert = visite.organisationId !== null && (await ouvrirLEssaiÀLaVisite(visite.organisationId, maintenant, db))
+    if (essaiOuvert) console.info('[prospection] essai ouvert à la première visite.')
 
-    const ligne = await prospectionDuLecteur(
-      { id: visite.lecteurId, organisationId: visite.organisationId, empreinte: visite.email ? empreinte(visite.email) : null },
-      db,
-    )
-    if (!ligne) return
+    const marque = visite.email ? empreinte(visite.email) : null
+    const ligne = await prospectionDuLecteur({ id: visite.lecteurId, organisationId: visite.organisationId, empreinte: marque }, db)
+    if (!ligne) {
+      // Prospect écrit sans lemlist (pilote par Gmail) : aucun webhook n'a créé
+      // sa ligne. La visite qui ouvre l'essai la crée, déjà active, pour que la
+      // synchronisation voie l'activation. Rien à dire à lemlist.
+      if (essaiOuvert && visite.organisationId && marque) {
+        await créerProspectionÀLaVisite({ id: visite.lecteurId, organisationId: visite.organisationId, empreinte: marque }, maintenant, db)
+        console.info('[prospection] prospection sans lemlist créée à la première visite.')
+      }
+      return
+    }
     const changé = await passerAuStatut(ligne.id, 'actif', db)
     if (!changé) return
 
