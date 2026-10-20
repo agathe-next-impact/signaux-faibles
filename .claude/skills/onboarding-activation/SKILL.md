@@ -1,6 +1,6 @@
 ---
 name: onboarding-activation
-description: Activation de la veille d'une organisation dont la première lettre a été jugée bonne — coche Veille automatique, date l'activation, passe au statut 6 et contrôle l'espace du portail, en appliquant le §1 du balayage Notion. À lancer par /onboarding-activation <organisation>.
+description: Activation de la veille d'une organisation dont la première lettre a été jugée bonne — coche Veille automatique, date l'activation, passe au statut 6 et ouvre l'espace du portail si la première lettre est publiée, en appliquant le §1 du balayage Notion. À lancer par /onboarding-activation <organisation>.
 argument-hint: "<nom de l'organisation, au statut 4 ou 5>"
 disable-model-invocation: true
 allowed-tools:
@@ -55,7 +55,7 @@ Organisation visée : $ARGUMENTS
    `GET https://www.signauxfaibles.io/api/veille/contexte?organisation=<page_id>`.
    Lis les refus ainsi, et dis-le en tête du compte rendu avant d'activer :
    - 401 sur `/api/acces/` seulement : le chemin n'est pas autorisé dans
-     l'environnement ; un rattrapage du §1.3 ne pourrait pas envoyer de lien ;
+     l'environnement ; l'ouverture du §1.3 ne pourrait pas envoyer de lien ;
    - 401 partout : le secret de l'environnement n'est plus celui du portail
      (secret changé sur Vercel sans report). Les tâches planifiées échoueront
      aussi : signale-le comme bloquant pour la première parution ;
@@ -69,13 +69,24 @@ Organisation visée : $ARGUMENTS
      **relation** Organisation avec l'URL de cette ligne ; retiens cet
      identifiant, c'est le seul qui serve en 1.3 ;
    - 1.2 activation : Veille automatique, Activée le, statut 6, jour et cadence ;
-   - 1.3 espace client : **contrôle** de la ligne « Accès » (identifiant de
-     1.1, identifiant d'accès unique, slug, email), et rattrapage seulement si
-     l'espace n'a pas été ouvert par la première lettre. Pas de second lien si
-     le premier est déjà parti. **Si « Invitation manuelle » est cochée**, le
-     1.3 contrôle sans ouvrir ni envoyer, même pour une ligne déjà active :
-     l'espace s'ouvre par `/onboarding-ouvrir-espace`, et l'activation de la
-     veille se fait quand même.
+   - 1.3 espace client : **le lien d'accès part après la publication de la
+     première lettre, jamais avant** (décision du 20 octobre 2026). Garde de
+     publication d'abord : au moins une édition de l'organisation au statut
+     « Envoyé », trouvée par la relation avec l'identifiant de 1.1.
+     - Aucune : contrôle de la ligne « Accès » sans cocher « Actif », ni import
+       ni lien ; écris « espace en attente de la première publication » et
+       poursuis l'activation de la veille. L'espace s'ouvrira par
+       `/onboarding-ouvrir-espace`, après la réconciliation du soir.
+     - Au moins une : **ouverture**, (a) à (f) : contrôle de la ligne
+       (identifiant de 1.1, identifiant d'accès unique, slug, email), « Actif »
+       coché, `POST /api/veille/importer-acces` (précédé de
+       `POST /api/veille/organisations` si l'organisation n'est pas encore en
+       essai), puis `POST /api/acces/ouvrir`. Pas de second lien si le premier
+       est déjà parti (organisations ouvertes avant le 20 octobre 2026).
+     **Si « Invitation manuelle » est cochée**, le 1.3 contrôle sans ouvrir ni
+     envoyer, même pour une ligne déjà active : l'espace s'ouvre par
+     `/onboarding-ouvrir-espace`, et l'activation de la veille se fait quand
+     même.
 
    Appels au portail : toujours `https://www.signauxfaibles.io`. **Aucun jeton
    à manipuler** : n'ajoute aucun en-tête `Authorization`, n'écris jamais de
@@ -87,5 +98,7 @@ Organisation visée : $ARGUMENTS
    première parution le [jour] », puis la trace du 1.3 f).
 
 6. **Compte rendu** : ce qui a été activé, l'état de l'espace du portail
-   (ouvert, contrôlé, corrigé, rattrapé) et la première parution prévue. Les
-   tâches planifiées prennent le relais ; rien d'autre à lancer.
+   (ouvert et lien envoyé, ou en attente de la première publication, contrôlé,
+   corrigé) et la première parution prévue. Les tâches planifiées prennent le
+   relais. Si l'espace attend la publication, dis qu'il reste à lancer
+   `/onboarding-ouvrir-espace <nom>` une fois la lettre passée en « Envoyé ».

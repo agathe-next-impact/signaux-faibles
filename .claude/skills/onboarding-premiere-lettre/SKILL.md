@@ -1,6 +1,6 @@
 ---
 name: onboarding-premiere-lettre
-description: Lancement B de l'onboarding — produit la première édition de chaque veille en brouillon Gmail, fait entrer l'organisation en essai dans le portail et envoie le lien d'accès, en appliquant le « Prompt — Première lettre » Notion. À lancer par /onboarding-premiere-lettre <organisation>.
+description: Lancement B de l'onboarding — produit la première édition de chaque veille en brouillon Gmail, fait entrer l'organisation en essai dans le portail, sans envoyer le lien d'accès (il part après la première publication), en appliquant le « Prompt — Première lettre » Notion. À lancer par /onboarding-premiere-lettre <organisation>.
 argument-hint: "<nom de l'organisation, au statut 3>"
 disable-model-invocation: true
 allowed-tools:
@@ -56,12 +56,11 @@ Organisation visée : $ARGUMENTS
 3. **Vérifie le portail avant tout travail.** La collecte prend une heure ; un
    appel refusé ne doit pas se découvrir après. Sans en-tête `Authorization` :
    - `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
-     `{"état":"prêt"}`. Un 401 veut dire que l'environnement de la session ne
-     porte pas le secret sur `/api/acces/` : arrête-toi, n'écris rien, et dis
-     qu'il faut autoriser ce chemin dans l'environnement. Un 405 veut dire que
-     cette vérification n'est pas encore déployée : ce n'est pas un refus,
-     poursuis, et le lien pourra au besoin partir par
-     `https://www.signauxfaibles.io/recevoir-mon-lien` ;
+     `{"état":"prêt"}`. Ce lancement n'envoie plus de lien (20 octobre 2026) :
+     un 401 ou un 405 n'est pas bloquant ici. Dis-le en tête du compte rendu,
+     car l'ouverture de l'espace, après la première publication, en aura
+     besoin (un 401 veut dire que l'environnement ne porte pas le secret sur
+     `/api/acces/`) ;
    - `GET https://www.signauxfaibles.io/api/veille/contexte?organisation=<page_id
      de la ligne du registre>` doit répondre 200 : il donne aussi la garde
      d'idempotence (aucune édition de cette organisation). Un 401 ici, comme
@@ -82,17 +81,22 @@ Organisation visée : $ARGUMENTS
    collecte refaite intégralement, éditions n°1 en **brouillon Gmail adressé au
    client** — jamais envoyées par toi, et mises en forme par le portail
    (`POST /api/veille/courriel`, `sorte: "lettre"`, après le lint : `html` et
-   `texte` de la réponse vont tels quels dans `htmlBody` et `body`) —, puis,
-   dans cet ordre,
-   `POST /api/veille/organisations`, « Actif » coché selon le §1.3 (d),
-   `POST /api/veille/importer-acces`, `POST /api/acces/ouvrir`.
+   `texte` de la réponse vont tels quels dans `htmlBody` et `body`) —, puis
+   `POST /api/veille/organisations` (entrée en essai) et le contrôle (d) du
+   §1.3 de la ligne « Accès », **laissée inactive**.
 
-   **Si « Invitation manuelle » est cochée** sur la ligne du registre, fais
-   `POST /api/veille/organisations` **seulement** : l'organisation entre en
-   essai, mais tu ne coches pas « Actif », tu n'importes pas et tu n'envoies
-   aucun lien. Écris « espace prêt le JJ/MM, invitation manuelle : à ouvrir par
-   `/onboarding-ouvrir-espace` » dans « Dernier lancement manuel ». Dans ce cas,
-   la vérification `GET /api/acces/ouvrir` du point 3 n'est pas bloquante.
+   **Le courriel d'accès part après la publication de la première lettre,
+   jamais avant** (décision du 20 octobre 2026) : n'appelle ni
+   `POST /api/veille/importer-acces` ni `POST /api/acces/ouvrir`, et ne coche
+   pas « Actif ». Le portail n'affiche que les éditions au statut « Envoyé » :
+   un lien envoyé maintenant ferait entrer le client dans un espace vide. Écris
+   « espace prêt le JJ/MM, lien après la première publication » dans « Dernier
+   lancement manuel ». L'espace s'ouvre à l'activation, si une édition est au
+   statut « Envoyé », sinon par `/onboarding-ouvrir-espace`.
+
+   **Si « Invitation manuelle » est cochée** sur la ligne du registre, le geste
+   est le même. Écris alors « espace prêt le JJ/MM, invitation manuelle : à
+   ouvrir par `/onboarding-ouvrir-espace` » dans « Dernier lancement manuel ».
 
    **Si « Origine » vaut « Prospection »** (19 octobre 2026, lettre 1 envoyée
    par lemlist sans sollicitation, `docs/prospection-lemlist.md`), le cas
@@ -165,6 +169,9 @@ Organisation visée : $ARGUMENTS
    résultat dans « Dernier lancement manuel ».
 
 7. **Notification `[Relecture]` et compte rendu** prévus par le prompt.
-   L'étape suivante appartient au relecteur : relire, envoyer le brouillon,
-   puis `/onboarding-activation <nom>`. En invitation manuelle, l'opératrice
-   lance aussi `/onboarding-ouvrir-espace <nom>` le jour qu'elle choisit.
+   L'étape suivante appartient au relecteur : relire, envoyer les brouillons,
+   puis, le lendemain, une fois la lettre passée au statut « Envoyé » par la
+   réconciliation du soir, `/onboarding-activation <nom>`, qui ouvre l'espace
+   et fait partir le lien. En invitation manuelle, l'opératrice lance
+   `/onboarding-ouvrir-espace <nom>` le jour qu'elle choisit, après la
+   publication.

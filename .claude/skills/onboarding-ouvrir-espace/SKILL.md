@@ -1,6 +1,6 @@
 ---
 name: onboarding-ouvrir-espace
-description: Ouverture manuelle de l'espace du portail d'une organisation dont « Invitation manuelle » est cochée — contrôle la ligne Accès, coche Actif, importe et fait partir le lien, en appliquant les points (d) et (e) du §1.3 du balayage Notion. À lancer par /onboarding-ouvrir-espace <organisation>, jamais de soi-même.
+description: Ouverture manuelle de l'espace du portail, après la publication de la première lettre, quand l'activation n'a pas pu l'ouvrir faute de lettre publiée ou quand « Invitation manuelle » est cochée — contrôle la ligne Accès, coche Actif, importe et fait partir le lien, en appliquant les points (d) et (e) du §1.3 du balayage Notion. À lancer par /onboarding-ouvrir-espace <organisation>, jamais de soi-même.
 argument-hint: "<nom de l'organisation, tel qu'au registre>"
 disable-model-invocation: true
 allowed-tools:
@@ -32,10 +32,12 @@ t'arrêtes que sur les gardes écrites ci-dessous ou dans la page Notion, et tu 
 dans le compte rendu.
 
 Tu tiens le pipeline d'équipement des organisations du cabinet Signaux faibles.
-Tu écris en français. Ce lancement est l'**ouverture manuelle de l'espace** :
-l'opératrice a coché « Invitation manuelle » pour choisir elle-même le jour où le
-client reçoit son lien, et lancer cette commande vaut sa décision. Le lien part
-du portail, dans les minutes qui suivent.
+Tu écris en français. Ce lancement est l'**ouverture manuelle de l'espace**, dans
+deux cas : l'activation a trouvé la veille prête mais aucune lettre publiée, et
+l'espace attend ; ou l'opératrice a coché « Invitation manuelle » pour choisir
+elle-même le jour où le client reçoit son lien. Lancer cette commande vaut sa
+décision. Le lien part du portail, dans les minutes qui suivent, et **jamais
+avant la publication de la première lettre** (décision du 20 octobre 2026).
 
 Organisation visée : $ARGUMENTS
 
@@ -44,7 +46,8 @@ Organisation visée : $ARGUMENTS
    §1.3 du « Prompt — Balayage », points (a) à (f), et dans le « Prompt —
    Première lettre » le passage « ENTRÉE DANS L'ESSAI » (e1 à e3). Ces pages
    font foi ; cette commande ne fait que cibler une organisation et lever, pour
-   elle seule, la retenue que pose « Invitation manuelle ». Si la page est
+   elle seule, l'attente de l'espace ou la retenue que pose « Invitation
+   manuelle ». Si la page est
    inaccessible, n'écris rien et arrête-toi.
 
 2. **Un nom est obligatoire.** Argument vide : ne fais rien et demande le nom.
@@ -58,12 +61,13 @@ Organisation visée : $ARGUMENTS
      renvoie à `/onboarding-premiere-lettre` et arrête-toi.
    - Au moins une édition trouvée par la **relation** Organisation avec l'URL
      de cette ligne ; retiens cet identifiant, c'est le seul qui serve ici.
-   - Si « Invitation manuelle » n'est pas cochée, dis que l'espace s'ouvre
-     normalement par la première lettre ou l'activation, et arrête-toi : cette
-     commande ne double pas un envoi automatique.
+   - **Garde de publication** : au moins une édition de cette organisation au
+     statut « Envoyé ». Aucune : n'ouvre rien, dis que le lien part après la
+     publication de la première lettre (envoi du brouillon par la relectrice,
+     puis réconciliation du soir), et arrête-toi.
    - Si une ligne « Accès » de ce slug est déjà active et que le compte rendu
-     d'un lancement précédent dit le lien parti, n'en envoie pas un second :
-     le lecteur peut le redemander sur `https://www.signauxfaibles.io/recevoir-mon-lien`.
+     d'un lancement précédent (ou de l'activation) dit le lien parti, n'en
+     envoie pas un second : le lecteur peut le redemander sur `https://www.signauxfaibles.io/recevoir-mon-lien`.
 
 4. **Vérifie le portail.** Sans en-tête `Authorization` :
    - `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
@@ -93,14 +97,14 @@ Organisation visée : $ARGUMENTS
      jamais l'identifiant d'accès. 404 : réessaie une fois après quelques
      secondes (cache d'une minute).
 
-6. **Ne décoche pas « Invitation manuelle »** : elle garde la trace du choix, et
-   l'activation saura que l'espace a été ouvert à la main. Écris dans « Dernier
+6. **Ne décoche pas « Invitation manuelle »** si elle est cochée : elle garde la
+   trace du choix, et l'activation saura que l'espace a été ouvert à la main. Écris dans « Dernier
    lancement manuel » : « espace ouvert à la main le JJ/MM, lien envoyé à
    <empreinte ou prénom du lecteur>, lettres publiées : N ».
 
 7. **Compte rendu** : les gestes faits, la réponse de chaque appel, le nombre de
-   lettres publiées que rend `/api/acces/ouvrir`. S'il vaut zéro, rappelle que
-   le client entre dans un espace vide tant que les lettres ne sont pas au
-   statut « Envoyé », et que J0 de l'essai ne part qu'à cette publication.
+   lettres publiées que rend `/api/acces/ouvrir`. Il doit être d'au moins un,
+   puisque la garde de publication est passée : s'il vaut zéro, signale l'écart
+   entre Notion et le portail.
 
 Aucun jeton à manipuler : n'en écris jamais dans une commande.
