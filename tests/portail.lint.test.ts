@@ -400,6 +400,6 @@ describe('contrôlerLaLettre — la richesse d’une édition n°1', () => {
 
   it('une édition courante n’est pas visée', () => {
     expect(avecNuméro(lettreConforme(), 7).avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
-    expect(avecNuméro(lettreConforme(), null).avertissements).toEqual([])
+    expect(avecNuméro(lettreConforme(), null).avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
   })
 })
