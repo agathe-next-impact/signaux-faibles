@@ -275,6 +275,29 @@ Les lire avant toute session.
   cette semaine ; la lettre 1 publiée avant ne compte pas, et l'onboarding par
   prospection n'appelle pas `/api/acces/ouvrir`. `tests/architecture.test.ts`
   tient ces frontières
+- **File de travaux, palier 2** (21 octobre 2026, `docs/api-veille.md`) : le
+  portail décide ce qu'il y a à faire, l'exécuteur (tâche Claude planifiée, ou
+  un appel d'API) prend, rédige, poste. Tables `travaux` et `runs` (migration
+  0008), écrites par `lib/base/travaux.ts` depuis la seule orchestration
+  `lib/portail/file.ts`. Les veilles sont déclarées au portail
+  (`POST /api/veille/veilles` : jour, heure de Paris, cadence, numéro courant
+  semé une fois depuis `contexte`) et c'est de là que le passage quotidien
+  (`/api/veille/parcours`) planifie un travail `lettre` par parution de la
+  semaine qui vient, une fois (index `travaux_ouvert_unique`). L'échéance est
+  la parution à son heure ; `POST /api/veille/travaux` `prendre` donne le plus
+  ancien travail échu, réservé à la session, avec le contexte Postgres (numéro
+  à porter, parution, prompt) complété du contexte Notion de la famille ;
+  `poser` crée un travail à la main. **Le résultat d'une lettre est la page
+  Notion en Brouillon**, postée sur `POST /api/veille/resultat` : le portail
+  expire son tag (cinquième pouvoir d'invalidation, derrière le jeton), la
+  relit, la passe par le lint et par trois portes que le lint ne connaît pas
+  (page de l'organisation du travail, règle 2 ; famille attendue ; numéro
+  attribué), puis conclut : accepté et `numéro_courant` écrit dans la même
+  transaction, ou refusé et prenable à nouveau, abandonné au troisième refus.
+  Un travail pris sans conclusion revient dans la file après trois heures.
+  Rien n'est écrit dans Notion par le portail, et Postgres ne copie ni corps
+  ni dossiers : les dernières éditions sont relues à la prise. La publication
+  et l'envoi restent ceux d'aujourd'hui jusqu'au palier 1b
 - **Courriels client à la charte** (20 octobre 2026, `docs/emails/README.md`) :
   tout courriel vers un client ou un prospect sort de `lib/email/gabarit.ts`,
   traduction en code du template v1.0 (`docs/emails/charte/`) ; aucun modèle

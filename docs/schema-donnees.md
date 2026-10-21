@@ -1,6 +1,6 @@
 # Schéma de données du portail (Postgres)
 
-*Proposé le 15 octobre 2026 (action 9 du plan de travail), validé le 16 octobre 2026 avec la décision d'architecture. Palier 1a livré : `organisations`, `veilles`, `lecteurs` (`lib/base/schema.ts`, migration `drizzle/0000_*`). Le schéma décrit l'état cible à la fin du palier 2 ; chaque palier n'en crée que ce dont il a besoin. Conventions : identifiants `uuid` générés par la base, horodatages `timestamptz`, noms en français comme le reste du code, suppression jamais physique (colonne `archivée_le`).*
+*Proposé le 15 octobre 2026 (action 9 du plan de travail), validé le 16 octobre 2026 avec la décision d'architecture. Palier 1a livré : `organisations`, `veilles`, `lecteurs` (`lib/base/schema.ts`, migration `drizzle/0000_*`). Palier 2, première livraison le 21 octobre 2026 : `travaux` et `runs` (migration 0008), et `veilles` enfin écrite (`POST /api/veille/veilles`). Le schéma décrit l'état cible à la fin du palier 2 ; chaque palier n'en crée que ce dont il a besoin. Conventions : identifiants `uuid` générés par la base, horodatages `timestamptz`, noms en français comme le reste du code, suppression jamais physique (colonne `archivée_le`).*
 
 ## Ce qui va où
 
@@ -50,7 +50,7 @@ N par organisation. Remplace le libellé `Veille` et la propriété `Famille` à
 | `jour_parution` | smallint | 1 (lundi) à 7 |
 | `heure_parution` | time | heure de Paris |
 | `cadence` | enum | `hebdomadaire`, `bimensuelle`, `mensuelle` |
-| `numéro_courant` | integer, défaut 0 | le dernier numéro attribué ; le portail l'incrémente dans la même transaction que l'acceptation du résultat |
+| `numéro_courant` | integer, défaut 0 | le dernier numéro attribué ; semé à la déclaration (`POST /api/veille/veilles`, lu sur `GET /api/veille/contexte`), puis écrit par le portail dans la même transaction que l'acceptation du résultat |
 | `état` | enum | `active`, `suspendue`, `archivée` |
 | contrainte | | unique (`organisation_id`, `type`) |
 
@@ -85,27 +85,36 @@ Ce que le formulaire public écrit. Une demande devient une organisation quand e
 | `organisation_id` | uuid, nullable | posé à la validation |
 | `reçue_le`, `traitée_le` | timestamptz | |
 
-### `travaux`
+### `travaux` (créée le 21 octobre 2026, migration 0008)
 
 La file que lit la tâche « Runs de veille ». Une ligne par chose à faire.
+Écrite par `lib/base/travaux.ts`, appelé de la seule orchestration
+`lib/portail/file.ts` ; planifiée chaque matin par le passage quotidien
+(`GET /api/veille/parcours`), servie et conclue par `POST /api/veille/travaux`
+et `POST /api/veille/resultat` (`docs/api-veille.md`). Le palier 2 ne pose que
+des travaux `lettre` (et `premiere_lettre` à la main) ; les autres types
+attendent leur porte.
 
 | Colonne | Type | Notes |
 |---|---|---|
 | `id` | uuid | |
 | `type` | enum | `referentiel`, `premiere_lettre`, `lettre`, `revue` |
 | `organisation_id`, `veille_id` | uuid | `veille_id` nul pour un travail d'organisation |
-| `échéance` | timestamptz | avant quoi il ne doit pas être pris |
-| `état` | enum | `a_faire`, `pris`, `accepte`, `refuse`, `abandonne` |
-| `pris_le`, `pris_par` | timestamptz, text | identifiant de session de la tâche ; un travail pris depuis plus de trois heures redevient `a_faire` |
-| `tentatives` | smallint | abandon à la troisième |
-| `contexte` | jsonb | ce que le portail a assemblé : identifiants Notion, numéro à attribuer, période couverte, prompt à appliquer (nom et version), points de validation ouverts |
-| `résultat_run_id` | uuid, nullable | |
+| `échéance` | timestamptz | avant quoi il ne doit pas être pris : la parution, à l'heure de Paris de la veille (`heure_parution`) |
+| `état` | enum | `a_faire`, `pris`, `accepte`, `refuse`, `abandonne`. `refuse` n'est pas final : le dernier résultat a été refusé par les portes, et la file le propose à nouveau |
+| `pris_le`, `pris_par` | timestamptz, text | identifiant de session de la tâche ; un travail pris depuis plus de trois heures redevient `a_faire` (ou `abandonne` s'il a épuisé ses tentatives) |
+| `tentatives` | smallint | comptées à la prise ; abandon à la troisième |
+| `contexte` | jsonb | ce que le portail sait **sans lire Notion** : organisation (slug, registre), veille (type, famille, référentiel), **numéro à attribuer** (`numéro_courant + 1`), parution (date, semaine), prompt à appliquer (page et étape). Les dernières éditions sont relues de Notion à la prise et servies dans la réponse, jamais copiées ici |
+| `résultat_run_id` | uuid, nullable | le run accepté |
 | `créé_le` | timestamptz | |
-| contrainte | | un seul travail `a_faire` ou `pris` par (`veille_id`, `type`) |
+| contrainte | | un seul travail ouvert (`a_faire`, `pris` ou `refuse`) par (`organisation_id`, `veille_id`, `type`), index partiel `travaux_ouvert_unique` |
 
-### `runs`
+### `runs` (créée le 21 octobre 2026, migration 0008)
 
-Le journal. Une ligne par résultat posté, accepté ou non.
+Le journal. Une ligne par résultat posté, accepté ou non. Le résultat d'une
+lettre est la page Notion en Brouillon que l'exécuteur a écrite (`page_notion`),
+contrôlée par le parseur de production ; `résultat` garde ce que l'exécuteur a
+dit de son run, jamais le corps de la lettre.
 
 | Colonne | Type | Notes |
 |---|---|---|
@@ -113,10 +122,10 @@ Le journal. Une ligne par résultat posté, accepté ou non.
 | `travail_id` | uuid, référence | |
 | `début`, `fin` | timestamptz | donnés par la tâche |
 | `exécuteur` | text | `cowork:<session>` ou `api:<modèle>` |
-| `résultat` | jsonb | la sortie structurée : `lettre` (Markdown Notion), `méthode`, `propriétés`, `amendements`, `points`, `grille` |
-| `portes` | jsonb | rapport du lint, du vocabulaire, des citations : code, portée, message |
+| `résultat` | jsonb | ce que l'exécuteur dit de son run : `méthode`, `amendements`, `grille`… ; jamais le corps |
+| `portes` | jsonb | `portail` (organisation, famille, numéro, page), `ruptures` et `avertissements` du lint |
 | `accepté` | boolean | |
-| `page_notion` | text, nullable | l'identifiant de la page Édition créée par la tâche après acceptation |
+| `page_notion` | text, nullable | l'identifiant de la page Édition écrite par l'exécuteur, en Brouillon, 32 hexadécimaux |
 | `coût` | jsonb, nullable | tokens, recherches, durée, quand l'exécuteur les donne |
 | `créé_le` | timestamptz | |
 

@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { sourceAccès } from '@/lib/auth/source-acces'
+import { baseConfigurée } from '@/lib/base/client'
 import { vérifierJetonCowork } from '@/lib/portail/jeton-cowork'
 
 /**
@@ -42,4 +44,19 @@ export function identifiantNotionValide(valeur: unknown): valeur is string {
 export function identifiantAvecTirets(valeur: string): string {
   const hex = valeur.replaceAll('-', '').toLowerCase()
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+/**
+ * Le second prologue des routes qui écrivent dans Postgres : 503 sans base,
+ * 409 en `SOURCE_ACCES=notion`, l'interrupteur de retour en arrière qui
+ * n'ouvre jamais Postgres. Rend `null` quand l'appel peut continuer.
+ */
+export function refuserSiBaseIndisponible(): NextResponse | null {
+  if (!baseConfigurée()) {
+    return NextResponse.json({ état: 'non-configurée', raison: 'DATABASE_URL absente' }, { status: 503 })
+  }
+  if (sourceAccès() === 'notion') {
+    return NextResponse.json({ état: 'refusé', raison: 'SOURCE_ACCES vaut notion' }, { status: 409 })
+  }
+  return null
 }

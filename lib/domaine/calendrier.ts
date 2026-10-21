@@ -210,3 +210,50 @@ export function sélectionner(
     prochaines: prochainesParutions(organisations, dateISO),
   }
 }
+
+/**
+ * L'instant UTC d'une date calendaire et d'une heure **de Paris** (`HH:MM` ou
+ * `HH:MM:SS`), pour poser l'échéance d'un travail de la file : la parution, à
+ * son heure. Le décalage de Paris (une ou deux heures) est lu sur l'instant
+ * lui-même, pour que le passage à l'heure d'été ne décale pas d'une heure les
+ * échéances de la semaine qui suit.
+ */
+export function instantÀParis(dateISO: string, heure: string): Date {
+  const [h, m, s] = heure.split(':').map(Number)
+  if (!estUneDateISO(dateISO) || h === undefined || m === undefined || Number.isNaN(h) || Number.isNaN(m)) {
+    throw new Error(`Date ou heure inexploitable : « ${dateISO} ${heure} »`)
+  }
+  // Première approximation : comme si Paris était à l'heure UTC, puis on
+  // retranche le décalage que Paris a réellement à cet instant.
+  const naïf = Date.UTC(
+    Number(dateISO.slice(0, 4)),
+    Number(dateISO.slice(5, 7)) - 1,
+    Number(dateISO.slice(8, 10)),
+    h,
+    m,
+    s ?? 0,
+  )
+  const décalage = décalageDeParis(new Date(naïf))
+  const instant = new Date(naïf - décalage)
+  // Autour du changement d'heure, le décalage lu sur l'approximation peut
+  // différer de celui de l'instant obtenu : une seconde passe le corrige.
+  const second = décalageDeParis(instant)
+  return second === décalage ? instant : new Date(naïf - second)
+}
+
+/** Le décalage de Paris sur UTC à cet instant, en millisecondes (positif en avance). */
+function décalageDeParis(instant: Date): number {
+  const parties = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Paris',
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(instant)
+  const valeur = (type: string) => Number(parties.find((p) => p.type === type)?.value)
+  const local = Date.UTC(valeur('year'), valeur('month') - 1, valeur('day'), valeur('hour'), valeur('minute'), valeur('second'))
+  return local - Math.floor(instant.getTime() / 1000) * 1000
+}

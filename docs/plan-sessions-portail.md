@@ -595,3 +595,12 @@ conséquence avec le palier 1a (« pas de base de données » est retiré).
   --a-blanc` puis réel, `SOURCE_ACCES=double` pendant une semaine. La bascule
   à `postgres` attend la voie d'écriture des lecteurs hors Notion (palier
   1a-bis).
+- **21 octobre 2026.** Option A retenue sur la spécification « veille
+  automatisée » : suivre le plan validé plutôt que de faire écrire Notion par
+  le portail ou de piloter l'état depuis une propriété Notion. Première
+  livraison du palier 2 : tables `travaux` et `runs` (migration 0008),
+  déclaration des veilles (`POST /api/veille/veilles`), planification par le
+  passage quotidien, prise et pose (`POST /api/veille/travaux`), réception du
+  résultat avec portes (`POST /api/veille/resultat`). Suite du palier 2 : le
+  formulaire public sur `demandes`, la tâche « Runs de veille » branchée sur la
+  file, puis le collecteur de sources (palier 3) servi dans le contexte.
