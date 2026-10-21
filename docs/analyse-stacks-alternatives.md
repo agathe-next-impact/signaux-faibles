@@ -379,6 +379,64 @@ Opus 5.5 ; moitié sur Sonnet 5.5.
 
 **Effort.** 2 à 4 semaines, une fois les prix connus.
 
+## 3bis. Fiabilité et onboardings depuis l'admin : stacks 1, 2 et 3
+
+*Ajouté le 22 octobre 2026 à la demande de la propriétaire. Le temps de
+relecture humaine n'est toujours pas compté ; les attentes humaines (validation
+des référentiels, publication de la première lettre, choix du jour d'ouverture)
+sont nommées comme des gestes, jamais mesurées.*
+
+### Fiabilité des stacks 2 et 3
+
+| Critère | 2 · Supabase + Trigger.dev | 3 · Payload CMS 3 | Avantage |
+|---|---|---|---|
+| Exécution des runs | tâches durables, retentatives, reprise après coupure, pas de limite de durée, tableau de bord par run, alertes | Payload Jobs dans des fonctions Vercel bornées en durée ; un run coupé reste à traiter à la main ; observabilité à construire | 2 |
+| Cloisonnement | RLS en base sous le contrôle applicatif | contrôle d'accès applicatif (greffon multi-tenant), un seul rôle Postgres, comme aujourd'hui | 2 |
+| Sauvegardes et retour arrière | sept sauvegardes quotidiennes sur Pro, PITR à 100 $ par mois en option | historique et branches Neon selon le plan ; versions et brouillons Payload par document | égal |
+| Couplage au moteur de pages | aucun | fort : Payload vit dans le processus Next.js, prise en charge de Next.js 16 depuis la 3.77 (février 2026, source unique), deux versions de Drizzle côte à côte, rythme de versions élevé | 2 |
+| Pérennité des éditeurs | Supabase indépendant et financé ; Trigger.dev petite société, code ouvert, deux incidents relevés en trente jours par un agrégateur, aucun SLA trouvé | Payload racheté par Figma, MIT conservée, Payload Cloud fermé ; Neon racheté par Databricks, commercialisé sous le nom Lakebase | égal |
+| Surface de panne | quatre services réseau | deux services, mais une administration, une API et une authentification par mot de passe exposées sur le domaine client | partagé |
+| Transition | code conservé, 54 fichiers de tests valides, deux migrations de données | schéma redécrit, écrans d'opératrice remplacés, banc de test à refaire, une migration de données | 2 sur le code |
+
+Si la stack 3 est retenue : runs longs en pipeline et Batch plutôt qu'en Payload
+Jobs, lectures Postgres gardées en cache distant, version de Payload figée et
+testée en prévisualisation, compatibilité avec Next.js 16.3 et `cacheComponents`
+prouvée sur une branche avant d'engager la migration.
+
+### Plusieurs onboardings lancés depuis l'admin
+
+Un onboarding, c'est : une demande saisie, deux référentiels générés (lecture
+du site et des sources), une validation humaine, deux premières lettres, une
+publication humaine, J0 posé, l'espace ouvert. Les durées ci-dessous comptent
+deux référentiels et deux lettres par organisation, en agentique 15 à 40 minutes
+par référentiel et 15 à 30 par lettre, en pipeline quelques minutes de collecte
+puis une fenêtre Batch de 10 à 60 minutes par étape.
+
+| Besoin | Actuelle | 1 · API, Notion gardé | 2 · Supabase + Trigger.dev | 3 · Payload seul | 3 + Trigger.dev |
+|---|---|---|---|---|---|
+| Écran d'administration | aucun : six commandes Claude Code et le registre Notion | à écrire dans le Next.js, mais mince : un tableau des étapes et des boutons, l'édition restant dans Notion | à écrire dans le Next.js, avec un éditeur | fourni (listes, formulaires, filtres, rôles) | fourni |
+| Éditeur de relecture des référentiels | Notion | Notion, les pages étant créées par le moteur : plus d'identifiant copié à la main | à construire | Lexical, versions, brouillons | Lexical |
+| Orchestration de la chaîne | l'opératrice, commande par commande | table `travaux`, cron Vercel, Batch ; les attentes sont des états en base relus par le cron | tâches durables avec points d'attente, tâches enfants, reprise | jobs courts enchaînés par crochets `afterChange` ; Batch obligatoire pour les générations | tâches durables déclenchées par un crochet Payload |
+| Parallélisme | 1 (une session par commande) | Batch parallèle par nature ; collecte bornée par la durée de fonction et la cadence du cron | exécutions parallèles, limite de concurrence par file et par organisation | invocations de fonctions, cron au mieux chaque minute, jobs bornés par appel | comme la stack 2 |
+| Gestes de l'opératrice par onboarding | 6 commandes, plus les manipulations Notion | 1 saisie, 3 validations | 1 saisie, 3 validations | 1 saisie, 3 validations | 1 saisie, 3 validations |
+| **Durée machine d'un onboarding** | 2 à 4 h d'agent, réparties sur les six commandes | 1 à 3 h (collecte en minutes, deux fenêtres Batch, écriture Notion en secondes) | 1 à 1 h 30 en agentique (référentiels en parallèle, puis lettres en parallèle) ; 30 min à 2 h en pipeline | 1 à 3 h (mêmes mécanismes que la stack 1) | 1 à 1 h 30 |
+| **Délai calendaire minimal** (validations faites dans l'heure) | 1 à 2 semaines (statuts du registre, rythme de parution) | 1 à 2 jours (fenêtres Batch, J0 posé par le cron de 8 h) | le jour même (pas de Batch, J0 posé par la chaîne) | 1 à 2 jours | le jour même |
+| **Onboardings simultanés** | 1 | 10 à 30 | 5 à 25, selon la concurrence du plan Trigger.dev (à vérifier) et le palier API | 10 à 30 techniquement, 3 à 5 confortablement (reprises manuelles) | 5 à 25 |
+| **Onboardings soutenables par semaine** (machine) | 2 à 3 | 50 et plus | 100 et plus | 50 et plus | 100 et plus |
+| Ce qui borne | la session et l'opératrice | cadence du cron, durée de fonction pour la collecte, débit Notion | concurrence du plan, palier API Anthropic | cadence du cron, suivi des reprises | concurrence du plan, palier API |
+
+Lecture. La stack 1 règle déjà l'essentiel du problème de volume : elle fait
+passer la capacité d'un onboarding à la fois à une dizaine en parallèle, avec un
+admin mince parce que Notion reste l'éditeur et que le moteur crée lui-même les
+pages, ce qui fait disparaître le piège de l'identifiant copié pour toute
+nouvelle organisation. Ce qu'elle ne donne pas : le jour même (fenêtres Batch)
+et un suivi des reprises digne de ce nom. La stack 2 donne la meilleure
+orchestration et l'admin le plus coûteux à écrire ; la stack 3 l'inverse ; leur
+combinaison, Payload pour l'administration et les documents, Trigger.dev pour la
+chaîne, répond au besoin tel qu'il est formulé, pour 10 à 50 $ de plus par mois
+et un fournisseur de plus. Pour toutes, le vrai plafond du parallélisme est le
+palier de débit de l'API Anthropic, qui se demande.
+
 ## 4. Comparaison
 
 Notes de 1 (faible) à 5 (fort). « Effort » et « Risque » : 5 = le moins
