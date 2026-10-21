@@ -3,7 +3,9 @@
 *Proposition du 21 octobre 2026, non décidée. Deux objectifs fixés par la
 propriétaire du dispositif : simplifier l'utilisation (celle de l'opératrice
 d'abord, celle des lecteurs ensuite) et permettre plus d'organisations. Chaque
-stack est évaluée techniquement et économiquement, avec ses hypothèses. Les prix
+stack est évaluée techniquement et économiquement, avec ses hypothèses. Le temps
+de relecture humaine n'est pas compté : l'analyse ne porte que sur ce que la
+stack borne, et donne pour chacune le nombre d'organisations qu'elle permet. Les prix
 viennent de sources tierces datées de 2026, sauf mention contraire ; ils sont à
 confirmer sur la page de chaque fournisseur avant toute décision.*
 
@@ -62,7 +64,6 @@ sources, toutes documentées dans `CLAUDE.md` comme des pièges avérés.
 | Plafond | Cause | Ordre de grandeur |
 |---|---|---|
 | **Le moteur** | tâches Cowork sur un abonnement Max individuel : exécution séquentielle, liée à une session, quotas hebdomadaires non publiés, plan vendu « individuel, pas pour les équipes » | 15 à 25 organisations à deux lettres par semaine, en comptant 15 à 30 minutes d'agent par lettre ; au-delà, un second abonnement et toujours pas de parallélisme garanti |
-| **La relecture humaine** | deux lettres par organisation et par semaine, 15 minutes chacune | 20 organisations = 10 heures par semaine |
 | **Notion, un seul membre** | plan gratuit : un second membre plafonne l'espace à 1 000 blocs à vie et l'API refuse ensuite toute création | aucun relecteur, aucun collaborateur ne peut jamais entrer dans Notion |
 | **Notion, le débit** | 3 requêtes par seconde par intégration, limite par espace de travail non publiée sur le plan gratuit, 180 requêtes par minute pour le connecteur MCP de Cowork | indolore pour le portail (cache), contraignant pour les écritures des tâches |
 | **Notion, le contrat de prose** | la structure est devinée du texte | le risque de tableau de bord vide croît avec le nombre de lettres produites |
@@ -70,11 +71,11 @@ sources, toutes documentées dans `CLAUDE.md` comme des pièges avérés.
 | Vercel, Neon | facturation à l'usage | sans objet avant plusieurs centaines d'organisations |
 | Cloisonnement en code | pas de RLS, contrôle dans `proxy.ts` et le layout | le risque croît avec le nombre de **routes**, pas de clients ; il est tenu par `tests/architecture.test.ts` |
 
-Le plafond qui mord en premier est le moteur, et le second la relecture. Les
-deux sont indépendants de l'hébergement du portail. **Aucune stack web ne
-desserre le second** ; seule une génération assez fiable pour que les portes
-mécaniques remplacent la relecture le fait, et c'est précisément ce que la
-décision du 16 octobre prépare (« premier client sans relecture, 18 janvier »).
+Le plafond qui mord en premier est le moteur, et il est indépendant de
+l'hébergement du portail. Derrière lui viennent les limites Notion, puis Gmail.
+**Nombre d'organisations possibles avec la stack actuelle : 15 à 25**, borné par
+le moteur ; un second abonnement Max porterait la borne vers 30 à 50, toujours
+sans parallélisme garanti.
 
 ### 1.4 Coût mensuel actuel
 
@@ -93,7 +94,7 @@ décision du 16 octobre prépare (« premier client sans relecture, 18 janvier �
 
 - **Deux sièges Notion Plus** (10 à 12 $ par siège et par mois selon les
   sources) lèvent le plafond des 1 000 blocs : un espace payant n'a pas de
-  limite de blocs. Une relectrice pourrait entrer dans Notion. La limite de
+  limite de blocs. Une seconde personne pourrait entrer dans Notion. La limite de
   3 requêtes par seconde par intégration, elle, ne change pas avec le plan.
 - **La colonne `runs.coût`** du schéma cible, à remplir dès le premier run par
   API : toute l'économie ci-dessous repose sur des ordres de grandeur qu'un mois
@@ -104,7 +105,7 @@ décision du 16 octobre prépare (« premier client sans relecture, 18 janvier �
 **Revenu** : 89 € HT par organisation et par mois (29 € en early adopter),
 soit 1 780 € à 20 organisations et 4 450 € à 50. L'infrastructure est
 négligeable devant ce revenu dans toutes les stacks ; ce qui compte, c'est le
-coût du modèle par lettre et le temps humain par lettre.
+coût du modèle par lettre.
 
 **Coût du modèle.** Tarifs API Anthropic au 6 octobre 2026 : Opus 5.5 à 4 $ le
 million de jetons en entrée et 20 $ en sortie (lecture de cache 0,20 $) ;
@@ -139,11 +140,23 @@ gratuit jusqu'à 3 000 courriels par mois puis 20 $ ; Postmark 15 $ pour
 10 à 50 $ selon le plan (non vérifié ce jour) ; tarification de Managed Agents
 non publiée dans les sources consultées.
 
+**Comment le nombre d'organisations est calculé.** Pour chaque stack, la
+capacité est le plus petit des plafonds techniques, en comptant deux lettres par
+organisation et par semaine, trois lecteurs par organisation, une lettre de 150
+blocs ou 15 000 jetons de sortie, et des parutions étalées sur les cinq jours
+ouvrés. Les plafonds considérés : débit d'écriture Notion (3 requêtes par
+seconde par intégration, soit une lettre par seconde au plus), quota Gmail
+(2 000 messages par jour et par boîte, soit 330 organisations recevant leurs
+deux lettres le même jour, 1 600 si les parutions sont étalées), durée d'une
+fonction Vercel, débit API Anthropic du palier de facturation, puissance d'une
+machine pour les runs agentiques.
+
 ## 3. Les cinq stacks
 
 Chaque stack est décrite par ce qu'elle change, ce qui survit du dépôt, ce
-qu'elle apporte sur les deux objectifs, ses risques, son coût mensuel à 5, 20 et
-50 organisations (conception pipeline sur Opus 5.5, soit 7 $ par organisation ;
+qu'elle apporte sur les deux objectifs, le nombre d'organisations qu'elle
+permet et ce qui le borne, ses risques, son coût mensuel à 5, 20, 50 et 100
+organisations (conception pipeline sur Opus 5.5, soit 7 $ par organisation ;
 entre parenthèses, conception agentique à 30 $) et son effort de migration.
 
 ### Stack 1 : même socle, moteur en code par l'API, Notion conservé
@@ -170,10 +183,12 @@ sortie réseau, les prompts dans Notion, quatre des six commandes d'onboarding
 (ne restent que la demande et l'ouverture). Restent : les pièges Notion, la
 relecture par brouillons Gmail, les deux bases Accès jusqu'à la bascule.
 
-**Capacité.** Le moteur devient parallèle et facturé à l'usage : des centaines
-d'organisations. Le plafond suivant est la relecture, puis l'écriture Notion
-(3 requêtes par seconde : 100 lettres de 150 blocs par semaine prennent moins
-de deux minutes de débit, ce n'est pas un problème avant longtemps).
+**Nombre d'organisations : 200 à 300.** Le moteur devient parallèle et facturé
+à l'usage. Ce qui borne ensuite : la limite de débit par espace de travail
+Notion, non publiée sur le plan gratuit, et le quota Gmail si les parutions
+restent groupées le même jour (330 organisations). L'écriture des pages, elle,
+ne borne rien avant plusieurs milliers de lettres par semaine. Avec deux sièges
+Notion Plus et des parutions étalées, la borne passe au-delà de 500.
 
 **Risques.** La durée d'une fonction Vercel (quelques centaines de secondes au
 plus, 800 s sur Pro avec Fluid compute, à vérifier) interdit un run agentique
@@ -183,7 +198,8 @@ resterait possible en Batch avec les outils serveur de recherche, à mesurer.
 
 **Coût mensuel.** Fixe ≈ 50 $ (Vercel 20, Neon 10, Workspace 10, Max remplacé
 par un abonnement Pro de développement à 20 $) ; 5 organisations ≈ 85 $
-(200 $) ; 20 ≈ 190 $ (650 $) ; 50 ≈ 400 $ (1 550 $).
+(200 $) ; 20 ≈ 190 $ (650 $) ; 50 ≈ 400 $ (1 550 $) ; 100 ≈ 770 $ (3 070 $),
+Vercel et Neon commençant alors à facturer l'usage.
 
 **Effort.** 2 à 4 semaines. Risque de migration faible : rien d'existant n'est
 réécrit.
@@ -210,7 +226,9 @@ le filet RLS que `docs/architecture-notion-headless.md` reconnaît manquer
 cloisonnement en code. Deux fournisseurs de plus à tenir (Supabase, Trigger.dev)
 pour un fournisseur de moins (Notion) : solde neutre sur ce plan.
 
-**Capacité.** Illimitée à l'échelle du projet, runs parallèles et durables.
+**Nombre d'organisations : plus de 1 000.** Runs parallèles et durables,
+Postgres géré, courrier par fournisseur transactionnel sans quota journalier.
+Ce qui borne : le débit API Anthropic du palier de facturation, qui se demande.
 
 **Risques.** Trigger.dev avait déjà été écarté le 9 septembre, pour une autre
 raison (plus de tâche longue à l'époque) ; son plan gratuit est borné à une
@@ -221,7 +239,7 @@ chez Supabase).
 
 **Coût mensuel.** Fixe ≈ 110 $ (Vercel 20, Supabase 35, Trigger.dev 10 à 50,
 Resend 0 à 20, Workspace 10) ; 5 organisations ≈ 145 $ (260 $) ; 20 ≈ 250 $
-(710 $) ; 50 ≈ 460 $ (1 610 $).
+(710 $) ; 50 ≈ 460 $ (1 610 $) ; 100 ≈ 830 $ (3 130 $).
 
 **Effort.** 5 à 8 semaines.
 
@@ -254,8 +272,10 @@ bouton, où un relecteur se crée sans toucher à Notion. Les trois pièges Noti
 disparaissent par construction (relation typée, unicité en base, statut vu par
 le portail). Les prompts et le validateur vivent dans le dépôt.
 
-**Capacité.** Illimitée à l'échelle du projet ; plusieurs relecteurs possibles,
-ce qui desserre le second plafond.
+**Nombre d'organisations : plus de 1 000.** Postgres porte les documents, le
+courrier part par fournisseur transactionnel, les jobs tournent par lots dans
+des fonctions planifiées. Ce qui borne : la durée d'une fonction Vercel par lot
+de collecte, résolue en découpant les lots, puis le débit API Anthropic.
 
 **Risques.** Payload est opiniâtre : schéma, administration, authentification ;
 le greffon multi-tenant tient le cloisonnement dans l'application, pas en base,
@@ -268,7 +288,8 @@ apparence, ce qui est acceptable pour un outil interne.
 
 **Coût mensuel.** Fixe ≈ 55 $ (Vercel 20, Neon 15 à 25 car l'administration
 garde la base éveillée, Resend 0 à 20, Workspace 10) ; 5 organisations ≈ 90 $
-(205 $) ; 20 ≈ 195 $ (655 $) ; 50 ≈ 405 $ (1 555 $). Licence Payload : 0, MIT.
+(205 $) ; 20 ≈ 195 $ (655 $) ; 50 ≈ 405 $ (1 555 $) ; 100 ≈ 780 $ (3 080 $).
+Licence Payload : 0, MIT.
 
 **Effort.** 6 à 10 semaines, en deux temps (bascule Accès, puis documents).
 
@@ -297,8 +318,11 @@ l'opératrice : sauvegardes, mises à jour, surveillance, certificats, reprise
 après panne. Coolify et une base gérée réduisent cela à 2 à 4 heures par mois,
 sans l'annuler. Pour une personne seule, c'est le point faible de cette stack.
 
-**Capacité.** Une machine à 4 vCPU tient des dizaines de runs par jour ; au-delà,
-une seconde machine de worker. Les données restent en France ou en Allemagne,
+**Nombre d'organisations : 300 à 800 par machine.** En agentique, quatre runs
+simultanés de 15 à 30 minutes sur une machine à 4 vCPU donnent 1 300 à 2 700
+lettres par semaine, soit 650 à 1 300 organisations en théorie ; la borne
+pratique est le débit API Anthropic et la mémoire de la machine, d'où la
+fourchette retenue. Une seconde machine de worker double la capacité. Les données restent en France ou en Allemagne,
 argument réel pour des clients collectivités (Pays de Mauriac) et pour la
 conformité RGPD ; l'inférence, elle, reste chez Anthropic, et le paramètre
 `inference_geo` est à vérifier pour une option européenne.
@@ -309,7 +333,8 @@ validé ; un incident de nuit n'a personne d'astreinte.
 
 **Coût mensuel.** Fixe ≈ 40 $ (serveur 12, Postgres géré 10 ou 0 sur la même
 machine, sauvegardes 3, courrier 0 à 10, Workspace 10) ; 5 organisations ≈ 75 $
-(190 $) ; 20 ≈ 180 $ (640 $) ; 50 ≈ 390 $ (1 540 $). À quoi s'ajoute le temps
+(190 $) ; 20 ≈ 180 $ (640 $) ; 50 ≈ 390 $ (1 540 $) ; 100 ≈ 750 $ (3 050 $),
+la machine suivante coûtant 12 à 20 $. À quoi s'ajoute le temps
 d'exploitation. La conception agentique y est naturelle, ce qui pousse vers la
 colonne de droite.
 
@@ -337,8 +362,9 @@ table `runs`, les prompts dans `prompts/` servis à l'agent. `lib/notion`,
 d'onboarding lourdes disparaissent ; les pièges Notion et la relecture par
 Gmail restent, comme dans la stack 1.
 
-**Capacité.** Parallèle, planifiée, facturée à l'usage : des centaines
-d'organisations côté moteur.
+**Nombre d'organisations : 200 à 300**, pour les mêmes raisons que la stack 1
+(Notion et Gmail restent), la plateforme d'agents elle-même ne bornant rien
+avant la limite de sessions simultanées du compte, à vérifier.
 
 **Risques.** Produit en bêta ; **tarification non publiée dans les sources
 consultées** (jetons au tarif API, plus des frais de session à confirmer) ; la
@@ -348,8 +374,8 @@ dépendance forte à un seul fournisseur pour le cœur du service.
 
 **Coût mensuel.** Fixe ≈ 45 $ (Vercel 20, Neon 10, Workspace 10, plus les frais
 de plateforme inconnus) ; 5 organisations ≈ 195 $ et plus ; 20 ≈ 645 $ et plus ;
-50 ≈ 1 545 $ et plus, en conception agentique sur Opus 5.5 ; moitié sur
-Sonnet 5.5.
+50 ≈ 1 545 $ et plus ; 100 ≈ 3 045 $ et plus, en conception agentique sur
+Opus 5.5 ; moitié sur Sonnet 5.5.
 
 **Effort.** 2 à 4 semaines, une fois les prix connus.
 
@@ -361,8 +387,10 @@ d'effort, le moins de risque.
 | Critère | Actuelle | 1 · API, Notion gardé | 2 · Supabase + Trigger.dev | 3 · Payload | 4 · Auto-hébergé EU | 5 · Managed Agents |
 |---|---|---|---|---|---|---|
 | Simplification pour l'opératrice | 1 | 3 | 3 | **5** | 3 | 3 |
-| Capacité (organisations) | 1 | 4 | 5 | 5 | 4 | 5 |
-| Desserre la relecture (plusieurs relecteurs, portes mécaniques) | 1 | 3 | 3 | **5** | 3 | 4 |
+| **Nombre d'organisations possibles** | 15 à 25 | 200 à 300 (plus de 500 avec Notion Plus et parutions étalées) | plus de 1 000 | plus de 1 000 | 300 à 800 par machine | 200 à 300 |
+| Ce qui borne | moteur sur Max | débit Notion par espace, quota Gmail | débit API Anthropic | durée de fonction par lot, débit API | débit API, machine | Notion, Gmail, sessions simultanées |
+| Capacité (note) | 1 | 4 | 5 | 5 | 4 | 4 |
+| Coût mensuel à 100 organisations (pipeline / agentique) | hors d'atteinte | 770 $ / 3 070 $ | 830 $ / 3 130 $ | 780 $ / 3 080 $ | 750 $ / 3 050 $ | 3 045 $ et plus |
 | Effort de migration | 5 | **5** | 2 | 2 | 3 | 4 |
 | Risque technique | 2 | **4** | 3 | 3 | 3 | 2 |
 | Coût fixe mensuel | 2 | 4 | 3 | 4 | **5** | 4 |
@@ -371,12 +399,15 @@ d'effort, le moins de risque.
 | Charge d'exploitation | 4 | 4 | 4 | 4 | 2 | 5 |
 | Ce qui survit du dépôt | 100 % | ≈ 100 % | ≈ 80 % | ≈ 70 % | ≈ 90 % | ≈ 100 % |
 
-Lecture : les cinq stacks lèvent le plafond du moteur ; une seule, Payload,
-lève aussi le plafond humain en permettant des relecteurs et en remplaçant
-le contrat de prose par un schéma ; une seule, l'auto-hébergement, répond à un
-argument commercial (données en Europe) que les quatre autres ignorent ; et le
-poste de coût qui compte, le modèle par lettre, dépend de la conception de la
-génération bien plus que de la stack.
+Lecture : les cinq stacks lèvent le plafond du moteur, de 15 à 25 organisations
+vers plusieurs centaines au moins. Les deux qui gardent Notion (1 et 5)
+s'arrêtent autour de 200 à 300 ; les trois qui mettent les documents en Postgres
+(2, 3, 4) ne sont plus bornées que par le débit API, qui se demande. À 100
+organisations, le revenu est de 8 900 € HT par mois et le coût de la stack tient
+entre 750 et 830 $ en pipeline, soit moins de 10 % ; en agentique il dépasse
+3 000 $, soit un tiers. Une seule stack, Payload, remplace le contrat de prose
+par un schéma ; une seule, l'auto-hébergement, répond à un argument commercial
+(données en Europe) que les quatre autres ignorent.
 
 ## 5. Recommandation
 
@@ -384,12 +415,12 @@ génération bien plus que de la stack.
    en conception pipeline et Batch, sans rien toucher d'autre. C'est la suite
    exacte de la décision du 16 octobre, cela coûte 2 à 4 semaines, cela
    remplace 200 $ d'abonnement par un coût à l'usage de 4 à 9 $ par organisation
-   et par mois, et cela donne la mesure (`runs.coût`) qui manque à toute
-   décision suivante. Les deux plafonds Notion qui restent s'achètent en
-   attendant : deux sièges Plus pour faire entrer une relectrice.
+   et par mois, cela porte la borne de 15 à 25 organisations à 200 à 300, et
+   cela donne la mesure (`runs.coût`) qui manque à toute décision suivante.
+   Deux sièges Notion Plus, en attendant, lèvent la limite à un seul membre.
 2. **Au premier trimestre 2027, stack 3** : une fois `SOURCE_ACCES=postgres`
-   basculé et un client passé sans relecture, retirer Notion au profit de Payload
-   dans le Next.js existant. C'est la seule stack qui change la vie de
+   basculé, retirer Notion au profit de Payload dans le Next.js existant, ce qui
+   porte la borne de 200 à 300 organisations à plus de 1 000. C'est la seule stack qui change la vie de
    l'opératrice au quotidien, et le moteur de la stack 1 s'y branche sans
    changement : il écrit un document structuré, Payload le stocke au lieu de
    Notion.
