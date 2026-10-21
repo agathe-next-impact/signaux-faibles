@@ -30,6 +30,9 @@ export const schémaDeRemiseDÉdition = z.object({
   filiere: z.string().min(1).nullable(),
   mode: z.enum(['parution', 'decouverte', 'filiere', 'onboarding']),
   run: z.string().min(1).describe('Identifiant du run Trigger.dev'),
+  /** Le travail de la file que cette édition conclut, et la session qui l'a pris ; absents pour une lettre de filière. */
+  travail: z.string().uuid().optional(),
+  session: z.string().min(1).max(200).optional(),
   proprietes: z.object({
     titre: z.string().min(1),
     numero: z.number().int().min(1),

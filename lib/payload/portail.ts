@@ -13,6 +13,7 @@
 import { baseConfigurée } from '@/lib/base/client'
 import { créerLecteur } from '@/lib/base/ecriture-lecteurs'
 import { ouvrirEnEssai } from '@/lib/base/organisations'
+import { déclarerLaVeille } from '@/lib/base/veilles'
 import { empreinte } from '@/lib/portail/debit'
 import { lecteursModifiables } from '@/lib/portail/situation'
 
@@ -37,18 +38,28 @@ export function identifiantPayload(clé: string): string {
 
 export type OuvertureDansLePortail = {
   readonly organisation: string
+  readonly veille: string | null
   readonly lecteur: string | null
 }
 
 /**
+ * La veille d'une organisation du registre Payload : une seule, de type
+ * `unique` (programme du 22 octobre 2026), qui paraît le lundi à 6 h, heure
+ * de Paris, comme la planification de la file l'attend. Le numéro courant part
+ * de zéro : la première lettre portera le numéro 1.
+ */
+export const VEILLE_UNIQUE = { type: 'unique', libellé: 'Veille', jourParution: 1, heureParution: '06:00', cadence: 'hebdomadaire' } as const
+
+/**
  * Ouvre l'organisation dans le portail (état `essai`, ou `demande` pour une
- * entrée par prospection tant que la première visite n'a pas eu lieu) et crée
- * son premier lecteur si Postgres fait foi et qu'un contact est connu. Chaque
- * geste est rejouable ; aucun n'interrompt l'enregistrement Payload : ce qui
- * échoue est journalisé, sans adresse en clair.
+ * entrée par prospection tant que la première visite n'a pas eu lieu), déclare
+ * sa veille unique pour que la file de travaux la planifie, et crée son premier
+ * lecteur si Postgres fait foi et qu'un contact est connu. Chaque geste est
+ * rejouable ; aucun n'interrompt l'enregistrement Payload : ce qui échoue est
+ * journalisé, sans adresse en clair.
  */
 export async function ouvrirDansLePortail(organisation: OrganisationDuRegistre, options: { prospection: boolean }): Promise<OuvertureDansLePortail> {
-  if (!baseConfigurée()) return { organisation: 'base-absente', lecteur: null }
+  if (!baseConfigurée()) return { organisation: 'base-absente', veille: null, lecteur: null }
   const ouverture = await ouvrirEnEssai({
     slug: organisation.slug,
     nom: organisation.nom,
@@ -57,17 +68,23 @@ export async function ouvrirDansLePortail(organisation: OrganisationDuRegistre, 
   })
   if (ouverture.sorte !== 'créée' && ouverture.sorte !== 'passée-en-essai' && ouverture.sorte !== 'déjà-en-essai') {
     console.warn(`[registre] ${organisation.slug} : organisation non ouverte dans le portail (${ouverture.sorte}).`)
-    return { organisation: ouverture.sorte, lecteur: null }
+    return { organisation: ouverture.sorte, veille: null, lecteur: null }
+  }
+  // La veille existante n'est pas renumérotée : `numéroCourant` n'est posé
+  // qu'à la création, par la déclaration elle-même (colonne à zéro par défaut).
+  const veille = await déclarerLaVeille({ slug: organisation.slug, ...VEILLE_UNIQUE })
+  if (veille.sorte === 'organisation-inconnue') {
+    console.warn(`[registre] ${organisation.slug} : veille unique non déclarée (organisation inconnue de la base).`)
   }
   const email = organisation.contact?.email?.trim().toLowerCase()
-  if (!email) return { organisation: ouverture.sorte, lecteur: null }
+  if (!email) return { organisation: ouverture.sorte, veille: veille.sorte, lecteur: null }
   if (!lecteursModifiables()) {
     console.warn(`[registre] ${organisation.slug} : lecteur ${empreinte(email)} non créé, Notion fait encore foi (SOURCE_ACCES).`)
-    return { organisation: ouverture.sorte, lecteur: 'source-notion' }
+    return { organisation: ouverture.sorte, veille: veille.sorte, lecteur: 'source-notion' }
   }
   const lecteur = await créerLecteur({ slug: organisation.slug, nom: organisation.contact?.nom?.trim() || organisation.nom, email })
   if (lecteur.sorte !== 'créé' && lecteur.sorte !== 'déjà-inscrit') {
     console.warn(`[registre] ${organisation.slug} : lecteur ${empreinte(email)} non créé (${lecteur.sorte}).`)
   }
-  return { organisation: ouverture.sorte, lecteur: lecteur.sorte }
+  return { organisation: ouverture.sorte, veille: veille.sorte, lecteur: lecteur.sorte }
 }

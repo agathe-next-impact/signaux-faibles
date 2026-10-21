@@ -35,8 +35,9 @@ export default async function Espaces() {
           Vous ouvrez l’espace d’un client tel qu’il le voit. Chaque visite est signalée
           par un bandeau et journalisée.
         </p>
-        <p>
+        <p className="flex flex-wrap gap-6">
           <LienFlèche href="/espaces/abonnements">Gérer les abonnements</LienFlèche>
+          <LienFlèche href="/espaces/file">Suivre la file de travaux</LienFlèche>
         </p>
       </header>
 

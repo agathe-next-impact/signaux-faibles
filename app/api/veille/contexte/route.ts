@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { lireDossiersOuverts } from '@/lib/domaine/dossiers'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
-import { listerÉditionsDeTravail, type ÉditionDeTravail } from '@/lib/notion/travail'
+import { listerÉditionsDeTravail } from '@/lib/notion/travail'
+import { contexteDesFamilles } from '@/lib/portail/contexte'
 import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 
 /**
@@ -18,27 +18,9 @@ import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/ga
  *
  * C'est l'étape 0.3 de « Tâche — Lettres de veille », qui repartait à 1 quand
  * le modèle confondait `Famille` et `Veille`. Ici la confusion est impossible :
- * la propriété est nommée une fois, dans le code.
+ * la propriété est nommée une fois, dans le code (`lib/portail/contexte.ts`,
+ * que la file de travaux partage).
  */
-const FAMILLES = ['Écosystème', 'Concurrentiel'] as const
-
-function résumer(édition: ÉditionDeTravail) {
-  return {
-    pageId: édition.pageId,
-    titre: édition.titre,
-    statut: édition.statut,
-    veille: édition.veille,
-    date: édition.dateÉdition,
-    numéro: édition.numéro,
-    périodeCouverte: édition.périodeCouverte,
-    fenêtreÉlargie: édition.fenêtreÉlargie,
-    dossiers: lireDossiersOuverts(édition.dossiersOuvertsBruts),
-    dossiersBruts: édition.dossiersOuvertsBruts,
-    actionDeLaSemaine: édition.actionDeLaSemaine,
-    amendements: édition.amendements,
-  }
-}
-
 export async function GET(requête: NextRequest): Promise<NextResponse> {
   const refus = refuserSiNonAutorisé(requête, 'contexte')
   if (refus) return refus
@@ -54,37 +36,11 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
 
   try {
     const éditions = await listerÉditionsDeTravail(organisationId)
-
-    const familles = Object.fromEntries(
-      FAMILLES.map((famille) => {
-        const siennes = éditions.filter((é) => é.famille === famille)
-        const numéros = siennes.map((é) => é.numéro).filter((n): n is number => n !== null)
-        const dernierNuméro = numéros.length > 0 ? Math.max(...numéros) : 0
-        return [
-          famille,
-          {
-            éditions: siennes.length,
-            dernierNuméro,
-            prochainNuméro: dernierNuméro + 1,
-            dernièreDate: siennes[0]?.dateÉdition ?? null,
-            // Le nom client de la veille, tel que la dernière édition l'a porté.
-            veille: siennes[0]?.veille ?? null,
-            dernières: siennes.slice(0, 2).map(résumer),
-          },
-        ]
-      }),
-    )
-
-    const sansFamille = éditions.filter((é) => !FAMILLES.includes(é.famille as (typeof FAMILLES)[number]))
-
     return NextResponse.json({
       état: 'lu',
       organisation: organisationId,
       éditions: éditions.length,
-      familles,
-      // Une édition sans famille n'est comptée nulle part : la dire, sinon la
-      // numérotation de la famille qu'elle aurait dû porter repart en arrière.
-      sansFamille: sansFamille.map((é) => ({ pageId: é.pageId, titre: é.titre, statut: é.statut })),
+      ...contexteDesFamilles(éditions),
     })
   } catch (erreur) {
     console.error(

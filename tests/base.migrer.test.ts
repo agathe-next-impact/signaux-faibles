@@ -44,7 +44,8 @@ describe('migrationsEnAttente', () => {
     const base = await baseEnMémoire()
     fermer = base.fermer
     expect(await migrationsEnAttente(base.db)).toEqual([])
-  })
+    // Le premier démarrage de PGlite d'un fichier paie la compilation WebAssembly ; sous la charge de la suite complète, cinq secondes ne suffisent pas toujours.
+  }, 20_000)
 
   it('signale la dernière migration quand la base ne l’a pas reçue', async () => {
     const base = await baseEnMémoire()
@@ -57,5 +58,5 @@ describe('migrationsEnAttente', () => {
     // La dernière du journal du dépôt, quelle qu'elle soit : le test ne doit pas se réécrire à chaque migration.
     const journalDuDépôt = JSON.parse(readFileSync(join(process.cwd(), 'drizzle', 'meta', '_journal.json'), 'utf8')) as { entries: Array<{ tag: string }> }
     expect(manquantes[0]).toBe(journalDuDépôt.entries.at(-1)?.tag)
-  })
+  }, 20_000)
 })

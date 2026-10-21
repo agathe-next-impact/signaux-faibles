@@ -155,15 +155,27 @@ jetons d'extraits en entrée, 6 000 en sortie) ; une reprise 0,5 $. Soit **1,5 �
 
 ### Trigger.dev
 
-- `trigger.config.ts` (projet `signaux-faibles`, Node 24, extension Playwright
+- `trigger.config.ts` (projet `signaux-faibles`, Node 22, extension Playwright
   pour le navigateur de collecte), tâches dans `trigger/` :
-  `parution-hebdomadaire` (planifiée, le lundi 6 h Europe/Paris : une
-  `produire-la-lettre` par organisation active), `produire-la-lettre`
-  (le moteur, puis la remise au portail), `onboarding` (fiche, référentiel
-  unique, première lettre, remise, puis ouverture de l'espace par
-  `/api/acces/ouvrir` selon la règle du 20 octobre), `lettre-de-filiere`
-  (planifiée, une par filière active), `bloc-personnalise` (un prospect),
-  `edition-de-decouverte` (déclenchée par la première visite).
+  `vider-la-file` (planifiée, toutes les heures ouvrées Europe/Paris : prend
+  les travaux prenables de la file du portail et confie chacun à
+  `produire-la-lettre`), `produire-la-lettre` (le dossier du travail, le
+  moteur, puis la remise au portail avec `travail` et `session`), `onboarding`
+  (fiche, référentiel unique, travail `premiere_lettre` posé et pris, lettre,
+  remise, puis ouverture de l'espace par `/api/acces/ouvrir` selon la règle du
+  20 octobre), `lettres-de-filiere` (planifiée, le lundi 6 h : une
+  `produire-la-lettre-de-filiere` par filière active, hors file),
+  `bloc-personnalise` (un prospect), `edition-de-decouverte` (déclenchée par la
+  première visite, même chemin que l'onboarding par la file).
+- **La file de travaux du portail est le seul point de décision des lettres
+  d'organisation** (décision du 22 octobre 2026, après examen de la branche
+  `claude/sharp-fermat-lafthr`) : quelle lettre, quel numéro, quelle parution.
+  Trigger.dev est un exécuteur ; la tâche Cowork « Runs de veille » en est un
+  autre, pour les clients encore sur deux lettres Notion, jusqu'à la bascule.
+  La table Drizzle `runs` est le seul journal : la collection Payload `runs` a
+  été retirée. Les lettres de filière restent hors de la file ; les y faire
+  entrer (option C de l'examen) est la cible quand les filières dépasseront
+  cinq ou que Cowork sera retiré. L'opératrice suit la file sur `/espaces/file`.
 - Les tâches lisent ce dont elles ont besoin par `GET /api/veille/dossier`
   (jeton `ACTIVATION_SECRET`) et remettent leurs résultats par
   `POST /api/veille/editions` et `POST /api/veille/referentiels`. Elles n'ont ni
@@ -313,10 +325,15 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   moins, quatorze au plus), `cout.ts`, `remise.ts` (le contrat avec les routes),
   `declencher.ts` (le seul appel à Trigger.dev côté portail).
 - **Routes du dispositif** (jeton d'activation) : `GET /api/veille/dossier`
-  (modes `selection`, `parution`, `decouverte`, `onboarding`, `filiere`,
-  `onboarding-complet`, `prospect`), `POST /api/veille/editions` (revalidation
-  par le portail, écriture Payload, journal `runs`, gel des sources dans la
-  collection `gels`, courriers aux lecteurs ou aux prospects),
+  (`travail=<uuid>` pour le dossier d'un travail de la file ; modes
+  `selection` (filières seules), `parution`, `decouverte`, `onboarding`,
+  `filiere`, `onboarding-complet`, `prospect`), `POST /api/veille/editions`
+  (avec `travail` et `session` : conclusion du travail par `recevoirUneÉdition`
+  avant toute écriture, édition Payload publiée et courriers si acceptée, rien
+  sinon ; sans travail : revalidation en forme unique, publiée ou brouillon,
+  courriers aux prospects de la filière ; gel des sources dans la collection
+  `gels` ; journal dans la table Drizzle `runs`), `POST /api/veille/travaux`
+  (`prendre`, aussi par identifiant de travail ; `poser`),
   `POST /api/veille/referentiels` (relu par le lecteur du moteur avant
   d'être actif ; l'ancien est désactivé, jamais effacé), `POST /api/veille/prospects`
   (le bloc personnalisé). Toute la logique Payload est dans
@@ -325,13 +342,16 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
 - **Registre vers portail** (`lib/payload/portail.ts`) : passer une organisation
   « à onboarder », ou créer un prospect, ouvre sa ligne `organisations` dans le
   portail (`ouvrirEnEssai`, clé de cloisonnement = identifiant Payload sans
-  tirets) et crée le lecteur du contact quand Postgres fait foi ; puis la tâche
-  Trigger.dev part. La première visite d'une organisation entrée par
+  tirets), déclare sa veille `unique` (lundi 6 h, hebdomadaire, numéro courant
+  zéro : c'est elle que la file planifie) et crée le lecteur du contact quand
+  Postgres fait foi ; puis la tâche Trigger.dev part. La première visite d'une organisation entrée par
   prospection déclenche l'édition de découverte quand `SOURCE_DOCUMENTS=payload`
   (`lib/portail/prospection.ts`).
 - **Trigger.dev** : `trigger.config.ts` (extension Playwright), `trigger/portail.ts`
-  (client des routes), `trigger/moteur.ts`, `trigger/parution.ts`
-  (`parution-hebdomadaire` le lundi 6 h Europe/Paris, `produire-la-lettre`,
+  (client des routes, dont `prendreUnTravail`, `poserUnTravail` et
+  `lireLeDossierDuTravail`), `trigger/moteur.ts`, `trigger/parution.ts`
+  (`vider-la-file` toutes les heures ouvrées, `produire-la-lettre` sans reprise
+  Trigger.dev : la file tient les tentatives, `lettres-de-filiere` le lundi 6 h,
   `produire-la-lettre-de-filiere`), `trigger/onboarding.ts` (`onboarding`,
   `edition-de-decouverte`, `bloc-personnalise`). Variables de l'environnement
   Trigger.dev : `PORTAIL_URL`, `ACTIVATION_SECRET`, `ANTHROPIC_API_KEY`.
@@ -344,11 +364,13 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   portait pas, et le premier build de production du 22 octobre 2026 a échoué sur
   « schema payload does not exist ». Toute migration Payload générée à
   l'avenir est à relire sous cet angle.
-- **Migrations à appliquer au déploiement** : Drizzle 0007
+- **Migrations à appliquer au déploiement** : Drizzle 0008
   (`lettres_du_moteur`, deux valeurs d'énumération, appliquée par le build de
-  production) ; Payload `20261021_105110_initiale` et
-  `20261021_111008_ajout_gels_fiche_bloc` (`pnpm payload:migrer`, ou le build
-  de production dès que `PAYLOAD_SECRET` et `DATABASE_URL` y sont posées).
+  production du 22 octobre) et 0009 (`file_de_travaux` : `travaux`, `runs`,
+  leurs énumérations) ; Payload `20261021_105110_initiale`,
+  `20261021_111008_ajout_gels_fiche_bloc` et `20261021_124849_retrait_runs`
+  (`pnpm payload:migrer`, ou le build de production, `PAYLOAD_SECRET` et
+  `DATABASE_URL` étant posées).
 
 ### Ce qui reste
 
@@ -360,9 +382,14 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   courriel (invitation à « recevoir mon lien ») n'est pas encore envoyé par le
   portail.
 - Le contrôle du soir ne signale pas encore `TRIGGER_SECRET_KEY` absente ni un
-  run Trigger.dev en échec ; les runs refusés sont visibles dans l'admin
-  (collection `runs`, `accepte` faux) et les éditions non acceptées restent en
-  brouillon.
+  run Trigger.dev en échec ; un travail refusé ou abandonné se voit sur
+  `/espaces/file` et dans `GET /api/veille/travaux`, ses portes dans la table
+  `runs`. Une édition d'organisation refusée n'est écrite nulle part ; seule
+  une lettre de filière refusée par la revalidation reste en brouillon.
+- Faire entrer les lettres de filière dans la file (option C) : une veille de
+  filière, un travail par parution, la même conclusion par `editions`.
+- Le troisième exécuteur possible, un appel d'API direct depuis le portail
+  sans Trigger.dev, n'est pas écrit : la file le permet sans changement.
 - Le build de production applique les migrations Payload après celles de
   Drizzle (`scripts/base-migrer.ts --deploiement`), production seule, dès que
   `PAYLOAD_SECRET` est posée ; avant, il le dit et continue.
@@ -384,3 +411,13 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   façade, admin), routes du dispositif, gel des sources, envoi des lettres,
   crochets du registre vers le portail, édition de découverte à la première
   visite, script d'évaluation de la lettre unique.
+- **22 octobre 2026, réconciliation avec la file de travaux** : la branche
+  `claude/sharp-fermat-lafthr` (palier 2 : `travaux`, `runs`, `veilles`
+  écrite, `/api/veille/travaux`, `/api/veille/resultat`) est fusionnée,
+  migration renumérotée 0009. Deux décisions : la table Drizzle `runs` est le
+  seul journal (collection Payload `runs` retirée, migration `retrait_runs`) ;
+  les filières restent hors de la file. Trigger.dev prend de la file
+  (`vider-la-file`), `editions` conclut le travail (`recevoirUneÉdition`),
+  `dossier?travail=` sert le dossier décidé, l'onboarding et la découverte
+  posent et prennent un travail `premiere_lettre`, la veille `unique` est
+  déclarée à l'ouverture d'une organisation, écran `/espaces/file`.

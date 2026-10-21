@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { collections } from '@/lib/payload/collections'
 import { editions } from '@/lib/payload/collections/editions'
-import { runs } from '@/lib/payload/collections/runs'
 import { exactementUneDesDeux, identifiantDeRelation } from '@/lib/payload/relations'
 
 /**
@@ -12,7 +11,7 @@ const sansUtilisateur = { req: { user: null } } as never
 const avecUtilisateur = { req: { user: { id: 'operatrice' } } } as never
 
 describe('les collections Payload', () => {
-  it('portent les huit slugs attendus, dans l’ordre de l’admin', () => {
+  it('portent les sept slugs attendus, dans l’ordre de l’admin', () => {
     expect(collections.map((collection) => collection.slug)).toEqual([
       'utilisateurs',
       'organisations',
@@ -20,7 +19,6 @@ describe('les collections Payload', () => {
       'referentiels',
       'editions',
       'prospects',
-      'runs',
       'gels',
     ])
   })
@@ -47,11 +45,6 @@ describe('les collections Payload', () => {
     }
   })
 
-  it('le journal des runs ne se modifie pas à la main, même authentifié', async () => {
-    for (const geste of ['create', 'update', 'delete'] as const) {
-      expect(await runs.access?.[geste]?.(avecUtilisateur), geste).toBe(false)
-    }
-  })
 
   it('seul utilisateurs porte une authentification', () => {
     expect(collections.filter((collection) => collection.auth).map((collection) => collection.slug)).toEqual([

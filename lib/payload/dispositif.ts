@@ -95,7 +95,13 @@ export async function sélectionDuJour(): Promise<{ organisations: string[]; fil
 
 export type RaisonDAbsence = 'organisation-inconnue' | 'filiere-inconnue' | 'sans-referentiel'
 
-export async function dossierDeParution(cible: Cible, mode: ModeDeProduction, dateÉdition?: string): Promise<DossierDeParution | RaisonDAbsence> {
+export async function dossierDeParution(
+  cible: Cible,
+  mode: ModeDeProduction,
+  dateÉdition?: string,
+  /** Ce que la file de travaux a décidé et que le dossier ne recalcule pas : le numéro à porter. */
+  surcharges: { readonly numéro?: number } = {},
+): Promise<DossierDeParution | RaisonDAbsence> {
   const payload = await instance()
   let organisation: DossierDeParution['organisation']
   let filière: DossierDeParution['filière'] = null
@@ -120,7 +126,13 @@ export async function dossierDeParution(cible: Cible, mode: ModeDeProduction, da
   const précédente = await dernièreÉditionPubliée(payload, cible)
   const sélection = sélectionDe(dateÉdition ?? aujourdHuiÀParis(), précédente)
   void mode
-  return { organisation, filière, référentiel, sélection: { ...sélection, éditionPrécédente: sélection.éditionPrécédente ?? null }, gel: await gelDe(payload, cible) }
+  return {
+    organisation,
+    filière,
+    référentiel,
+    sélection: { ...sélection, numéro: surcharges.numéro ?? sélection.numéro, éditionPrécédente: sélection.éditionPrécédente ?? null },
+    gel: await gelDe(payload, cible),
+  }
 }
 
 export async function dossierDOnboarding(organisationId: string): Promise<DossierDOnboarding | 'organisation-inconnue'> {
@@ -166,13 +178,6 @@ export async function dossierDeProspect(prospectId: string): Promise<DossierDePr
 
 // ── Écritures ────────────────────────────────────────────────────────────────
 
-const TYPE_DE_RUN: Record<ModeDeProduction, 'parution' | 'onboarding' | 'filiere' | 'decouverte'> = {
-  parution: 'parution',
-  onboarding: 'onboarding',
-  filiere: 'filiere',
-  decouverte: 'decouverte',
-}
-
 export async function enregistrerLÉdition(remise: RemiseDÉdition, statut: 'publiee' | 'brouillon'): Promise<AccuséDeRemise> {
   const payload = await instance()
   const édition = await payload.create({
@@ -191,27 +196,12 @@ export async function enregistrerLÉdition(remise: RemiseDÉdition, statut: 'pub
       markdown: remise.markdown,
     },
   })
-  const run = await payload.create({
-    collection: 'runs',
-    data: {
-      type: TYPE_DE_RUN[remise.mode],
-      organisation: remise.organisation,
-      filiere: remise.filiere,
-      tache: remise.run,
-      accepte: remise.acceptee && statut === 'publiee',
-      portes: remise.controle,
-      cout: remise.mesures,
-      edition: String(édition.id),
-      debut: remise.debut,
-      fin: remise.fin,
-    },
-  })
   const cible: Cible = remise.organisation ? { organisation: remise.organisation } : { filiere: remise.filiere ?? '' }
   await remplacerLeGel(payload, cible, remise.collecte.gelSuivant)
   if (statut === 'publiee' && remise.organisation && (remise.mode === 'onboarding' || remise.mode === 'decouverte')) {
     await payload.update({ collection: 'organisations', id: remise.organisation, data: { etat: 'active' } })
   }
-  return { edition: String(édition.id), run: String(run.id), statut }
+  return { edition: String(édition.id), run: remise.run, statut }
 }
 
 async function remplacerLeGel(payload: Payload, cible: Cible, gel: RemiseDÉdition['collecte']['gelSuivant']): Promise<void> {
@@ -246,10 +236,6 @@ export async function enregistrerLeRéférentiel(remise: RemiseDeRéférentiel):
       })
     }
   }
-  await payload.create({
-    collection: 'runs',
-    data: { type: 'onboarding', organisation: remise.organisation, filiere: remise.filiere, tache: remise.run, accepte: true, cout: { cout: remise.cout }, debut: new Date().toISOString(), fin: new Date().toISOString() },
-  })
   return { referentiel: String(créé.id), run: remise.run, statut: 'actif' }
 }
 
@@ -258,10 +244,6 @@ export async function enregistrerLeBloc(prospectId: string, run: string, lignes:
   const prospect = await payload.findByID({ collection: 'prospects', id: prospectId, depth: 0, disableErrors: true })
   if (!prospect) return 'prospect-inconnu'
   await payload.update({ collection: 'prospects', id: prospectId, data: { bloc: [...lignes], blocLe: new Date().toISOString() } })
-  await payload.create({
-    collection: 'runs',
-    data: { type: 'bloc', organisation: identifiantDeRelation(prospect.organisation), filiere: identifiantDeRelation(prospect.filiere), tache: run, accepte: true, debut: new Date().toISOString(), fin: new Date().toISOString() },
-  })
   return 'enregistré'
 }
 

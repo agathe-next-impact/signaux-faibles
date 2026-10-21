@@ -73,7 +73,6 @@ export interface Config {
     referentiels: Referentiel;
     editions: Edition;
     prospects: Prospect;
-    runs: Run;
     gels: Gel;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -88,7 +87,6 @@ export interface Config {
     referentiels: ReferentielsSelect<false> | ReferentielsSelect<true>;
     editions: EditionsSelect<false> | EditionsSelect<true>;
     prospects: ProspectsSelect<false> | ProspectsSelect<true>;
-    runs: RunsSelect<false> | RunsSelect<true>;
     gels: GelsSelect<false> | GelsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -278,44 +276,6 @@ export interface Prospect {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "runs".
- */
-export interface Run {
-  id: string;
-  type: 'parution' | 'onboarding' | 'filiere' | 'bloc' | 'decouverte';
-  organisation?: (string | null) | Organisation;
-  filiere?: (string | null) | Filiere;
-  /**
-   * Identifiant du run Trigger.dev.
-   */
-  tache?: string | null;
-  accepte?: boolean | null;
-  portes?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  cout?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  edition?: (string | null) | Edition;
-  debut?: string | null;
-  fin?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "gels".
  */
 export interface Gel {
@@ -384,10 +344,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'prospects';
         value: string | Prospect;
-      } | null)
-    | ({
-        relationTo: 'runs';
-        value: string | Run;
       } | null)
     | ({
         relationTo: 'gels';
@@ -544,24 +500,6 @@ export interface ProspectsSelect<T extends boolean = true> {
   bloc?: T;
   blocLe?: T;
   derniereLettreLe?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "runs_select".
- */
-export interface RunsSelect<T extends boolean = true> {
-  type?: T;
-  organisation?: T;
-  filiere?: T;
-  tache?: T;
-  accepte?: T;
-  portes?: T;
-  cout?: T;
-  edition?: T;
-  debut?: T;
-  fin?: T;
   updatedAt?: T;
   createdAt?: T;
 }

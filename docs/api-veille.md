@@ -517,3 +517,150 @@ quand le prospect le demande sur « recevoir mon lien ».
 Sans `LEMLIST_API_KEY`, rien ne part : la prospection est tenue dans Postgres
 et `enAttente` compte ce qui attend. Le portail n'ajoute jamais un contact à
 une campagne et ne lance rien : c'est le rôle de la tâche de prospection.
+
+## La file de travaux (palier 2, 21 octobre 2026)
+
+Le palier 2 de la décision du 15 octobre (`docs/decision-portail-moteur.md`,
+point 4) : le portail **décide** ce qu'il y a à faire, l'exécuteur prend,
+rédige et poste. Le modèle ne calcule plus de date, ne compte plus de numéro,
+ne décide plus d'un statut. Tables `travaux` et `runs` (migration 0009),
+écrites par la seule orchestration `lib/portail/file.ts` ;
+`tests/architecture.test.ts` le vérifie.
+
+Deux exécuteurs, le temps de la transition (décision du 22 octobre 2026,
+`docs/programme-lettre-unique.md`) :
+
+- **le moteur en code, par Trigger.dev** : `vider-la-file` prend les travaux
+  prenables toutes les heures ouvrées, `produire-la-lettre` lit le dossier du
+  travail (`GET /api/veille/dossier?travail=`), produit et remet sa lettre
+  Markdown à `POST /api/veille/editions` avec `travail` et `session` ; c'est la
+  route `editions` qui conclut le travail. C'est le chemin de toute
+  organisation dont le référentiel unique est actif et la veille `unique`
+  déclarée ;
+- **la tâche Cowork « Runs de veille »**, pour les clients encore sur deux
+  lettres Notion : elle prend de la même file et poste une page Notion sur
+  `POST /api/veille/resultat`. Ce chemin s'éteint avec la bascule
+  `SOURCE_DOCUMENTS=payload`.
+
+La table Drizzle `runs` est le **seul** journal des deux chemins. Les lettres
+de filière ne passent pas par la file (tâche planifiée `lettres-de-filiere`).
+
+### `POST /api/veille/veilles` — déclarer les veilles d'une organisation
+
+Ce que la file a besoin de savoir pour planifier, et qui vivait dans le registre
+Notion : `{ "slug", "type": "ecosysteme" | "concurrentielle", "libellé",
+"jourParution": 1..7, "heureParution": "HH:MM", "cadence": "hebdomadaire" |
+"bimensuelle" | "mensuelle", "referentielNotion"?, "numéroCourant"?, "état"? }`.
+201 `déclarée`, 200 `mise-à-jour` (rejouable : même organisation, même type),
+404 `organisation-inconnue`. `numéroCourant` est le dernier numéro attribué :
+le lire **une fois** sur `GET /api/veille/contexte` (`dernierNuméro` de la
+famille) à la déclaration ; ensuite le portail le tient seul. `GET
+/api/veille/veilles?slug=` liste les veilles déclarées. À déclarer à
+l'activation d'une organisation, et une fois pour chaque client historique.
+
+### `GET /api/veille/travaux` — l'état de la file
+
+Comptes par état (`a_faire`, `pris`, `accepte`, `refuse`, `abandonne`) et la
+liste des travaux ouverts, plus les abandonnés des quatorze derniers jours.
+`?planifier=1` (ou l'en-tête du cron Vercel) planifie d'abord la semaine qui
+vient : un travail `lettre` par parution des veilles actives des organisations
+en essai ou abonnées, une fois (index `travaux_ouvert_unique` : un seul travail
+ouvert par veille et par type). **La planification est faite chaque matin par
+`GET /api/veille/parcours`**, le passage quotidien, qui la rend dans `file`.
+L'échéance d'un travail est la parution **à son heure de Paris**
+(`heureParution` de la veille) : avant, il est visible dans la file mais pas
+prenable.
+
+### `POST /api/veille/travaux` — prendre, ou poser
+
+- `{ "action": "prendre", "session": "<identifiant de la session>" }` : 200
+  `pris` avec `travail` (identifiant, type, tentative, échéance, `contexte` :
+  organisation, veille, **numéro à porter**, parution, prompt à appliquer) et
+  `notion` (ce que `GET /api/veille/contexte` dit de la famille : dernier
+  numéro, dernières éditions, dossiers ouverts ; `null` pour une veille
+  `unique`, qui n'a pas de famille), ou 200 `vide`. La file donne
+  le plus ancien travail dont l'échéance est passée ; le travail est réservé à
+  la session, qui seule pourra poster son résultat. Un travail pris et jamais
+  conclu revient dans la file après trois heures, et il est abandonné à la
+  troisième tentative.
+- `{ "action": "prendre", "session", "travail": "<uuid>" }` : prend **ce**
+  travail, échéance ou non, s'il est `a_faire` ou `refuse` ; 409 `non-prenable`
+  sinon. C'est le chemin de l'onboarding et de l'édition de découverte, qui
+  posent un travail `premiere_lettre` pour aujourd'hui et le produisent dans le
+  même run.
+- `{ "action": "poser", "slug", "veille", "type": "lettre" | "premiere_lettre",
+  "parution": "AAAA-MM-JJ" }` : un travail posé à la main, pour une première
+  lettre ou une parution à rattraper. 201 `créé`, 200 `déjà-en-file`, 404
+  `organisation-inconnue` | `veille-inconnue`.
+
+### `POST /api/veille/resultat` — poster le résultat d'un travail
+
+`{ "travail", "session", "page", "exécuteur"?, "début"?, "fin"?, "résultat"?,
+"coût"? }`. Le résultat d'une lettre est **la page Notion en Brouillon** que
+l'exécuteur a écrite, avec le numéro du contexte ; le portail expire son tag,
+la relit, et la passe par les portes de `/api/veille/lint` **plus trois que le
+lint ne peut pas connaître** : la page porte la ligne du registre de
+l'organisation du travail (`organisation-différente`, règle 2), la famille
+attendue (`famille-différente`) et le numéro attribué (`numéro-différent`) ;
+`page-introuvable` pour une page absente ou à la corbeille.
+
+- 200 `accepté` : le run est journalisé, le travail conclu, et
+  `veilles.numéro_courant` prend le numéro, dans la même transaction. La page
+  reste en Brouillon : la publication (statut `Envoyé`) et l'envoi suivent le
+  chemin d'aujourd'hui tant que le palier 1b (envoi par le portail) n'est pas
+  livré ;
+- 200 `refusé` : `portes`, `ruptures`, `avertissements`, `aperçu` et
+  `tentatives` ; le travail redevient prenable, la session reprend (nouvelle
+  prise, correction de la **même** page, nouveau résultat) ;
+- 200 `abandonné` : troisième refus ; l'opératrice le voit dans
+  `GET /api/veille/travaux` ;
+- 404 `inconnu`, 409 `pas-pris` (`étatDuTravail`), 409 `autre-session`.
+
+Pour un travail d'un autre type (`referentiel`, `revue`), la route refuse
+`type-non-pris-en-charge` : ces types attendent leur porte.
+
+### `POST /api/veille/editions` avec `travail` et `session` — le résultat Markdown du moteur
+
+Le second parseur que la file ne voulait pas écrire existe depuis le
+22 octobre 2026 (`markdownVersBlocs`, celui des écrans en mode Payload et du
+validateur) : la remise d'une édition par une tâche Trigger.dev
+(`RemiseDÉdition`, `lib/moteur/remise.ts`) porte `travail` et `session`, et la
+route conclut le travail **avant** d'écrire quoi que ce soit
+(`recevoirUneÉdition`, `lib/portail/file.ts`) :
+
+- portes du portail : `organisation-différente` (la clé de cloisonnement de
+  l'organisation du travail est l'identifiant Payload sans tirets, règle 2),
+  `numéro-différent`, `type-non-pris-en-charge` ; puis le lint en forme unique ;
+  puis le verdict du moteur (`acceptee`) : le portail ne publie jamais ce que le
+  moteur a refusé ;
+- 200 `{ edition, statut: "publiee", travail: "accepte", courriers }` :
+  édition écrite dans Payload, gel remplacé, `numéro_courant` écrit dans la
+  même transaction que la conclusion, courriers partis aux lecteurs actifs ;
+- 200 `{ état: "refuse" | "abandonne", tentatives, portes }` : **rien n'est
+  écrit**, le travail redevient prenable (ou est abandonné) ;
+- 404 `inconnu`, 409 `pas-pris` | `autre-session` ; 400 si `travail` vient sans
+  `session`, ou avec une `filiere`.
+
+Sans `travail`, la route garde son chemin hors file (lettres de filière) :
+revalidation en forme unique, publiée ou brouillon, courriers aux prospects.
+`GET /api/veille/dossier?travail=<uuid>` donne à la tâche le dossier du travail
+pris : organisation par sa clé de cloisonnement, numéro et date de parution
+décidés par la file, mode déduit du type (`premiere_lettre` → `onboarding`,
+`lettre` → `parution`, `&mode=decouverte` pour la découverte).
+
+### Depuis la tâche « Runs de veille »
+
+```
+# prendre
+curl -s -X POST https://www.signauxfaibles.io/api/veille/travaux \
+  -H 'content-type: application/json' -d '{"action":"prendre","session":"<session>"}'
+# … rédiger la page Notion en Brouillon, avec contexte.numéro …
+# poster
+curl -s -X POST https://www.signauxfaibles.io/api/veille/resultat \
+  -H 'content-type: application/json' \
+  -d '{"travail":"<uuid>","session":"<session>","page":"<page_id>","exécuteur":"cowork:<session>"}'
+```
+
+Boucler tant que `prendre` ne rend pas `vide`, et tant qu'un résultat est
+`refusé`, corriger la page puis reposter. Rien d'autre à calculer : le jeton
+est posé par le secret réseau de l'environnement, comme pour les autres routes.
