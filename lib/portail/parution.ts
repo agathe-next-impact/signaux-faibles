@@ -38,7 +38,7 @@ export async function envoyerLaLettreAuxLecteurs(entrée: { organisationPayload:
   const organisation = await destinatairesDUneLettre(cléDeCloisonnement(entrée.organisationPayload))
   if (!organisation) return { destinataires: 0, envoyés: 0, issues: ['organisation-hors-portail'] }
 
-  const relecteur = organisation.relectureRequise ? (organisation.emailRelecture ?? process.env['EMAIL_RELECTURE'] ?? null) : null
+  const relecteur = organisation.relectureRequise ? (organisation.emailRelecture ?? process.env['RELECTEUR_EMAIL'] ?? null) : null
   const destinataires = organisation.relectureRequise
     ? relecteur
       ? [{ lecteurId: null as string | null, adresse: relecteur, relecture: true }]
