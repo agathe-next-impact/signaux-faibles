@@ -118,6 +118,48 @@ evaluation/entrees/
 ```
 
 `<organisation>` : `infralliance`, `hermitage`, `konica`, `petite-vitrine` ;
-`<veille>` : `ecosysteme`, `concurrentielle`. L'export du 22 octobre 2026 a été
-fait depuis une session Claude Code ; il se refait en quelques minutes de la
-même façon. Rien de ce dossier n'entre dans un commit.
+`<veille>` : `ecosysteme`, `concurrentielle`. Rien de ce dossier n'entre dans un
+commit ; une session nouvelle le reconstitue en quelques minutes.
+
+### Procédure d'export, depuis une session Claude Code avec le connecteur Notion
+
+Lecture seule : aucune page n'est créée ni modifiée. Chaque fetch Notion rend un
+JSON dont le champ `text` est le Markdown de la page ; c'est ce champ, tel quel,
+qui va dans le fichier `.md`.
+
+| Fichier | Page ou requête Notion |
+|---|---|
+| `tache-lettres-de-veille.md` | page `3d5fe829ce718107af65f4fccf8089ab` |
+| `infralliance/fiche.md` | page `3d5fe829ce7181c6a50de68f5f43d301` |
+| `infralliance/ecosysteme/referentiel.md` | page `3d5fe829ce71814a9239ede2fd55f614` |
+| `infralliance/concurrentielle/referentiel.md` | page `3d5fe829ce7181ac8d7cf383c9817fd5` (veille « Positionnement », pas l'archive `…549223e9ac83da906d`) |
+| `konica/fiche.md` | page `3d8fe829ce718129a9e6d073de3f78c0` |
+| `konica/ecosysteme/referentiel.md` | page `3d8fe829ce7181099fa0d6300301cb60` |
+| `konica/concurrentielle/referentiel.md` | page `3d8fe829ce718180a9d9c1d2a0b84ffd` |
+| `hermitage/fiche.md` | page `3d5fe829ce718130b48bd6b171ac7a28` |
+| `hermitage/ecosysteme/referentiel.md` | page `3d5fe829ce7181a8a12ff7907942a9c4` |
+| `hermitage/concurrentielle/referentiel.md` | page `3d5fe829ce718129abe7dcb1b789d411` |
+| `petite-vitrine/fiche.md` | page `3fffe829ce718198bb68fc67d389c886` |
+| `petite-vitrine/ecosysteme/referentiel.md` | page `3fffe829ce7181e89cabe20212d3ae3e` |
+| `petite-vitrine/concurrentielle/referentiel.md` | page `3fffe829ce718106bd43f8d7abfd49f5` |
+| `editions-publiees.json` | SQL sur `collection://f3e703c8-3178-4f70-946b-72be0c2f6db1` : `Statut = 'Envoyé'`, tri par `date:Date d'édition:start` décroissant, limite 100 ; le résultat brut (objet `results`) |
+| `<organisation>/<veille>/dernieres-editions.json` | les trois lignes les plus récentes de `editions-publiees.json` dont la colonne `Organisation` porte l'identifiant de registre de l'organisation et dont `Famille` vaut `Écosystème` (ecosysteme) ou `Concurrentiel` (concurrentielle), réécrites en `{ titre, date, numero, periode, dossiers, action, url }` |
+| `<organisation>/<veille>/derniere-lettre.md` | fetch de l'`url` de la plus récente de ces lignes |
+| `organisations.json` | SQL sur `collection://4d3d7403-35d7-4815-884b-877d17423842`, colonnes `Slug`, `Organisation (libellé)`, `Identifiant Notion de l'organisation` seulement (jamais `Email` ni `Identifiant d'accès`), une entrée `{ slug, nom, registreNotion }` par organisation |
+
+Identifiants de registre au 22 octobre 2026 : Infralliance
+`3d5fe829ce718145a186fc32423a922b`, L'Hermitage `3d5fe829ce71810da651f3783a725bd8`,
+Konica Minolta France `3d8fe829ce7181368bd3e1b0d109b9fe`, La petite vitrine
+`3fffe829ce718195ac8be14bbee84c6e`. Slugs de la base Accès : `infralliance`,
+`hermitage`, `konica-minolta-france`, `la-petite-vitrine`. Les titres des
+éditions de L'Hermitage ne commencent pas par le nom de l'organisation
+(« Veille Tiers-Lieux », « Veille hebdo, Séjours B2B/B2C ») : rattacher par
+l'identifiant de registre, jamais par le titre.
+
+### Envoi des courriels
+
+Une fois `evaluation/sorties/<horodatage>/` produit, chaque `courriel.html` part
+à agathe@signauxfaibles.io depuis le connecteur Gmail de la session, avec l'objet
+de `courriel.json` et le texte de `courriel.txt` en version brute ; puis
+`recapitulatif.html` en un dernier courriel, sujet « [TEST] Récapitulatif des
+lettres de test ». Le script n'envoie rien lui-même.
