@@ -530,8 +530,9 @@ opérateur et n'écrivent que si Postgres fait foi (`lecteursModifiables`,
 **Une page publique de demande de démonstration, hors des sept (21 octobre
 2026).** `/demo` (`app/demo/`, logique dans `lib/portail/demo.ts`) ne lit ni
 Notion ni Postgres et ne crée rien : ni organisation, ni lecteur, ni
-prospection. Le formulaire (nom, adresse, organisation, fonction et message
-facultatifs) fait partir un courrier texte vers `agathe@signauxfaibles.io` par
+prospection. Le formulaire (nom, adresse, organisation et son site, obligatoires ;
+fonction et message facultatifs ; le site est complété en `https://` par
+`siteDeLOrganisation` et refusé s'il n'est pas un site web) fait partir un courrier texte vers `agathe@signauxfaibles.io` par
 `envoyerCourrier`, sorte `demande_demo` (migration 0007), avec l'adresse du
 demandeur en `Reply-To` (posé seulement si `adresseDeRéponseSûre` l'accepte,
 jamais de retour à la ligne dans un en-tête). Champ piège et limitation de débit

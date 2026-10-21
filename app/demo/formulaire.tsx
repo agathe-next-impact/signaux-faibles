@@ -13,6 +13,7 @@ const MESSAGES_D_ERREUR: Record<ChampDeDémo, string> = {
   nom: 'Indiquez votre nom.',
   email: 'Indiquez une adresse email valide.',
   organisation: 'Indiquez votre organisation.',
+  site: 'Indiquez l’adresse du site de votre organisation, par exemple organisation.fr.',
   fonction: 'La fonction tient en 120 caractères au plus.',
   message: 'Le message tient en 2 000 caractères au plus.',
 }
@@ -69,6 +70,14 @@ export function Formulaire({ champPiège }: { readonly champPiège: string }) {
           autoComplete="organization" defaultValue={valeurs?.organisation} className={CHAMP}
           {...décrit('organisation')} />
         {erreur('organisation')}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label htmlFor="site" className="text-corps text-ardoise">Le site de votre organisation</label>
+        <input id="site" name="site" type="text" inputMode="url" required maxLength={300}
+          autoComplete="url" placeholder="organisation.fr" defaultValue={valeurs?.site}
+          className={CHAMP} {...décrit('site')} />
+        {erreur('site')}
       </div>
 
       <div className="flex flex-col gap-2">

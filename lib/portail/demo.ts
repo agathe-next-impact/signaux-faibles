@@ -19,17 +19,19 @@ export const ADRESSE_DES_DEMANDES_DE_DÉMO = 'agathe@signauxfaibles.io'
 /** Le champ piège : invisible, un robot le remplit, une personne jamais. */
 export const CHAMP_PIÈGE = 'site_web'
 
-const LONGUEURS = { nom: 120, organisation: 160, fonction: 120, message: 2_000 } as const
+const LONGUEURS = { nom: 120, organisation: 160, site: 300, fonction: 120, message: 2_000 } as const
 
 export type DemandeDeDémo = {
   readonly nom: string
   readonly email: string
   readonly organisation: string
+  /** Le site de l'organisation, normalisé en `https://…` s'il était saisi sans protocole. */
+  readonly site: string
   readonly fonction: string
   readonly message: string
 }
 
-export type ChampDeDémo = 'nom' | 'email' | 'organisation' | 'fonction' | 'message'
+export type ChampDeDémo = 'nom' | 'email' | 'organisation' | 'site' | 'fonction' | 'message'
 
 export type LectureDeLaDemande =
   | { readonly sorte: 'valide'; readonly demande: DemandeDeDémo }
@@ -53,8 +55,30 @@ function unTexte(valeur: FormDataEntryValue | null): string {
 }
 
 /**
+ * Le site saisi, en adresse `http(s)` complète, ou `null` s'il n'en est pas une.
+ * « next-impact.digital » devient « https://next-impact.digital » : personne ne
+ * tape le protocole. L'hôte doit porter un point, et rien d'autre qu'un site
+ * web n'est admis (`javascript:`, `mailto:` sont refusés).
+ */
+export function siteDeLOrganisation(saisi: string): string | null {
+  if (saisi.length === 0 || saisi.length > LONGUEURS.site || /\s/.test(saisi)) return null
+  const complet = /^[a-z][a-z0-9+.-]*:/i.test(saisi) ? saisi : `https://${saisi}`
+  let url: URL
+  try {
+    url = new URL(complet)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  if (url.username || url.password) return null
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(url.hostname)) return null
+  return url.href.replace(/\/$/, '')
+}
+
+/**
  * Lit et contrôle le formulaire. Les champs obligatoires sont le nom,
- * l'adresse et l'organisation ; la fonction et le message sont facultatifs.
+ * l'adresse, l'organisation et son site ; la fonction et le message sont
+ * facultatifs.
  * L'adresse doit être une adresse simple, celle qui pourra être posée en
  * `Reply-To` : une adresse refusée ici ne ferait que retomber, plus loin, sur
  * une réponse adressée à l'expéditeur du portail.
@@ -66,6 +90,7 @@ export function lireLaDemande(formulaire: { get(nom: string): FormDataEntryValue
     nom: uneLigne(formulaire.get('nom')),
     email: uneLigne(formulaire.get('email')).toLowerCase(),
     organisation: uneLigne(formulaire.get('organisation')),
+    site: uneLigne(formulaire.get('site')),
     fonction: uneLigne(formulaire.get('fonction')),
     message: unTexte(formulaire.get('message')),
   }
@@ -76,10 +101,14 @@ export function lireLaDemande(formulaire: { get(nom: string): FormDataEntryValue
   if (valeurs.organisation.length === 0 || valeurs.organisation.length > LONGUEURS.organisation) {
     champs.push('organisation')
   }
+  const site = siteDeLOrganisation(valeurs.site)
+  if (site === null) champs.push('site')
   if (valeurs.fonction.length > LONGUEURS.fonction) champs.push('fonction')
   if (valeurs.message.length > LONGUEURS.message) champs.push('message')
 
-  return champs.length > 0 ? { sorte: 'invalide', champs, valeurs } : { sorte: 'valide', demande: valeurs }
+  return champs.length > 0 || site === null
+    ? { sorte: 'invalide', champs, valeurs }
+    : { sorte: 'valide', demande: { ...valeurs, site } }
 }
 
 /** Le courrier qui part vers l'opératrice. Répondre écrit au demandeur. */
@@ -90,6 +119,7 @@ export function composerCourrierDeDémo(demande: DemandeDeDémo, maintenant: Dat
     `Nom : ${demande.nom}`,
     `Adresse : ${demande.email}`,
     `Organisation : ${demande.organisation}`,
+    `Site : ${demande.site}`,
     `Fonction : ${demande.fonction || 'non indiquée'}`,
     '',
     'Message :',
