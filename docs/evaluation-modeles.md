@@ -150,7 +150,7 @@ qui va dans le fichier `.md`.
 | `petite-vitrine/fiche.md` | page `3fffe829ce718198bb68fc67d389c886` |
 | `petite-vitrine/ecosysteme/referentiel.md` | page `3fffe829ce7181e89cabe20212d3ae3e` |
 | `petite-vitrine/concurrentielle/referentiel.md` | page `3fffe829ce718106bd43f8d7abfd49f5` |
-| `editions-publiees.json` | SQL sur `collection://f3e703c8-3178-4f70-946b-72be0c2f6db1` : `Statut = 'Envoyé'`, tri par `date:Date d'édition:start` décroissant, limite 100 ; le résultat brut (objet `results`) |
+| `editions-publiees.json` | SQL sur `collection://f3e703c8-3178-4f70-946b-72be0c2f6db1` : colonnes `url`, `Titre`, `Veille`, `Famille`, `Statut`, `Numéro`, `date:Date d'édition:start`, `Période couverte`, `Dossiers ouverts suivis`, `Action de la semaine`, `Organisation` (jamais `Livraison`, qui porte des adresses), `Statut = 'Envoyé'`, tri par `date:Date d'édition:start` décroissant, limite 100 ; le résultat brut (objet `results`) |
 | `<organisation>/<veille>/dernieres-editions.json` | les trois lignes les plus récentes de `editions-publiees.json` dont la colonne `Organisation` porte l'identifiant de registre de l'organisation et dont `Famille` vaut `Écosystème` (ecosysteme) ou `Concurrentiel` (concurrentielle), réécrites en `{ titre, date, numero, periode, dossiers, action, url }` |
 | `<organisation>/<veille>/derniere-lettre.md` | fetch de l'`url` de la plus récente de ces lignes |
 | `organisations.json` | SQL sur `collection://4d3d7403-35d7-4815-884b-877d17423842`, colonnes `Slug`, `Organisation (libellé)`, `Identifiant Notion de l'organisation` seulement (jamais `Email` ni `Identifiant d'accès`), une entrée `{ slug, nom, registreNotion }` par organisation |
