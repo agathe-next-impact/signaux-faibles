@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   smallint,
@@ -23,9 +24,9 @@ import {
  * contient les identifiants Notion.
  *
  * Ce fichier ne crée que ce dont les paliers engagés ont besoin : organisations,
- * veilles et lecteurs (palier 1a), abonnements (palier 1c). Les tables suivantes
- * du schéma cible (`docs/schema-donnees.md`) arrivent avec le palier qui s'en
- * sert, chacune par sa propre migration.
+ * veilles et lecteurs (palier 1a), abonnements (palier 1c), travaux et runs
+ * (palier 2). Les tables suivantes du schéma cible (`docs/schema-donnees.md`)
+ * arrivent avec le palier qui s'en sert, chacune par sa propre migration.
  *
  * Conventions, celles du schéma cible : identifiants `uuid` tirés par la base,
  * horodatages avec fuseau, noms en français comme le reste du code, suppression
@@ -424,3 +425,117 @@ export const événementsProspection = pgTable(
 export type Prospection = typeof prospections.$inferSelect
 export type ÉvénementProspection = typeof événementsProspection.$inferSelect
 
+
+/**
+ * La file de travaux et son journal (palier 2, 21 octobre 2026).
+ *
+ * La décision du 15 octobre (`docs/decision-portail-moteur.md`, point 4) fait du
+ * portail l'endroit qui **décide** ce qu'il y a à faire : il assemble le
+ * contexte d'un run (organisation, veille, numéro à attribuer, parution), le
+ * pose dans la file, et l'exécuteur, tâche Claude planifiée ou appel d'API, ne
+ * fait que le prendre, rédiger, et poster un résultat. Le modèle ne calcule
+ * plus de date, ne compte plus de numéro, ne décide plus d'un statut.
+ *
+ * Une ligne de `travaux` par chose à faire. L'**échéance** est l'instant avant
+ * lequel le travail ne doit pas être pris : la parution, à son heure de Paris.
+ * Un travail `pris` depuis plus de trois heures est rendu à la file (la
+ * session qui l'avait pris n'a pas conclu) ; au troisième échec, il est
+ * `abandonne` et le contrôle du soir le signale. `refuse` n'est pas final : le
+ * dernier résultat a été refusé par les portes, et la file le propose à
+ * nouveau tant que les tentatives restent.
+ *
+ * `contexte` ne porte que ce que le portail sait **sans lire Notion** : des
+ * identifiants, un numéro, des dates, le nom du prompt. Les dernières éditions
+ * (dossiers, période couverte) sont relues de Notion à la prise du travail et
+ * servies dans la réponse, jamais copiées ici : Postgres ne contient ni corps
+ * de lettre ni texte de référentiel.
+ *
+ * **Un seul travail ouvert par veille et par type** : l'index partiel ci-dessous
+ * rend la planification quotidienne rejouable, comme le journal des courriers
+ * rend les envois de fin d'essai rejouables.
+ */
+export const typeTravail = pgEnum('type_travail', ['referentiel', 'premiere_lettre', 'lettre', 'revue'])
+export const étatTravail = pgEnum('état_travail', ['a_faire', 'pris', 'accepte', 'refuse', 'abandonne'])
+
+export const travaux = pgTable(
+  'travaux',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: typeTravail('type').notNull(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    /** Nul pour un travail d'organisation (référentiel). */
+    veilleId: uuid('veille_id').references(() => veilles.id),
+    /** Avant quoi le travail ne doit pas être pris. */
+    échéance: horodatage('échéance').notNull(),
+    état: étatTravail('état').notNull().default('a_faire'),
+    prisLe: horodatage('pris_le'),
+    /** L'identifiant de session de l'exécuteur qui tient le travail. */
+    prisPar: text('pris_par'),
+    tentatives: smallint('tentatives').notNull().default(0),
+    /** Ce que le portail a assemblé ; identifiants, numéro, dates, prompt. */
+    contexte: jsonb('contexte').$type<Record<string, unknown>>().notNull(),
+    /** Le run accepté, une fois le travail conclu. */
+    résultatRunId: uuid('résultat_run_id'),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+  },
+  (table) => [
+    index('travaux_échéance').on(table.état, table.échéance),
+    index('travaux_organisation').on(table.organisationId),
+    check('travaux_tentatives', sql`${table.tentatives} between 0 and 3`),
+    // Un seul travail ouvert (à faire, pris ou refusé) par veille et par type.
+    // `coalesce` range les travaux d'organisation sous un identifiant nul, sans
+    // quoi Postgres tiendrait deux valeurs nulles pour distinctes.
+    uniqueIndex('travaux_ouvert_unique')
+      .on(
+        table.organisationId,
+        sql`coalesce(${table.veilleId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+        table.type,
+      )
+      .where(sql`${table.état} in ('a_faire', 'pris', 'refuse')`),
+  ],
+)
+
+/**
+ * Le journal des résultats : une ligne par résultat posté, accepté ou non.
+ *
+ * Le résultat d'une lettre est **une page Notion en Brouillon** que l'exécuteur
+ * a écrite, désignée par `page_notion` ; le portail la passe dans le parseur de
+ * production (`lib/portail/lint.ts`) et tient ses portes dans `portes`. Un
+ * résultat en Markdown aurait demandé un second parseur, et le validateur
+ * n'aurait plus eu la même lecture que les écrans. `résultat` garde ce que
+ * l'exécuteur a dit de son run (méthode, grille de collecte, amendements),
+ * jamais le corps de la lettre.
+ */
+export const runs = pgTable(
+  'runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    travailId: uuid('travail_id')
+      .notNull()
+      .references(() => travaux.id),
+    début: horodatage('début'),
+    fin: horodatage('fin'),
+    /** `cowork:<session>` ou `api:<modèle>`. */
+    exécuteur: text('exécuteur').notNull(),
+    résultat: jsonb('résultat').$type<Record<string, unknown>>().notNull(),
+    /** Le rapport des portes : code, portée, message. */
+    portes: jsonb('portes').$type<Record<string, unknown>>().notNull(),
+    accepté: boolean('accepté').notNull(),
+    /** La page Édition, 32 hexadécimaux sans tirets. */
+    pageNotion: text('page_notion'),
+    /** Tokens, recherches, durée, quand l'exécuteur les donne. */
+    coût: jsonb('coût').$type<Record<string, unknown>>(),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+  },
+  (table) => [
+    index('runs_travail').on(table.travailId),
+    check('runs_page_notion_forme', sql`${table.pageNotion} is null or ${table.pageNotion} ~ '^[0-9a-f]{32}$'`),
+  ],
+)
+
+export type Travail = typeof travaux.$inferSelect
+export type Run = typeof runs.$inferSelect
+export type TypeTravail = Travail['type']
+export type ÉtatTravail = Travail['état']

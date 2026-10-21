@@ -9,6 +9,8 @@ import { sourceAccès } from '@/lib/auth/source-acces'
 import { identifiantDeLaSession } from '@/lib/auth/session'
 import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
+import { lireLaFile } from '@/lib/portail/file'
+import type { ÉtatDeLaFile } from '@/lib/base/travaux'
 import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
 
 /**
@@ -166,4 +168,22 @@ export async function listerLesAbonnements(): Promise<{
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null }
   return { accès, lignes: await tableauDesAbonnements() }
+}
+
+/**
+ * La file de travaux, pour l'opératrice (décision du 22 octobre 2026 : la file
+ * est le seul point de décision des lettres, et son seul journal).
+ *
+ * Même forme que `listerLesAbonnements` : la garde est **dans** la fonction,
+ * la lecture traverse les clients (un travail par organisation), et `lireLaFile`
+ * n'a pas d'autre appelant côté écran (`tests/architecture.test.ts`). `file`
+ * vaut `null` quand Postgres n'est pas en service.
+ */
+export async function listerLaFile(): Promise<{
+  readonly accès: Accès
+  readonly file: ÉtatDeLaFile | null
+}> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, file: null }
+  return { accès, file: await lireLaFile() }
 }

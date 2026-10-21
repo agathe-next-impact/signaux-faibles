@@ -275,6 +275,52 @@ Les lire avant toute session.
   cette semaine ; la lettre 1 publiée avant ne compte pas, et l'onboarding par
   prospection n'appelle pas `/api/acces/ouvrir`. `tests/architecture.test.ts`
   tient ces frontières
+- **File de travaux, palier 2** (21 octobre 2026, `docs/api-veille.md`) : le
+  portail décide ce qu'il y a à faire, l'exécuteur (tâche Claude planifiée, ou
+  un appel d'API) prend, rédige, poste. Tables `travaux` et `runs` (migration
+  0009), écrites par `lib/base/travaux.ts` depuis la seule orchestration
+  `lib/portail/file.ts`. Les veilles sont déclarées au portail
+  (`POST /api/veille/veilles` : jour, heure de Paris, cadence, numéro courant
+  semé une fois depuis `contexte`) et c'est de là que le passage quotidien
+  (`/api/veille/parcours`) planifie un travail `lettre` par parution de la
+  semaine qui vient, une fois (index `travaux_ouvert_unique`). L'échéance est
+  la parution à son heure ; `POST /api/veille/travaux` `prendre` donne le plus
+  ancien travail échu, réservé à la session, avec le contexte Postgres (numéro
+  à porter, parution, prompt) complété du contexte Notion de la famille ;
+  `poser` crée un travail à la main. **Le résultat d'une lettre est la page
+  Notion en Brouillon**, postée sur `POST /api/veille/resultat` : le portail
+  expire son tag (cinquième pouvoir d'invalidation, derrière le jeton), la
+  relit, la passe par le lint et par trois portes que le lint ne connaît pas
+  (page de l'organisation du travail, règle 2 ; famille attendue ; numéro
+  attribué), puis conclut : accepté et `numéro_courant` écrit dans la même
+  transaction, ou refusé et prenable à nouveau, abandonné au troisième refus.
+  Un travail pris sans conclusion revient dans la file après trois heures.
+  Rien n'est écrit dans Notion par le portail, et Postgres ne copie ni corps
+  ni dossiers : les dernières éditions sont relues à la prise. La publication
+  et l'envoi restent ceux d'aujourd'hui jusqu'au palier 1b
+  **Décision du 22 octobre 2026 (branche `claude/lettre-unique-payload-trigger`) :
+  la file est le seul point de décision des lettres, et Trigger.dev en est
+  l'exécuteur.** `vider-la-file` (`trigger/parution.ts`, toutes les heures
+  ouvrées) prend les travaux prenables et confie chacun à `produire-la-lettre`,
+  qui lit `GET /api/veille/dossier?travail=<uuid>` (organisation, numéro et
+  parution décidés par la file, jamais par la tâche) et remet sa lettre
+  Markdown à `POST /api/veille/editions` avec `travail` et `session`. La route
+  conclut par `recevoirUneÉdition` (`lib/portail/file.ts` : portes
+  `organisation-différente` et `numéro-différent`, lint en forme unique sur
+  `markdownVersBlocs`, verdict du moteur) **avant** d'écrire Payload : une
+  édition acceptée est publiée et envoyée, une refusée n'est écrite nulle part
+  et le travail redevient prenable. **La table Drizzle `runs` est le seul
+  journal** ; la collection Payload `runs` a été retirée (migration Payload
+  `retrait_runs`). `POST /api/veille/resultat` (page Notion) reste le chemin de
+  l'exécuteur Cowork jusqu'à la bascule `SOURCE_DOCUMENTS=payload`. L'onboarding
+  et l'édition de découverte posent un travail `premiere_lettre` sur la veille
+  `unique` de l'organisation, déclarée par `ouvrirDansLePortail` à l'ouverture
+  dans le registre Payload, et le prennent par son identifiant (`prendre` avec
+  `travail`, `prendreLeTravailDésigné`, échéance ignorée). **Les lettres de
+  filière restent hors de la file** (`lettres-de-filiere`, le lundi 6 h) : les
+  y faire entrer est la cible quand les filières dépasseront cinq ou que Cowork
+  sera retiré. L'opératrice suit la file sur `/espaces/file` (`listerLaFile`,
+  garde dans la fonction, comme le sélecteur)
 - **Courriels client à la charte** (20 octobre 2026, `docs/emails/README.md`) :
   tout courriel vers un client ou un prospect sort de `lib/email/gabarit.ts`,
   traduction en code du template v1.0 (`docs/emails/charte/`) ; aucun modèle

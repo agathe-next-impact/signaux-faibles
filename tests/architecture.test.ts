@@ -135,8 +135,11 @@ describe('toute lecture Payload vit dans une fonction cachée, et getPayload res
         .map(({ chemin }) => chemin)
         .sort()
     expect(importeurs('@/lib/documents/payload')).toEqual(['lib/documents/index.ts'])
+    // La file (`lib/portail/file.ts`) relit la page Notion qu'un exécuteur a
+    // postée sur `/api/veille/resultat` : c'est le chemin Notion du dispositif,
+    // pas un écran, et il disparaît avec Notion.
     const notion = importeurs('@/lib/notion/editions').filter((chemin) => !chemin.startsWith('app/api/veille/'))
-    expect(notion).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts'])
+    expect(notion).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts', 'lib/portail/file.ts'])
     // Et la façade est bien employée là où les écrans lisent.
     expect(importeurs('@/lib/documents')).toContain('lib/portail/semaine.ts')
     expect(importeurs('@/lib/documents')).toContain('components/note.tsx')
@@ -353,14 +356,15 @@ describe('l’invalidation de cache reste à cinq endroits, tous gardés', () =>
     expect(trouvés.sort()).toEqual([
       'app/api/acces/ouvrir/route.ts',
       'app/api/veille/lint/route.ts',
+      'app/api/veille/resultat/route.ts',
       'app/api/webhooks/notion/route.ts',
       'lib/documents/invalidation.ts',
       'lib/portail/resynchroniser.ts',
     ])
   })
 
-  it('le validateur vérifie le jeton avant d’invalider', () => {
-    const source = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'lint', 'route.ts'), 'utf8')
+  it.each(['lint', 'resultat'])('la route %s vérifie le jeton avant d’invalider', (route) => {
+    const source = readFileSync(join(process.cwd(), 'app', 'api', 'veille', route, 'route.ts'), 'utf8')
     expect(source.indexOf('refuserSiNonAutorisé')).toBeLessThan(source.indexOf('revalidateTag('))
     // `updateTag` n'est permis que dans une action serveur : dans un handler il lève.
     expect(source).not.toContain('updateTag(')
@@ -414,11 +418,12 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     return trouvés.sort()
   }
 
-  it('lireÉditionDeTravail n’est appelée que par le validateur et la mise en forme du courriel', () => {
+  it('lireÉditionDeTravail n’est appelée que par le validateur, la mise en forme du courriel et la file', () => {
     expect(appelants('lireÉditionDeTravail')).toEqual([
       'app/api/veille/courriel/route.ts',
       'app/api/veille/lint/route.ts',
       'lib/notion/travail.ts',
+      'lib/portail/file.ts',
     ])
   })
 
@@ -446,11 +451,53 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(corps).not.toContain('envoyerCourrier(')
   })
 
-  it('listerÉditionsDeTravail n’est appelée que par le contexte', () => {
+  it('listerÉditionsDeTravail n’est appelée que par le contexte et par la file', () => {
     expect(appelants('listerÉditionsDeTravail')).toEqual([
       'app/api/veille/contexte/route.ts',
       'lib/notion/travail.ts',
+      'lib/portail/file.ts',
     ])
+  })
+
+  /**
+   * La file de travaux (palier 2) : ce qui décide — planifier, prendre,
+   * conclure, attribuer un numéro — est dans `lib/base/travaux.ts`, et son seul
+   * appelant est l'orchestration `lib/portail/file.ts`, qui tient les portes.
+   * Une route qui concluait un travail sans passer par elle accepterait une
+   * page sans la contrôler.
+   */
+  it('la file ne s’écrit que par l’orchestration, et le résultat y passe les portes avant la conclusion', () => {
+    for (const fonction of ['planifierLesLettres', 'poserUnTravailDeLettre', 'prendreLeProchainTravail', 'prendreLeTravailDésigné', 'conclureLeTravail']) {
+      expect(appelants(fonction), fonction).toEqual(['lib/base/travaux.ts', 'lib/portail/file.ts'])
+    }
+    expect(appelants('créerLeTravail')).toEqual(['lib/base/travaux.ts'])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'file.ts'), 'utf8')
+    expect(source.indexOf('contrôlerLaPage(')).toBeLessThan(source.indexOf('conclureLeTravail('))
+    // Le résultat Markdown du moteur passe les mêmes portes avant la même conclusion.
+    expect(source.indexOf('contrôlerLÉdition(')).toBeLessThan(source.lastIndexOf('conclureLeTravail('))
+    // Règle 2 : la page est rapportée à la ligne du registre de l'organisation du travail.
+    expect(source).toContain('organisation-différente')
+  })
+
+  /**
+   * Décision du 22 octobre 2026 : une édition d'organisation remise par le
+   * moteur conclut un travail de la file, et c'est la file qui dit si elle est
+   * écrite. La route `editions` ne peut donc écrire Payload qu'après
+   * `recevoirUneÉdition`, et l'ancienne collection Payload `runs` n'existe
+   * plus : la table Drizzle `runs` est le seul journal.
+   */
+  it('la remise d’une édition conclut le travail avant d’écrire Payload, et le journal des runs est unique', () => {
+    expect(appelants('recevoirUneÉdition')).toEqual(['app/api/veille/editions/route.ts', 'lib/portail/file.ts'])
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'editions', 'route.ts'), 'utf8')
+    expect(route.indexOf('recevoirUneÉdition(')).toBeLessThan(route.indexOf('enregistrerLÉdition('))
+    expect(existsSync(join(process.cwd(), 'lib', 'payload', 'collections', 'runs.ts'))).toBe(false)
+    const dispositif = readFileSync(join(process.cwd(), 'lib', 'payload', 'dispositif.ts'), 'utf8')
+    expect(dispositif).not.toContain("collection: 'runs'")
+  })
+
+  it('la file ne se lit à l’écran que par listerLaFile, gardée par le privilège opérateur', () => {
+    expect(appelants('listerLaFile')).toEqual(['app/(portail)/espaces/file/page.tsx', 'lib/auth/appartenance.ts'])
+    expect(appelants('lireLaFile')).toEqual(['app/api/veille/travaux/route.ts', 'lib/auth/appartenance.ts', 'lib/portail/file.ts'])
   })
 
   it('lignesDAccèsPourContrôle n’est appelée que par le contrôle du soir', () => {

@@ -38,6 +38,62 @@ export function lireLeDossier(cible: CibleDeProduction, mode: ModeDeProduction, 
   return appeler<DossierDeParution>('GET', `/api/veille/dossier?${paramètres.toString()}`)
 }
 
+export type DossierDUnTravail = DossierDeParution & {
+  readonly travail: { readonly id: string; readonly type: 'lettre' | 'premiere_lettre'; readonly état: string; readonly mode: ModeDeProduction }
+}
+
+/** Le dossier du travail pris : l'organisation, le numéro et la date que la file a décidés. Le mode n'est forcé que pour la découverte. */
+export function lireLeDossierDuTravail(travail: string, mode?: 'decouverte'): Promise<DossierDUnTravail> {
+  const paramètres = new URLSearchParams({ travail })
+  if (mode) paramètres.set('mode', mode)
+  return appeler<DossierDUnTravail>('GET', `/api/veille/dossier?${paramètres.toString()}`)
+}
+
+// ── La file de travaux ───────────────────────────────────────────────────────
+
+export type TravailPris = {
+  readonly état: 'pris'
+  readonly travail: {
+    readonly id: string
+    readonly type: 'lettre' | 'premiere_lettre' | string
+    readonly tentatives: number
+    readonly organisation: { readonly id: string; readonly slug: string; readonly registreNotion: string | null }
+    readonly contexte: { readonly numéro?: number; readonly parution?: { readonly date: string; readonly semaine: string } }
+  }
+}
+
+/**
+ * Prend le prochain travail de la file, ou, avec `travail`, celui-là
+ * précisément (onboarding, découverte). `null` quand la file est vide ou que
+ * le travail désigné n'est pas prenable. La session est l'identifiant du run :
+ * c'est elle qui devra conclure.
+ */
+export async function prendreUnTravail(session: string, travail?: string): Promise<TravailPris | null> {
+  const { url, jeton } = portail()
+  const réponse = await fetch(`${url}/api/veille/travaux`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ action: 'prendre', session, ...(travail ? { travail } : {}) }),
+  })
+  if (réponse.status === 409) return null
+  if (!réponse.ok) throw new Error(`POST /api/veille/travaux (prendre) : ${réponse.status}`)
+  const corps = (await réponse.json()) as TravailPris | { état: 'vide' }
+  return corps.état === 'pris' ? corps : null
+}
+
+/** Pose un travail de lettre pour une veille d'une organisation, à une date de parution ; rend son identifiant (créé ou déjà en file). */
+export async function poserUnTravail(entrée: { slug: string; veille: string; type: 'lettre' | 'premiere_lettre'; parution: string }): Promise<{ état: string; travailId: string | null }> {
+  const { url, jeton } = portail()
+  const réponse = await fetch(`${url}/api/veille/travaux`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ action: 'poser', ...entrée }),
+  })
+  const corps = (await réponse.json().catch(() => ({}))) as { état?: string; travailId?: string }
+  if (réponse.status !== 200 && réponse.status !== 201) throw new Error(`POST /api/veille/travaux (poser) : ${réponse.status} ${corps.état ?? ''}`)
+  return { état: corps.état ?? 'inconnu', travailId: corps.travailId ?? null }
+}
+
 export function remettreLÉdition(remise: RemiseDÉdition): Promise<AccuséDeRemise> {
   return appeler<AccuséDeRemise>('POST', '/api/veille/editions', remise)
 }
@@ -46,7 +102,7 @@ export function remettreLeRéférentiel(remise: RemiseDeRéférentiel): Promise<
   return appeler<AccuséDeRemise>('POST', '/api/veille/referentiels', remise)
 }
 
-/** Les organisations et filières à produire ce jour : ce que le portail a décidé, la tâche ne décide rien. */
+/** Les filières à produire ce jour : ce que le portail a décidé, la tâche ne décide rien. Les organisations passent par la file. */
 export function lireLaSélectionDuJour(dateÉdition: string): Promise<{ organisations: string[]; filieres: string[] }> {
   return appeler('GET', `/api/veille/dossier?mode=selection&dateEdition=${dateÉdition}`)
 }

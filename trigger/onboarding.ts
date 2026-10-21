@@ -13,7 +13,7 @@ import { collecterLesSources, navigateurPlaywright } from '@/lib/moteur/collecte
 import { convertirLesRéférentiels, lireRéférentielUnique, schémaDuRéférentielUnique, écrireRéférentielUnique } from '@/lib/moteur/referentiel'
 import type { DossierDOnboarding } from '@/lib/moteur/remise'
 import { clientAnthropic, produireDepuisLeDossier, remiseDe } from './moteur'
-import { lireLeDossier, ouvrirLEspace, remettreLÉdition, remettreLeRéférentiel } from './portail'
+import { lireLeDossierDuTravail, ouvrirLEspace, poserUnTravail, prendreUnTravail, remettreLÉdition, remettreLeRéférentiel, type DossierDUnTravail } from './portail'
 
 /**
  * Le référentiel unique d'une nouvelle organisation, dérivé du référentiel de
@@ -55,6 +55,22 @@ async function dériverLeRéférentiel(
   return { markdown, fiche: structuré.fiche, coût: ((u.input_tokens ?? 0) * 4 + (u.output_tokens ?? 0) * 20) / 1_000_000 }
 }
 
+/**
+ * La première lettre passe par la file de travaux comme les suivantes : un
+ * travail `premiere_lettre` est posé sur la veille unique de l'organisation,
+ * pour aujourd'hui, puis pris tout de suite par ce run, échéance ou non. Le
+ * portail attribue le numéro et conclura à la remise. Un travail déjà en file
+ * (un run précédent interrompu) est repris, pas doublé.
+ */
+async function prendreLaPremièreLettre(slug: string, session: string, mode?: 'decouverte'): Promise<{ travail: string; dossier: DossierDUnTravail }> {
+  const aujourdHui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const posé = await poserUnTravail({ slug, veille: 'unique', type: 'premiere_lettre', parution: aujourdHui })
+  if (!posé.travailId) throw new Error(`Première lettre de ${slug} : travail non posé (${posé.état}).`)
+  const pris = await prendreUnTravail(session, posé.travailId)
+  if (!pris) throw new Error(`Première lettre de ${slug} : travail ${posé.travailId} non prenable (déjà pris par un autre run, ou conclu).`)
+  return { travail: posé.travailId, dossier: await lireLeDossierDuTravail(posé.travailId, mode) }
+}
+
 async function lireLeDossierDOnboarding(organisation: string): Promise<DossierDOnboarding> {
   const url = process.env['PORTAIL_URL']?.replace(/\/$/, '')
   const jeton = process.env['ACTIVATION_SECRET']
@@ -64,11 +80,11 @@ async function lireLeDossierDOnboarding(organisation: string): Promise<DossierDO
   return (await réponse.json()) as DossierDOnboarding
 }
 
-/** Palier 4 : fiche, référentiel unique, première lettre, remise, ouverture de l'espace. */
+/** Palier 4 : fiche, référentiel unique, première lettre (par la file), remise, ouverture de l'espace. */
 export const onboarding = task({
   id: 'onboarding',
   maxDuration: 45 * 60,
-  retry: { maxAttempts: 2 },
+  retry: { maxAttempts: 1 },
   run: async (payload: { organisation: string; ouvrirLEspace?: boolean }, { ctx }) => {
     const anthropic = clientAnthropic()
     const dossier = await lireLeDossierDOnboarding(payload.organisation)
@@ -95,10 +111,11 @@ export const onboarding = task({
       })
       logger.info('référentiel remis', { coût: référentiel.coût })
     }
+    if (!dossier.organisation.slug) throw new Error(`Onboarding de ${dossier.organisation.nom} : organisation sans slug, aucune veille à poser.`)
     const début = new Date()
-    const dossierDeParution = await lireLeDossier({ organisation: dossier.organisation.id }, 'onboarding')
+    const { travail, dossier: dossierDeParution } = await prendreLaPremièreLettre(dossier.organisation.slug, ctx.run.id)
     const { production } = await produireDepuisLeDossier(dossierDeParution, { journal: (l) => logger.info(l) })
-    const accusé = await remettreLÉdition(remiseDe(production, { organisation: dossier.organisation.id, filiere: null }, 'onboarding', ctx.run.id, début))
+    const accusé = await remettreLÉdition({ ...remiseDe(production, { organisation: dossier.organisation.id, filiere: null }, 'onboarding', ctx.run.id, début), travail, session: ctx.run.id })
     // Règle du 20 octobre 2026 : le lien d'accès ne part qu'après une lettre publiée.
     if (payload.ouvrirLEspace !== false && accusé.statut === 'publiee' && dossier.organisation.contactEmail) {
       await ouvrirLEspace(dossier.organisation.contactEmail)
@@ -111,7 +128,7 @@ export const onboarding = task({
 export const éditionDeDécouverte = task({
   id: 'edition-de-decouverte',
   maxDuration: 30 * 60,
-  retry: { maxAttempts: 2 },
+  retry: { maxAttempts: 1 },
   run: async (payload: { organisation: string }, { ctx }) => {
     const anthropic = clientAnthropic()
     const dossier = await lireLeDossierDOnboarding(payload.organisation)
@@ -125,10 +142,11 @@ export const éditionDeDécouverte = task({
       })
       await remettreLeRéférentiel({ organisation: dossier.organisation.id, filiere: null, run: ctx.run.id, titre: `Référentiel unique : ${dossier.organisation.nom}`, markdown: référentiel.markdown, fiche: référentiel.fiche, cout: référentiel.coût })
     }
+    if (!dossier.organisation.slug) throw new Error(`Découverte pour ${dossier.organisation.nom} : organisation sans slug, aucune veille à poser.`)
     const début = new Date()
-    const dossierDeParution = await lireLeDossier({ organisation: dossier.organisation.id }, 'decouverte')
+    const { travail, dossier: dossierDeParution } = await prendreLaPremièreLettre(dossier.organisation.slug, ctx.run.id, 'decouverte')
     const { production } = await produireDepuisLeDossier(dossierDeParution, { journal: (l) => logger.info(l), reprisesMax: 1 })
-    const accusé = await remettreLÉdition(remiseDe(production, { organisation: dossier.organisation.id, filiere: null }, 'decouverte', ctx.run.id, début))
+    const accusé = await remettreLÉdition({ ...remiseDe(production, { organisation: dossier.organisation.id, filiere: null }, 'decouverte', ctx.run.id, début), travail, session: ctx.run.id })
     return { accusé, acceptée: production.acceptée, coût: production.mesures.coût }
   },
 })
