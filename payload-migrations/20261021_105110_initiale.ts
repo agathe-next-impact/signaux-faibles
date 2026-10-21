@@ -2,6 +2,7 @@ import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-po
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
+   CREATE SCHEMA IF NOT EXISTS "payload";
    CREATE TYPE "payload"."enum_organisations_etat" AS ENUM('prospect', 'a_onboarder', 'en_onboarding', 'active', 'suspendue', 'archivee');
   CREATE TYPE "payload"."enum_filieres_cadence" AS ENUM('hebdomadaire', 'bimensuelle', 'mensuelle');
   CREATE TYPE "payload"."enum_editions_statut" AS ENUM('brouillon', 'publiee', 'retiree');
