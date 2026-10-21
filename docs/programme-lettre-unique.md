@@ -339,6 +339,11 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   exports Notion de Konica et d'Infralliance, dès que les crédits sont
   rechargés : c'est la mesure de coût et de qualité de la lettre unique avant
   toute bascule.
+- **Le schéma `payload` est créé par la migration initiale elle-même**
+  (`CREATE SCHEMA IF NOT EXISTS`) : généré sans base, le fichier ne le
+  portait pas, et le premier build de production du 22 octobre 2026 a échoué sur
+  « schema payload does not exist ». Toute migration Payload générée à
+  l'avenir est à relire sous cet angle.
 - **Migrations à appliquer au déploiement** : Drizzle 0007
   (`lettres_du_moteur`, deux valeurs d'énumération, appliquée par le build de
   production) ; Payload `20261021_105110_initiale` et
