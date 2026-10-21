@@ -8,7 +8,7 @@ import {
 } from '@/lib/domaine/document'
 import { lireDossiersOuverts, type DossierOuvert } from '@/lib/domaine/dossiers'
 import { mentionsDe } from '@/lib/domaine/mentions'
-import { faitsDe } from '@/lib/domaine/document'
+import { faitsDe, phrasesDe } from '@/lib/domaine/document'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 import { contrôlerLeContrat } from '@/lib/portail/contrat'
 import {
@@ -45,6 +45,16 @@ import {
 
 export type Portée = 'portail' | 'lettre'
 
+/**
+ * La forme attendue d'une lettre (programme du 22 octobre 2026).
+ *   · `double` : les deux lettres par parution du dispositif en service, le
+ *     contrat de la page « Tâche Lettres de veille » tel quel ;
+ *   · `unique` : la lettre unique du programme, dix à quinze axes, un à trois
+ *     faits courts par axe, et plusieurs avertissements qui deviennent des
+ *     ruptures, puisqu'aucun humain ne relit avant l'envoi.
+ */
+export type Forme = 'double' | 'unique'
+
 export type Rupture = {
   readonly code:
     | 'aucun-axe'
@@ -56,9 +66,27 @@ export type Rupture = {
     | 'titre-vide'
     | 'essentiel-absent'
     | 'essentiel-trop-long'
+    | CodeDeFormeUnique
   readonly portée: Portée
   readonly message: string
 }
+
+/** Les codes que seule la forme unique produit, ou qu'elle élève au rang de rupture. */
+export type CodeDeFormeUnique =
+  | 'axes-trop-peu'
+  | 'axes-trop-nombreux'
+  | 'axe-trop-fourni'
+  | 'fait-trop-long'
+  | 'fait-sans-date'
+  | 'fait-sans-source'
+  | 'ras-trop-long'
+  | 'dossiers-sans-rubrique'
+  | 'lettre-trop-longue'
+  | 'absence-en-prose'
+  | 'cadrage-présent'
+  | 'collecte-dans-la-lettre'
+  | 'dossier-non-nommé'
+  | 'essentiel-ligne-longue'
 
 export type Avertissement = {
   readonly code:
@@ -111,6 +139,53 @@ export const PHRASE_DE_CLÔTURE = 'Ces ajustements ne seront appliqués qu’apr
 export const ADRESSE_DU_CADRAGE = 'agathe@signauxfaibles.io'
 
 const RUBRIQUE_DES_AXES = 'actualites par axe'
+const RUBRIQUE_DES_DOSSIERS = 'dossiers suivis'
+
+/**
+ * Le contrat de la lettre unique (docs/programme-lettre-unique.md, §2) : les
+ * seuls endroits où ces nombres sont écrits. Le moteur les lit pour écrire son
+ * prompt et ses messages de correction ; le validateur les applique.
+ */
+export const LETTRE_UNIQUE = {
+  axesMin: 10,
+  axesMax: 15,
+  faitsParAxeMax: 3,
+  phrasesParFaitMax: 2,
+  caractèresParFaitMax: 280,
+  caractèresDuRasMax: 200,
+  motsMax: 1400,
+} as const
+
+/** Une date lisible dans un fait : « 12 septembre », « 1er octobre 2026 », « 12/09/2026 ». */
+const DATE_DANS_UN_FAIT =
+  /\b\d{1,2}(?:er)?\s+(?:janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/
+
+function porteUneDate(texte: string): boolean {
+  return DATE_DANS_UN_FAIT.test(sansAccent(texte))
+}
+
+function porteUneSource(bloc: Bloc): boolean {
+  if (bloc.type !== 'paragraphe') return false
+  return bloc.segments.some((s) => (s.lien !== null && s.lien.length > 0) || /https?:\/\//.test(s.texte))
+}
+
+/** Le texte d'un fait sans le lien de source qui le termine, « (… ) » compris. */
+function texteSansLaSource(bloc: Bloc): string {
+  if (bloc.type !== 'paragraphe') return texteDuBloc(bloc).trim()
+  const segments = bloc.segments
+  const n = segments.length
+  const dernier = segments[n - 1]
+  const lien = segments[n - 2]
+  const avant = segments[n - 3]
+  if (n >= 3 && dernier && lien && avant && /^\s*\)\s*$/.test(dernier.texte) && lien.lien !== null && /\(\s*$/.test(avant.texte)) {
+    return (segments.slice(0, n - 3).map((s) => s.texte).join('') + avant.texte.replace(/\(\s*$/, '')).trim()
+  }
+  return segments.map((s) => s.texte).join('').trim()
+}
+
+function nombreDeMots(texte: string): number {
+  return texte.split(/\s+/).filter((mot) => mot.length > 0).length
+}
 
 /**
  * Une édition n°1 porte au moins six faits hors encadrés (§6 du prompt de
@@ -273,9 +348,12 @@ export function contrôlerLaLettre(entrée: {
   readonly dossiersBruts: string
   /** Le numéro de l'édition ; les contrôles de richesse ne visent que la n°1. */
   readonly numéro?: number | null
+  /** La forme attendue ; `double` par défaut, le dispositif en service. */
+  readonly forme?: Forme
 }): Rapport {
   const ruptures: Rupture[] = []
   const avertissements: Avertissement[] = []
+  const forme: Forme = entrée.forme ?? 'double'
 
   const document = construireDocument(entrée.blocs)
   const axes = axesDuDocument(document)
@@ -490,6 +568,8 @@ export function contrôlerLaLettre(entrée: {
     })
   }
 
+  if (forme === 'unique') contrôlerLaFormeUnique(document, axes, dossiers, ruptures, avertissements)
+
   return {
     conforme: ruptures.length === 0,
     ruptures,
@@ -501,5 +581,117 @@ export function contrôlerLaLettre(entrée: {
       dossiers: dossiersAperçu,
       cadrage: { ...cadrage, phraseDeClôture },
     },
+  }
+}
+
+/**
+ * Le contrat de la lettre unique, par-dessus le contrat commun.
+ *
+ * Aucun humain ne relit avant l'envoi : ce qui n'était qu'un avertissement
+ * quand une relectrice pouvait corriger devient une rupture, que le moteur
+ * corrige lui-même sur message de reprise. Les seuils sont dans `LETTRE_UNIQUE`.
+ */
+function contrôlerLaFormeUnique(
+  document: Document,
+  axes: ReturnType<typeof axesDuDocument>,
+  dossiers: readonly DossierOuvert[],
+  ruptures: Rupture[],
+  avertissements: Avertissement[],
+): void {
+  const { axesMin, axesMax, faitsParAxeMax, phrasesParFaitMax, caractèresParFaitMax, caractèresDuRasMax, motsMax } = LETTRE_UNIQUE
+
+  // ── Dix à quinze axes ────────────────────────────────────────────────────
+  if (axes.length > 0 && axes.length < axesMin) {
+    ruptures.push({
+      code: 'axes-trop-peu',
+      portée: 'portail',
+      message: `${axes.length} axe(s) pour ${axesMin} au moins : la lettre unique couvre tout le spectre du référentiel, un axe par thème ou par type d’organisations concurrentes, en RAS motivé s’il le faut.`,
+    })
+  }
+  if (axes.length > axesMax) {
+    ruptures.push({
+      code: 'axes-trop-nombreux',
+      portée: 'portail',
+      message: `${axes.length} axes pour ${axesMax} au plus : regrouper les thèmes voisins, la lettre doit se lire en cinq minutes.`,
+    })
+  }
+
+  // ── Chaque axe : un à trois faits courts, datés et sourcés ; un RAS court ─
+  for (const axe of axes) {
+    const faits = faitsDe(axe.blocs).filter(estBlocDeFait)
+    if (axe.niveau === 'RAS') {
+      const encadrés = axe.blocs.filter((bloc) => bloc.type === 'encadré')
+      const longueur = encadrés.reduce((total, bloc) => total + texteDuBloc(bloc).length, 0)
+      if (longueur > caractèresDuRasMax) {
+        ruptures.push({
+          code: 'ras-trop-long',
+          portée: 'lettre',
+          message: `l’axe « ${axe.titre} » est en RAS et son encadré fait ${longueur} caractères pour ${caractèresDuRasMax} au plus : nommer ce qui a été vérifié, en une phrase ou deux.`,
+        })
+      }
+      continue
+    }
+    if (faits.length > faitsParAxeMax) {
+      ruptures.push({
+        code: 'axe-trop-fourni',
+        portée: 'lettre',
+        message: `l’axe « ${axe.titre} » porte ${faits.length} faits pour ${faitsParAxeMax} au plus : garder les plus lourds de conséquence, le reste va dans les dossiers suivis ou attend la parution suivante.`,
+      })
+    }
+    faits.forEach((fait, i) => {
+      // La source entre parenthèses en fin de fait n'est ni une phrase ni du texte à compter.
+      const texte = texteSansLaSource(fait)
+      const phrases = fait.type === 'paragraphe' ? phrasesDe([{ texte, gras: false, italique: false, code: false, barré: false, lien: null }]).length : 1
+      if (texte.length > caractèresParFaitMax || phrases > phrasesParFaitMax) {
+        ruptures.push({
+          code: 'fait-trop-long',
+          portée: 'lettre',
+          message: `le fait ${i + 1} de l’axe « ${axe.titre} » fait ${texte.length} caractères et ${phrases} phrase(s), pour ${caractèresParFaitMax} caractères et ${phrasesParFaitMax} phrases au plus : « ${écourter(texte, 60)} ».`,
+        })
+      }
+      if (!porteUneDate(texte)) {
+        ruptures.push({
+          code: 'fait-sans-date',
+          portée: 'lettre',
+          message: `le fait ${i + 1} de l’axe « ${axe.titre} » ne porte aucune date lisible (jour et mois) : « ${écourter(texte, 60)} ». Un fait non daté n’est pas un fait de la période.`,
+        })
+      }
+      if (!porteUneSource(fait)) {
+        ruptures.push({
+          code: 'fait-sans-source',
+          portée: 'lettre',
+          message: `le fait ${i + 1} de l’axe « ${axe.titre} » ne porte aucun lien vers sa source : « ${écourter(texte, 60)} ». Chaque fait cite l’URL ouverte pendant le run.`,
+        })
+      }
+    })
+  }
+
+  // ── La rubrique des dossiers suivis, quand il y a des dossiers ───────────
+  const rubriqueDesDossiers = document.rubriques.find((rubrique) => sansAccent(rubrique.titre).startsWith(RUBRIQUE_DES_DOSSIERS))
+  if (dossiers.length > 0 && !rubriqueDesDossiers) {
+    ruptures.push({
+      code: 'dossiers-sans-rubrique',
+      portée: 'lettre',
+      message: 'la lettre n’a pas de rubrique de niveau 1 « Dossiers suivis » : c’est là que chaque dossier ouvert est nommé, en un paragraphe, exactement comme la propriété le porte.',
+    })
+  }
+
+  // ── Longueur de la lettre entière ────────────────────────────────────────
+  const mots = nombreDeMots(texteDuDocument(document))
+  if (mots > motsMax) {
+    ruptures.push({
+      code: 'lettre-trop-longue',
+      portée: 'lettre',
+      message: `la lettre fait ${mots} mots pour ${motsMax} au plus : resserrer les faits, le lecteur la parcourt en cinq minutes.`,
+    })
+  }
+
+  // ── Ce qui n'était qu'un avertissement devient une rupture ───────────────
+  const élevés = new Set<Avertissement['code']>(['absence-en-prose', 'cadrage-présent', 'collecte-dans-la-lettre', 'dossier-non-nommé', 'essentiel-ligne-longue'])
+  for (let i = avertissements.length - 1; i >= 0; i -= 1) {
+    const avertissement = avertissements[i]
+    if (!avertissement || !élevés.has(avertissement.code)) continue
+    avertissements.splice(i, 1)
+    ruptures.push({ code: avertissement.code as CodeDeFormeUnique, portée: 'lettre', message: avertissement.message })
   }
 }

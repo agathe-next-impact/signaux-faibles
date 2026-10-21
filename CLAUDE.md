@@ -624,6 +624,21 @@ d'ailleurs le mauvais format (`nom — statut — compteur`) et le libellé `FAI
 les deux ont été corrigés le 11 septembre. Les deux lettres du Pays de Mauriac ont
 été réécrites rétroactivement au contrat.
 
+**Programme du 22 octobre 2026 (branche `claude/lettre-unique-payload-trigger`,
+`docs/programme-lettre-unique.md`)** : une seule lettre par organisation et par
+parution, dix à quinze axes qui réunissent l'écosystème et la concurrence
+(`contrôlerLaLettre({ forme: 'unique' })`, seuils dans `LETTRE_UNIQUE`) ; un
+moteur en code (`lib/moteur/`) qui ouvre les sources, lance les requêtes types,
+appelle le modèle une fois en sortie structurée, passe les portes et reprend
+deux fois au plus, sans validation humaine ; Payload CMS 3 dans ce Next.js pour
+le registre et les documents (schéma Postgres `payload`, admin sous `/admin`,
+façade `lib/documents/` aiguillée par `SOURCE_DOCUMENTS`) ; Trigger.dev pour
+les runs (`trigger/`), qui remettent leurs résultats au portail par
+`/api/veille/*` ; quatre paliers commerciaux (lettre de filière, suivi, édition
+de découverte à la première visite, onboarding complet). Ce document prime sur
+les paragraphes de cette page qu'il contredit ; le dispositif Notion décrit ici
+reste celui en service jusqu'à la bascule.
+
 **Décision du 22 octobre 2026, en cours d'application** : la lettre client ne
 porte plus le rapport de collecte (note de méthode, sources ouvertes ou non,
 requêtes non lancées, réserves, « Ce qui a été vérifié ») ni le bloc
