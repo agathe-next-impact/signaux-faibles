@@ -43,6 +43,7 @@ const SORTIES = join(RACINE, 'evaluation', 'sorties')
 const SOURCES = join(RACINE, 'evaluation', 'sources')
 const PORTAIL_URL = 'https://www.signauxfaibles.io'
 const DESTINATAIRE = 'agathe@signauxfaibles.io'
+const ORGANISATIONS_PAR_DÉFAUT = ['infralliance', 'konica']
 
 const MODÈLES = { opus: 'claude-opus-5-5', sonnet: 'claude-sonnet-5-5' } as const
 type CléModèle = keyof typeof MODÈLES
@@ -105,9 +106,12 @@ function lireOptions(argv: string[]): Options {
   const organisationsDisponibles = existsSync(ENTRÉES)
     ? readdirSync(ENTRÉES, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)
     : []
+  // Périmètre décidé le 22 octobre 2026 : Konica Minolta et Infralliance. Les autres
+  // organisations exportées restent accessibles par --organisation.
+  const organisationsParDéfaut = ORGANISATIONS_PAR_DÉFAUT.filter((o) => organisationsDisponibles.includes(o))
   return {
     commande,
-    organisations: liste('organisation', organisationsDisponibles, organisationsDisponibles),
+    organisations: liste('organisation', organisationsParDéfaut, organisationsDisponibles),
     veilles: liste<Veille>('veille', ['ecosysteme', 'concurrentielle'], ['ecosysteme', 'concurrentielle']),
     modèles: liste<CléModèle>('modele', ['opus', 'sonnet'], ['opus', 'sonnet']),
     conceptions: liste<Conception>('conception', ['agentique'], ['agentique', 'pipeline']),

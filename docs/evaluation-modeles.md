@@ -2,8 +2,9 @@
 
 *Créé le 22 octobre 2026. Décision du même jour : les lettres de test sont
 produites par l'API (Opus 5.5 et Sonnet 5.5), deux par organisation pour
-Infralliance, L'Hermitage, Konica Minolta et La petite vitrine, sans aucune
-trace dans Notion, et envoyées une par une à agathe@signauxfaibles.io avec un
+Konica Minolta et Infralliance (périmètre réduit le même jour ; L'Hermitage et
+La petite vitrine restent exportées et se lancent par `--organisation`), sans
+aucune trace dans Notion, et envoyées une par une à agathe@signauxfaibles.io avec un
 sujet préfixé « [TEST] ». L'objectif derrière la mesure : savoir ce qui manque
 pour évacuer la relecture.*
 
@@ -47,7 +48,7 @@ refus est une donnée de l'évaluation, enregistrée dans `reponse.json`
 ## Lancer
 
 ```bash
-# toutes les organisations exportées, les deux veilles, Opus 5.5 et Sonnet 5.5, agentique
+# Konica Minolta et Infralliance (défaut), les deux veilles, Opus 5.5 et Sonnet 5.5, agentique : huit lettres
 ANTHROPIC_API_KEY=… pnpm evaluation:lettres generer
 
 # un sous-ensemble
@@ -65,8 +66,8 @@ Dans une session Claude Code (sortie réseau par mandataire), le script règle
 lui-même le mandataire pour `fetch` et pour le SDK quand `HTTPS_PROXY` est
 posée. La clé se pose dans les variables de l'environnement cloud, jamais dans
 une commande ni dans un fichier commité. Poser un plafond de dépense sur
-l'espace de travail de la console avant le premier run : seize lettres
-agentiques coûtent de l'ordre de 40 à 70 $ (Opus 5 $ et Sonnet 2,50 $ la
+l'espace de travail de la console avant le premier run : huit lettres
+agentiques coûtent de l'ordre de 20 à 35 $ (Opus 5 $ et Sonnet 2,50 $ la
 lettre, avec la lecture de pages longues), à confirmer par la colonne coût du
 rapport.
 
