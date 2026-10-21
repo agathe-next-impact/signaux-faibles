@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  autoriserLaDemandeDeDémo,
   autoriserLEnvoi,
   avecDuréeMinimale,
   empreinte,
@@ -49,6 +50,31 @@ describe('autoriserLEnvoi', () => {
     for (let i = 0; i < 20; i += 1) {
       expect(autoriserLEnvoi(`lecteur${i}@exemple.test`, null, T0 + i).autorisé).toBe(true)
     }
+  })
+})
+
+describe('autoriserLaDemandeDeDémo', () => {
+  beforeEach(() => réinitialiserLesCompteurs())
+
+  it('tient ses propres compteurs : une demande de démo ne prive pas un lecteur de son lien', () => {
+    expect(autoriserLaDemandeDeDémo('jean@exemple.test', '203.0.113.1', T0).autorisé).toBe(true)
+    expect(autoriserLEnvoi('jean@exemple.test', '203.0.113.1', T0 + 1).autorisé).toBe(true)
+  })
+
+  it('refuse une seconde demande de la même adresse dans la fenêtre', () => {
+    autoriserLaDemandeDeDémo('jean@exemple.test', null, T0)
+    expect(autoriserLaDemandeDeDémo('Jean@Exemple.test', null, T0 + 1)).toEqual({ autorisé: false, motif: 'email' })
+    expect(autoriserLaDemandeDeDémo('jean@exemple.test', null, T0 + DIX_MINUTES).autorisé).toBe(true)
+  })
+
+  it('plafonne à trois les demandes d’une même origine', () => {
+    for (let i = 0; i < 3; i++) {
+      expect(autoriserLaDemandeDeDémo(`p${i}@exemple.test`, '203.0.113.9', T0 + i).autorisé).toBe(true)
+    }
+    expect(autoriserLaDemandeDeDémo('p3@exemple.test', '203.0.113.9', T0 + 3)).toEqual({
+      autorisé: false,
+      motif: 'origine',
+    })
   })
 })
 

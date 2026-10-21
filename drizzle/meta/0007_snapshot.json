@@ -1,5 +1,5 @@
 {
-  "id": "8eaf239f-be8a-4648-9cd0-3e256d8dd56e",
+  "id": "f3ea75d9-2ceb-4e48-9748-c484d4a899f3",
   "prevId": "f07f543c-0fec-492e-98f1-8162ba894db7",
   "version": "7",
   "dialect": "postgresql",
@@ -1045,8 +1045,7 @@
         "essai_derniere_parution",
         "essai_tronquee",
         "alerte_espaces",
-        "lettre",
-        "lettre_filiere"
+        "demande_demo"
       ]
     },
     "public.statut_prospection": {

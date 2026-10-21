@@ -52,10 +52,17 @@ export function estUneAdressePayload(pathname: string): boolean {
   return SEGMENTS_PAYLOAD.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
 }
 
+/**
+ * Pages publiques adressées exactement, et non par préfixe : `/demo` en
+ * préfixe ouvrirait aussi `/demonstration` ou l'espace d'un client dont le slug
+ * commencerait par « demo ».
+ */
+const PUBLICS_EXACTS = new Set(['/', '/demo'])
+
 export function proxy(requête: NextRequest): NextResponse {
   const { pathname } = requête.nextUrl
 
-  if (pathname === '/' || estUneAdressePayload(pathname) || PUBLICS.some((public_) => pathname.startsWith(public_))) {
+  if (PUBLICS_EXACTS.has(pathname) || estUneAdressePayload(pathname) || PUBLICS.some((public_) => pathname.startsWith(public_))) {
     return NextResponse.next()
   }
 
