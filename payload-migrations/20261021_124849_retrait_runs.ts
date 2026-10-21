@@ -1,14 +1,21 @@
 import { sql, type MigrateUpArgs, type MigrateDownArgs } from '@payloadcms/db-postgres'
 
-export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
+/**
+ * Généré par `payload migrate:create`, puis corrigé à la main : `DROP TABLE
+ * … CASCADE` emporte déjà la contrainte de clé étrangère de
+ * `payload_locked_documents_rels`, et le `DROP CONSTRAINT` qui suivait
+ * faisait échouer toute la migration (build de production du 22 octobre 2026,
+ * « constraint … does not exist »). Chaque geste est en `IF EXISTS` : la
+ * migration est rejouable quel que soit l'état où la précédente tentative l'a
+ * laissée.
+ */
+export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
-   ALTER TABLE "payload"."runs" DISABLE ROW LEVEL SECURITY;
-  DROP TABLE "payload"."runs" CASCADE;
-  ALTER TABLE "payload"."payload_locked_documents_rels" DROP CONSTRAINT "payload_locked_documents_rels_runs_fk";
-  
-  DROP INDEX "payload"."payload_locked_documents_rels_runs_id_idx";
-  ALTER TABLE "payload"."payload_locked_documents_rels" DROP COLUMN "runs_id";
-  DROP TYPE "payload"."enum_runs_type";`)
+   DROP TABLE IF EXISTS "payload"."runs" CASCADE;
+  ALTER TABLE "payload"."payload_locked_documents_rels" DROP CONSTRAINT IF EXISTS "payload_locked_documents_rels_runs_fk";
+  DROP INDEX IF EXISTS "payload"."payload_locked_documents_rels_runs_id_idx";
+  ALTER TABLE "payload"."payload_locked_documents_rels" DROP COLUMN IF EXISTS "runs_id";
+  DROP TYPE IF EXISTS "payload"."enum_runs_type";`)
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
