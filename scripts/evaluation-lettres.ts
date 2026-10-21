@@ -10,9 +10,10 @@
  * portail, Postgres, Gmail, l'abonnement Max. Il lit `evaluation/entrees/`
  * (exporté une fois, à la main, depuis Notion ; dossier ignoré par git) et
  * écrit `evaluation/sorties/<horodatage>/`. La clé API vient de
- * `ANTHROPIC_API_KEY`, celle d'une organisation d'évaluation à part ; la
- * variable `ANTHROPIC_BASE_URL` d'une session Claude Code est ignorée, pour
- * qu'un run ne parte jamais sur le quota de la session.
+ * `EVALUATION_API_KEY` (ou `ANTHROPIC_API_KEY` sur un poste), celle d'une
+ * organisation d'évaluation à part ; la variable `ANTHROPIC_BASE_URL` d'une
+ * session Claude Code est ignorée, pour qu'un run ne parte jamais sur le quota
+ * de la session.
  *
  * Deux conceptions sont mesurées. « agentique » : le modèle cherche et lit le
  * web lui-même, avec les outils serveur de recherche et de lecture ; chaque URL
@@ -475,12 +476,19 @@ type Résultat = {
   texte: string
 }
 
+/**
+ * La clé se lit dans `EVALUATION_API_KEY` d'abord : un environnement cloud de
+ * Claude Code refuse une variable nommée `ANTHROPIC_API_KEY` (« ne sera pas
+ * utilisé pour authentifier les requêtes »), réservée à la session elle-même.
+ * `ANTHROPIC_API_KEY` reste acceptée pour un lancement depuis un poste.
+ */
 function client(): Anthropic {
-  const apiKey = process.env['ANTHROPIC_API_KEY']
+  const apiKey = process.env['EVALUATION_API_KEY'] || process.env['ANTHROPIC_API_KEY']
   if (!apiKey) {
     throw new Error(
-      "ANTHROPIC_API_KEY est absente. Poser la clé d'une organisation d'évaluation à part ; " +
-        'le script refuse de partir sur un autre identifiant, et ignore ANTHROPIC_BASE_URL.',
+      "EVALUATION_API_KEY est absente (ANTHROPIC_API_KEY aussi). Poser la clé d'une organisation " +
+        "d'évaluation à part sous le nom EVALUATION_API_KEY ; le script refuse de partir sur un autre " +
+        'identifiant, et ignore ANTHROPIC_BASE_URL.',
     )
   }
   return new Anthropic({ apiKey, baseURL: process.env['EVALUATION_BASE_URL'] ?? 'https://api.anthropic.com', maxRetries: 3 })

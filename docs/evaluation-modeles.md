@@ -21,9 +21,15 @@ pour évacuer la relecture.*
   Notion tiennent (sélection du jour, publication, lint, référentiels, envoi)
   sont remplacées par le script, qui donne au modèle le numéro, la période et
   les dernières éditions ;
-- il appelle l'API Anthropic avec la clé `ANTHROPIC_API_KEY` d'une organisation
-  d'évaluation à part, en ignorant `ANTHROPIC_BASE_URL` : un run ne part jamais
-  sur le quota d'une session Claude Code ni sur l'abonnement Max ;
+- il appelle l'API Anthropic avec la clé d'une organisation d'évaluation à part,
+  lue dans `EVALUATION_API_KEY` (ou, sur un poste, `ANTHROPIC_API_KEY`), en
+  ignorant `ANTHROPIC_BASE_URL` : un run ne part jamais sur le quota d'une
+  session Claude Code ni sur l'abonnement Max. Le nom `EVALUATION_API_KEY` n'est
+  pas un choix : un environnement cloud de Claude Code refuse une variable
+  nommée `ANTHROPIC_API_KEY` (« ne sera pas utilisé pour authentifier les
+  requêtes, les sessions sont authentifiées via votre compte »), et un secret
+  réseau ne peut pas couvrir api.anthropic.com, hôte que le mandataire des
+  sessions ne traite pas (constaté le 22 octobre 2026) ;
 - il valide chaque lettre avec le validateur de production
   (`contrôlerLaLettre`), après conversion du Markdown en blocs Notion
   (`lib/domaine/markdown.ts`, le pont dont le moteur de l'étape 1 aura besoin) ;
@@ -49,7 +55,8 @@ refus est une donnée de l'évaluation, enregistrée dans `reponse.json`
 
 ```bash
 # Konica Minolta et Infralliance (défaut), les deux veilles, Opus 5.5 et Sonnet 5.5, agentique : huit lettres
-ANTHROPIC_API_KEY=… pnpm evaluation:lettres generer
+# (dans une session cloud, la clé est la variable d'environnement EVALUATION_API_KEY)
+EVALUATION_API_KEY=… pnpm evaluation:lettres generer
 
 # un sous-ensemble
 pnpm evaluation:lettres generer --organisation petite-vitrine --veille ecosysteme --modele sonnet
@@ -64,8 +71,9 @@ pnpm evaluation:lettres valider --sortie evaluation/sorties/<horodatage>
 
 Dans une session Claude Code (sortie réseau par mandataire), le script règle
 lui-même le mandataire pour `fetch` et pour le SDK quand `HTTPS_PROXY` est
-posée. La clé se pose dans les variables de l'environnement cloud, jamais dans
-une commande ni dans un fichier commité. Poser un plafond de dépense sur
+posée. La clé se pose dans la section « Variables d'environnement » de
+l'environnement cloud, sous le nom `EVALUATION_API_KEY`, jamais dans une
+commande ni dans un fichier commité ; une session nouvelle la reçoit. Poser un plafond de dépense sur
 l'espace de travail de la console avant le premier run : huit lettres
 agentiques coûtent de l'ordre de 20 à 35 $ (Opus 5 $ et Sonnet 2,50 $ la
 lettre, avec la lecture de pages longues), à confirmer par la colonne coût du
