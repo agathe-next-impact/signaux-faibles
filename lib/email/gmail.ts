@@ -241,6 +241,21 @@ export type Message = {
    * lue par les clients qui n'affichent pas le HTML, et par les filtres.
    */
   readonly html?: string
+  /**
+   * L'adresse à laquelle répondre, quand elle n'est pas l'expéditeur : la
+   * personne qui demande une démonstration (`lib/portail/demo.ts`). Elle vient
+   * d'un formulaire public : l'en-tête n'est posé que si elle est une adresse
+   * simple, sans blanc ni retour à la ligne (`adresseDeRéponseSûre`), sinon il
+   * est omis et la réponse retombe sur l'expéditeur.
+   */
+  readonly répondreÀ?: string
+}
+
+const ADRESSE_SIMPLE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/
+
+/** L'adresse de réponse si elle est sûre à écrire dans un en-tête, sinon `null`. */
+export function adresseDeRéponseSûre(adresse: string): string | null {
+  return adresse.length <= 254 && ADRESSE_SIMPLE.test(adresse) ? adresse : null
 }
 
 /** Une partie MIME en base64, lignes de 76 caractères (RFC 2045). */
@@ -266,6 +281,8 @@ export function composerMessage(
     `Subject: ${entêteEncodé(message.sujet)}`,
     'MIME-Version: 1.0',
   ]
+  const répondreÀ = message.répondreÀ ? adresseDeRéponseSûre(message.répondreÀ) : null
+  if (répondreÀ) entêtes.splice(2, 0, `Reply-To: ${répondreÀ}`)
   if (!message.html) {
     return [...entêtes, ...partieBase64('text/plain', message.texte)].join('\r\n')
   }

@@ -20,6 +20,12 @@ describe('proxy', () => {
     expect(proxy(requête('/recevoir-mon-lien')).status).toBe(200)
     expect(proxy(requête('/acces/nimporte')).status).toBe(200)
     expect(proxy(requête('/')).status).toBe(200)
+    expect(proxy(requête('/demo')).status).toBe(200)
+  })
+
+  it('n’ouvre /demo qu’à l’adresse exacte, pas en préfixe', () => {
+    expect(proxy(requête('/demonstration')).status).toBe(307)
+    expect(proxy(requête('/demo-client/lettres')).status).toBe(307)
   })
 
   it('écarte une lecture sans jeton en 307, vers le formulaire', () => {

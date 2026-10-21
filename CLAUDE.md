@@ -527,6 +527,20 @@ adresse, et jamais lui-même (`soi-même`). Plafond de trois actifs tenu par
 opérateur et n'écrivent que si Postgres fait foi (`lecteursModifiables`,
 `SOURCE_ACCES=postgres`) ; sinon l'écran renvoie à l'adresse d'abonnement.
 
+**Une page publique de demande de démonstration, hors des sept (21 octobre
+2026).** `/demo` (`app/demo/`, logique dans `lib/portail/demo.ts`) ne lit ni
+Notion ni Postgres et ne crée rien : ni organisation, ni lecteur, ni
+prospection. Le formulaire (nom, adresse, organisation, fonction et message
+facultatifs) fait partir un courrier texte vers `agathe@signauxfaibles.io` par
+`envoyerCourrier`, sorte `demande_demo` (migration 0007), avec l'adresse du
+demandeur en `Reply-To` (posé seulement si `adresseDeRéponseSûre` l'accepte,
+jamais de retour à la ligne dans un en-tête). Champ piège et limitation de débit
+(`autoriserLaDemandeDeDémo`, une demande par adresse et trois par origine en dix
+minutes, sur des compteurs distincts de ceux du lien d'accès) répondent comme
+une demande partie. Le proxy l'ouvre à l'adresse **exacte** (`PUBLICS_EXACTS`),
+jamais en préfixe : `/demo` en préfixe ouvrirait l'espace d'un slug
+commençant par « demo ».
+
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
 parle la veille » et « qui bouge » —, et surtout leur coût n'a rien à voir :
