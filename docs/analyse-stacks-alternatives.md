@@ -137,8 +137,12 @@ base qui dort ; Supabase Pro 25 $ plus calcul ; Hetzner CX23 5,99 € (2 vCPU,
 4 Go) après la hausse d'avril 2026, gammes supérieures 10 à 20 € ; Resend
 gratuit jusqu'à 3 000 courriels par mois puis 20 $ ; Postmark 15 $ pour
 10 000 ; Notion Plus 10 à 12 $ par siège ; Claude Max 100 ou 200 $ ; Trigger.dev
-10 à 50 $ selon le plan (non vérifié ce jour) ; tarification de Managed Agents
-non publiée dans les sources consultées.
+(page officielle, lue le 22 octobre 2026) : Free 0 $ avec 5 $ de crédit et 20
+runs simultanés, Hobby 10 $ avec 10 $ de crédit et 50 runs simultanés, Pro 50 $
+avec 50 $ de crédit et 200 runs simultanés, calcul facturé à la seconde
+(machine par défaut Small 1x : 0,0000338 $ la seconde, soit 0,12 $ l'heure),
+0,25 $ par 10 000 runs, pas de durée maximale par défaut ; tarification de
+Managed Agents non publiée dans les sources consultées.
 
 **Comment le nombre d'organisations est calculé.** Pour chaque stack, la
 capacité est le plus petit des plafonds techniques, en comptant deux lettres par
@@ -237,9 +241,11 @@ exécution par heure et par planification. Deux migrations de données
 un second hébergeur américain pour les données clients (région EU disponible
 chez Supabase).
 
-**Coût mensuel.** Fixe ≈ 110 $ (Vercel 20, Supabase 35, Trigger.dev 10 à 50,
-Resend 0 à 20, Workspace 10) ; 5 organisations ≈ 145 $ (260 $) ; 20 ≈ 250 $
-(710 $) ; 50 ≈ 460 $ (1 610 $) ; 100 ≈ 830 $ (3 130 $).
+**Coût mensuel.** Fixe ≈ 75 $ (Vercel 20, Supabase 35, Trigger.dev Hobby 10,
+Resend 0, Workspace 10) ; 5 organisations ≈ 110 $ (225 $) ; 20 ≈ 215 $ (675 $) ;
+50 ≈ 425 $ (1 585 $) ; 100 ≈ 795 $ (3 120 $), le calcul Trigger.dev d'un run
+agentique de vingt minutes coûtant 0,04 $, soit 0,35 $ par organisation et par
+mois, couvert par le crédit Hobby jusqu'à une trentaine d'organisations.
 
 **Effort.** 5 à 8 semaines.
 
@@ -421,9 +427,13 @@ puis une fenêtre Batch de 10 à 60 minutes par étape.
 | Gestes de l'opératrice par onboarding | 6 commandes, plus les manipulations Notion | 1 saisie, 3 validations | 1 saisie, 3 validations | 1 saisie, 3 validations | 1 saisie, 3 validations |
 | **Durée machine d'un onboarding** | 2 à 4 h d'agent, réparties sur les six commandes | 1 à 3 h (collecte en minutes, deux fenêtres Batch, écriture Notion en secondes) | 1 à 1 h 30 en agentique (référentiels en parallèle, puis lettres en parallèle) ; 30 min à 2 h en pipeline | 1 à 3 h (mêmes mécanismes que la stack 1) | 1 à 1 h 30 |
 | **Délai calendaire minimal** (validations faites dans l'heure) | 1 à 2 semaines (statuts du registre, rythme de parution) | 1 à 2 jours (fenêtres Batch, J0 posé par le cron de 8 h) | le jour même (pas de Batch, J0 posé par la chaîne) | 1 à 2 jours | le jour même |
-| **Onboardings simultanés** | 1 | 10 à 30 | 5 à 25, selon la concurrence du plan Trigger.dev (à vérifier) et le palier API | 10 à 30 techniquement, 3 à 5 confortablement (reprises manuelles) | 5 à 25 |
+| **Onboardings simultanés** | 1 | 10 à 30 | 12 à 25 sur Hobby (50 runs simultanés, 2 à 4 runs par onboarding), 50 à 100 sur Pro (200), avant le palier API | 10 à 30 techniquement, 3 à 5 confortablement (reprises manuelles) | 12 à 25 sur Hobby, 50 à 100 sur Pro |
 | **Onboardings soutenables par semaine** (machine) | 2 à 3 | 50 et plus | 100 et plus | 50 et plus | 100 et plus |
-| Ce qui borne | la session et l'opératrice | cadence du cron, durée de fonction pour la collecte, débit Notion | concurrence du plan, palier API Anthropic | cadence du cron, suivi des reprises | concurrence du plan, palier API |
+| Ce qui borne | la session et l'opératrice | cadence du cron, durée de fonction pour la collecte, débit Notion | palier API Anthropic, puis le plan Trigger.dev | cadence du cron, suivi des reprises | palier API, puis le plan Trigger.dev |
+| **Coûts fixes mensuels** | ≈ 230 à 250 $ (dont Max 200) | ≈ 50 $ (Vercel 20, Neon 10, Workspace 10, Claude Pro 20) | ≈ 75 $ (Vercel 20, Supabase 35, Trigger.dev Hobby 10, Resend 0, Workspace 10) | ≈ 55 $ (Vercel 20, Neon 15 à 25, Resend 0, Workspace 10) | ≈ 65 $ (stack 3 plus Trigger.dev Hobby 10) |
+| **Coût par organisation et par mois** (pipeline / agentique, Opus 5.5) | 0 $ en argent, le moteur étant forfaitaire | 4 à 9 $ / 26 à 35 $, plus 2 $ de frais Stripe sur une organisation payante | 4 à 9 $ / 26 à 35 $, plus 0,05 à 0,35 $ de calcul Trigger.dev et 2 $ de Stripe | 4 à 9 $ / 26 à 35 $, plus 2 $ de Stripe | 4 à 9 $ / 26 à 35 $, plus 0,05 à 0,35 $ de Trigger.dev et 2 $ de Stripe |
+| **Coût unique d'un onboarding** (modèle : deux référentiels, deux lettres) | 0 $ en argent, 2 à 4 h de quota Max | 3 à 6 $ en pipeline, 15 à 40 $ en agentique | idem, plus 0,10 à 0,25 $ de calcul Trigger.dev | idem | idem |
+| Part du revenu de 89 € HT | sans objet | 7 à 12 % en pipeline, 30 à 40 % en agentique | idem | idem | idem |
 
 Lecture. La stack 1 règle déjà l'essentiel du problème de volume : elle fait
 passer la capacité d'un onboarding à la fois à une dizaine en parallèle, avec un
@@ -448,7 +458,7 @@ d'effort, le moins de risque.
 | **Nombre d'organisations possibles** | 15 à 25 | 200 à 300 (plus de 500 avec Notion Plus et parutions étalées) | plus de 1 000 | plus de 1 000 | 300 à 800 par machine | 200 à 300 |
 | Ce qui borne | moteur sur Max | débit Notion par espace, quota Gmail | débit API Anthropic | durée de fonction par lot, débit API | débit API, machine | Notion, Gmail, sessions simultanées |
 | Capacité (note) | 1 | 4 | 5 | 5 | 4 | 4 |
-| Coût mensuel à 100 organisations (pipeline / agentique) | hors d'atteinte | 770 $ / 3 070 $ | 830 $ / 3 130 $ | 780 $ / 3 080 $ | 750 $ / 3 050 $ | 3 045 $ et plus |
+| Coût mensuel à 100 organisations (pipeline / agentique) | hors d'atteinte | 770 $ / 3 070 $ | 795 $ / 3 120 $ | 780 $ / 3 080 $ | 750 $ / 3 050 $ | 3 045 $ et plus |
 | Effort de migration | 5 | **5** | 2 | 2 | 3 | 4 |
 | Risque technique | 2 | **4** | 3 | 3 | 3 | 2 |
 | Coût fixe mensuel | 2 | 4 | 3 | 4 | **5** | 4 |
@@ -462,7 +472,7 @@ vers plusieurs centaines au moins. Les deux qui gardent Notion (1 et 5)
 s'arrêtent autour de 200 à 300 ; les trois qui mettent les documents en Postgres
 (2, 3, 4) ne sont plus bornées que par le débit API, qui se demande. À 100
 organisations, le revenu est de 8 900 € HT par mois et le coût de la stack tient
-entre 750 et 830 $ en pipeline, soit moins de 10 % ; en agentique il dépasse
+entre 750 et 795 $ en pipeline, soit moins de 10 % ; en agentique il dépasse
 3 000 $, soit un tiers. Une seule stack, Payload, remplace le contrat de prose
 par un schéma ; une seule, l'auto-hébergement, répond à un argument commercial
 (données en Europe) que les quatre autres ignorent.
