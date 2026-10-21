@@ -624,6 +624,17 @@ d'ailleurs le mauvais format (`nom — statut — compteur`) et le libellé `FAI
 les deux ont été corrigés le 11 septembre. Les deux lettres du Pays de Mauriac ont
 été réécrites rétroactivement au contrat.
 
+**Décision du 22 octobre 2026, en cours d'application** : la lettre client ne
+porte plus le rapport de collecte (note de méthode, sources ouvertes ou non,
+requêtes non lancées, réserves, « Ce qui a été vérifié ») ni le bloc
+« Ajustements du cadrage » ; ces éléments restent dans le compte rendu du run et
+dans la propriété « Amendements au référentiel ». Le validateur ne tient plus
+`cadrage-absent` pour une rupture et avertit `cadrage-présent` et
+`collecte-dans-la-lettre` tant que la page Notion « Tâche Lettres de veille »
+n'est pas amendée. Les paragraphes ci-dessus sur le cadrage décrivent le
+contrat antérieur ; l'écran « Périmètre » garde sa section tant que des lettres
+publiées la portent. Détail : `docs/evaluation-modeles.md`.
+
 **Un acteur n'a pas de contenu propre dans Notion** — c'est une entrée texte de
 `Dossiers ouverts suivis`, un nom et un compteur. Sa page l'assemble : le
 **suivi** (toute l'archive, sans lire aucun corps) et les **mentions**, c'est-à-

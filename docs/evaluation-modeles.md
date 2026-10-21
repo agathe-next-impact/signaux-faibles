@@ -8,6 +8,39 @@ aucune trace dans Notion, et envoyées une par une à agathe@signauxfaibles.io a
 sujet préfixé « [TEST] ». L'objectif derrière la mesure : savoir ce qui manque
 pour évacuer la relecture.*
 
+## Décisions du 22 octobre 2026, après la première série
+
+Quatre lettres de test produites (Opus 5.5 sur Infralliance Écosystème,
+Infralliance Positionnement et Konica réglementation, Sonnet 5.5 sur Infralliance
+Positionnement), toutes conformes au validateur, aucune source citée sans avoir
+été lue, 5 à 7 $ la lettre. La propriétaire a tranché trois choses à la lecture.
+
+1. **Rien du rapport de collecte dans ce que le client lit.** Ni note de
+   méthode, ni sources ouvertes ou non ouvertes, ni requêtes non lancées, ni
+   réserves, ni rubrique « Ce qui a été vérifié », dans les lettres comme dans
+   les référentiels livrés. **Le bloc « Ajustements du cadrage » disparaît
+   aussi** de la lettre ; les propositions vont dans la propriété « Amendements
+   au référentiel ». Le validateur ne tient plus `cadrage-absent` pour une
+   rupture ; il avertit `cadrage-présent` et `collecte-dans-la-lettre` tant que
+   la tâche de production n'est pas alignée. Le script d'évaluation demande au
+   modèle un troisième bloc, `<collecte>`, écrit dans `collecte.md` pour
+   l'opératrice et jamais envoyé. **La page Notion « Tâche Lettres de veille »
+   (étape 3, contrat de forme, points 2 et 4, rubriques 2, 12 et 13 du §6) reste
+   à amender** ; le portail n'écrit pas dans Notion, cet amendement se fait à la
+   main ou par une tâche.
+2. **Opus pour les référentiels et les lettres.** Le script ne lance plus Sonnet
+   par défaut ; `--modele sonnet` reste possible pour mesurer.
+3. **L'écart de qualité avec le dispositif actuel est net**, et il s'explique :
+   la tâche de production tourne dans l'agent Claude Code pendant une heure,
+   avec un navigateur pour les sources fermées, la boîte Gmail de relecture, la
+   base « Extraits fournis », un fichier de grille de collecte et des
+   sous-agents ; le script d'évaluation n'a que la recherche et la lecture web
+   côté serveur, deux ou trois tours, et des canaux déclarés « non consultés ».
+   La lettre Konica (7 faits, 8 pages lues) en est la mesure. La conclusion est
+   dans la réponse du 22 octobre : reproduire la qualité demande le même
+   harnais (Claude Agent SDK, mêmes outils, mêmes compétences), dont le coût
+   par lettre à l'API est à mesurer avant toute décision d'architecture.
+
 ## Ce que le script fait, et ce qu'il ne touche pas
 
 `pnpm evaluation:lettres generer` produit des lettres hors du dispositif :

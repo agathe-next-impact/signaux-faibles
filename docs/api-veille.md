@@ -65,7 +65,7 @@ production** (`construireDocument`, `lireDossiersOuverts`, `mentionsDe`,
 ```
 
 **Codes de rupture** (bloquent : `conforme` est faux) — `aucun-axe`,
-`axe-sans-niveau`, `dossier-sans-compteur`, `cadrage-absent`,
+`axe-sans-niveau`, `dossier-sans-compteur`,
 `cadrage-non-clos`, `titre-vide` sont de portée `portail` (ce que le portail
 n'affichera pas) ; `niveau-faible`, `cadrage-sans-adresse`, `essentiel-absent`
 et `essentiel-trop-long` sont de portée `lettre` (règles de la page « Tâche —

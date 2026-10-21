@@ -114,7 +114,8 @@ function lireOptions(argv: string[]): Options {
     commande,
     organisations: liste('organisation', organisationsParDéfaut, organisationsDisponibles),
     veilles: liste<Veille>('veille', ['ecosysteme', 'concurrentielle'], ['ecosysteme', 'concurrentielle']),
-    modèles: liste<CléModèle>('modele', ['opus', 'sonnet'], ['opus', 'sonnet']),
+    // Décision du 22 octobre 2026 : Opus pour les référentiels et les lettres ; Sonnet reste mesurable sur demande.
+    modèles: liste<CléModèle>('modele', ['opus'], ['opus', 'sonnet']),
     conceptions: liste<Conception>('conception', ['agentique'], ['agentique', 'pipeline']),
     effort: liste('effort', ['high'], ['low', 'medium', 'high', 'xhigh'])[0] ?? 'high',
     parallèle: Number(valeurs.get('parallele') ?? 4),
@@ -297,12 +298,26 @@ de ta réponse et dans le bloc d'ajustements de la lettre, comme d'habitude.
 
 ${outils}
 
+CE QUI NE VA PLUS DANS LA LETTRE (décision de la propriétaire du dispositif, 22 octobre
+2026, qui prime sur les étapes 1 à 3 et sur le §6 du référentiel). La lettre client ne
+porte AUCUN élément du rapport de collecte : ni note de méthode, ni liste des sources
+ouvertes, non ouvertes ou non consultées, ni requêtes non lancées, ni « méthode et
+réserves », ni rubrique « Ce qui a été vérifié pour cette édition », ni grille de
+collecte. Elle ne porte PAS non plus de bloc « Ajustements du cadrage de cette veille »
+ni la phrase de clôture avec l'adresse : les propositions de cadrage vont dans
+« amendementsAuReferentiel » de <proprietes>. Un axe RAS porte son titre « — RAS » et
+UN encadré d'une phrase, sans nommer de source ni de date de dernière publication
+(« Rien de notable sur cet axe cette semaine. »). Un dossier suivi qui n'a pas bougé
+se dit en une phrase de contenu, jamais par l'inventaire de ce qui a été vérifié. La
+rigueur de la collecte reste entière : elle s'écrit dans le bloc <collecte> décrit
+plus bas, destiné à l'opératrice, jamais au client.
+
 LA RÈGLE DE FRONTIÈRE s'applique : tu rédiges la veille désignée seulement ; l'autre
 veille de la même organisation est produite dans un autre run. Les deux référentiels
 peuvent être cités dans la fiche, mais seul celui fourni ci-dessous est le tien.
 
-FORMAT DE LA RÉPONSE, obligatoire. Ta réponse finale se compose de deux blocs, et de rien
-d'autre après le second :
+FORMAT DE LA RÉPONSE, obligatoire. Ta réponse finale se compose de trois blocs, et de
+rien d'autre après le troisième :
 
 <proprietes>
 { "titre": "Veille <Organisation> — <Veille> — <jour date>",
@@ -316,6 +331,14 @@ d'autre après le second :
 <lettre>
 …le corps de la lettre en Markdown…
 </lettre>
+
+<collecte>
+…le rapport de collecte, en Markdown, pour l'opératrice : la grille (une ligne par
+source nommée, dossier, requête, échéance : OUVERTE avec la date de dernière
+publication, REQUÊTÉE avec le résultat, NON OUVERTE avec la raison), la fenêtre réellement
+couverte et son élargissement éventuel, les réserves, les sources mortes ou déplacées, et
+les propositions de cadrage détaillées…
+</collecte>
 
 Le JSON de <proprietes> est strict (guillemets doubles, pas de commentaire). Le titre
 reprend la forme des titres des dernières éditions. « dossiersOuvertsSuivis » suit
@@ -332,7 +355,8 @@ DIALECTE MARKDOWN DU CORPS, lu par le portail tel quel :
   · paragraphes séparés par une ligne vide ; puces « - » ; listes « 1. » ;
   · gras **ainsi**, italique *ainsi*, liens [nom](URL) ;
   · le bloc « Ajustements du cadrage de cette veille » est suivi d'une ligne « --- » ;
-  · aucun titre de niveau 3 dans « L'essentiel », aucun encadré ni tableau dedans.
+  · aucun titre de niveau 3 dans « L'essentiel », aucun encadré ni tableau dedans ;
+  · pas de bloc de cadrage, pas de rapport de collecte : voir plus haut.
 
 Les étapes 1 à 3 du dispositif suivent, recopiées de la page « Tâche — Lettres de
 veille » ; là où elles nomment une étape 0, 4, 4bis, 5 ou 6, un appel au portail, Notion,
@@ -617,9 +641,11 @@ type Propriétés = {
   amendementsAuReferentiel: string
 }
 
-function séparer(texte: string): { propriétés: Propriétés | null; lettre: string; erreur: string | null } {
+function séparer(texte: string): { propriétés: Propriétés | null; lettre: string; collecte: string; erreur: string | null } {
   const p = /<proprietes>([\s\S]*?)<\/proprietes>/i.exec(texte)
   const l = /<lettre>([\s\S]*?)<\/lettre>/i.exec(texte)
+  const c = /<collecte>([\s\S]*?)<\/collecte>/i.exec(texte)
+  const collecte = c?.[1]?.trim() ?? ''
   let propriétés: Propriétés | null = null
   let erreur: string | null = null
   if (p?.[1]) {
@@ -631,9 +657,11 @@ function séparer(texte: string): { propriétés: Propriétés | null; lettre: s
   } else {
     erreur = 'bloc <proprietes> absent'
   }
-  const lettre = l?.[1]?.trim() ?? texte.replace(/<proprietes>[\s\S]*?<\/proprietes>/i, '').trim()
+  const lettre =
+    l?.[1]?.trim() ?? texte.replace(/<proprietes>[\s\S]*?<\/proprietes>/i, '').replace(/<collecte>[\s\S]*?<\/collecte>/i, '').trim()
   if (!l) erreur = `${erreur ? `${erreur} ; ` : ''}bloc <lettre> absent, texte entier pris pour la lettre`
-  return { propriétés, lettre, erreur }
+  if (!c) erreur = `${erreur ? `${erreur} ; ` : ''}bloc <collecte> absent`
+  return { propriétés, lettre, collecte, erreur }
 }
 
 function normaliserUrl(u: string): string {
@@ -660,8 +688,8 @@ type Validation = {
   erreurDeFormat: string | null
 }
 
-function valider(résultat: Résultat, extraits: Extrait[] | null): { validation: Validation; propriétés: Propriétés; lettre: string; html: string; texte: string; objet: string } {
-  const { propriétés: lues, lettre, erreur } = séparer(résultat.texte)
+function valider(résultat: Résultat, extraits: Extrait[] | null): { validation: Validation; propriétés: Propriétés; lettre: string; collecte: string; html: string; texte: string; objet: string } {
+  const { propriétés: lues, lettre, collecte, erreur } = séparer(résultat.texte)
   const propriétés: Propriétés = lues ?? {
     titre: `Veille ${résultat.organisation} — ${résultat.libelléVeille}`,
     periodeCouverte: '',
@@ -718,6 +746,7 @@ function valider(résultat: Résultat, extraits: Extrait[] | null): { validation
     },
     propriétés,
     lettre,
+    collecte,
     html,
     texte,
     objet,
@@ -845,8 +874,9 @@ async function commandeGenerer(options: Options): Promise<void> {
         const résultat = await générer(anthropic, dossier, modèle, conception, options.effort, options.dateÉdition, extraits)
         writeFileSync(join(répertoire, 'reponse.json'), JSON.stringify({ ...résultat, texte: undefined }, null, 2))
         writeFileSync(join(répertoire, 'reponse-brute.md'), résultat.texte)
-        const { validation, propriétés, lettre, html, texte, objet } = valider(résultat, extraits)
+        const { validation, propriétés, lettre, collecte, html, texte, objet } = valider(résultat, extraits)
         writeFileSync(join(répertoire, 'lettre.md'), lettre)
+        writeFileSync(join(répertoire, 'collecte.md'), collecte)
         writeFileSync(join(répertoire, 'proprietes.json'), JSON.stringify(propriétés, null, 2))
         writeFileSync(join(répertoire, 'validation.json'), JSON.stringify(validation, null, 2))
         writeFileSync(join(répertoire, 'courriel.html'), html)
@@ -884,8 +914,9 @@ function commandeValider(options: Options): void {
         const résultat = JSON.parse(readFileSync(join(répertoire, 'reponse.json'), 'utf8')) as Résultat
         résultat.texte = readFileSync(join(répertoire, 'reponse-brute.md'), 'utf8')
         const extraits = résultat.conception === 'pipeline' ? lireExtraitsGelés(résultat) : null
-        const { validation, propriétés, lettre, html, texte, objet } = valider(résultat, extraits)
+        const { validation, propriétés, lettre, collecte, html, texte, objet } = valider(résultat, extraits)
         writeFileSync(join(répertoire, 'lettre.md'), lettre)
+        writeFileSync(join(répertoire, 'collecte.md'), collecte)
         writeFileSync(join(répertoire, 'proprietes.json'), JSON.stringify(propriétés, null, 2))
         writeFileSync(join(répertoire, 'validation.json'), JSON.stringify(validation, null, 2))
         writeFileSync(join(répertoire, 'courriel.html'), html)

@@ -51,7 +51,6 @@ export type Rupture = {
     | 'axe-sans-niveau'
     | 'niveau-faible'
     | 'dossier-sans-compteur'
-    | 'cadrage-absent'
     | 'cadrage-non-clos'
     | 'cadrage-sans-adresse'
     | 'titre-vide'
@@ -71,6 +70,8 @@ export type Avertissement = {
     | 'essentiel-ligne-longue'
     | 'lettre-maigre'
     | 'analyse-absente'
+    | 'cadrage-présent'
+    | 'collecte-dans-la-lettre'
   readonly message: string
 }
 
@@ -172,6 +173,38 @@ export function lignesDeLEssentiel(document: Document): string[] | null {
     }
   }
   return lignes.map((ligne) => ligne.trim()).filter((ligne) => ligne.length > 0)
+}
+
+/**
+ * Les intitulés sous lesquels le rapport de collecte s'écrivait dans la lettre
+ * (note de méthode en tête, listes du pied). Seul endroit où la liste est
+ * écrite ; `lib/email/lettre.ts` en filtrait déjà une partie du courriel.
+ */
+const INTITULÉS_DE_COLLECTE = [
+  'note de methode',
+  'sources non ouvertes',
+  'sources non consultees',
+  'requetes non lancees',
+  'methode et reserves',
+  'ce qui a ete verifie',
+  'sources verifiees',
+  'sources ouvertes',
+  'grille de collecte',
+]
+
+function intitulésDeCollecte(document: Document): string[] {
+  const trouvés = new Set<string>()
+  const examiner = (texte: string) => {
+    const début = sansAccent(texte).replace(/^[^a-z0-9]+/, '').slice(0, 40)
+    for (const intitulé of INTITULÉS_DE_COLLECTE) if (début.startsWith(intitulé)) trouvés.add(intitulé)
+  }
+  for (const bloc of document.préambule) examiner(texteDuBloc(bloc))
+  for (const rubrique of document.rubriques) {
+    examiner(rubrique.titre)
+    for (const bloc of rubrique.introduction) examiner(texteDuBloc(bloc))
+    for (const axe of rubrique.axes) for (const bloc of axe.blocs) examiner(texteDuBloc(bloc))
+  }
+  return [...trouvés]
 }
 
 function texteDuBloc(bloc: Bloc): string {
@@ -386,14 +419,18 @@ export function contrôlerLaLettre(entrée: {
     sansAccent(texteDuCadrage).includes(sansAccent(PHRASE_DE_CLÔTURE)) &&
     texteDuCadrage.includes(ADRESSE_DU_CADRAGE)
 
-  if (!cadrage.présent) {
-    ruptures.push({
-      code: 'cadrage-absent',
-      portée: 'portail',
+  // Décision du 22 octobre 2026 : le bloc de cadrage ne figure plus dans les
+  // lettres client. Son absence n'est plus une rupture ; sa présence est signalée
+  // tant que la tâche de production n'a pas été alignée, et s'il est là, il doit
+  // rester clos et porter l'adresse, pour que le pied de lettre ne parte pas avec.
+  if (cadrage.présent) {
+    avertissements.push({
+      code: 'cadrage-présent',
       message:
-        'aucune rubrique de niveau 1 dont le titre contient « cadrage ». Le bloc « Ajustements du cadrage de cette veille » est obligatoire à chaque édition, même vide ; sans lui, l’écran Cadrage est vide et le lecteur n’a pas l’adresse.',
+        'la lettre porte un bloc « Ajustements du cadrage » : depuis le 22 octobre 2026, les propositions de cadrage ne sont plus écrites dans la lettre client, elles vont dans la propriété « Amendements au référentiel ».',
     })
-  } else if (!cadrage.clos) {
+  }
+  if (cadrage.présent && !cadrage.clos) {
     ruptures.push({
       code: 'cadrage-non-clos',
       portée: 'portail',
@@ -408,6 +445,16 @@ export function contrôlerLaLettre(entrée: {
       portée: 'lettre',
       message:
         `le bloc de cadrage ne se termine pas par la phrase verbatim « ${PHRASE_DE_CLÔTURE}… » avec l’adresse ${ADRESSE_DU_CADRAGE}. C’est elle qui donne au lecteur le moyen de demander une modification.`,
+    })
+  }
+
+  // ── Rapport de collecte : hors de la lettre client (22 octobre 2026) ─────
+  const collecte = intitulésDeCollecte(document)
+  if (collecte.length > 0) {
+    avertissements.push({
+      code: 'collecte-dans-la-lettre',
+      message:
+        `la lettre porte des éléments du rapport de collecte (${collecte.map((i) => `« ${i} »`).join(', ')}) : depuis le 22 octobre 2026, la note de méthode, les sources ouvertes ou non, les requêtes et les réserves restent dans le compte rendu du run, jamais dans la lettre client.`,
     })
   }
 
