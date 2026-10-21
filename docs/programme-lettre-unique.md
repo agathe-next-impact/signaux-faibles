@@ -363,7 +363,11 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   (`CREATE SCHEMA IF NOT EXISTS`) : généré sans base, le fichier ne le
   portait pas, et le premier build de production du 22 octobre 2026 a échoué sur
   « schema payload does not exist ». Toute migration Payload générée à
-  l'avenir est à relire sous cet angle.
+  l'avenir est à relire sous cet angle. Second piège, même jour : pour
+  retirer une collection, le générateur écrit `DROP TABLE … CASCADE` **puis**
+  `DROP CONSTRAINT` sur la clé étrangère que le `CASCADE` vient d'emporter ;
+  la migration `retrait_runs` a fait tomber le build de production, et a été
+  réécrite en `IF EXISTS` à chaque geste.
 - **Migrations à appliquer au déploiement** : Drizzle 0008
   (`lettres_du_moteur`, deux valeurs d'énumération, appliquée par le build de
   production du 22 octobre) et 0009 (`file_de_travaux` : `travaux`, `runs`,
