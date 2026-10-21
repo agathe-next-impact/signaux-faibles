@@ -18,7 +18,8 @@
     "base:generer": "drizzle-kit generate --name",
     "base:migrer": "tsx scripts/base-migrer.ts",
     "base:importer-acces": "tsx scripts/importer-acces.ts",
-    "emails:lemlist": "tsx scripts/emails-lemlist.ts"
+    "emails:lemlist": "tsx scripts/emails-lemlist.ts",
+    "evaluation:lettres": "tsx scripts/evaluation-lettres.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.2.0",
@@ -31,6 +32,7 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "0.137.0",
     "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
@@ -44,6 +46,7 @@
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
+    "undici": "^7.30.1",
     "vitest": "5.0.0"
   }
 }
