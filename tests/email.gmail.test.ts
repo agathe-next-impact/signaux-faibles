@@ -36,6 +36,16 @@ describe('composerMessage', () => {
     expect(brut).not.toContain('Subject: Votre accès')
   })
 
+  it('omet un Reply-To qui porterait un retour à la ligne', () => {
+    const brut = composerMessage(
+      { destinataire: 'j@e.test', sujet: 's', texte: 'x', répondreÀ: 'a@b.test\r\nBcc: c@d.test' },
+      'a@b.test',
+      'signauxfaibles',
+    )
+    expect(brut).not.toContain('Reply-To')
+    expect(brut).not.toContain('Bcc')
+  })
+
   it('laisse un sujet ASCII lisible', () => {
     const brut = composerMessage(
       { destinataire: 'j@e.test', sujet: 'Your link', texte: 'x' },

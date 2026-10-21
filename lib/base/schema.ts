@@ -285,6 +285,7 @@ export const sorteCourrier = pgEnum('sorte_courrier', [
   'essai_derniere_parution',
   'essai_tronquee',
   'alerte_espaces',
+  'demande_demo',
 ])
 export const étatCourrier = pgEnum('état_courrier', ['prevu', 'envoye', 'echec'])
 

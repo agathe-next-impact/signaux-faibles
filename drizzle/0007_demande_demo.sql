@@ -1,0 +1,1 @@
+ALTER TYPE "public"."sorte_courrier" ADD VALUE 'demande_demo';

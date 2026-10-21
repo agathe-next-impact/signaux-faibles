@@ -73,6 +73,31 @@ export function autoriserLEnvoi(
   return { autorisé: true }
 }
 
+/** Une adresse ne demande une démonstration qu'une fois par fenêtre. */
+const DÉMOS_PAR_EMAIL = 1
+/** Une même origine réseau n'envoie que quelques demandes par fenêtre. */
+const DÉMOS_PAR_ORIGINE = 3
+
+/**
+ * Le frein du formulaire `/demo`, sur ses propres compteurs : une demande de
+ * démonstration ne doit pas consommer l'envoi de lien d'un lecteur, ni
+ * l'inverse. La demande ne part que vers l'opératrice ; le frein protège sa
+ * boîte et le quota Gmail d'un script qui boucle.
+ */
+export function autoriserLaDemandeDeDémo(
+  email: string,
+  origine: string | null,
+  maintenant: number = Date.now(),
+): { readonly autorisé: boolean; readonly motif?: 'email' | 'origine' } {
+  if (!compter(`démo-email:${empreinte(email)}`, DÉMOS_PAR_EMAIL, maintenant)) {
+    return { autorisé: false, motif: 'email' }
+  }
+  if (origine && !compter(`démo-origine:${empreinte(origine)}`, DÉMOS_PAR_ORIGINE, maintenant)) {
+    return { autorisé: false, motif: 'origine' }
+  }
+  return { autorisé: true }
+}
+
 /** Réservé aux tests. */
 export function réinitialiserLesCompteurs(): void {
   compteurs.clear()
