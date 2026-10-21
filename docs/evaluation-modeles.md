@@ -1,7 +1,7 @@
 # Évaluer les modèles sur de vraies lettres, sans toucher aux comptes
 
 *Créé le 22 octobre 2026. Décision du même jour : les lettres de test sont
-produites par l'API (Opus 5.5 et Sonnet 5.5), deux par organisation pour
+produites par l'API (Opus 5.5 par défaut, Sonnet 5.5 sur demande), deux par organisation pour
 Konica Minolta et Infralliance (périmètre réduit le même jour ; L'Hermitage et
 La petite vitrine restent exportées et se lancent par `--organisation`), sans
 aucune trace dans Notion, et envoyées une par une à agathe@signauxfaibles.io avec un
@@ -40,6 +40,16 @@ Positionnement), toutes conformes au validateur, aucune source citée sans avoir
    dans la réponse du 22 octobre : reproduire la qualité demande le même
    harnais (Claude Agent SDK, mêmes outils, mêmes compétences), dont le coût
    par lettre à l'API est à mesurer avant toute décision d'architecture.
+4. **Les propositions du 22 octobre sont appliquées** (« Applique ces
+   propositions ») : la collecte des sources nommées se fait en code avant le
+   modèle (conception `hybride`, navigateur de repli, détection de changement
+   d'un gel à l'autre) ; les portes de collecte sont mécaniques (grille rendue en
+   JSON, couverture des sources nommées mesurée sur les URL réellement lues,
+   nombre minimal de faits datés, relances dans la même conversation) ; le
+   système et le dossier sont mis en cache une heure ; et une variante **agent
+   complet** (`pnpm evaluation:agent`, Claude Agent SDK) reproduit le poste de
+   travail de la tâche Cowork, facturé à l'API. La série suivante compare ces
+   variantes sur une seule lettre, voir « Prochaine série » plus bas.
 
 ## Ce que le script fait, et ce qu'il ne touche pas
 
@@ -73,12 +83,47 @@ Il n'écrit jamais dans Notion, n'appelle pas le portail, n'ouvre pas Postgres
 et n'envoie rien : l'envoi des courriels se fait depuis la session Claude Code,
 par le connecteur Gmail, une fois les fichiers produits.
 
-## Deux conceptions mesurées
+`pnpm evaluation:agent` partage tout cela (entrées, prompt, portes, validateur,
+gabarit, rapport) et change une seule chose : le modèle ne répond plus à un
+appel de l'API Messages, il tourne dans une session Claude Code lancée par le
+SDK Agent, avec un espace de travail sur disque où le dossier est posé en
+fichiers, la lecture et l'écriture de fichiers, la recherche web, la lecture
+d'une page et le navigateur de la session (`scripts/lire-page.mjs`). Le code
+lui refuse tout le reste, dans un crochet `PreToolUse` et dans `canUseTool` :
+écrire hors de son espace, lancer une autre commande, lire une adresse du
+portail. La session enfant reçoit un environnement sans rien de la session qui
+la lance (ni compte, ni jeton, ni `ANTHROPIC_BASE_URL`), seulement
+`ANTHROPIC_API_KEY` posée depuis `EVALUATION_API_KEY` ; le script vérifie à
+l'ouverture que la session s'annonce authentifiée par cette clé et s'arrête
+sinon avant tout appel. Un plafond de dépense par lettre (`--budget`, 40 $ par
+défaut) arrête l'agent net.
+
+## Quatre conceptions mesurées
 
 | Conception | Ce que fait le modèle | Ce que fait le code | Mesure d'hallucination |
 |---|---|---|---|
-| `agentique` (défaut) | cherche et lit le web avec les outils serveur de recherche et de lecture, 60 recherches et 90 lectures au plus | donne le dossier, relance les tours (`pause_turn`), relève les URL réellement lues | une URL citée dans la lettre qui n'a pas été lue par l'outil pendant le run |
-| `pipeline` | rédige en un appel, sans outil, à partir d'extraits gelés | ouvre les URL nommées par le référentiel (60 au plus, 20 s, 6 000 caractères), les gèle dans `evaluation/sources/` | une URL citée absente des extraits ouverts |
+| `agentique` (défaut) | cherche et lit le web avec les outils serveur de recherche et de lecture, 60 recherches et 90 lectures au plus | donne le dossier, relance les tours (`pause_turn`), relève les URL réellement lues, mesure les portes et relance | une URL citée dans la lettre qui n'a pas été lue par l'outil pendant le run |
+| `hybride` (22 octobre 2026) | reçoit les extraits gelés des sources nommées, lit en priorité celles marquées `changee=oui`, garde la recherche et la lecture web (40 et 60 au plus) pour les requêtes types, les dossiers et les nouveautés | ouvre avant le modèle chaque URL nommée par le référentiel (80 au plus, 6 en parallèle, 20 s), avec le navigateur de la session pour celles qui répondent 403, 503 ou vide (`--navigateur`, automatique si le Chromium est présent), gèle 6 000 caractères par source dans `evaluation/sources/<org>/<veille>/<date>/` et marque ce qui a changé depuis le gel précédent | une URL citée ni dans les extraits ouverts ni lue par l'outil |
+| `pipeline` | rédige en un appel, sans outil, à partir des mêmes extraits gelés | la même collecte ; aucune relance possible sur les sources, seulement sur la fenêtre | une URL citée absente des extraits ouverts |
+| `agent` (`pnpm evaluation:agent`) | travaille comme la tâche Cowork : lit son dossier en fichiers, cherche, lit, ouvre au navigateur, tient `grille.md`, écrit `reponse.md` | pose le dossier dans un espace de travail, borne les outils, lit les URL ouvertes dans la transcription, mesure les portes et relance la même session | une URL citée qui n'apparaît dans aucun appel d'outil réussi de la transcription |
+
+**Les portes de collecte** sont les mêmes pour les quatre. Le modèle rend un
+bloc `<grille>` en JSON (type, nom, URL, état, date, raison par source et par
+requête). Le script ne le croit pas sur parole : il compte les sources nommées
+du référentiel dont l'URL a été réellement ouverte pendant le run (outil,
+extrait gelé à l'état ouvert, ou appel d'outil réussi de l'agent), et les faits
+datés hors encadrés de la lettre, par le parseur de production. En dessous de
+`--couverture` (0,8) ou de `--faits-min` (6), ou sans grille lisible, il renvoie
+au modèle la liste précise des sources sans lecture prouvée et lui demande de
+reprendre la collecte, fenêtre élargie à quatorze puis vingt et un jours, avant
+de rendre une nouvelle réponse complète ; `--relances` (2) borne le nombre de
+reprises. Une source qui refuse toujours la lecture reste « non ouverte » avec
+sa raison : la porte mesure l'effort, pas le résultat d'un site fermé.
+
+**Le cache d'une heure** porte sur le système (préambule et étapes 1 à 3) et
+sur le bloc statique du dossier (fiche, référentiel, dernières éditions,
+dernière lettre) : un second run de la même lettre dans l'heure, ou une relance,
+relit ces 100 000 à 180 000 caractères au dixième du prix.
 
 Les repli automatiques en cas de refus (`fallbacks`) ne sont pas activés : un
 refus est une donnée de l'évaluation, enregistrée dans `reponse.json`
@@ -87,43 +132,91 @@ refus est une donnée de l'évaluation, enregistrée dans `reponse.json`
 ## Lancer
 
 ```bash
-# Konica Minolta et Infralliance (défaut), les deux veilles, Opus 5.5 et Sonnet 5.5, agentique : huit lettres
+# Konica Minolta et Infralliance (défaut), les deux veilles, Opus 5.5, agentique : quatre lettres
 # (dans une session cloud, la clé est la variable d'environnement EVALUATION_API_KEY)
 EVALUATION_API_KEY=… pnpm evaluation:lettres generer
 
-# un sous-ensemble
+# un sous-ensemble, ou une autre conception
 pnpm evaluation:lettres generer --organisation petite-vitrine --veille ecosysteme --modele sonnet
-pnpm evaluation:lettres generer --conception pipeline --parallele 2 --effort medium
+pnpm evaluation:lettres generer --conception hybride --navigateur --parallele 2
+pnpm evaluation:lettres generer --conception pipeline --effort medium
+
+# les portes de collecte, par défaut 80 % des sources nommées, 6 faits datés, 2 relances
+pnpm evaluation:lettres generer --couverture 0.9 --faits-min 8 --relances 3
+
+# l'agent complet (Claude Agent SDK), Konica par défaut, les deux veilles, 40 $ de plafond par lettre
+EVALUATION_API_KEY=… pnpm evaluation:agent
+pnpm evaluation:agent --veille ecosysteme --budget 30 --max-tours 300
 
 # vérifier l'assemblage des prompts sans appel ni clé
 pnpm evaluation:lettres generer --a-blanc
+pnpm evaluation:agent --a-blanc
 
 # rejouer validation, rendu et rapport sur une sortie existante
 pnpm evaluation:lettres valider --sortie evaluation/sorties/<horodatage>
 ```
 
+### Prochaine série : une lettre, trois façons
+
+Décidée le 22 octobre 2026 pour mesurer l'écart de qualité et son coût sur une
+seule lettre plutôt que sur huit : **Konica Minolta, veille réglementation
+(`ecosysteme`)**, produite trois fois la même semaine, à relire à l'aveugle
+avec la grille de `rapport.md`.
+
+```bash
+# 1. le script corrigé des règles éditoriales, collecte par le modèle
+pnpm evaluation:lettres generer --organisation konica --veille ecosysteme --conception agentique
+
+# 2. le script avec collecte en code pour les sources nommées, navigateur de repli
+pnpm evaluation:lettres generer --organisation konica --veille ecosysteme --conception hybride --navigateur
+
+# 3. l'agent complet, facturé à l'API
+pnpm evaluation:agent --organisation konica --veille ecosysteme
+```
+
+Trois sorties horodatées, un `rapport.md` par sortie ; les colonnes à comparer
+sont Faits, Couverture, Relances, URL citées non ouvertes, Coût et Durée, puis
+la grille de relecture. Le coût attendu est de 5 à 8 $ pour la première, un peu
+moins pour la deuxième (les extraits sont en cache), 15 à 30 $ pour l'agent :
+c'est ce dernier chiffre qui manque à `docs/analyse-stacks-alternatives.md`.
+Les lettres de cette série ne sont pas publiées ; leur envoi à l'adresse de
+relecture suit la procédure « Envoi des courriels » plus bas.
+
 Dans une session Claude Code (sortie réseau par mandataire), le script règle
 lui-même le mandataire pour `fetch` et pour le SDK quand `HTTPS_PROXY` est
 posée. La clé se pose dans la section « Variables d'environnement » de
 l'environnement cloud, sous le nom `EVALUATION_API_KEY`, jamais dans une
-commande ni dans un fichier commité ; une session nouvelle la reçoit. Poser un plafond de dépense sur
-l'espace de travail de la console avant le premier run : huit lettres
-agentiques coûtent de l'ordre de 20 à 35 $ (Opus 5 $ et Sonnet 2,50 $ la
-lettre, avec la lecture de pages longues), à confirmer par la colonne coût du
-rapport.
+commande ni dans un fichier commité ; une session nouvelle la reçoit. Poser un
+plafond de dépense sur l'espace de travail de la console avant le premier run :
+quatre lettres agentiques Opus coûtent de l'ordre de 20 à 30 $ (5 à 7 $ la
+lettre mesurés le 22 octobre, avant les relances), à confirmer par la colonne
+coût du rapport. La série précédente s'est arrêtée à quatre lettres sur huit,
+crédits épuisés : recharger avant de lancer.
 
 ## Ce qui sort
 
 Par lettre, sous `evaluation/sorties/<horodatage>/<organisation>/<veille>/<modèle>-<conception>/` :
 `prompt-systeme.txt`, `prompt-utilisateur.txt`, `reponse-brute.md`,
-`reponse.json` (usage, coût, durée, tours, URL ouvertes et demandées, modèle
-servi, raison d'arrêt), `lettre.md`, `proprietes.json` (titre, période,
-dossiers ouverts, action, amendements), `validation.json`, `courriel.html`,
-`courriel.txt`, `courriel.json` (objet, destinataire).
+`reponse.json` (usage, coût, durée, tours, relances, mesure des portes, URL
+ouvertes et demandées, modèle servi, raison d'arrêt), `lettre.md`,
+`collecte.md` (le rapport de collecte, pour l'opératrice, jamais envoyé),
+`grille.json`, `proprietes.json` (titre, période, dossiers ouverts, action,
+amendements), `validation.json`, `courriel.html`, `courriel.txt`,
+`courriel.json` (objet, destinataire).
 
-À la racine de la sortie : `rapport.md` (tableau des mesures et grille de
-relecture à l'aveugle) et `recapitulatif.html` (le même, à envoyer en courriel
-de synthèse).
+Pour l'agent, en plus : `espace/` (le dossier posé en fichiers, `grille.md` et
+`reponse.md` écrits par l'agent), `journal.txt` (chaque appel d'outil, chaque
+refus, les relances) et `transcription.jsonl` (la session entière, message par
+message).
+
+Les extraits gelés des conceptions `hybride` et `pipeline` sont sous
+`evaluation/sources/<organisation>/<veille>/<date>/` (`manifeste.json` et un
+fichier par source) ; ils servent de référence au gel suivant pour le drapeau
+`changee`.
+
+À la racine de la sortie : `rapport.md` (tableau des mesures, avec Couverture et
+Relances, et grille de relecture à l'aveugle) et `recapitulatif.html` (le même,
+à envoyer en courriel de synthèse).
 
 ## Comment lire les résultats
 
@@ -133,6 +226,11 @@ de synthèse).
    bord vide ou faux dans l'espace client.
 3. **Faits, dossiers nommés, avertissements.** Le volume et la continuité du
    suivi : `lettre-maigre`, `dossier-non-nommé`, `absence-en-prose`.
+   **Couverture et relances** disent si la collecte a été faite ou seulement
+   déclarée : une couverture sous 80 % après deux relances désigne des sources
+   fermées (à lire dans `collecte.md` et `grille.json`), pas une lettre à
+   relancer ; des relances à chaque run désignent un prompt qui laisse le modèle
+   rendre trop tôt.
 4. **La grille.** Lire chaque `courriel.html` sans regarder le nom du modèle et
    répondre : publiable telle quelle, oui ou non, et sinon ce qui manque (fait
    faux, source inventée, forme, ton, volume). C'est la seule mesure qui compte
