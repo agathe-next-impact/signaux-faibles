@@ -20,7 +20,11 @@
     "base:importer-acces": "tsx scripts/importer-acces.ts",
     "emails:lemlist": "tsx scripts/emails-lemlist.ts",
     "evaluation:lettres": "tsx scripts/evaluation-lettres.ts",
-    "evaluation:agent": "tsx scripts/evaluation-agent.ts"
+    "evaluation:agent": "tsx scripts/evaluation-agent.ts",
+    "payload": "payload",
+    "payload:generer-types": "payload generate:types",
+    "payload:migrer": "payload migrate",
+    "payload:migration": "payload migrate:create"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.2.0",
@@ -44,6 +48,7 @@
     "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
+    "@trigger.dev/build": "4.7.6",
     "@types/node": "22.10.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.1",
@@ -52,6 +57,7 @@
     "eslint-config-next": "16.3.4",
     "postcss": "8.5.6",
     "tailwindcss": "4.3.3",
+    "trigger.dev": "4.7.6",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "undici": "^7.30.1",

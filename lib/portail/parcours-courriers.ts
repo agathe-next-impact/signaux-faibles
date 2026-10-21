@@ -5,7 +5,7 @@ import { composerCourrierDeParcours, courrierDuParcours, type SorteDeParcours } 
 import { étapeDuParcours } from '@/lib/domaine/parcours'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
-import { listerÉditionsPubliées } from '@/lib/notion/editions'
+import { listerÉditionsPubliées } from '@/lib/documents'
 import { adressePostale } from '@/lib/email/gmail'
 import { envoyerCourrier } from '@/lib/portail/courriers'
 import { empreinte } from '@/lib/portail/debit'

@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { withPayload } from '@payloadcms/next/withPayload'
 
 /**
  * La politique de contenu, minimale et honnête.
@@ -123,12 +124,21 @@ const nextConfig: NextConfig = {
           // est à nous. Un an, sous-domaines compris : le lien magique ne doit
           // jamais partir en clair.
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-          { key: 'Content-Security-Policy', value: POLITIQUE_DE_CONTENU },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
+      },
+      {
+        // La politique de contenu vaut pour tout le portail, sauf l'admin
+        // Payload et son API REST (22 octobre 2026) : l'admin charge ses
+        // propres scripts et styles, que cette politique bornée à l'origine
+        // casserait. Les autres en-têtes ci-dessus s'y appliquent, eux.
+        source: '/((?!admin(?:/|$)|payload-api(?:/|$)).*)',
+        headers: [{ key: 'Content-Security-Policy', value: POLITIQUE_DE_CONTENU }],
       },
     ]
   },
 }
 
-export default nextConfig
+// `withPayload` ajoute ce dont l'admin et l'API Payload ont besoin (paquets
+// externes côté serveur, en-têtes des routes Payload) sans toucher au reste.
+export default withPayload(nextConfig)

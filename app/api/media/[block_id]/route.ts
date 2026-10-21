@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { identifiantDeLaSession } from '@/lib/auth/session'
 import { lireAccèsParIdentifiant } from '@/lib/auth/source-acces'
-import { lireMédiaDeBloc, listerÉditionsPubliées } from '@/lib/notion/editions'
+import { lireMédiaDeBloc, listerÉditionsPubliées } from '@/lib/documents'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
 import { lectureDeLEspace } from '@/lib/portail/lecture'
 

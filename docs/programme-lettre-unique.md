@@ -200,11 +200,112 @@ rattaché à la saisie.
 Voir le journal en fin de document, tenu à chaque commit. Ce qui ne peut pas se
 faire dans le dépôt : créer le projet Trigger.dev et poser `TRIGGER_SECRET_KEY`
 et `TRIGGER_PROJECT_REF` ; poser `PAYLOAD_SECRET` ; appliquer les migrations
-Payload sur Neon (`pnpm payload migrate`) ; créer le premier utilisateur Payload ;
+Payload sur Neon (`pnpm payload:migrer`) ; créer le premier utilisateur Payload ;
 poser `ANTHROPIC_API_KEY` dans l'environnement Trigger.dev ; écrire les
 référentiels de filière.
+
+### Payload : ce qui est en place
+
+- `payload.config.ts` à la racine, alias `@payload-config` (tsconfig et
+  vitest). Collections dans `lib/payload/collections/`, une par fichier, noms
+  de champs sans accents (compatibles SQL), libellés accentués. Types générés
+  dans `lib/payload/types.ts` par `pnpm payload:generer-types` (fichier généré,
+  ignoré par ESLint, à régénérer après tout changement de collection).
+- Routes Next : `app/(payload)/` porte le layout racine de Payload, l'admin
+  (`/admin`) et l'API REST (`/payload-api`), recopiés du gabarit officiel
+  `templates/blank` de Payload 3.91.0 ; `custom.css` (vide) remplace le
+  `custom.scss` du gabarit, le dépôt n'embarquant pas sass. Le reste de
+  l'application vit dans le groupe de routes `app/(portail)/`, avec son propre
+  layout racine : les deux layouts ne peuvent pas s'imbriquer. Restent à la
+  racine de `app/`, parce que Next.js les y exige : `globals.css` (importé
+  par les deux groupes), `api/` (les routes du dispositif), `global-error.tsx`
+  (résolu à la racine de `app` par le chargeur de Next, pour tous les groupes),
+  `manifest.ts` et `icon.svg` (fichiers de métadonnées, propres à la racine et
+  listés par le proxy et le service worker sous leur adresse exacte).
+  `not-found.tsx` a suivi le portail dans `(portail)` : à la racine, il
+  exigerait un layout racine qui n'existe plus. Conséquence à connaître : une
+  adresse qui ne correspond à **aucune** route (par exemple trois segments
+  inconnus) reçoit désormais la page 404 par défaut de Next.js, hors charte ;
+  `notFound()` levé dans le portail (slug inconnu, lettre inconnue) rend
+  toujours la page de secours. Le drapeau expérimental
+  `experimental.globalNotFound` de Next 16 permettrait de rendre la page de la
+  charte dans ce cas ; il n'est pas posé.
+- `proxy.ts` laisse passer `/admin` et `/payload-api` (dans le `matcher` et
+  dans `estUneAdressePayload`, pour qu'un slug qui commencerait par « admin »
+  reste un slug). `next.config.ts` est enveloppé par `withPayload` ; la
+  politique de contenu ne s'applique plus à ces deux chemins (l'admin charge
+  ses propres scripts et styles), les autres en-têtes (HSTS, Referrer-Policy,
+  X-Frame-Options) y restent.
+- Façade `lib/documents/` : `listerÉditionsPubliées`, `lireBlocsDePage` et
+  `lireMédiaDeBloc`, mêmes signatures et même type `Édition` que
+  `lib/notion/editions.ts`, aiguillées par `SOURCE_DOCUMENTS`. Les écrans,
+  `lib/portail/` et les composants importent d'ici ; `lib/notion/travail.ts`
+  et les routes `/api/veille/*` restent sur Notion. En mode `payload`, la
+  liste est demandée avec `organisation = <id>` et `statut = publiee` dans la
+  requête, revérifiés en mémoire, triée par date décroissante ; le corps est
+  le champ `blocs`, dérivé du Markdown par le crochet `beforeChange` ; aucune
+  image n'est servie (`lireMédiaDeBloc` rend `null`). La date d'édition est
+  le jour des dix premiers caractères de la date Payload : le sélecteur
+  `dayOnly` de l'admin pose 12 h UTC, une écriture par l'API doit faire de
+  même. `Veille` vaut toujours « Veille ». L'invalidation du cache
+  (`lib/documents/invalidation.ts`, tags `page:<id>` et `liste:<organisation>`)
+  est appelée par les crochets `afterChange` et `afterDelete` de la collection
+  `editions` ; c'est le cinquième endroit qui invalide un tag, et
+  `tests/architecture.test.ts` le tient.
+- `lib/moteur/declencher.ts` : le seul endroit qui importe `@trigger.dev/sdk`
+  côté portail (import à la demande). Sans `TRIGGER_SECRET_KEY`, chaque appel
+  journalise `[moteur] déclenchement ignoré : TRIGGER_SECRET_KEY absente` et
+  rend `{ déclenché: false }` ; les crochets Payload (`organisations` passant à
+  `a_onboarder`, création d'un `prospects`) n'échouent jamais pour autant.
+- Contrôle d'accès : tout est réservé aux utilisateurs Payload authentifiés ;
+  `runs` est en lecture seule dans l'admin (le portail écrit par l'API locale,
+  qui passe outre) ; `editions.blocs` est en lecture seule et recalculé à
+  chaque enregistrement, quoi qu'on envoie.
+
+### Variables d'environnement
+
+- `PAYLOAD_SECRET` : chaîne longue et aléatoire (`openssl rand -hex 32`),
+  obligatoire pour que l'admin démarre. Elle ne quitte jamais le portail ; les
+  tâches Trigger.dev ne l'ont pas.
+- `DATABASE_URL` : la même base Neon que le portail ; Payload n'y écrit que
+  dans le schéma `payload`.
+- `SOURCE_DOCUMENTS` : `notion` (défaut, comportement actuel) ou `payload`
+  (les écrans lisent les éditions Payload). Toute autre valeur retombe sur
+  `notion` et le journalise une fois. La bascule suppose l'import de l'archive
+  (`pnpm documents:importer`, à écrire) et que `organisations.registre_notion`
+  porte l'identifiant Payload de l'organisation pour chaque client.
+- `TRIGGER_SECRET_KEY` : voir ci-dessus ; absente, rien ne part.
+
+### Migrations Payload
+
+La migration initiale est **générée et commitée** sur la branche
+(`payload-migrations/20261021_105110_initiale.ts`, schéma `payload`, sept
+tables de collections, index composé `(organisation, statut, dateEdition)`).
+`pnpm payload:migration <nom>` (`payload migrate:create`) la génère sans base,
+à partir de l'instantané JSON du dossier ; `pnpm payload:migrer` (`payload
+migrate`) l'applique à `DATABASE_URL`. Deux points d'attention : Payload écrit
+`import { MigrateUpArgs, MigrateDownArgs, sql }`, que `verbatimModuleSyntax`
+refuse, il faut passer les deux types en `import type` à la main dans chaque
+migration générée ; et le build de production n'applique pas encore les
+migrations Payload (seul `scripts/base-migrer.ts` tourne), à ajouter quand la
+bascule approchera, comme le contrôle du soir pour l'écart entre le dossier et
+la base.
+
+### Premier utilisateur
+
+Une fois `PAYLOAD_SECRET` posé et la migration appliquée, ouvrir `/admin` :
+Payload propose de créer le premier utilisateur (adresse, mot de passe, nom),
+hors de tout contrôle d'accès. Les suivants se créent depuis la collection
+« Utilisateurs », par un utilisateur connecté. Les lecteurs du portail n'y
+figurent jamais : ils n'ont ni compte Payload ni mot de passe.
 
 ## Journal
 
 - **22 octobre 2026** : branche ouverte, dépendances installées (Payload
   3.91.0, Trigger.dev SDK 4.7.6), document écrit.
+- **22 octobre 2026** : Payload intégré au Next.js existant (`payload.config.ts`,
+  sept collections, admin sous `/admin`, API sous `/payload-api`, migration
+  initiale), application déplacée dans `app/(portail)/`, façade
+  `lib/documents/` aiguillée par `SOURCE_DOCUMENTS`, `lib/moteur/declencher.ts`,
+  gardes d'architecture étendues (lecture Payload cachée, `getPayload` confiné,
+  cinquième invalidation), `tests/payload.collections.test.ts`.

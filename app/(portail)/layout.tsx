@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, Lora, Public_Sans } from 'next/font/google'
 import { BannièreInstallation } from '@/components/banniere-installation'
 import { ServiceWorker } from '@/components/service-worker'
-import './globals.css'
+import '../globals.css'
 
 // Graisses de la charte : Lora 500 à 700 avec italique pour la voix
 // éditoriale, Public Sans 400 à 600. Les deux existent en version variable,

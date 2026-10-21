@@ -1,6 +1,6 @@
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { regrouperParSemaine, type Semaine } from '@/lib/domaine/semaines'
-import { lireBlocsDePage, listerÉditionsPubliées, type Édition } from '@/lib/notion/editions'
+import { lireBlocsDePage, listerÉditionsPubliées, type Édition } from '@/lib/documents'
 
 /**
  * Ce que tous les écrans de l'espace client partagent.

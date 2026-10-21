@@ -38,7 +38,7 @@ function sortieConforme(): SortieRédigée {
   return {
     essentiel: ['Le décret sur la facturation électronique est paru le 21 octobre.', 'Kyocera a présenté sa gamme le 22 octobre.', 'Rien de neuf sur les marchés publics.'],
     axes: Array.from({ length: AXES }, (_, i) => {
-      const niveau = (['FORT', 'MOYEN', 'RAS'] as const)[i % 3]
+      const niveau = (['FORT', 'MOYEN', 'RAS'] as const)[i % 3]!
       return niveau === 'RAS'
         ? { numéro: i + 1, niveau, faits: [], ras: 'Rien de neuf. Les deux sources nommées sont muettes depuis le 3 juillet.' }
         : {

@@ -6,6 +6,9 @@ export default defineConfig({
     environment: 'node',
   },
   resolve: {
-    alias: { '@': new URL('./', import.meta.url).pathname },
+    alias: {
+      '@': new URL('./', import.meta.url).pathname,
+      '@payload-config': new URL('./payload.config.ts', import.meta.url).pathname,
+    },
   },
 })

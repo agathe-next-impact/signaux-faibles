@@ -15,7 +15,7 @@ vi.mock('@/lib/auth/source-acces', () => source)
 vi.mock('@/lib/env', () => ({ env: () => ({ ACCES_SECRET_HMAC: SECRET }) }))
 vi.mock('@/lib/portail/prospection', () => prospection)
 
-const { GET } = await import('@/app/acces/[jeton]/route')
+const { GET } = await import('@/app/(portail)/acces/[jeton]/route')
 
 const ouvrir = (identifiant: string) => {
   const jeton = signerJeton(identifiant, SECRET)
