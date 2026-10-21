@@ -285,6 +285,10 @@ export const sorteCourrier = pgEnum('sorte_courrier', [
   'essai_derniere_parution',
   'essai_tronquee',
   'alerte_espaces',
+  /** La lettre unique d'une parution, aux lecteurs actifs (programme du 22 octobre 2026). */
+  'lettre',
+  /** La lettre de filière, aux prospects (palier 1). */
+  'lettre_filiere',
 ])
 export const étatCourrier = pgEnum('état_courrier', ['prevu', 'envoye', 'echec'])
 

@@ -12,7 +12,7 @@ const sansUtilisateur = { req: { user: null } } as never
 const avecUtilisateur = { req: { user: { id: 'operatrice' } } } as never
 
 describe('les collections Payload', () => {
-  it('portent les sept slugs attendus, dans l’ordre de l’admin', () => {
+  it('portent les huit slugs attendus, dans l’ordre de l’admin', () => {
     expect(collections.map((collection) => collection.slug)).toEqual([
       'utilisateurs',
       'organisations',
@@ -21,6 +21,7 @@ describe('les collections Payload', () => {
       'editions',
       'prospects',
       'runs',
+      'gels',
     ])
   })
 

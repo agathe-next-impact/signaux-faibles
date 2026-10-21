@@ -11,6 +11,7 @@ import { logger, task } from '@trigger.dev/sdk'
 import { z } from 'zod'
 import { collecterLesSources, navigateurPlaywright } from '@/lib/moteur/collecte'
 import { convertirLesRéférentiels, lireRéférentielUnique, schémaDuRéférentielUnique, écrireRéférentielUnique } from '@/lib/moteur/referentiel'
+import type { DossierDOnboarding } from '@/lib/moteur/remise'
 import { clientAnthropic, produireDepuisLeDossier, remiseDe } from './moteur'
 import { lireLeDossier, ouvrirLEspace, remettreLÉdition, remettreLeRéférentiel } from './portail'
 
@@ -54,20 +55,11 @@ async function dériverLeRéférentiel(
   return { markdown, fiche: structuré.fiche, coût: ((u.input_tokens ?? 0) * 4 + (u.output_tokens ?? 0) * 20) / 1_000_000 }
 }
 
-type DossierDOnboarding = {
-  organisation: { id: string; nom: string; slug: string | null; site: string | null; contactEmail: string | null }
-  filière: { id: string; nom: string; référentiel: string | null } | null
-  fiche: string | null
-  référentielUnique: string | null
-  /** Pour un client historique : ses deux référentiels Notion exportés. */
-  référentielsNotion: { écosystème: string; concurrentiel: string; dernièresÉditions: string } | null
-}
-
 async function lireLeDossierDOnboarding(organisation: string): Promise<DossierDOnboarding> {
   const url = process.env['PORTAIL_URL']?.replace(/\/$/, '')
   const jeton = process.env['ACTIVATION_SECRET']
   if (!url || !jeton) throw new Error('PORTAIL_URL et ACTIVATION_SECRET sont requis.')
-  const réponse = await fetch(`${url}/api/veille/dossier?mode=onboarding&organisation=${encodeURIComponent(organisation)}`, { headers: { authorization: `Bearer ${jeton}` } })
+  const réponse = await fetch(`${url}/api/veille/dossier?mode=onboarding-complet&organisation=${encodeURIComponent(organisation)}`, { headers: { authorization: `Bearer ${jeton}` } })
   if (!réponse.ok) throw new Error(`GET /api/veille/dossier (onboarding) : ${réponse.status}`)
   return (await réponse.json()) as DossierDOnboarding
 }

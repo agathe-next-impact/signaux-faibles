@@ -299,6 +299,69 @@ hors de tout contrôle d'accès. Les suivants se créent depuis la collection
 « Utilisateurs », par un utilisateur connecté. Les lecteurs du portail n'y
 figurent jamais : ils n'ont ni compte Payload ni mot de passe.
 
+### Moteur, routes et paliers : ce qui est en place
+
+- **Validateur** : `contrôlerLaLettre({ forme: 'unique' })`, seuils dans
+  `LETTRE_UNIQUE` (`lib/portail/lint.ts`), tests `tests/portail.lint-unique.test.ts`.
+- **Moteur** `lib/moteur/` : `referentiel.ts` (format du référentiel unique,
+  lecteur, écrivain, conversion des deux référentiels Notion en un appel),
+  `collecte.ts` (HTTP puis navigateur, phrases nouvelles depuis le gel),
+  `recherche.ts` (requêtes types, un appel avec les outils serveur),
+  `redaction.ts` (sortie structurée, cache d'une heure), `assemblage.ts`,
+  `portes.ts`, `produire.ts` (deux reprises au plus), `selection.ts`
+  (numéro, période : du jour de l'édition précédente à la veille, sept jours au
+  moins, quatorze au plus), `cout.ts`, `remise.ts` (le contrat avec les routes),
+  `declencher.ts` (le seul appel à Trigger.dev côté portail).
+- **Routes du dispositif** (jeton d'activation) : `GET /api/veille/dossier`
+  (modes `selection`, `parution`, `decouverte`, `onboarding`, `filiere`,
+  `onboarding-complet`, `prospect`), `POST /api/veille/editions` (revalidation
+  par le portail, écriture Payload, journal `runs`, gel des sources dans la
+  collection `gels`, courriers aux lecteurs ou aux prospects),
+  `POST /api/veille/referentiels` (relu par le lecteur du moteur avant
+  d'être actif ; l'ancien est désactivé, jamais effacé), `POST /api/veille/prospects`
+  (le bloc personnalisé). Toute la logique Payload est dans
+  `lib/payload/dispositif.ts` ; l'envoi dans `lib/portail/parution.ts`
+  (sortes de courrier `lettre` et `lettre_filiere`, migration Drizzle 0007).
+- **Registre vers portail** (`lib/payload/portail.ts`) : passer une organisation
+  « à onboarder », ou créer un prospect, ouvre sa ligne `organisations` dans le
+  portail (`ouvrirEnEssai`, clé de cloisonnement = identifiant Payload sans
+  tirets) et crée le lecteur du contact quand Postgres fait foi ; puis la tâche
+  Trigger.dev part. La première visite d'une organisation entrée par
+  prospection déclenche l'édition de découverte quand `SOURCE_DOCUMENTS=payload`
+  (`lib/portail/prospection.ts`).
+- **Trigger.dev** : `trigger.config.ts` (extension Playwright), `trigger/portail.ts`
+  (client des routes), `trigger/moteur.ts`, `trigger/parution.ts`
+  (`parution-hebdomadaire` le lundi 6 h Europe/Paris, `produire-la-lettre`,
+  `produire-la-lettre-de-filiere`), `trigger/onboarding.ts` (`onboarding`,
+  `edition-de-decouverte`, `bloc-personnalise`). Variables de l'environnement
+  Trigger.dev : `PORTAIL_URL`, `ACTIVATION_SECRET`, `ANTHROPIC_API_KEY`.
+- **Évaluation** : `pnpm evaluation:unique convertir` puis `generer`, sur les
+  exports Notion de Konica et d'Infralliance, dès que les crédits sont
+  rechargés : c'est la mesure de coût et de qualité de la lettre unique avant
+  toute bascule.
+- **Migrations à appliquer au déploiement** : Drizzle 0007
+  (`lettres_du_moteur`, deux valeurs d'énumération, appliquée par le build de
+  production) ; Payload `20261021_105110_initiale` et
+  `20261021_111008_ajout_gels_fiche_bloc` (`pnpm payload:migrer`, à ajouter au
+  build quand `PAYLOAD_SECRET` et `DATABASE_URL` sont posées en production).
+
+### Ce qui reste
+
+- L'import de l'archive Notion vers Payload (`pnpm documents:importer`) et la
+  bascule `SOURCE_DOCUMENTS=payload`, après la mesure de la lettre unique.
+- Les référentiels de filière (contenu), à écrire dans l'admin ; la séquence
+  de trois courriels de prospection reste pilotée par le statut du prospect
+  (`a_contacter`, `lettre_1_envoyee`, `lettre_2_envoyee`), le troisième
+  courriel (invitation à « recevoir mon lien ») n'est pas encore envoyé par le
+  portail.
+- Le contrôle du soir ne signale pas encore `TRIGGER_SECRET_KEY` absente ni un
+  run Trigger.dev en échec ; les runs refusés sont visibles dans l'admin
+  (collection `runs`, `accepte` faux) et les éditions non acceptées restent en
+  brouillon.
+- Le build de production n'applique pas encore les migrations Payload.
+- `pnpm build` n'a pas été lancé dans la session (pas de base) : à faire sur
+  une prévisualisation Vercel avec `PAYLOAD_SECRET` avant de fusionner.
+
 ## Journal
 
 - **22 octobre 2026** : branche ouverte, dépendances installées (Payload
@@ -309,3 +372,8 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   `lib/documents/` aiguillée par `SOURCE_DOCUMENTS`, `lib/moteur/declencher.ts`,
   gardes d'architecture étendues (lecture Payload cachée, `getPayload` confiné,
   cinquième invalidation), `tests/payload.collections.test.ts`.
+- **22 octobre 2026, suite** : contrat de la lettre unique dans le validateur,
+  moteur en code, tâches Trigger.dev, Payload intégré (registre, documents,
+  façade, admin), routes du dispositif, gel des sources, envoi des lettres,
+  crochets du registre vers le portail, édition de découverte à la première
+  visite, script d'évaluation de la lettre unique.

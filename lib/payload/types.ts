@@ -74,6 +74,7 @@ export interface Config {
     editions: Edition;
     prospects: Prospect;
     runs: Run;
+    gels: Gel;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +89,7 @@ export interface Config {
     editions: EditionsSelect<false> | EditionsSelect<true>;
     prospects: ProspectsSelect<false> | ProspectsSelect<true>;
     runs: RunsSelect<false> | RunsSelect<true>;
+    gels: GelsSelect<false> | GelsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -172,6 +174,10 @@ export interface Organisation {
     email?: string | null;
   };
   etat: 'prospect' | 'a_onboarder' | 'en_onboarding' | 'active' | 'suspendue' | 'archivee';
+  /**
+   * Quatre à huit phrases : activité, territoire, clients, ce qui menace et ce qui porte. Écrite par l’onboarding, relisible ici.
+   */
+  fiche?: string | null;
   notes?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -253,6 +259,19 @@ export interface Prospect {
     nom?: string | null;
     email?: string | null;
   };
+  /**
+   * Les lignes « pour <organisation> » posées en tête de la lettre de filière ; écrites par la tâche, jamais saisies.
+   */
+  bloc?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  blocLe?: string | null;
   derniereLettreLe?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -292,6 +311,29 @@ export interface Run {
   edition?: (string | null) | Edition;
   debut?: string | null;
   fin?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gels".
+ */
+export interface Gel {
+  id: string;
+  organisation?: (string | null) | Organisation;
+  filiere?: (string | null) | Filiere;
+  url: string;
+  empreinte: string;
+  phrases?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  luLe?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -346,6 +388,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'runs';
         value: string | Run;
+      } | null)
+    | ({
+        relationTo: 'gels';
+        value: string | Gel;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -429,6 +475,7 @@ export interface OrganisationsSelect<T extends boolean = true> {
         email?: T;
       };
   etat?: T;
+  fiche?: T;
   notes?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -494,6 +541,8 @@ export interface ProspectsSelect<T extends boolean = true> {
         nom?: T;
         email?: T;
       };
+  bloc?: T;
+  blocLe?: T;
   derniereLettreLe?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -513,6 +562,20 @@ export interface RunsSelect<T extends boolean = true> {
   edition?: T;
   debut?: T;
   fin?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gels_select".
+ */
+export interface GelsSelect<T extends boolean = true> {
+  organisation?: T;
+  filiere?: T;
+  url?: T;
+  empreinte?: T;
+  phrases?: T;
+  luLe?: T;
   updatedAt?: T;
   createdAt?: T;
 }

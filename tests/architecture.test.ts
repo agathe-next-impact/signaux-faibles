@@ -506,7 +506,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // Ouvrir en essai ne se fait que par la route gardée de l'onboarding ;
     // J0 n'est posé que par le passage quotidien, d'après la première lettre publiée,
     // et ne se déplace que par le réglage de l'opératrice, sur la même route gardée.
-    expect(appelants('ouvrirEnEssai')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts'])
+    // Depuis le programme du 22 octobre 2026, le registre Payload ouvre aussi
+    // l'organisation dans le portail, par lib/payload/portail.ts et lui seul.
+    expect(appelants('ouvrirEnEssai')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts', 'lib/payload/portail.ts'])
     expect(appelants('fixerJ0')).toEqual(['lib/base/organisations.ts', 'lib/portail/parcours-courriers.ts'])
     // Depuis le 19 octobre 2026, les mêmes réglages ont un second chemin : les
     // actions du tableau des abonnements, derrière le privilège opérateur.
@@ -533,6 +535,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('créerLecteur')).toEqual([
       'app/api/veille/lecteurs/route.ts',
       'lib/base/ecriture-lecteurs.ts',
+      'lib/payload/portail.ts',
       'lib/portail/lecteurs.ts',
     ])
     expect(appelants('révoquerLecteurParId')).toEqual(['lib/base/ecriture-lecteurs.ts', 'lib/portail/lecteurs.ts'])

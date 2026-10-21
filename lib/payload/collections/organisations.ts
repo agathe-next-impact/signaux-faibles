@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { déclencherLOnboarding } from '@/lib/moteur/declencher'
 import { ACCÈS_AUTHENTIFIÉ } from '@/lib/payload/acces'
+import { ouvrirDansLePortail } from '@/lib/payload/portail'
 
 /**
  * Le registre des organisations, tenu dans Payload à la place de la base
@@ -73,6 +74,12 @@ export const organisations: CollectionConfig = {
       index: true,
       options: [...ÉTATS_D_ORGANISATION],
     },
+    {
+      name: 'fiche',
+      type: 'textarea',
+      label: 'Fiche',
+      admin: { description: 'Quatre à huit phrases : activité, territoire, clients, ce qui menace et ce qui porte. Écrite par l’onboarding, relisible ici.' },
+    },
     { name: 'notes', type: 'textarea', label: 'Notes' },
   ],
   hooks: {
@@ -82,6 +89,8 @@ export const organisations: CollectionConfig = {
           doc?.etat === 'a_onboarder' && (operation === 'create' || previousDoc?.etat !== 'a_onboarder')
         if (!passeÀOnboarder) return doc
         try {
+          // La ligne du portail d'abord (parcours, lecteurs), la tâche ensuite.
+          await ouvrirDansLePortail({ id: String(doc.id), nom: doc.nom, slug: doc.slug, contact: doc.contact }, { prospection: false })
           await déclencherLOnboarding(String(doc.id))
         } catch (erreur) {
           console.error(`[moteur] onboarding non déclenché pour ${String(doc.id)} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

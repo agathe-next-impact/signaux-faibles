@@ -78,3 +78,27 @@ export type RemiseDeRéférentiel = z.infer<typeof schémaDeRemiseDeRéférentie
 
 /** La réponse du portail à une remise acceptée. */
 export type AccuséDeRemise = { readonly edition?: string; readonly referentiel?: string; readonly run: string; readonly statut: 'publiee' | 'brouillon' | 'actif' }
+
+/** Ce que le portail donne à la tâche d'onboarding ou de découverte. */
+export type DossierDOnboarding = {
+  readonly organisation: { readonly id: string; readonly nom: string; readonly slug: string | null; readonly site: string | null; readonly contactEmail: string | null }
+  readonly filière: { readonly id: string; readonly nom: string; readonly référentiel: string | null } | null
+  readonly fiche: string | null
+  /** Le référentiel unique déjà en base, Markdown, ou `null` s'il reste à produire. */
+  readonly référentielUnique: string | null
+  /** Pour un client historique : ses deux référentiels Notion, importés, ou `null`. */
+  readonly référentielsNotion: { readonly écosystème: string; readonly concurrentiel: string; readonly dernièresÉditions: string } | null
+}
+
+/** Ce que le portail donne à la tâche du bloc personnalisé. */
+export type DossierDeProspect = {
+  readonly prospect: { readonly id: string; readonly organisation: string; readonly site: string | null }
+  readonly filière: { readonly nom: string; readonly référentiel: string | null } | null
+  readonly dernièreLettreDeFilière: string | null
+}
+
+export const schémaDeRemiseDeBloc = z.object({
+  prospect: z.string().min(1),
+  run: z.string().min(1),
+  bloc: z.array(z.string().min(1).max(200)).min(1).max(8),
+})
