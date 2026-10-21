@@ -72,6 +72,77 @@ describe('toute lecture Notion vit dans une fonction cachée', () => {
   })
 })
 
+/**
+ * La même règle pour Payload (22 octobre 2026). `lib/documents/payload.ts` lit
+ * les éditions par l'API locale de Payload, sur la base Neon : chaque fonction
+ * qui obtient l'instance (`getPayload`) est cachée, pour les mêmes raisons, et
+ * `getPayload` n'est appelé nulle part ailleurs dans les écrans, pour que
+ * personne ne lise Payload en contournant la façade. Les routes d'écriture à
+ * venir sous `/api/veille/` et le dossier `lib/payload/` sont les seules autres
+ * places admises.
+ */
+describe('toute lecture Payload vit dans une fonction cachée, et getPayload reste confiné', () => {
+  const LECTURE_PAYLOAD = join(process.cwd(), 'lib', 'documents', 'payload.ts')
+  const sourcePayload = readFileSync(LECTURE_PAYLOAD, 'utf8')
+
+  for (const fonction of fonctionsDe(sourcePayload)) {
+    if (!/\bgetPayload\(/.test(fonction.corps)) continue
+    it(`lib/documents/payload.ts → ${fonction.nom}`, () => {
+      expect(fonction.corps, `${fonction.nom} appelle getPayload sans directive « use cache »`).toContain("'use cache: remote'")
+    })
+  }
+
+  it('la lecture Payload est bien là, et cachée à distance', () => {
+    expect(sourcePayload).toContain('getPayload(')
+    for (const directive of sourcePayload.match(/'use cache[^']*'/g) ?? []) {
+      expect(directive).toBe("'use cache: remote'")
+    }
+  })
+
+  const sources = (): Array<{ chemin: string; source: string }> => {
+    const trouvés: Array<{ chemin: string; source: string }> = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (/\.tsx?$/.test(entrée.name)) trouvés.push({ chemin: relatif(chemin), source: readFileSync(chemin, 'utf8') })
+      }
+    }
+    for (const racine of ['app', 'components', 'lib']) parcourir(join(process.cwd(), racine))
+    return trouvés
+  }
+
+  it('getPayload n’est appelé que par la lecture des documents, lib/payload et les routes du dispositif', () => {
+    const PERMIS = (chemin: string) =>
+      chemin === 'lib/documents/payload.ts' || chemin.startsWith('lib/payload/') || chemin.startsWith('app/api/veille/')
+    const fautifs = sources()
+      .filter(({ source }) => /\bgetPayload\(/.test(source))
+      .map(({ chemin }) => chemin)
+      .filter((chemin) => !PERMIS(chemin))
+    expect(fautifs).toEqual([])
+  })
+
+  it('les écrans lisent les documents par la façade, jamais par une source directement', () => {
+    // `lib/notion/editions` n'est importé que par la façade, par sa jumelle
+    // Payload (pour le type) et par les routes `/api/veille/*`, qui restent sur
+    // Notion ; `lib/documents/payload` que par la façade.
+    const importeurs = (module_: string) =>
+      sources()
+        .filter(({ source }) => new RegExp(`from ['"]${module_}['"]`).test(source))
+        .map(({ chemin }) => chemin)
+        .sort()
+    expect(importeurs('@/lib/documents/payload')).toEqual(['lib/documents/index.ts'])
+    const notion = importeurs('@/lib/notion/editions').filter((chemin) => !chemin.startsWith('app/api/veille/'))
+    expect(notion).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts'])
+    // Et la façade est bien employée là où les écrans lisent.
+    expect(importeurs('@/lib/documents')).toContain('lib/portail/semaine.ts')
+    expect(importeurs('@/lib/documents')).toContain('components/note.tsx')
+  })
+})
+
 describe('les propriétés internes ne sortent jamais du serveur', () => {
   it('le type Édition ne porte ni Famille, ni Livraison, ni Amendements', () => {
     const source = readFileSync(join(DOSSIER, 'editions.ts'), 'utf8')
@@ -257,7 +328,7 @@ describe('la resynchronisation manuelle reste un geste d’opérateur', () => {
  * rendu viderait le cache à chaque visite, et la limite de trois requêtes par
  * seconde serait atteinte par le trafic normal.
  */
-describe('l’invalidation de cache reste à quatre endroits, tous gardés', () => {
+describe('l’invalidation de cache reste à cinq endroits, tous gardés', () => {
   it('personne d’autre n’appelle updateTag ni revalidateTag', () => {
     const trouvés: string[] = []
     const parcourir = (dossier: string) => {
@@ -275,10 +346,15 @@ describe('l’invalidation de cache reste à quatre endroits, tous gardés', () 
     }
     for (const racine of ['app', 'components', 'lib']) parcourir(join(process.cwd(), racine))
 
+    // Le cinquième (22 octobre 2026) est l'invalidation des éditions Payload,
+    // appelée par les crochets `afterChange` et `afterDelete` de la collection :
+    // elle vient après une écriture que Payload a autorisée (utilisateur
+    // authentifié ou API locale du portail), à la place du webhook Notion.
     expect(trouvés.sort()).toEqual([
       'app/api/acces/ouvrir/route.ts',
       'app/api/veille/lint/route.ts',
       'app/api/webhooks/notion/route.ts',
+      'lib/documents/invalidation.ts',
       'lib/portail/resynchroniser.ts',
     ])
   })
@@ -289,6 +365,23 @@ describe('l’invalidation de cache reste à quatre endroits, tous gardés', () 
     // `updateTag` n'est permis que dans une action serveur : dans un handler il lève.
     expect(source).not.toContain('updateTag(')
     expect(source).toContain('{ expire: 0 }')
+  })
+
+  it('l’invalidation Payload n’est appelée que par la collection editions', () => {
+    const trouvés: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (!/\.tsx?$/.test(entrée.name)) continue
+        if (readFileSync(chemin, 'utf8').includes('invaliderLÉdition(')) trouvés.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib']) parcourir(join(process.cwd(), racine))
+    expect(trouvés.sort()).toEqual(['lib/documents/invalidation.ts', 'lib/payload/collections/editions.ts'])
   })
 })
 
@@ -413,7 +506,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // Ouvrir en essai ne se fait que par la route gardée de l'onboarding ;
     // J0 n'est posé que par le passage quotidien, d'après la première lettre publiée,
     // et ne se déplace que par le réglage de l'opératrice, sur la même route gardée.
-    expect(appelants('ouvrirEnEssai')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts'])
+    // Depuis le programme du 22 octobre 2026, le registre Payload ouvre aussi
+    // l'organisation dans le portail, par lib/payload/portail.ts et lui seul.
+    expect(appelants('ouvrirEnEssai')).toEqual(['app/api/veille/organisations/route.ts', 'lib/base/organisations.ts', 'lib/payload/portail.ts'])
     expect(appelants('fixerJ0')).toEqual(['lib/base/organisations.ts', 'lib/portail/parcours-courriers.ts'])
     // Depuis le 19 octobre 2026, les mêmes réglages ont un second chemin : les
     // actions du tableau des abonnements, derrière le privilège opérateur.
@@ -440,6 +535,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('créerLecteur')).toEqual([
       'app/api/veille/lecteurs/route.ts',
       'lib/base/ecriture-lecteurs.ts',
+      'lib/payload/portail.ts',
       'lib/portail/lecteurs.ts',
     ])
     expect(appelants('révoquerLecteurParId')).toEqual(['lib/base/ecriture-lecteurs.ts', 'lib/portail/lecteurs.ts'])
@@ -464,9 +560,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // privilège avant ; l'écran n'appelle que ce contrôle. Et l'écran client lit
     // sa situation par la clé de cloisonnement, par le seul lecteur du portail.
     expect(appelants('tableauDesAbonnements')).toEqual(['lib/auth/appartenance.ts', 'lib/base/situation.ts'])
-    expect(appelants('listerLesAbonnements')).toEqual(['app/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
+    expect(appelants('listerLesAbonnements')).toEqual(['app/(portail)/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
     expect(appelants('lireSituationDAbonnement')).toEqual(['lib/base/situation.ts', 'lib/portail/situation.ts'])
-    expect(appelants('situationDeLEspace')).toEqual(['app/[slug]/abonnement/page.tsx', 'lib/portail/situation.ts'])
+    expect(appelants('situationDeLEspace')).toEqual(['app/(portail)/[slug]/abonnement/page.tsx', 'lib/portail/situation.ts'])
   })
 
   it('toute route /api/veille commence par la garde du jeton', () => {
@@ -544,8 +640,8 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
       // `/client` → la racine de l'espace ; `/client/axes` → le dossier `axes`.
       const segment = onglet.href.replace(/^\/client\/?/, '')
       const chemin = segment
-        ? join(process.cwd(), 'app', '[slug]', segment, 'page.tsx')
-        : join(process.cwd(), 'app', '[slug]', 'page.tsx')
+        ? join(process.cwd(), 'app', '(portail)', '[slug]', segment, 'page.tsx')
+        : join(process.cwd(), 'app', '(portail)', '[slug]', 'page.tsx')
 
       expect(existsSync(chemin), `${onglet.libellé} → ${onglet.href} (${chemin})`).toBe(true)
       // Le menu de pied tronque au-delà : un libellé coupé ne dit plus où il mène.
@@ -565,12 +661,12 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
       join('axes', '[axe]'),
       join('acteurs', '[acteur]'),
     ]) {
-      expect(existsSync(join(process.cwd(), 'app', '[slug]', détail, 'page.tsx')), détail).toBe(
+      expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', détail, 'page.tsx')), détail).toBe(
         true,
       )
     }
     // L'ancien écran ne doit pas survivre à côté des nouveaux.
-    expect(existsSync(join(process.cwd(), 'app', '[slug]', 'tendances'))).toBe(false)
+    expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', 'tendances'))).toBe(false)
   })
 
   /**
@@ -580,7 +676,7 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
    * sur un 404, et rien dans le build ne casserait si elle disparaissait.
    */
   it('l’écran renommé laisse sa redirection derrière lui', () => {
-    expect(existsSync(join(process.cwd(), 'app', '[slug]', 'cadrage'))).toBe(false)
+    expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', 'cadrage'))).toBe(false)
 
     const config = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8')
     expect(config).toContain("source: '/:slug/cadrage'")
@@ -603,7 +699,7 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
  * ouverts hors lecture complète, et ils lisent le droit eux-mêmes.
  */
 describe('chaque écran de l’espace obéit au droit de lecture', () => {
-  const racine = join(process.cwd(), 'app', '[slug]')
+  const racine = join(process.cwd(), 'app', '(portail)', '[slug]')
   const pages: string[] = []
   const parcourir = (dossier: string) => {
     for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
@@ -768,7 +864,7 @@ describe('la prospection par lemlist reste à sa place', () => {
   })
 
   it('la visite n’est signalée que par la route du lien d’accès, et la synchronisation que par le cron du parcours', () => {
-    expect(appelants('signalerVisite(')).toEqual(['app/acces/[jeton]/route.ts', 'lib/portail/prospection.ts'])
+    expect(appelants('signalerVisite(')).toEqual(['app/(portail)/acces/[jeton]/route.ts', 'lib/portail/prospection.ts'])
     expect(appelants('synchroniserLaProspection(')).toEqual(['app/api/veille/parcours/route.ts', 'lib/portail/prospection.ts'])
     expect(appelants('traiterÉvénementLemlist(')).toEqual(['app/api/webhooks/lemlist/route.ts', 'lib/portail/prospection.ts'])
   })
@@ -783,7 +879,7 @@ describe('la prospection par lemlist reste à sa place', () => {
   })
 
   it('la route du lien d’accès signale la visite après la pose du cookie, hors du chemin de la réponse', () => {
-    const route = readFileSync(join(process.cwd(), 'app', 'acces', '[jeton]', 'route.ts'), 'utf8')
+    const route = readFileSync(join(process.cwd(), 'app', '(portail)', 'acces', '[jeton]', 'route.ts'), 'utf8')
     expect(route.indexOf('cookies.set(')).toBeLessThan(route.indexOf('signalerVisite('))
     expect(route).toContain('after(() => signalerVisite(identifiant))')
   })

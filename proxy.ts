@@ -37,6 +37,22 @@ const PUBLICS = [
 ]
 
 /**
+ * L'admin Payload et son API REST ne sont pas des espaces clients.
+ *
+ * Ils vivent hors du cloisonnement du portail : Payload authentifie lui-même
+ * ses utilisateurs (l'opératrice), et un lecteur du portail n'y a rien à faire.
+ * Sans cette exclusion, `/admin` serait pris pour le slug d'un client et
+ * redirigé vers « recevoir mon lien ». Le `matcher` les écarte déjà ; ce test
+ * tient aussi pour les appels directs à `proxy()`, et pour qu'un slug qui
+ * commencerait par « admin » reste un slug.
+ */
+const SEGMENTS_PAYLOAD = ['/admin', '/payload-api']
+
+export function estUneAdressePayload(pathname: string): boolean {
+  return SEGMENTS_PAYLOAD.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
+}
+
+/**
  * Pages publiques adressées exactement, et non par préfixe : `/demo` en
  * préfixe ouvrirait aussi `/demonstration` ou l'espace d'un client dont le slug
  * commencerait par « demo ».
@@ -46,7 +62,7 @@ const PUBLICS_EXACTS = new Set(['/', '/demo'])
 export function proxy(requête: NextRequest): NextResponse {
   const { pathname } = requête.nextUrl
 
-  if (PUBLICS_EXACTS.has(pathname) || PUBLICS.some((public_) => pathname.startsWith(public_))) {
+  if (PUBLICS_EXACTS.has(pathname) || estUneAdressePayload(pathname) || PUBLICS.some((public_) => pathname.startsWith(public_))) {
     return NextResponse.next()
   }
 
@@ -69,7 +85,7 @@ export function proxy(requête: NextRequest): NextResponse {
 }
 
 export const config = {
-  // Tout sauf les fichiers statiques : la protection est le défaut, l'exception
-  // est déclarée dans PUBLICS ci-dessus.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Tout sauf les fichiers statiques, l'admin Payload et son API : la
+  // protection est le défaut, l'exception est déclarée dans PUBLICS ci-dessus.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|admin(?:/|$)|payload-api(?:/|$)).*)'],
 }

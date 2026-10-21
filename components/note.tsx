@@ -1,6 +1,6 @@
 import { construireDocument } from '@/lib/domaine/document'
 import { tronquerÀLEssentiel } from '@/lib/domaine/troncature'
-import { lireBlocsDePage, type Édition } from '@/lib/notion/editions'
+import { lireBlocsDePage, type Édition } from '@/lib/documents'
 import { RenduDocument } from '@/components/document'
 import { EntêteÉdition } from '@/components/entete-edition'
 import { PanneauDossiers } from '@/components/panneau-dossiers'

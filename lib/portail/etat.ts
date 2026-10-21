@@ -1,4 +1,4 @@
-import type { Édition } from '@/lib/notion/editions'
+import type { Édition } from '@/lib/documents'
 import type { LigneDAccèsContrôlée } from '@/lib/notion/acces'
 import type { Rapport } from '@/lib/portail/lint'
 

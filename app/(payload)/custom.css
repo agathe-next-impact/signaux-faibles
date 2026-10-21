@@ -1,0 +1,8 @@
+/*
+ * Feuille de style propre à l'admin Payload (/admin).
+ *
+ * Volontairement vide : l'admin garde son apparence par défaut, il n'est pas
+ * un écran du portail et la charte ne s'y applique pas. Le gabarit officiel
+ * de Payload importe ce fichier depuis app/(payload)/layout.tsx ; il est en
+ * CSS et non en SCSS parce que le dépôt n'embarque pas sass.
+ */

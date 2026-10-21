@@ -1,4 +1,4 @@
-import type { Édition } from '@/lib/notion/editions'
+import type { Édition } from '@/lib/documents'
 
 /**
  * Le cartouche d'une note.

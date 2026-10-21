@@ -6,7 +6,7 @@ import { envoyerCourrier } from '@/lib/portail/courriers'
 import { env } from '@/lib/env'
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { sourcesDeDonnées } from '@/lib/notion/client'
-import { listerÉditionsPubliées } from '@/lib/notion/editions'
+import { listerÉditionsPubliées } from '@/lib/documents'
 import { interpréterDemande, vérifierJeton } from '@/lib/portail/activation'
 import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
 

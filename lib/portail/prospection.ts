@@ -1,5 +1,6 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { base, baseConfigurée, type Base } from '@/lib/base/client'
+import { registreDeLOrganisation } from '@/lib/base/parution'
 import {
   créerProspectionÀLaVisite,
   enregistrerVisite,
@@ -14,7 +15,10 @@ import {
   type ProspectionÀSynchroniser,
   type StatutProspection,
 } from '@/lib/base/prospection'
+import { sourceDocuments } from '@/lib/documents/source'
 import { étapeDuParcours } from '@/lib/domaine/parcours'
+import { déclencherLÉditionDeDécouverte } from '@/lib/moteur/declencher'
+import { identifiantPayload } from '@/lib/payload/portail'
 import { clientLemlistConfiguré, type ClientLemlist } from '@/lib/lemlist/client'
 import type { ÉvénementLemlist } from '@/lib/lemlist/webhook'
 import { empreinte } from '@/lib/portail/debit'
@@ -88,6 +92,12 @@ export async function signalerVisite(identifiantAcces: string, dépendances: Dé
     // Entrée par prospection : c'est cette visite qui ouvre le mois d'essai.
     const essaiOuvert = visite.organisationId !== null && (await ouvrirLEssaiÀLaVisite(visite.organisationId, maintenant, db))
     if (essaiOuvert) console.info('[prospection] essai ouvert à la première visite.')
+    // Palier 3 (programme du 22 octobre 2026) : la première visite déclenche
+    // l'édition de découverte, quand les documents vivent dans Payload.
+    if (essaiOuvert && visite.organisationId && sourceDocuments() === 'payload') {
+      const registre = await registreDeLOrganisation(visite.organisationId, db)
+      if (registre) await déclencherLÉditionDeDécouverte(identifiantPayload(registre))
+    }
 
     const marque = visite.email ? empreinte(visite.email) : null
     const ligne = await prospectionDuLecteur({ id: visite.lecteurId, organisationId: visite.organisationId, empreinte: marque }, db)

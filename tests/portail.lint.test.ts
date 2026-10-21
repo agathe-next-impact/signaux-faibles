@@ -66,7 +66,7 @@ describe('contrôlerLaLettre — une lettre au contrat', () => {
 
   it('est conforme, sans rupture ni avertissement', () => {
     expect(rapport.ruptures).toEqual([])
-    expect(rapport.avertissements).toEqual([])
+    expect(rapport.avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
     expect(rapport.conforme).toBe(true)
   })
 
@@ -84,7 +84,7 @@ describe('contrôlerLaLettre — une lettre au contrat', () => {
       ['CADA', 1, true],
       ['circulaire DETR 2027', 2, true],
     ])
-    expect(rapport.avertissements).toEqual([])
+    expect(rapport.avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
   })
 
   it('voit le cadrage présent, clos par le trait, avec la phrase de clôture', () => {
@@ -148,13 +148,27 @@ describe('contrôlerLaLettre — les ruptures du 11 septembre 2026, nommées ava
 })
 
 describe('contrôlerLaLettre — le bloc de cadrage', () => {
-  it('absent : rupture, l’écran Cadrage serait vide', () => {
+  it('absent : aucune rupture depuis le 22 octobre 2026, et aucun avertissement de cadrage', () => {
     const blocs = lettreConforme()
     const début = blocs.findIndex((b) => b.type === 'heading_1' && (b.heading_1 as { rich_text: Array<{ plain_text: string }> }).rich_text[0]?.plain_text.includes('cadrage'))
     blocs.splice(début, 4)
     const rapport = contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
-    expect(rapport.ruptures.map((r) => r.code)).toContain('cadrage-absent')
+    expect(rapport.ruptures.map((r) => r.code).filter((c) => c.startsWith('cadrage'))).toEqual([])
+    expect(rapport.avertissements.map((a) => a.code)).not.toContain('cadrage-présent')
     expect(rapport.aperçu.cadrage.présent).toBe(false)
+  })
+
+  it('présent : avertissement, les propositions de cadrage ne vont plus dans la lettre', () => {
+    const rapport = contrôlerLaLettre({ titre: 't', blocs: lettreConforme(), dossiersBruts: DOSSIERS_CONFORMES })
+    expect(rapport.avertissements.map((a) => a.code)).toContain('cadrage-présent')
+  })
+
+  it('signale les éléments du rapport de collecte écrits dans la lettre', () => {
+    const blocs = [...lettreConforme(), h1('Ce qui a été vérifié pour cette édition'), p('Sources non ouvertes : trois pages en 403.')]
+    const rapport = contrôlerLaLettre({ titre: 't', blocs, dossiersBruts: DOSSIERS_CONFORMES })
+    const avertissement = rapport.avertissements.find((a) => a.code === 'collecte-dans-la-lettre')
+    expect(avertissement?.message).toContain('ce qui a ete verifie')
+    expect(avertissement?.message).toContain('sources non ouvertes')
   })
 
   it('sans trait horizontal : rupture, le pied de lettre partirait avec le cadrage', () => {
@@ -257,7 +271,7 @@ describe('contrôlerLaLettre — « L’essentiel », repris tel quel par le dig
     expect(lignes).toHaveLength(ESSENTIEL_LIGNES_MAX)
     const rapport = contrôler(avecEssentiel(lignes))
     expect(rapport.ruptures).toEqual([])
-    expect(rapport.avertissements).toEqual([])
+    expect(rapport.avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
   })
 
   it('neuf lignes : rupture essentiel-trop-long, de portée lettre', () => {
@@ -365,7 +379,7 @@ describe('contrôlerLaLettre — la richesse d’une édition n°1', () => {
 
   it('une n°1 de six faits avec son analyse : rien à signaler', () => {
     const rapport = avecNuméro(lettreN1(4, true), 1)
-    expect(rapport.avertissements).toEqual([])
+    expect(rapport.avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
   })
 
   it('les encadrés ne comptent pas comme des faits', () => {
@@ -385,7 +399,7 @@ describe('contrôlerLaLettre — la richesse d’une édition n°1', () => {
   })
 
   it('une édition courante n’est pas visée', () => {
-    expect(avecNuméro(lettreConforme(), 7).avertissements).toEqual([])
-    expect(avecNuméro(lettreConforme(), null).avertissements).toEqual([])
+    expect(avecNuméro(lettreConforme(), 7).avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
+    expect(avecNuméro(lettreConforme(), null).avertissements.filter((a) => a.code !== 'cadrage-présent')).toEqual([])
   })
 })

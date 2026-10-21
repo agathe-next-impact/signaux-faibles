@@ -4,7 +4,7 @@ import { refresh, updateTag } from 'next/cache'
 import { notFound } from 'next/navigation'
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { sourcesDeDonnées } from '@/lib/notion/client'
-import { listerÉditionsPubliées } from '@/lib/notion/editions'
+import { listerÉditionsPubliées } from '@/lib/documents'
 
 /**
  * Relire Notion maintenant, sans attendre le webhook ni l'heure de revalidation.

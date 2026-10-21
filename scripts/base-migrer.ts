@@ -1,7 +1,7 @@
 /**
  * Applique les migrations SQL de `drizzle/` à la base désignée par DATABASE_URL.
  *
- *   pnpm base:migrer                 → toujours
+ *   pnpm base:migrer                 → toujours (Drizzle, puis Payload si PAYLOAD_SECRET est posée)
  *   tsx scripts/base-migrer.ts --deploiement   → au build, en production seulement
  *
  * Drizzle tient le registre des migrations appliquées dans la base elle-même
@@ -17,7 +17,24 @@
  * n'est appliqué et le build continue, comme une page qui ne touche pas
  * Postgres ne tombe pas parce que la base n'existe pas encore.
  */
+import { execFileSync } from 'node:child_process'
 import { appliquerLesMigrations } from '@/lib/base/migrer'
+
+/**
+ * Les migrations Payload (`payload-migrations/`, schéma `payload`) partent avec
+ * les mêmes déploiements, aux mêmes conditions, et seulement quand Payload est
+ * configuré (`PAYLOAD_SECRET`) : avant, le schéma `payload` n'existe pas et rien
+ * ne le lit. Payload tient son propre registre (`payload.payload_migrations`),
+ * relancer n'applique que ce qui manque.
+ */
+function appliquerLesMigrationsPayload(): void {
+  if (!process.env['PAYLOAD_SECRET']?.trim()) {
+    console.info('Migrations Payload non appliquées : PAYLOAD_SECRET absente.')
+    return
+  }
+  execFileSync('pnpm', ['exec', 'payload', 'migrate'], { stdio: 'inherit' })
+  console.info('Migrations Payload appliquées.')
+}
 
 async function principal(): Promise<void> {
   if (process.argv.includes('--deploiement')) {
@@ -33,6 +50,7 @@ async function principal(): Promise<void> {
   }
   await appliquerLesMigrations()
   console.info('Migrations appliquées.')
+  appliquerLesMigrationsPayload()
 }
 
 principal()
