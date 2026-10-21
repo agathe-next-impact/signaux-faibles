@@ -342,8 +342,8 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
 - **Migrations à appliquer au déploiement** : Drizzle 0007
   (`lettres_du_moteur`, deux valeurs d'énumération, appliquée par le build de
   production) ; Payload `20261021_105110_initiale` et
-  `20261021_111008_ajout_gels_fiche_bloc` (`pnpm payload:migrer`, à ajouter au
-  build quand `PAYLOAD_SECRET` et `DATABASE_URL` sont posées en production).
+  `20261021_111008_ajout_gels_fiche_bloc` (`pnpm payload:migrer`, ou le build
+  de production dès que `PAYLOAD_SECRET` et `DATABASE_URL` y sont posées).
 
 ### Ce qui reste
 
@@ -358,7 +358,9 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   run Trigger.dev en échec ; les runs refusés sont visibles dans l'admin
   (collection `runs`, `accepte` faux) et les éditions non acceptées restent en
   brouillon.
-- Le build de production n'applique pas encore les migrations Payload.
+- Le build de production applique les migrations Payload après celles de
+  Drizzle (`scripts/base-migrer.ts --deploiement`), production seule, dès que
+  `PAYLOAD_SECRET` est posée ; avant, il le dit et continue.
 - `pnpm build` n'a pas été lancé dans la session (pas de base) : à faire sur
   une prévisualisation Vercel avec `PAYLOAD_SECRET` avant de fusionner.
 
