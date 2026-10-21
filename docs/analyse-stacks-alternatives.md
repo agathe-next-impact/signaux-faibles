@@ -479,32 +479,82 @@ par un schéma ; une seule, l'auto-hébergement, répond à un argument commerci
 
 ## 5. Recommandation
 
-1. **Tout de suite, stack 1** : sortir le moteur de l'abonnement Max vers l'API
-   en conception pipeline et Batch, sans rien toucher d'autre. C'est la suite
-   exacte de la décision du 16 octobre, cela coûte 2 à 4 semaines, cela
-   remplace 200 $ d'abonnement par un coût à l'usage de 4 à 9 $ par organisation
-   et par mois, cela porte la borne de 15 à 25 organisations à 200 à 300, et
-   cela donne la mesure (`runs.coût`) qui manque à toute décision suivante.
-   Deux sièges Notion Plus, en attendant, lèvent la limite à un seul membre.
-2. **Au premier trimestre 2027, stack 3** : une fois `SOURCE_ACCES=postgres`
-   basculé, retirer Notion au profit de Payload dans le Next.js existant, ce qui
-   porte la borne de 200 à 300 organisations à plus de 1 000. C'est la seule stack qui change la vie de
-   l'opératrice au quotidien, et le moteur de la stack 1 s'y branche sans
-   changement : il écrit un document structuré, Payload le stocke au lieu de
-   Notion.
-3. **Garder la stack 4 comme option commerciale**, pas comme urgence : le même
-   Next.js se déploie sur Scaleway le jour où une collectivité exige des données
-   en France ; les lettres en Postgres (stack 3) rendent ce déménagement trivial,
-   alors qu'il ne l'est pas tant que le cache distant Vercel porte Notion.
-4. **Réévaluer la stack 5** quand la tarification de Managed Agents sera
-   publique ; elle est la plus proche du plan actuel et la plus chère par lettre.
-5. **Ne pas faire la stack 2** : elle cumule deux migrations de données pour un
-   gain que la stack 3 obtient avec un fournisseur de moins.
+*Mise à jour du 22 octobre 2026 : la cible devient la combinaison Payload +
+Trigger.dev, décrite au §3bis, après les comparaisons de fiabilité et
+d'onboardings. La version du 21 octobre visait Payload seul.*
 
-Ce qui reste à décider avant la stack 1 : le modèle (Opus 5.5 ou Sonnet 5.5,
-à départager sur dix lettres réelles passées au validateur et relues), et la
-place du collecteur de sources (palier 3 avancé, ou première version qui
-réutilise les sources que le référentiel nomme déjà).
+**Cible : Payload CMS 3 dans le Next.js existant pour l'administration, les
+documents, l'éditeur et les rôles ; Trigger.dev pour la chaîne d'onboarding et
+les runs du moteur ; Postgres Neon pour l'état et les documents ; Notion
+retiré.** Ce qui la justifie, critère par critère :
+
+- **Usage** : l'admin est fourni, une organisation se crée dans un formulaire,
+  un référentiel se relit et se valide dans un éditeur avec versions, un
+  onboarding se lance d'un bouton et se suit en direct par les crochets temps
+  réel de Trigger.dev. Les trois pièges Notion disparaissent par construction.
+- **Capacité** : plus de 1 000 organisations ; 12 à 25 onboardings simultanés
+  sur le plan Hobby, 50 à 100 sur Pro, le plafond réel étant le palier de débit
+  de l'API Anthropic.
+- **Fiabilité** : les runs longs et les attentes humaines sortent des fonctions
+  Vercel bornées en durée pour aller dans des tâches durables, avec reprise,
+  retentatives et journal par run ; Payload ne porte que des travaux courts.
+- **Coût** : fixe ≈ 65 $ par mois (Vercel 20, Neon 15 à 25, Trigger.dev Hobby
+  10, Resend 0, Workspace 10), contre 230 à 250 $ aujourd'hui ; par organisation
+  4 à 9 $ en pipeline, 26 à 35 $ en agentique, plus 0,05 à 0,35 $ de calcul
+  Trigger.dev et 2 $ de Stripe ; 215 $ à 20 organisations, 435 $ à 50, 805 $ à
+  100 en pipeline.
+- **Effort** : 7 à 11 semaines au total, en trois étapes qui livrent chacune
+  quelque chose d'utilisable.
+
+### Les trois étapes
+
+1. **Tout de suite, étape 1, le moteur (2 à 4 semaines).** Sortir le moteur de
+   l'abonnement Max vers l'API : collecteur de sources en code, rédaction par
+   sortie structurée, validateur existant comme porte, écriture de la page
+   Notion acceptée par le moteur lui-même. **Le faire directement dans
+   Trigger.dev plutôt que dans un cron Vercel** : c'est le même code, mais sans
+   limite de durée, avec reprise et journal, et la chaîne d'onboarding s'y
+   construira sans déménagement. Le choix pipeline ou agentique reste ouvert à
+   cette étape, puisque Trigger.dev permet les deux ; la mesure `runs.coût`
+   tranchera. Résultat : 200 à 300 organisations possibles, 10 à 25 onboardings
+   en parallèle, l'abonnement Max remplacé par 10 $ de Trigger.dev et le coût du
+   modèle à l'usage. Deux sièges Notion Plus, en attendant, lèvent la limite à
+   un seul membre.
+2. **Ensuite, étape 2, la chaîne d'onboarding dans Trigger.dev (1 à 2
+   semaines).** Demande, référentiels, point d'attente de validation, premières
+   lettres, point d'attente de publication, J0, ouverture : une tâche durable par
+   onboarding, déclenchée depuis un écran `/espaces` minimal (un formulaire et un
+   tableau des étapes), les référentiels restant relus dans Notion jusqu'à
+   l'étape 3. C'est l'étape qui remplace les six commandes.
+3. **Au premier trimestre 2027, étape 3, Payload (4 à 6 semaines).** Une fois
+   `SOURCE_ACCES=postgres` basculé : les documents en Postgres, l'admin et
+   l'éditeur Payload, Notion retiré après import de l'archive, le crochet Payload
+   qui déclenche la chaîne de l'étape 2 à la place de l'écran minimal. Quatre
+   précautions, celles du §3bis : runs longs jamais en Payload Jobs, lectures
+   Postgres gardées en cache distant, version de Payload figée et testée en
+   prévisualisation, compatibilité avec Next.js 16.3 et `cacheComponents` prouvée
+   sur une branche avant d'engager la migration.
+
+### Ce qui ne change pas
+
+- **Garder la stack 4 comme option commerciale**, pas comme urgence : le même
+  Next.js se déploie sur Scaleway le jour où une collectivité exige des données
+  en France ; les lettres en Postgres rendent ce déménagement trivial, et
+  Trigger.dev s'auto-héberge si la chaîne doit suivre.
+- **Réévaluer la stack 5** quand la tarification de Managed Agents sera
+  publique ; elle reste la plus proche du plan du 16 octobre et la plus chère
+  par lettre.
+- **Ne pas faire la stack 2 entière** : Supabase n'apporte que la RLS de plus
+  que Neon, au prix d'une migration de base supplémentaire ; ce que la stack 2
+  avait de meilleur, Trigger.dev, est repris dans la cible.
+
+### Ce qui reste à décider
+
+Avant l'étape 1 : le modèle (Opus 5.5 ou Sonnet 5.5, à départager sur dix
+lettres réelles passées au validateur et relues) ; la conception pipeline ou
+agentique, à trancher sur la mesure de coût d'un mois ; le palier de débit API
+à demander. Avant l'étape 3 : la compatibilité Payload et Next.js 16.3,
+vérifiée sur une branche.
 
 ## Sources consultées le 21 octobre 2026
 
