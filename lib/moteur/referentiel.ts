@@ -59,9 +59,9 @@ export type RéférentielUnique = {
 }
 
 const schémaDAxe = z.object({
-  nom: z.string().min(2).max(60).describe("Le nom de l'axe, tel que le lecteur le verra en titre, sans numéro ni suffixe d'impact"),
+  nom: z.string().min(2).max(80).describe("Le nom de l'axe, tel que le lecteur le verra en titre, sans numéro ni suffixe d'impact, court (60 caractères de préférence)"),
   sorte: z.enum(['thème', 'concurrents']).describe("« thème » pour un sujet de l'écosystème, « concurrents » pour un sujet d'offre commerciale (prix, formules, positionnement) ; dans les deux cas une thématique, jamais le nom d'une organisation"),
-  critères: z.string().max(300).describe('Une à deux phrases : ce qui, sur cet axe, compte comme FORT et comme MOYEN pour cette organisation'),
+  critères: z.string().max(700).describe('Deux à quatre phrases, 400 caractères de préférence : ce qui, sur cet axe, compte comme FORT et comme MOYEN pour cette organisation, seuils chiffrés compris'),
   sources: z
     .array(z.object({ libellé: z.string().max(80), url: z.string().url() }))
     .max(12)
@@ -80,7 +80,7 @@ export const schémaDuRéférentielUnique = z.object({
   dossiers: z
     .array(z.object({ nom: z.string().max(80), compteur: z.number().int().min(0), précision: z.string().max(120) }))
     .max(20)
-    .describe("Les dossiers ouverts suivis d'édition en édition, repris des dernières éditions publiées avec leur compteur"),
+    .describe("Les dossiers ouverts suivis d'édition en édition : chaque dossier est une organisation (entreprise, administration, association), jamais un sujet, un texte de loi ou une version logicielle, qui sont des faits d'axe ; repris des dernières éditions publiées avec leur compteur"),
 })
 
 export type RéférentielStructuré = z.infer<typeof schémaDuRéférentielUnique>
@@ -224,6 +224,7 @@ export async function convertirLesRéférentiels(
     `Chaque axe est une thématique : un thème de l'écosystème (réglementation, marché, financement, technologie, territoire, etc.) ` +
     `ou un sujet d'offre commerciale (prix, formules, positionnement). Un axe ne porte jamais le nom d'une organisation ni d'un type d'organisations ; ` +
     `les concurrents, administrations et guichets vont dans les acteurs de l'axe, qui servent à les suivre comme dossiers. ` +
+    `Un dossier ouvert est une organisation ; un sujet, un texte ou une version logicielle en cours n'est pas un dossier, il se suit dans son axe. ` +
     `Couvre tout le spectre des deux référentiels sans doublon : fusionne ce qui se recoupe, garde les sources et les requêtes telles quelles, ` +
     `ne crée aucune URL que les référentiels ne contiennent pas. Les critères disent ce qui compte comme FORT et MOYEN pour CETTE organisation. ` +
     `Les dossiers ouverts viennent des dernières éditions publiées, avec leur compteur. Réponds en français, dans le format demandé.`
@@ -234,7 +235,7 @@ export async function convertirLesRéférentiels(
     `<dernieres_editions>\n${entrée.dernièresÉditions}\n</dernieres_editions>`
   const réponse = await anthropic.beta.messages.parse({
     model: options.modèle ?? MODÈLE_DE_CONVERSION,
-    max_tokens: 16_000,
+    max_tokens: 20_000,
     system: système,
     messages: [{ role: 'user', content: utilisateur }],
     output_format: zodOutputFormat(schémaDuRéférentielUnique),
