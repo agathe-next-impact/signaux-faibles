@@ -1,0 +1,144 @@
+{
+  "acceptée": true,
+  "manquements": [],
+  "rapport": {
+    "conforme": true,
+    "ruptures": [],
+    "avertissements": [],
+    "aperçu": {
+      "titre": "Veille La petite vitrine, édition n° 2 du 22 octobre 2026",
+      "rubriques": [
+        "L'essentiel",
+        "Actualités par axe",
+        "Dossiers suivis",
+        "Sources non consultées"
+      ],
+      "axes": [
+        {
+          "numéro": 1,
+          "titre": "Prix et formules des sites vitrines sur abonnement",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 2,
+          "titre": "Offres verticales pour artisans et BTP",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 3,
+          "titre": "Offres pour praticiens de santé et du bien-être",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 4,
+          "titre": "Remises jeunes entreprises, parrainage et apport d'affaires",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 5,
+          "titre": "Avis, comparatifs et réputation des offres clé en main",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 6,
+          "titre": "Outils grand public et sites des logiciels métier",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 7,
+          "titre": "Mentions obligatoires et déontologie des professions réglementées",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 8,
+          "titre": "Obligations d'affichage sectorielles : restauration, artisanat, BTP",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 9,
+          "titre": "RGPD, cookies et traceurs sur les sites des TPE",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 10,
+          "titre": "Accessibilité numérique des sites",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 11,
+          "titre": "Programmes publics de numérisation des TPE",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 12,
+          "titre": "Prescription et réseaux d'accompagnement des créateurs",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 13,
+          "titre": "Créations d'entreprises et installations d'indépendants",
+          "niveau": "RAS"
+        },
+        {
+          "numéro": 14,
+          "titre": "Fiscalité micro-entreprise : franchise de TVA et facturation électronique",
+          "niveau": "MOYEN"
+        },
+        {
+          "numéro": 15,
+          "titre": "Visibilité locale : fiche Google, référencement local et IA",
+          "niveau": "MOYEN"
+        }
+      ],
+      "dossiers": [
+        {
+          "nom": "Simplébo",
+          "compteur": 0,
+          "précision": "Dès 30 €/mois + 200 € de lancement ; −25 % pendant 2 ans ; bâtiment dès 60 € HT/mois",
+          "nommé": true
+        },
+        {
+          "nom": "Oneki",
+          "compteur": 0,
+          "précision": "29,90 €/mois, création à 0 €, sans engagement",
+          "nommé": true
+        },
+        {
+          "nom": "WebTensor",
+          "compteur": 0,
+          "précision": "99 € HT/mois, sans frais de création, référencement local inclus",
+          "nommé": true
+        },
+        {
+          "nom": "1234WEB",
+          "compteur": 0,
+          "précision": "À partir de 40 € HT/mois, sans frais de création",
+          "nommé": true
+        },
+        {
+          "nom": "France Num",
+          "compteur": 2,
+          "précision": "Candidatures d'Activateurs en hausse ; délai d'évaluation allongé",
+          "nommé": true
+        },
+        {
+          "nom": "Dwenola",
+          "compteur": 0,
+          "précision": "29 €/mois tout inclus, livraison en 72 heures, sans engagement",
+          "nommé": true
+        },
+        {
+          "nom": "IAGov",
+          "compteur": 0,
+          "précision": "99 € au départ puis 9,90 € HT/mois, blog rédigé par IA inclus",
+          "nommé": true
+        }
+      ],
+      "cadrage": {
+        "présent": false,
+        "clos": false,
+        "phraseDeClôture": false
+      }
+    }
+  }
+}

@@ -508,3 +508,13 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   source primaire dans le référentiel dérivé ; la recherche ne retient que 3 résultats sur 40
   recherches ; les cinq dossiers suivis sont tous « sans mouvement ». Ni courriel, ni lien
   d'accès, ni Payload, ni Trigger.dev, ni Stripe n'ont tourné.
+- **22 octobre 2026, simulation de la semaine 2** (`pnpm onboarding:local --semaines 2`, même
+  jour, période chevauchante, web inchangé) : la file attribue le n° 2, le portail accepte les
+  deux lettres, le gel détecte 2 sources changées sur 31. Coût de liste : 2,88 $ (n° 1) et
+  2,16 $ (n° 2), soit 5,05 $ ; le coût d'une même lettre varie de 2,10 à 2,88 $ d'un run à
+  l'autre (recherche : 302 000 à 485 000 jetons en entrée). Constat : la lettre 2 compte autant
+  de faits (28) et d'axes non RAS (14) que la 1, dont 21 éléments de contexte, alors que
+  presque rien n'a changé ; 20 lignes sur 28 citent une URL déjà citée, aucune n'est
+  identique mot pour mot (la reformulation déjoue une comparaison exacte). La règle dure
+  (deux faits par axe) fait redire chaque semaine les relevés de pages inchangées, datés du
+  jour de l'édition. À trancher : n'admettre un relevé que si la page a changé depuis le gel.
