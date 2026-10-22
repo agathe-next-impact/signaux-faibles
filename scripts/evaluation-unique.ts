@@ -134,7 +134,7 @@ async function commandeGenerer(organisations: string[], options: { dateÉdition:
         anthropic: client(),
         gel: lireLeGel(organisation),
         ouvrirNavigateur: () => navigateurPlaywright(process.env['CHROMIUM_PATH'] ?? '/opt/pw-browsers/chromium'),
-        effort: 'high',
+        effort: 'medium',
         rechercher: options.recherche ? undefined : null,
         journal: (ligne) => process.stderr.write(`  ${organisation} : ${ligne}\n`),
       },

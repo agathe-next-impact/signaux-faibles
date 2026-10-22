@@ -32,7 +32,7 @@ export async function produireDepuisLeDossier(
       anthropic: clientAnthropic(),
       gel: gelDuDossier(dossier),
       ouvrirNavigateur: () => navigateurPlaywright(),
-      effort: 'high',
+      effort: 'medium',
       journal: options.journal,
       ...(options.reprisesMax !== undefined ? { reprisesMax: options.reprisesMax } : {}),
     },

@@ -183,19 +183,25 @@ export function rédacteurAnthropic(anthropic: Anthropic, options: { modèle?: s
   const modèle = options.modèle ?? MODÈLE_DE_RÉDACTION
   const usage: Usage = { entrée: 0, sortie: 0, cacheLecture: 0, cacheÉcriture: 0 }
   const messages: Anthropic.Beta.BetaMessageParam[] = []
-  const appeler = async (effort = options.effort): Promise<SortieRédigée> => {
-    const réponse = await anthropic.beta.messages.parse({
-      model: modèle,
-      max_tokens: 21_000,
-      system: [{ type: 'text', text: systèmeDeRédaction(), cache_control: { type: 'ephemeral', ttl: '1h' } }],
-      messages,
-      output_format: zodOutputFormat(schémaDeLaLettre),
-      ...(effort ? { output_config: { effort } } : {}),
-    } as unknown as Parameters<typeof anthropic.beta.messages.parse>[0])
+  const appeler = async (effort: 'low' | 'medium' | 'high' | 'xhigh' | undefined = options.effort ?? 'medium'): Promise<SortieRédigée> => {
+    let réponse: Awaited<ReturnType<typeof anthropic.beta.messages.parse>>
+    try {
+      réponse = await anthropic.beta.messages.parse({
+        model: modèle,
+        max_tokens: 21_000,
+        system: [{ type: 'text', text: systèmeDeRédaction(), cache_control: { type: 'ephemeral', ttl: '1h' } }],
+        messages,
+        output_format: zodOutputFormat(schémaDeLaLettre),
+        ...(effort ? { output_config: { effort } } : {}),
+      } as unknown as Parameters<typeof anthropic.beta.messages.parse>[0])
+    } catch (erreur) {
+      // L'objet a été coupé au plafond (la réflexion a tout pris) : le SDK échoue à le lire. Une seconde tentative, à effort réduit.
+      if (effort !== 'low' && /parse structured output/i.test(erreur instanceof Error ? erreur.message : String(erreur))) return appeler('low')
+      throw erreur
+    }
     ajouterUsage(usage, réponse.usage)
     const sortie = (réponse as unknown as { parsed_output?: SortieRédigée | null }).parsed_output
     if (!sortie) {
-      // La réflexion a épuisé le plafond avant la fin de l'objet : une seconde tentative, à effort réduit, plutôt que de perdre le run.
       if (réponse.stop_reason === 'max_tokens' && effort !== 'low') return appeler('low')
       throw new Error(`Rédaction : aucune sortie structurée (${réponse.stop_reason}).`)
     }
