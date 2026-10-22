@@ -93,10 +93,13 @@ export function systèmeDeRédaction(): string {
     `une par dossier, et un fait la nomme en clair. Tu ne proposes ni idée de post, ni recommandation de publication, ni conseil de communication ; ` +
     `tu ne parles pas des sources que le programme n'a pas pu lire, il les liste lui-même. ` +
     `Le niveau d'un axe est celui de son fait le plus fort, selon les critères de l'axe ; trois niveaux et trois seulement, FAIBLE n'existe pas. ` +
-    `Un fait de la période est daté dedans. Un axe FORT ou MOYEN porte deux faits : quand la période n'en donne qu'un, le second est un élément de contexte daté (contexte: true), ` +
-    `tiré des articles antérieurs du dossier marqués contexte="oui" ou d'un extrait de source daté, jamais inventé. ` +
-    `Un axe dont le dossier ne donne aucun fait de la période est RAS ; un axe dont le dossier ne donne qu'un fait, sans élément de contexte sourçable, est RAS aussi plutôt que rempli. ` +
-    `Une page qui porte l'attribut miseajour a été modifiée à cette date : un tarif ou une offre qu'elle affiche est un fait de cette date.\n\n` +
+    `Chaque axe porte deux faits, et RAS est le dernier recours. Dans cet ordre : une nouveauté de la période, datée dedans ; ` +
+    `un élément de contexte daté (contexte: true), tiré des articles antérieurs marqués contexte="oui" ; ` +
+    `un relevé de page : pour une source ouverte, ce qu'elle affiche aujourd'hui (prix, formules, offre, état d'un dossier) se dit « Au 21 octobre, … » en prenant le jour et le mois de la date d'édition du dossier, et le fait porte cette date d'édition dans le champ date, ` +
+    `contexte: true, et l'URL de la page ouverte. Une page qui porte l'attribut miseajour a été modifiée à cette date : ce qu'elle affiche est une nouveauté de cette date. ` +
+    `Un relevé dit ce que la page montre, avec ses chiffres et leur unité, rien de plus. ` +
+    `Un axe est RAS seulement si aucune de ses sources n'est ouverte dans le dossier, ou si elles ne donnent rien de chiffré ni de daté à relever. ` +
+    `Le niveau de l'axe ne monte jamais à cause d'un relevé : un axe qui n'a que du contexte et des relevés est MOYEN au plus, et FORT seulement si un fait de la période l'est.\n\n` +
     `COMMENT C'EST ÉCRIT : des phrases, sujet verbe complément, une idée par phrase, un acteur par phrase, les sigles développés à leur première apparition, ` +
     `la date en toutes lettres dans la phrase (« le 12 septembre »), le ton sobre et factuel, sans effet d'annonce. ` +
     `Les dates : celle d'un fait est celle que l'extrait donne, jamais celle d'une autre page ; un article porte sa date de publication dans l'attribut date, ` +

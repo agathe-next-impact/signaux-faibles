@@ -456,3 +456,15 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   modification (« Mis à jour le 16 octobre 2026 », attribut `miseajour`) : un
   tarif qu'elle affiche est un fait de cette date, ce qui rattrape les pages de
   prix sans métadonnée de publication.
+- **22 octobre 2026, règle dure** (choix de l'opératrice : chaque axe affiche deux
+  informations) : RAS devient le dernier recours. Un axe dont le dossier porte
+  de la matière (une source ouverte, un article, un résultat de recherche) ne
+  peut pas rester en RAS (`axe-ras-evitable`, porte du moteur). Il remplit ses
+  deux faits dans l'ordre : nouveauté de la période ; élément de contexte daté,
+  les articles suivis remontant à cent quatre-vingts jours ; relevé de page,
+  c'est-à-dire ce qu'une source ouverte affiche le jour de l'édition (prix,
+  formules, offre), daté du jour de l'édition et marqué contexte
+  (`releve-non-marque` sinon). La porte des dates ne cherche pas la date d'un
+  relevé dans la page : la date du relevé est celle de l'édition. Un axe dont
+  aucune source n'a pu être lue reste en RAS. Un axe qui n'a que du contexte et
+  des relevés ne dépasse pas MOYEN.

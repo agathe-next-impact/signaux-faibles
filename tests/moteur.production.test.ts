@@ -182,6 +182,28 @@ describe('contrôlerLaProduction', () => {
     expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: new Map() }).manquements).toEqual([])
   })
 
+  it('un relevé de page daté du jour de l’édition passe sans que la date se lise dans la page, à condition d’être marqué contexte', () => {
+    const sortie = sortieConforme()
+    sortie.axes[0]!.faits[0] = { texte: 'Au 26 octobre, la source affiche une grille de deux formules.', date: SÉLECTION.dateÉdition, url: URL(1), autresUrls: [], contexte: true }
+    const textes = new Map([[URL(1), 'Une page de tarifs. Complétée le 20 octobre 2026.']])
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes }).manquements.filter((m) => m.code === 'fait-date-non-sourcée')).toEqual([])
+    sortie.axes[0]!.faits[0]!.contexte = false
+    const refusé = contrôlerLaProduction({ lettre: assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION), sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes })
+    expect(refusé.manquements.map((m) => m.code)).toContain('releve-non-marque')
+  })
+
+  it('refuse un axe en RAS quand le dossier porte de la matière, l’admet quand aucune source n’a pu être lue', () => {
+    const sortie = sortieConforme()
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    const tous = new Set(Array.from({ length: AXES }, (_, i) => i + 1))
+    const refusé = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, axesAvecMatière: tous })
+    expect(refusé.manquements.map((m) => m.code)).toContain('axe-ras-evitable')
+    expect(refusé.messageDeReprise).toContain('relevé de page')
+    const sansMatièreSurLesRas = new Set([...tous].filter((n) => sortie.axes[n - 1]!.niveau !== 'RAS'))
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, axesAvecMatière: sansMatièreSurLesRas }).manquements).toEqual([])
+  })
+
   it('refuse deux dossiers qui écrivent le même sujet', () => {
     const sortie = sortieConforme()
     sortie.dossiers = [
@@ -277,9 +299,27 @@ function rédacteurSimulé(réponses: SortieRédigée[]): Rédacteur & { correct
 const fetchDuCycle = (async (entrée: string | URL | Request) =>
   new Response(`<p>Le texte est paru le 21 octobre et complété le 20 octobre, ${String(entrée)}. Une seconde phrase stable et longue, qui fait passer la page au-dessus du seuil de deux cents caractères, pour que la collecte la compte comme ouverte.</p>`, { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch
 
+/** Une sortie dont chaque axe a de la matière : les axes sans nouveauté portent deux relevés de page datés du jour de l'édition. */
+function sortieAvecReleves(): SortieRédigée {
+  const sortie = sortieConforme()
+  sortie.axes = sortie.axes.map((axe) =>
+    axe.niveau === 'RAS'
+      ? {
+          ...axe,
+          niveau: 'MOYEN' as const,
+          faits: [
+            { texte: `Au 26 octobre, la source ${axe.numéro} affiche une grille de deux formules.`, date: SÉLECTION.dateÉdition, url: URL(axe.numéro), autresUrls: [], contexte: true },
+            { texte: `Au 26 octobre, la source ${axe.numéro} affiche un délai de trois jours.`, date: SÉLECTION.dateÉdition, url: URL(axe.numéro), autresUrls: [], contexte: true },
+          ],
+        }
+      : axe,
+  )
+  return sortie
+}
+
 describe('produireLaLettre', () => {
   it('accepte une première rédaction conforme sans reprise, et rend le gel suivant', async () => {
-    const rédacteur = rédacteurSimulé([sortieConforme()])
+    const rédacteur = rédacteurSimulé([sortieAvecReleves()])
     const production = await produireLaLettre(
       { référentiel: RÉFÉRENTIEL, sélection: SÉLECTION },
       { anthropic: {} as Anthropic, rédacteur, rechercher: null, fetch: fetchDuCycle },
@@ -287,16 +327,16 @@ describe('produireLaLettre', () => {
     expect(production.acceptée).toBe(true)
     expect(production.mesures.reprises).toBe(0)
     expect(production.mesures.couverture.taux).toBe(1)
-    expect(production.mesures.faits).toBe(16)
+    expect(production.mesures.faits).toBe(24)
     expect(production.mesures.coût).toBeCloseTo((1000 * 4 + 500 * 20) / 1_000_000, 6)
     expect(production.collecte.gelSuivant.size).toBe(AXES)
     expect(production.lettre.blocs.length).toBeGreaterThan(20)
   })
 
   it('reprend sur un manquement avec le message de reprise, puis accepte', async () => {
-    const fausse = sortieConforme()
+    const fausse = sortieAvecReleves()
     fausse.axes[0]!.faits[0]!.url = 'https://invente.example/x'
-    const rédacteur = rédacteurSimulé([fausse, sortieConforme()])
+    const rédacteur = rédacteurSimulé([fausse, sortieAvecReleves()])
     const journal: string[] = []
     const production = await produireLaLettre(
       { référentiel: RÉFÉRENTIEL, sélection: SÉLECTION },
@@ -309,7 +349,7 @@ describe('produireLaLettre', () => {
   })
 
   it('s’arrête après deux reprises et rend la lettre non acceptée, avec ses manquements', async () => {
-    const fausse = sortieConforme()
+    const fausse = sortieAvecReleves()
     fausse.axes[0]!.faits[0]!.url = 'https://invente.example/x'
     const rédacteur = rédacteurSimulé([fausse, fausse, fausse])
     const production = await produireLaLettre(
@@ -322,7 +362,7 @@ describe('produireLaLettre', () => {
   })
 
   it('admet les URL des résultats de recherche comme sources', async () => {
-    const sortie = sortieConforme()
+    const sortie = sortieAvecReleves()
     sortie.axes[0]!.faits[0]!.url = 'https://presse.example/article'
     const rédacteur = rédacteurSimulé([sortie])
     const production = await produireLaLettre(

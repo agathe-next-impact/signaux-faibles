@@ -22,7 +22,7 @@ const sortie: SortieRédigée = {
   axes: Array.from({ length: AXES }, (_, i) =>
     i === 0
       ? { numéro: 1, niveau: 'FORT' as const, faits: [{ texte: 'Le raccordement de Telehouse Magny est acté le 27 octobre.', date: '2026-10-27', url: URL(1), autresUrls: [], contexte: false }, { texte: 'Le site de Telehouse Magny ouvre le 26 octobre.', date: '2026-10-26', url: URL(1), autresUrls: [], contexte: false }] }
-      : { numéro: i + 1, niveau: 'RAS' as const, faits: [] },
+      : { numéro: i + 1, niveau: 'MOYEN' as const, faits: [{ texte: `Au 2 novembre, la source ${i + 1} affiche une grille de deux formules.`, date: '2026-11-02', url: URL(i + 1), autresUrls: [], contexte: true }, { texte: `Au 2 novembre, la source ${i + 1} affiche un délai de trois jours.`, date: '2026-11-02', url: URL(i + 1), autresUrls: [], contexte: true }] },
   ),
   dossiers: [],
   actionDeLaSemaine: 'Suivre le raccordement.',

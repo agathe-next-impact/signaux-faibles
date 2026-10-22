@@ -97,6 +97,11 @@ export function contrôlerLaProduction(entrée: {
   readonly urlsAdmises: ReadonlySet<string>
   /** Ce que dit chaque URL ouverte, par URL normalisée : la porte des dates y cherche la date du fait. */
   readonly textes?: ReadonlyMap<string, string>
+  /**
+   * Les numéros d'axes dont le dossier porte de la matière (une source ouverte, un article, un résultat de recherche) :
+   * un tel axe ne peut pas rester en RAS, il porte deux faits au moins, relevé de page compris. Absent : la porte est muette.
+   */
+  readonly axesAvecMatière?: ReadonlySet<number>
 }): ContrôleDeProduction {
   const { lettre, sortie, sélection } = entrée
   const rapport = contrôlerLaLettre({
@@ -144,6 +149,16 @@ export function contrôlerLaProduction(entrée: {
     for (const axe of sortie.axes) {
       for (const fait of axe.faits) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fait.date)) continue
+        // Un relevé de page, daté du jour de l'édition : état des lieux d'une source ouverte, jamais une nouveauté.
+        if (fait.date === sélection.dateÉdition) {
+          if (!fait.contexte) {
+            manquements.push({
+              code: 'releve-non-marque',
+              message: `axe ${axe.numéro} : le fait daté du jour de l'édition (« ${fait.texte.slice(0, 70)} ») est un relevé de page, pas une nouveauté : le marquer contexte (contexte: true), ou lui donner la date que son extrait écrit.`,
+            })
+          }
+          continue
+        }
         const lus = [fait.url, ...fait.autresUrls].map((u) => entrée.textes?.get(normaliserUrl(u))).filter((t): t is string => typeof t === 'string')
         if (lus.length > 0 && !lus.some((texte) => dateSeLit(texte, fait.date))) {
           manquements.push({
@@ -152,6 +167,17 @@ export function contrôlerLaProduction(entrée: {
           })
         }
       }
+    }
+  }
+
+  // ── Un axe qui a de la matière ne reste pas en RAS ───────────────────────
+  if (entrée.axesAvecMatière) {
+    const évitables = sortie.axes.filter((axe) => (axe.niveau === 'RAS' || axe.faits.length === 0) && entrée.axesAvecMatière?.has(axe.numéro))
+    if (évitables.length > 0) {
+      manquements.push({
+        code: 'axe-ras-evitable',
+        message: `${évitables.length} axe(s) en RAS alors que le dossier porte de la matière : ${évitables.map((a) => a.numéro).join(', ')}. Chaque axe porte deux faits : une nouveauté de la période, un élément de contexte daté des articles antérieurs, ou un relevé de page (« Au ${sélection.dateÉdition}, la source affiche… », daté du jour de l'édition, contexte: true, avec l'URL de la page ouverte). RAS est réservé à l'axe dont aucune source n'a pu être lue.`,
+      })
     }
   }
 

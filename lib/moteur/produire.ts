@@ -80,7 +80,7 @@ export async function produireLaLettre(
   journal(`collecte : ${couverture.ouvertes}/${couverture.nommées} sources ouvertes, ${lectures.filter((l) => l.changée).length} changées`)
 
   // 1bis. Les articles que les pages d'index mènent à lire, datés par leurs métadonnées.
-  const articles = dépendances.suivreLesArticles === false ? [] : await suivreLesArticles(lectures, sélection.période, { fetch: dépendances.fetch })
+  const articles = dépendances.suivreLesArticles === false ? [] : await suivreLesArticles(lectures, sélection.période, { fetch: dépendances.fetch, contexteJours: 180, contexteParSource: 3 })
   journal(`articles : ${articles.length} lus dans la période, depuis ${new Set(articles.map((a) => a.source)).size} sources`)
 
   // 2. Requêtes types.
@@ -97,6 +97,14 @@ export async function produireLaLettre(
     ...recherche.résultats.map((r) => r.url),
     ...articles.map((a) => a.url),
   ])
+  // Les axes dont le dossier porte de la matière : une source ouverte, un article ou un résultat de recherche.
+  const sourcesOuvertes = new Set(lectures.filter((l) => l.état.startsWith('ouverte')).map((l) => l.url))
+  const urlsDeMatière = new Set([...articles.map((a) => a.source), ...articles.map((a) => a.url), ...recherche.résultats.map((r) => r.url)])
+  const axesAvecMatière = new Set(
+    référentiel.axes
+      .filter((axe) => axe.sources.some((s) => sourcesOuvertes.has(s.url) || urlsDeMatière.has(s.url)) || recherche.résultats.some((r) => r.axe === axe.numéro))
+      .map((axe) => axe.numéro),
+  )
   // Ce que chaque URL dit, pour que la porte des dates lise la source du fait.
   const textes = new Map<string, string>()
   const ajouter = (url: string, texte: string) => textes.set(normaliserUrl(url), `${textes.get(normaliserUrl(url)) ?? ''}\n${texte}`)
@@ -115,7 +123,7 @@ export async function produireLaLettre(
   const dossier = { lectures, résultats: recherche.résultats, articles }
   let sortie = await rédacteur.rédiger(référentiel, sélection, dossier)
   let lettre = assemblerLaLettre(sortie, référentiel, sélection, sourcesIgnorées)
-  let contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises, textes })
+  let contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises, textes, axesAvecMatière })
   let reprises = 0
   const reprisesMax = dépendances.reprisesMax ?? REPRISES_MAX
   while (!contrôle.franchies && reprises < reprisesMax) {
@@ -123,7 +131,7 @@ export async function produireLaLettre(
     journal(`reprise ${reprises} : ${contrôle.manquements.map((m) => m.code).join(', ')}`)
     sortie = await rédacteur.reprendre(contrôle.messageDeReprise ?? '')
     lettre = assemblerLaLettre(sortie, référentiel, sélection, sourcesIgnorées)
-    contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises, textes })
+    contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises, textes, axesAvecMatière })
   }
 
   const usage: Usage = { ...rédacteur.usage }
