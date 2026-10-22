@@ -1,0 +1,320 @@
+{
+  "mesures": {
+    "couverture": {
+      "nommées": 31,
+      "ouvertes": 30,
+      "taux": 0.967741935483871,
+      "fermées": [
+        {
+          "url": "https://independant.io/avis/simplebo/",
+          "état": "http-403+navigateur-403"
+        }
+      ]
+    },
+    "faits": 28,
+    "reprises": 1,
+    "recherches": 40,
+    "usage": {
+      "entrée": 302672,
+      "sortie": 23114,
+      "cacheLecture": 13332,
+      "cacheÉcriture": 5320
+    },
+    "coût": 2.1022344,
+    "duréeMs": 323883,
+    "modèle": "claude-opus-5-5"
+  },
+  "collecte": {
+    "lectures": [
+      {
+        "url": "https://www.simplebo.fr/tarifs",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 88
+      },
+      {
+        "url": "https://oneki.fr/creation-site-internet",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 106
+      },
+      {
+        "url": "https://www.1234web.fr/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 64
+      },
+      {
+        "url": "https://webtensor.fr/creation-site-web-artisan",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 99
+      },
+      {
+        "url": "https://graphixpro.net/site-vitrine-abonnement/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 58
+      },
+      {
+        "url": "https://dwenola.com/services/creation-site-internet/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 95
+      },
+      {
+        "url": "https://www.thelauncher.ai/blog/combien-coute-la-creation-dun-site-internet-en-2026",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 77
+      },
+      {
+        "url": "https://traxo.fr/observatoire-des-prix/france",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 57
+      },
+      {
+        "url": "https://blog.simplebo.fr/combien-coute-creation-site-internet-professionnel",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 78
+      },
+      {
+        "url": "https://www.lapetitevitrine.com/tarifs",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 94
+      },
+      {
+        "url": "https://www.simplebo.fr/creer-site-internet-artisan-artisanat-batiment?amp=&amp=&amp=&amp=&amp=&amp=&amp=&amp=&amp=&amp=&sbmcc=FOOTER_V2&sbmcn=SB_SITES_CLIENTS",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 81
+      },
+      {
+        "url": "https://www.siteartisan.fr/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 104
+      },
+      {
+        "url": "https://www.artizo.fr/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 66
+      },
+      {
+        "url": "https://www.artesansdubatiment.com/accueil/blog/31-site_internet_pour_artisans_par_abonnement_sans_engagement_ni_frais_de_creation.html",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 38
+      },
+      {
+        "url": "https://foxeet.fr/contenu/creation-de-site-internet-pour-artisans-tpe",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 88
+      },
+      {
+        "url": "https://www.lapetitevitrine.com/domaines",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 28
+      },
+      {
+        "url": "https://seobienetre.com/tarif-simplebo-site-internet-therapeutes/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 61
+      },
+      {
+        "url": "https://seobienetre.com/avis-simplebo/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 83
+      },
+      {
+        "url": "https://www.lapetitevitrine.com/catalogue",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 63
+      },
+      {
+        "url": "https://www.super-parrain.com/offres/hebergement-cloud/parrainage-simplebo",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 33
+      },
+      {
+        "url": "https://www.lapetitevitrine.com/prescripteurs",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 70
+      },
+      {
+        "url": "https://independant.io/avis/simplebo/",
+        "état": "http-403+navigateur-403",
+        "changée": null,
+        "nouveautés": 0
+      },
+      {
+        "url": "https://tool-advisor.fr/logiciel-creation-site-web/simplebo/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 77
+      },
+      {
+        "url": "https://myteq.fr/avis-simplebo/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 97
+      },
+      {
+        "url": "https://tavitrinelocale.fr/blog/avis-et-comparatifs/avis-simplebo/",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 64
+      },
+      {
+        "url": "https://majoli.io/en/compare/simplebo",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 100
+      },
+      {
+        "url": "https://fr.shopify.com/vendre/creations",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 105
+      },
+      {
+        "url": "https://iagov.fr/site-web.html",
+        "état": "ouverte-navigateur",
+        "changée": null,
+        "nouveautés": 74
+      },
+      {
+        "url": "https://www.lapetitevitrine.com/qui-sommes-nous",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 39
+      },
+      {
+        "url": "https://www.lapetitevitrine.com/solution",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 46
+      },
+      {
+        "url": "https://www.lapetitevitrine.com/accessibilite",
+        "état": "ouverte",
+        "changée": null,
+        "nouveautés": 10
+      }
+    ],
+    "articles": [
+      {
+        "source": "https://traxo.fr/observatoire-des-prix/france",
+        "url": "https://traxo.fr/observatoire-des-prix/etude-fiches-google-2026",
+        "titre": "Étude : les fiches Google des salons",
+        "date": "2026-10-21"
+      },
+      {
+        "source": "https://www.siteartisan.fr/",
+        "url": "https://www.siteartisan.fr/blog/devis-d-une-entreprise-de-travaux-specialises-lire-et-comparer/",
+        "titre": "Devis Devis d'une entreprise de travaux spécialisés : lire et comparer Postes, mentions obligatoires, méthode de comparaison et signaux d'alerte d'un devis d'entreprise de travaux spécialisés. 19 octo",
+        "date": "2026-10-19"
+      },
+      {
+        "source": "https://www.siteartisan.fr/",
+        "url": "https://www.siteartisan.fr/blog/fixer-ses-prix-et-son-taux-horaire-en-2026-la-methode/",
+        "titre": "Gestion & droits Fixer ses prix et son taux horaire en 2026 : la méthode Coût de revient, charges 2026, heures facturables et marge : la méthode chiffrée pour fixer un taux horaire qui tient. 13 octob",
+        "date": "2026-10-13"
+      },
+      {
+        "source": "https://www.thelauncher.ai/blog/combien-coute-la-creation-dun-site-internet-en-2026",
+        "url": "https://www.thelauncher.ai/blog/sms-professionnel-guide-complet-et-bonnes-pratiques-pour-artisans",
+        "titre": "11 min SMS professionnel : règles et modèles pour artisans Confirmer un rendez-vous, relancer un devis, rappeler une facture : comment utiliser le SMS professionnel pour un artisan, ce que la CNIL dit",
+        "date": "2026-10-12"
+      },
+      {
+        "source": "https://www.siteartisan.fr/",
+        "url": "https://www.siteartisan.fr/blog/constructeur-de-batiments-assurances-et-obligations-legales/",
+        "titre": "Réglementation Constructeur de bâtiments : assurances et obligations légales Décennale, RC pro, garantie de livraison, échéancier de paiement : le cadre réglementaire du constructeur de bâtiments expl",
+        "date": "2026-10-10"
+      },
+      {
+        "source": "https://www.thelauncher.ai/blog/combien-coute-la-creation-dun-site-internet-en-2026",
+        "url": "https://www.thelauncher.ai/blog/creer-un-site-internet-avec-l-ia-artisan",
+        "titre": "créer un site internet avec l'IA",
+        "date": "2026-10-07"
+      },
+      {
+        "source": "https://traxo.fr/observatoire-des-prix/france",
+        "url": "https://traxo.fr/observatoire-des-prix/etude-salons-2026",
+        "titre": "Étude : la réservation des salons",
+        "date": "2026-10-07"
+      },
+      {
+        "source": "https://www.thelauncher.ai/blog/combien-coute-la-creation-dun-site-internet-en-2026",
+        "url": "https://www.thelauncher.ai/blog/creer-un-compte-professionnel-instagram-le-guide-complet-pour-artisans",
+        "titre": "9 min Créer un compte professionnel Instagram : le guide complet pour artisans Un compte professionnel Instagram te donne un bouton Contact, des statistiques et des outils pour les entreprises. Voici ",
+        "date": "2026-10-01"
+      },
+      {
+        "source": "https://tavitrinelocale.fr/blog/avis-et-comparatifs/avis-simplebo/",
+        "url": "https://tavitrinelocale.fr/blog/prix-et-budget/abonnement-site-internet-calcul-5-ans/",
+        "titre": "Ce que coûte un abonnement de site internet sur cinq ans",
+        "date": "2026-09-22"
+      },
+      {
+        "source": "https://tavitrinelocale.fr/blog/avis-et-comparatifs/avis-simplebo/",
+        "url": "https://tavitrinelocale.fr/blog/prix-et-budget/devis-site-internet-10-lignes-a-verifier/",
+        "titre": "Devis site internet : les 10 lignes à vérifier",
+        "date": "2026-09-15"
+      },
+      {
+        "source": "https://graphixpro.net/site-vitrine-abonnement/",
+        "url": "https://graphixpro.net/lexique-de-lentrepreneur/",
+        "titre": "Le Lexique de l’entrepreneur",
+        "date": "2026-08-16"
+      },
+      {
+        "source": "https://tavitrinelocale.fr/blog/avis-et-comparatifs/avis-simplebo/",
+        "url": "https://tavitrinelocale.fr/blog/anti-arnaque/site-internet-offert-48-mois/",
+        "titre": "Site internet « offert » sur 48 mois",
+        "date": "2026-08-11"
+      },
+      {
+        "source": "https://www.1234web.fr/",
+        "url": "https://www.1234web.fr/politique-de-confidentialite",
+        "titre": "Politique de confidentialité",
+        "date": "2026-06-05"
+      }
+    ],
+    "résultats": [
+      {
+        "axe": 8,
+        "titre": "Affichage obligatoire en restaurant : liste et textes 2026",
+        "url": "https://panneauxsignaletiques.fr/content/122-affichage-obligatoire-restaurant",
+        "date": "2026-10-19",
+        "extrait": "Un restaurant doit afficher ses prix service compris (à l'extérieur pendant le service et à l'intérieur), l'information sur les allergènes ou la façon d'y accéder, l'origine des viandes servies"
+      },
+      {
+        "axe": 9,
+        "titre": "Hébergement de données de santé : Cloud HDS souverain",
+        "url": "https://www.bt-blue.com/hebergement-de-donnees-de-sante/",
+        "date": "2026-10-15",
+        "extrait": "les professionnels de santé en exercice libéral ou en structure collective, maisons et centres de santé ; - les laboratoires de biologie médicale et leurs plateaux techniques"
+      },
+      {
+        "axe": 10,
+        "titre": "European Accessibility Act: a guide for non-EU companies",
+        "url": "https://dardo.studio/en/blog/european-accessibility-act/",
+        "date": "2026-10-18",
+        "extrait": "And microenterprises that provide services, those with fewer than 10 people and annual turnover or balance sheet total of EUR 2 million or less, are exempt from its accessibility requirements."
+      }
+    ]
+  }
+}
