@@ -182,6 +182,30 @@ describe('contrôlerLaProduction', () => {
     expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: new Map() }).manquements).toEqual([])
   })
 
+  it('un fait daté du jour de l’édition que sa source écrit elle-même est une nouveauté du jour, pas un relevé', () => {
+    const sortie = sortieConforme()
+    sortie.axes[0]!.faits[0] = { texte: 'Le 26 octobre, la source publie un guide.', date: SÉLECTION.dateÉdition, url: URL(1), autresUrls: [], contexte: false }
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    const textes = new Map([[URL(1), 'Un guide publié le 26 octobre 2026. Complété le 20 octobre.']])
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes }).manquements).toEqual([])
+  })
+
+  it('refuse un chiffre que la source ne donne pas, admet ceux qu’elle écrit sous une autre mise en forme', () => {
+    const sortie = sortieConforme()
+    sortie.axes[0]!.faits[0] = { texte: 'Le 21 octobre, Sicollab affiche 1 000 à 1 500 € HT par mois, contre 290 € HT.', date: '2026-10-21', url: URL(1), autresUrls: [], contexte: false }
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    const long = (t: string) => `${'Une page de tarifs. '.repeat(90)}${t}`
+    const bon = new Map([[URL(1), long('Publié le 21 octobre 2026. 1000 à 1500 € HT. 290€ HT. Complété le 20 octobre.')]])
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: bon }).manquements.map((m) => m.code)).not.toContain('chiffre-non-sourcé')
+    const mauvais = new Map([[URL(1), long('Publié le 21 octobre 2026. Sicollab 1 000 € HT. Complété le 20 octobre.')]])
+    const refusé = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: mauvais })
+    expect(refusé.manquements.map((m) => m.code)).toContain('chiffre-non-sourcé')
+    expect(refusé.messageDeReprise).toContain('1500')
+    // Un extrait court (résultat de recherche) n'est pas jugé : le modèle de recherche en a lu davantage.
+    const court = new Map([[URL(1), 'Publié le 21 octobre 2026. Complété le 20 octobre.']])
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: court }).manquements.map((m) => m.code)).not.toContain('chiffre-non-sourcé')
+  })
+
   it('un relevé de page daté du jour de l’édition passe sans que la date se lise dans la page, à condition d’être marqué contexte', () => {
     const sortie = sortieConforme()
     sortie.axes[0]!.faits[0] = { texte: 'Au 26 octobre, la source affiche une grille de deux formules.', date: SÉLECTION.dateÉdition, url: URL(1), autresUrls: [], contexte: true }

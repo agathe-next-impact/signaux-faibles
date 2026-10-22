@@ -65,7 +65,7 @@ exigée, vérifiée par `contrôlerLaLettre({ forme: 'unique' })`.
 | « Dossiers suivis » | titre H1 du pied, un paragraphe par dossier ouvert, qui le nomme exactement comme la propriété ; la propriété `Dossiers ouverts suivis` garde le format `nom (compteur, précision)` | `dossier-sans-compteur`, `dossier-non-nommé` |
 | Sources non consultées | seule trace de la collecte admise : une rubrique H1 « Sources non consultées », **une liste de liens et rien d'autre**, écrite par le code d'après les lectures qui n'ont pas abouti (jamais par le modèle) ; une phrase ou une puce qui ajoute du texte au lien la fait refuser | `collecte-dans-la-lettre` |
 | Ce qui n'y figure jamais | rapport de collecte, note de méthode, sources non ouvertes, requêtes non lancées, réserves, ajustements du cadrage, références internes au référentiel | `collecte-dans-la-lettre` et `cadrage-présent` (ruptures en forme unique), `référence-interne` |
-| Longueur | 1 400 mots au plus, lettre entière | `lettre-trop-longue` |
+| Longueur | 1 800 mots au plus, lettre entière | `lettre-trop-longue` |
 
 Les trois niveaux d'impact, la pastille de fraîcheur, les mentions d'acteurs et
 le regroupement par semaine restent ce qu'ils sont. Une édition unique porte
@@ -468,3 +468,12 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   relevé dans la page : la date du relevé est celle de l'édition. Un axe dont
   aucune source n'a pu être lue reste en RAS. Un axe qui n'a que du contexte et
   des relevés ne dépasse pas MOYEN.
+- **22 octobre 2026, affinage de la règle dure** : un fait daté du jour de l'édition
+  n'est un relevé (donc marqué contexte) que si sa source n'écrit pas elle-même
+  cette date ; sinon c'est une nouveauté du jour. Nouvelle porte `chiffre-non-sourcé` :
+  les chiffres d'un fait (trois chiffres ou plus, ou suivis de €, % ou $, jamais une
+  année) se lisent dans le texte de sa source quand celui-ci est un article ou une
+  page lue en entier ; les extraits courts de recherche ne sont pas jugés. Le prompt
+  exige l'unité exacte d'un prix (par jour, par mois, par an, forfait) et interdit
+  de citer un prix dont l'extrait ne la donne pas. Plafond de longueur relevé à
+  1 800 mots (26 faits sur treize axes tenaient en 1 316 mots).

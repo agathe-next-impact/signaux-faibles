@@ -156,7 +156,7 @@ export const LETTRE_UNIQUE = {
   faitsParAxeMax: 2,
   phrasesParFaitMax: 2,
   caractèresParFaitMax: 220,
-  motsMax: 1400,
+  motsMax: 1800,
 } as const
 
 /** Les rubriques de conseils de publication : « Trois idées de posts », « Recommandation de post LinkedIn ». */

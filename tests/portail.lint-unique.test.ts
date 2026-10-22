@@ -264,11 +264,11 @@ describe('contrôlerLaLettre, forme unique : dossiers, collecte, longueur', () =
     expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('essentiel-ligne-longue')
   })
 
-  it('plus de 1 400 mots : lettre-trop-longue', () => {
+  it('plus de 1 800 mots : lettre-trop-longue', () => {
     const blocs = lettreUnique(15, { faitsParAxe: 3 })
     const longs = blocs.map((b) =>
       b.type === 'paragraph' && b.id !== blocs[1]!.id && b.id !== blocs[2]!.id
-        ? fait(`Le 3 octobre, ${'mot '.repeat(40)}.`)
+        ? fait(`Le 3 octobre, ${'mot '.repeat(60)}.`)
         : b,
     )
     const rapport = contrôler(longs)

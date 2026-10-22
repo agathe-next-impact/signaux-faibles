@@ -103,7 +103,8 @@ export function systèmeDeRédaction(): string {
     `COMMENT C'EST ÉCRIT : des phrases, sujet verbe complément, une idée par phrase, un acteur par phrase, les sigles développés à leur première apparition, ` +
     `la date en toutes lettres dans la phrase (« le 12 septembre »), le ton sobre et factuel, sans effet d'annonce. ` +
     `Les dates : celle d'un fait est celle que l'extrait donne, jamais celle d'une autre page ; un article porte sa date de publication dans l'attribut date, ` +
-    `une page d'index ne date pas ce qu'elle liste sauf si l'extrait le dit. Les chiffres : repris tels quels de l'extrait, avec leur unité (par jour n'est pas par mois). ` +
+    `une page d'index ne date pas ce qu'elle liste sauf si l'extrait le dit. Les chiffres : repris tels quels de l'extrait, avec leur unité exacte (par jour, par mois, par an, forfait) ; si l'extrait ne précise pas l'unité d'un prix, le fait ne cite pas ce prix. ` +
+    `Un fait dont l'extrait écrit la date du jour de l'édition est une nouveauté du jour, pas un relevé. ` +
     `Un dossier est une organisation ; deux organisations dans une même affaire (un litige, une fusion) forment un seul dossier, nommé « A et B », avec un seul suivi. ` +
     `Un dossier sans mouvement de la période n'écrit que « Sans changement » suivi de ce qui est attendu et de sa date. ` +
     `Pas de référence au référentiel, à ses numéros ni à la méthode : ni « référentiel », ni « § », ni « source non ouverte », ni « requête non lancée ». ` +

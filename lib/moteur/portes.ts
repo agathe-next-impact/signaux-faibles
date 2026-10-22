@@ -85,6 +85,33 @@ export function dossiersEnDouble(dossiers: ReadonlyArray<{ nom: string; suivi: s
   return paires
 }
 
+/** En dessous, un texte est un extrait de recherche : le modèle de recherche en a vu davantage, le contrôle des chiffres s'abstient. */
+const TEXTE_LONG = 1_500
+
+const NOMBRE = /\d(?:[\d\s\u00a0\u202f.,]*\d)?(?:\s?(€|%|\$|euros?|dollars?))?/gi
+
+/** Les chiffres significatifs d'un fait, séparateurs retirés : trois chiffres ou plus, ou suivis de €, % ou $ ; jamais une année. */
+export function chiffresDe(texte: string): string[] {
+  const trouvés = new Set<string>()
+  for (const m of texte.matchAll(NOMBRE)) {
+    const chiffres = m[0].replace(/[^\d]/g, '')
+    if (/^20\d\d$/.test(chiffres)) continue
+    if (chiffres.length >= 3 || m[1]) trouvés.add(chiffres)
+  }
+  return [...trouvés]
+}
+
+/** Tout ce qu'un texte écrit comme nombre, séparateurs retirés, avec chaque nombre d'une suite (« 1 000 à 1 500 ») pris seul. */
+function chiffresÉcrits(texte: string): Set<string> {
+  const écrits = new Set<string>()
+  for (const m of texte.matchAll(NOMBRE)) {
+    écrits.add(m[0].replace(/[^\d]/g, ''))
+    for (const part of m[0].split(/\s(?=\d{1,3}(?:\s|$))/)) écrits.add(part.replace(/[^\d]/g, ''))
+  }
+  for (const m of texte.matchAll(/\d{1,3}(?:[\s\u00a0\u202f]\d{3})+|\d+/g)) écrits.add(m[0].replace(/[^\d]/g, ''))
+  return écrits
+}
+
 export function urlsDuMarkdown(markdown: string): string[] {
   return [...new Set([...markdown.matchAll(/https?:\/\/[^\s)\]>"']+/g)].map((m) => m[0].replace(/[.,;:]+$/, '')))]
 }
@@ -149,17 +176,18 @@ export function contrôlerLaProduction(entrée: {
     for (const axe of sortie.axes) {
       for (const fait of axe.faits) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fait.date)) continue
-        // Un relevé de page, daté du jour de l'édition : état des lieux d'une source ouverte, jamais une nouveauté.
-        if (fait.date === sélection.dateÉdition) {
+        const lus = [fait.url, ...fait.autresUrls].map((u) => entrée.textes?.get(normaliserUrl(u))).filter((t): t is string => typeof t === 'string')
+        // Un fait daté du jour de l'édition est un relevé de page (un état des lieux, jamais une nouveauté) sauf si sa source
+        // écrit elle-même cette date : alors c'est une nouveauté du jour, et le contrôle ordinaire des dates s'applique.
+        if (fait.date === sélection.dateÉdition && !lus.some((texte) => dateSeLit(texte, fait.date))) {
           if (!fait.contexte) {
             manquements.push({
               code: 'releve-non-marque',
-              message: `axe ${axe.numéro} : le fait daté du jour de l'édition (« ${fait.texte.slice(0, 70)} ») est un relevé de page, pas une nouveauté : le marquer contexte (contexte: true), ou lui donner la date que son extrait écrit.`,
+              message: `axe ${axe.numéro} : le fait daté du jour de l'édition (« ${fait.texte.slice(0, 70)} ») est un relevé de page, pas une nouveauté : le marquer contexte (contexte: true), ou lui donner la date que son extrait écrit (une page « mise à jour le … » date ce qu'elle affiche).`,
             })
           }
           continue
         }
-        const lus = [fait.url, ...fait.autresUrls].map((u) => entrée.textes?.get(normaliserUrl(u))).filter((t): t is string => typeof t === 'string')
         if (lus.length > 0 && !lus.some((texte) => dateSeLit(texte, fait.date))) {
           manquements.push({
             code: 'fait-date-non-sourcée',
@@ -178,6 +206,23 @@ export function contrôlerLaProduction(entrée: {
         code: 'axe-ras-evitable',
         message: `${évitables.length} axe(s) en RAS alors que le dossier porte de la matière : ${évitables.map((a) => a.numéro).join(', ')}. Chaque axe porte deux faits : une nouveauté de la période, un élément de contexte daté des articles antérieurs, ou un relevé de page (« Au ${sélection.dateÉdition}, la source affiche… », daté du jour de l'édition, contexte: true, avec l'URL de la page ouverte). RAS est réservé à l'axe dont aucune source n'a pu être lue.`,
       })
+    }
+  }
+
+  // ── Chiffres : ceux d'un fait se lisent dans sa source ───────────────────
+  if (entrée.textes) {
+    for (const axe of sortie.axes) {
+      for (const fait of axe.faits) {
+        const lus = [fait.url, ...fait.autresUrls].map((u) => entrée.textes?.get(normaliserUrl(u))).filter((t): t is string => typeof t === 'string' && t.length >= TEXTE_LONG)
+        if (lus.length === 0) continue
+        const absents = chiffresDe(fait.texte).filter((c) => !lus.some((t) => chiffresÉcrits(t).has(c)))
+        if (absents.length > 0) {
+          manquements.push({
+            code: 'chiffre-non-sourcé',
+            message: `axe ${axe.numéro} : le fait « ${fait.texte.slice(0, 70)} » cite ${absents.map((c) => `« ${c} »`).join(', ')}, que ${fait.url} ne donne pas. Un chiffre est repris tel que l'extrait l'écrit, avec son unité exacte (par jour, par mois, par an, forfait) ; sinon le fait ne le cite pas.`,
+          })
+        }
+      }
     }
   }
 
