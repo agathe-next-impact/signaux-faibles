@@ -495,3 +495,16 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   deux lettres par parution, parce que `POST /api/veille/lint` et le chemin Notion de
   `POST /api/veille/resultat` ne lisent que la forme double ; la lettre unique reste celle du
   moteur en code. Rien n'a encore tourné sur un client réel.
+- **22 octobre 2026, onboarding local de bout en bout sur « La petite vitrine »** (client
+  supprimé de Notion le même jour, pages en corbeille) : `pnpm onboarding:local` rejoue,
+  d'un nom et d'une URL, l'ouverture en essai, la veille unique, la dérivation du référentiel
+  en trois temps (`lib/moteur/onboarding.ts` : site, recherche d'écosystème, rédaction
+  structurée), le travail `premiere_lettre` pris dans la file, la production et la réception
+  par `recevoirUneÉdition`, sur Postgres en mémoire. Résultat : lettre n° 1 acceptée (15 axes,
+  28 faits, une reprise `axe-ras-evitable`, 30 sources ouvertes sur 31), coût de liste 3,61 $
+  (référentiel 1,51 $ dont 1,26 $ pour la recherche d'écosystème ; lettre 2,10 $ dont 0,40 $
+  de recherches facturées). Mesuré et non corrigé : 22 faits sur 28 sont des éléments de
+  contexte ; quatre axes réglementaires s'appuient sur le site du client lui-même, faute de
+  source primaire dans le référentiel dérivé ; la recherche ne retient que 3 résultats sur 40
+  recherches ; les cinq dossiers suivis sont tous « sans mouvement ». Ni courriel, ni lien
+  d'accès, ni Payload, ni Trigger.dev, ni Stripe n'ont tourné.
