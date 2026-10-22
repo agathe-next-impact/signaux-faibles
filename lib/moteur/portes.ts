@@ -31,6 +31,11 @@ const VOCABULAIRE_INTERDIT: ReadonlyArray<{ motif: RegExp; libellé: string }> =
   { motif: /\bnote de m[ée]thode\b/i, libellé: '« note de méthode »' },
 ]
 
+function citéeParUnFait(sortie: SortieRédigée, url: string): boolean {
+  const cible = normaliserUrl(url)
+  return sortie.axes.some((axe) => axe.faits.some((fait) => [fait.url, ...fait.autresUrls].some((u) => normaliserUrl(u) === cible)))
+}
+
 export function urlsDuMarkdown(markdown: string): string[] {
   return [...new Set([...markdown.matchAll(/https?:\/\/[^\s)\]>"']+/g)].map((m) => m[0].replace(/[.,;:]+$/, '')))]
 }
@@ -54,7 +59,9 @@ export function contrôlerLaProduction(entrée: {
 
   // ── Citations : rien qui n'ait été ouvert ─────────────────────────────────
   const admises = new Set([...entrée.urlsAdmises].map(normaliserUrl))
-  const nonOuvertes = urlsDuMarkdown(lettre.markdown).filter((u) => !admises.has(normaliserUrl(u)))
+  // La rubrique des sources non consultées est écrite par le code et liste des URL non ouvertes : seuls les faits de la lettre citent.
+  const ignorées = new Set(lettre.urlsIgnorées.map(normaliserUrl))
+  const nonOuvertes = urlsDuMarkdown(lettre.markdown).filter((u) => !admises.has(normaliserUrl(u)) && !(ignorées.has(normaliserUrl(u)) && !citéeParUnFait(sortie, u)))
   if (nonOuvertes.length > 0) {
     manquements.push({
       code: 'citation-non-ouverte',

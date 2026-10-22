@@ -87,11 +87,17 @@ export async function produireLaLettre(
     ...recherche.résultats.map((r) => r.url),
   ])
 
+  // Les sources que le code n'a pas pu lire : une liste de liens dans la lettre, aucune rédaction.
+  const libellés = new Map(référentiel.axes.flatMap((axe) => axe.sources.map((source) => [source.url, source.libellé] as const)))
+  const sourcesIgnorées = lectures
+    .filter((l) => !l.état.startsWith('ouverte'))
+    .map((l) => ({ libellé: libellés.get(l.url) ?? '', url: l.url }))
+
   // 3. Rédaction, 4. portes, reprises.
   const rédacteur = dépendances.rédacteur ?? rédacteurAnthropic(dépendances.anthropic, { modèle: dépendances.modèle, effort: dépendances.effort })
   const dossier = { lectures, résultats: recherche.résultats }
   let sortie = await rédacteur.rédiger(référentiel, sélection, dossier)
-  let lettre = assemblerLaLettre(sortie, référentiel, sélection)
+  let lettre = assemblerLaLettre(sortie, référentiel, sélection, sourcesIgnorées)
   let contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises })
   let reprises = 0
   const reprisesMax = dépendances.reprisesMax ?? REPRISES_MAX
@@ -99,7 +105,7 @@ export async function produireLaLettre(
     reprises += 1
     journal(`reprise ${reprises} : ${contrôle.manquements.map((m) => m.code).join(', ')}`)
     sortie = await rédacteur.reprendre(contrôle.messageDeReprise ?? '')
-    lettre = assemblerLaLettre(sortie, référentiel, sélection)
+    lettre = assemblerLaLettre(sortie, référentiel, sélection, sourcesIgnorées)
     contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises })
   }
 

@@ -60,7 +60,7 @@ export type RéférentielUnique = {
 
 const schémaDAxe = z.object({
   nom: z.string().min(2).max(60).describe("Le nom de l'axe, tel que le lecteur le verra en titre, sans numéro ni suffixe d'impact"),
-  sorte: z.enum(['thème', 'concurrents']).describe("« thème » pour un sujet de l'écosystème, « concurrents » pour un type d'organisations concurrentes"),
+  sorte: z.enum(['thème', 'concurrents']).describe("« thème » pour un sujet de l'écosystème, « concurrents » pour un sujet d'offre commerciale (prix, formules, positionnement) ; dans les deux cas une thématique, jamais le nom d'une organisation"),
   critères: z.string().max(300).describe('Une à deux phrases : ce qui, sur cet axe, compte comme FORT et comme MOYEN pour cette organisation'),
   sources: z
     .array(z.object({ libellé: z.string().max(80), url: z.string().url() }))
@@ -76,7 +76,7 @@ export const schémaDuRéférentielUnique = z.object({
     .array(schémaDAxe)
     .min(LETTRE_UNIQUE.axesMin)
     .max(LETTRE_UNIQUE.axesMax)
-    .describe(`${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes, les thèmes de l'écosystème d'abord, puis les types d'organisations concurrentes, dans l'ordre d'importance pour l'organisation`),
+    .describe(`${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes, les thèmes de l'écosystème d'abord, puis les sujets d'offre commerciale, dans l'ordre d'importance pour l'organisation ; les organisations se suivent dans les dossiers, pas dans les axes`),
   dossiers: z
     .array(z.object({ nom: z.string().max(80), compteur: z.number().int().min(0), précision: z.string().max(120) }))
     .max(20)
@@ -221,8 +221,9 @@ export async function convertirLesRéférentiels(
   const système =
     `Tu convertis les deux référentiels de veille d'une organisation en un référentiel unique, ` +
     `qui servira à un programme (pas à un agent) pour produire chaque semaine UNE lettre de ${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes. ` +
-    `Chaque axe est soit un thème de l'écosystème (réglementation, marché, financement, technologie, territoire, etc.), ` +
-    `soit un type d'organisations concurrentes (constructeurs, intégrateurs, acteurs publics, nouveaux entrants, etc.). ` +
+    `Chaque axe est une thématique : un thème de l'écosystème (réglementation, marché, financement, technologie, territoire, etc.) ` +
+    `ou un sujet d'offre commerciale (prix, formules, positionnement). Un axe ne porte jamais le nom d'une organisation ni d'un type d'organisations ; ` +
+    `les concurrents, administrations et guichets vont dans les acteurs de l'axe, qui servent à les suivre comme dossiers. ` +
     `Couvre tout le spectre des deux référentiels sans doublon : fusionne ce qui se recoupe, garde les sources et les requêtes telles quelles, ` +
     `ne crée aucune URL que les référentiels ne contiennent pas. Les critères disent ce qui compte comme FORT et MOYEN pour CETTE organisation. ` +
     `Les dossiers ouverts viennent des dernières éditions publiées, avec leur compteur. Réponds en français, dans le format demandé.`

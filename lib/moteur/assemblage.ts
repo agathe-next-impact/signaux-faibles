@@ -18,8 +18,13 @@ export type PropriétésDÉdition = {
   readonly actionDeLaSemaine: string
 }
 
+/** Une source du référentiel que le programme n'a pas pu lire pendant ce run. */
+export type SourceIgnorée = { readonly libellé: string; readonly url: string }
+
 export type LettreAssemblée = {
   readonly markdown: string
+  /** Les URL de la rubrique « Sources non consultées » : écrites par le code, jamais citées par un fait. */
+  readonly urlsIgnorées: readonly string[]
   readonly blocs: BlocNotion[]
   readonly propriétés: PropriétésDÉdition
 }
@@ -60,7 +65,12 @@ export function titreDÉdition(organisation: string, numéro: number, dateÉditi
   return `Veille ${organisation}, édition n° ${numéro} du ${dateEnToutesLettres(dateÉdition)}`
 }
 
-export function assemblerLaLettre(sortie: SortieRédigée, référentiel: RéférentielUnique, sélection: Sélection): LettreAssemblée {
+export function assemblerLaLettre(
+  sortie: SortieRédigée,
+  référentiel: RéférentielUnique,
+  sélection: Sélection,
+  sourcesIgnorées: readonly SourceIgnorée[] = [],
+): LettreAssemblée {
   const lignes: string[] = ["# L'essentiel", '']
   for (const l of sortie.essentiel) lignes.push(`- ${l.trim()}`)
   lignes.push('', '# Actualités par axe', '')
@@ -71,14 +81,14 @@ export function assemblerLaLettre(sortie: SortieRédigée, référentiel: Réfé
     const niveau = rédigé?.niveau ?? 'RAS'
     lignes.push(`## ${CERCLÉS[axe.numéro - 1] ?? `${axe.numéro}.`} ${axe.nom} — ${niveau}`, '')
     if (niveau === 'RAS' || !rédigé || rédigé.faits.length === 0) {
-      const ras = rédigé?.ras?.trim() || `Rien de neuf sur cet axe pendant la période ; les sources nommées ont été relues sans fait daté.`
-      lignes.push(`> ${ras}`, '')
+      lignes.push('> RAS', '')
       continue
     }
     for (const fait of rédigé.faits) {
       const phrase = phraseDatée(fait.texte, fait.date)
       const contexte = fait.contexte ? ' (élément de contexte, non nouveau)' : ''
-      lignes.push(`${phrase}${contexte} ([${texteDeLien(fait.url)}](${fait.url}))`, '')
+      const sources = [fait.url, ...fait.autresUrls].map((url) => `[${texteDeLien(url)}](${url})`).join(', ')
+      lignes.push(`${phrase}${contexte} (${sources})`, '')
     }
   }
 
@@ -88,6 +98,15 @@ export function assemblerLaLettre(sortie: SortieRédigée, référentiel: Réfé
       const suivi = d.suivi.trim()
       lignes.push(suivi.includes(d.nom) ? suivi : `${d.nom} : ${suivi}`, '')
     }
+  }
+
+  // Les sources ignorées : une liste de liens, rien d'autre, écrite par le code d'après la collecte.
+  const vues = new Set<string>()
+  const ignorées = sourcesIgnorées.filter((source) => (vues.has(source.url) ? false : (vues.add(source.url), true)))
+  if (ignorées.length > 0) {
+    lignes.push('# Sources non consultées', '')
+    for (const source of ignorées) lignes.push(`- [${source.libellé.replace(/[\[\]]/g, '').trim() || texteDeLien(source.url)}](${source.url})`)
+    lignes.push('')
   }
 
   const markdown = lignes.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
@@ -100,5 +119,5 @@ export function assemblerLaLettre(sortie: SortieRédigée, référentiel: Réfé
     dossiersOuvertsSuivis: ligneDeDossiers(sortie),
     actionDeLaSemaine: sortie.actionDeLaSemaine.trim(),
   }
-  return { markdown, blocs: markdownVersBlocs(markdown), propriétés }
+  return { markdown, urlsIgnorées: ignorées.map((source) => source.url), blocs: markdownVersBlocs(markdown), propriétés }
 }

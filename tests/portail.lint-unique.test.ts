@@ -4,8 +4,8 @@ import { LETTRE_UNIQUE, contrôlerLaLettre } from '@/lib/portail/lint'
 
 /**
  * Le contrat de la lettre unique (programme du 22 octobre 2026, §2) : dix à
- * quinze axes, un à trois faits courts par axe, datés et sourcés, un RAS en
- * encadré court, une rubrique « Dossiers suivis », rien du rapport de collecte.
+ * quinze axes, un ou deux faits courts par axe, datés et sourcés, un RAS nu en
+ * encadré, une rubrique « Dossiers suivis », rien du rapport de collecte.
  * Aucun humain ne relit : ce que la forme double tolérait devient une rupture.
  */
 
@@ -38,7 +38,7 @@ function lettreUnique(combien = 12, options: { faitsParAxe?: number } = {}): Blo
     const niveau = NIVEAUX[i % 3]!
     blocs.push(h2(`${CERCLÉS[i]} Axe ${i + 1} — ${niveau}`))
     if (niveau === 'RAS') {
-      blocs.push(encadré('Rien de neuf. Nous avons vérifié trois sources, muettes depuis le 3 juillet.'))
+      blocs.push(encadré('RAS'))
       continue
     }
     for (let j = 0; j < faitsParAxe; j += 1) {
@@ -72,8 +72,8 @@ describe('contrôlerLaLettre, forme unique : une lettre au contrat', () => {
     expect(contrôler(lettreUnique(LETTRE_UNIQUE.axesMax)).conforme).toBe(true)
   })
 
-  it('trois faits par axe restent admis', () => {
-    expect(contrôler(lettreUnique(12, { faitsParAxe: 3 })).conforme).toBe(true)
+  it('deux faits par axe restent admis', () => {
+    expect(contrôler(lettreUnique(12, { faitsParAxe: 2 })).conforme).toBe(true)
   })
 
   it('la même lettre, en forme double, est conforme aussi : le contrat commun ne change pas', () => {
@@ -106,8 +106,8 @@ describe('contrôlerLaLettre, forme unique : le nombre d’axes', () => {
 })
 
 describe('contrôlerLaLettre, forme unique : chaque fait est court, daté et sourcé', () => {
-  it('quatre faits dans un axe : axe-trop-fourni', () => {
-    expect(contrôler(lettreUnique(12, { faitsParAxe: 4 })).ruptures.map((r) => r.code)).toContain('axe-trop-fourni')
+  it('trois faits dans un axe : axe-trop-fourni', () => {
+    expect(contrôler(lettreUnique(12, { faitsParAxe: 3 })).ruptures.map((r) => r.code)).toContain('axe-trop-fourni')
   })
 
   it('un fait de trois phrases : fait-trop-long', () => {
@@ -118,7 +118,7 @@ describe('contrôlerLaLettre, forme unique : chaque fait est court, daté et sou
     expect(rupture?.message).toContain('3 phrase(s)')
   })
 
-  it('un fait de plus de 280 caractères : fait-trop-long', () => {
+  it('un fait de plus de 220 caractères : fait-trop-long', () => {
     const blocs = lettreUnique(12)
     const i = blocs.findIndex((b) => b.type === 'paragraph' && b.id !== blocs[1]!.id && b.id !== blocs[2]!.id)
     blocs[i] = fait(`Le décret est paru le 12 septembre ${'et précise les obligations des plateformes de dématérialisation partenaires '.repeat(4)}.`)
@@ -140,6 +140,25 @@ describe('contrôlerLaLettre, forme unique : chaque fait est court, daté et sou
     expect(contrôler(blocs).ruptures.map((r) => r.code)).not.toContain('fait-sans-date')
   })
 
+  it('deux sources en fin de fait ne comptent ni dans la longueur ni dans les phrases', () => {
+    const blocs = lettreUnique(12)
+    const i = blocs.findIndex((b) => b.type === 'paragraph' && b.id !== blocs[1]!.id && b.id !== blocs[2]!.id)
+    blocs[i] = {
+      id: 'deux-sources',
+      type: 'paragraph',
+      paragraph: {
+        rich_text: [
+          { plain_text: 'Le décret est paru le 12 septembre (', href: null },
+          { plain_text: 'legifrance.gouv.fr', href: 'https://www.legifrance.gouv.fr/' },
+          { plain_text: ', ', href: null },
+          { plain_text: 'cnil.fr', href: 'https://www.cnil.fr/' },
+          { plain_text: ')', href: null },
+        ],
+      },
+    }
+    expect(contrôler(blocs).ruptures).toEqual([])
+  })
+
   it('un fait sans lien : fait-sans-source', () => {
     const blocs = lettreUnique(12)
     const i = blocs.findIndex((b) => b.type === 'paragraph' && b.id !== blocs[1]!.id && b.id !== blocs[2]!.id)
@@ -147,11 +166,18 @@ describe('contrôlerLaLettre, forme unique : chaque fait est court, daté et sou
     expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('fait-sans-source')
   })
 
-  it('un RAS dont l’encadré dépasse 200 caractères : ras-trop-long', () => {
+  it('un RAS qui écrit une phrase, même courte : ras-trop-long', () => {
     const blocs = lettreUnique(12)
     const i = blocs.findIndex((b) => b.type === 'callout')
-    blocs[i] = encadré(`Rien de neuf. ${'Nous avons vérifié la source, muette depuis le 3 juillet. '.repeat(5)}`)
+    blocs[i] = encadré('Rien de neuf, sources muettes depuis le 3 juillet.')
     expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('ras-trop-long')
+  })
+
+  it('« RAS. » avec un point reste un RAS nu', () => {
+    const blocs = lettreUnique(12)
+    const i = blocs.findIndex((b) => b.type === 'callout')
+    blocs[i] = encadré('RAS.')
+    expect(contrôler(blocs).ruptures).toEqual([])
   })
 
   it('un RAS écrit en prose : absence-en-prose devient une rupture', () => {
@@ -173,6 +199,38 @@ describe('contrôlerLaLettre, forme unique : dossiers, collecte, longueur', () =
   it('un dossier que le corps ne nomme pas : dossier-non-nommé devient une rupture', () => {
     const rapport = contrôler(lettreUnique(12), `${DOSSIERS} · SecNumCloud 3.2 (0)`)
     expect(rapport.ruptures.map((r) => r.code)).toContain('dossier-non-nommé')
+  })
+
+  it('une liste de liens « Sources non consultées » est admise', () => {
+    const blocs = [
+      ...lettreUnique(12),
+      h1('Sources non consultées'),
+      bloc('bulleted_list_item', 'legifrance.gouv.fr', 'https://www.legifrance.gouv.fr/'),
+      bloc('bulleted_list_item', 'cnil.fr', 'https://www.cnil.fr/'),
+    ]
+    const rapport = contrôler(blocs)
+    expect(rapport.ruptures).toEqual([])
+    expect(rapport.avertissements).toEqual([])
+  })
+
+  it('« Sources non consultées » avec une phrase de rédaction : collecte-dans-la-lettre', () => {
+    const blocs = [
+      ...lettreUnique(12),
+      h1('Sources non consultées'),
+      p('Le site de la DGFiP a refusé la lecture le 20 octobre.'),
+      bloc('bulleted_list_item', 'legifrance.gouv.fr', 'https://www.legifrance.gouv.fr/'),
+    ]
+    expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('collecte-dans-la-lettre')
+  })
+
+  it('une puce de « Sources non consultées » qui ajoute du texte au lien : collecte-dans-la-lettre', () => {
+    const blocs = [...lettreUnique(12), h1('Sources non consultées'), bloc('bulleted_list_item', 'legifrance.gouv.fr, refusée le 20 octobre')]
+    expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('collecte-dans-la-lettre')
+  })
+
+  it('« Sources non ouvertes » reste du rapport de collecte même en liste de liens', () => {
+    const blocs = [...lettreUnique(12), h1('Sources non ouvertes'), bloc('bulleted_list_item', 'legifrance.gouv.fr', 'https://www.legifrance.gouv.fr/')]
+    expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('collecte-dans-la-lettre')
   })
 
   it('le rapport de collecte dans la lettre : rupture', () => {
@@ -202,5 +260,28 @@ describe('contrôlerLaLettre, forme unique : dossiers, collecte, longueur', () =
     )
     const rapport = contrôler(longs)
     expect(rapport.ruptures.map((r) => r.code)).toContain('lettre-trop-longue')
+  })
+
+  it('une rubrique « Trois idées de posts » : recommandation-de-post', () => {
+    const blocs = [...lettreUnique(12), h1('Trois idées de posts'), p('Publier un billet le 3 octobre sur la facturation électronique.')]
+    expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('recommandation-de-post')
+  })
+
+  it('une rubrique « Recommandation de post LinkedIn » : recommandation-de-post', () => {
+    const blocs = [...lettreUnique(12), h1('Recommandation de post LinkedIn')]
+    expect(contrôler(blocs).ruptures.map((r) => r.code)).toContain('recommandation-de-post')
+  })
+
+  it('un axe nommé comme un dossier suivi : axe-est-un-acteur', () => {
+    const blocs = lettreUnique(12)
+    blocs[4] = h2('② Kyocera — MOYEN')
+    const rapport = contrôler(blocs)
+    expect(rapport.ruptures.find((r) => r.code === 'axe-est-un-acteur')?.message).toContain('Kyocera')
+  })
+
+  it('un axe thématique dont le nom contient celui d’un acteur reste admis', () => {
+    const blocs = lettreUnique(12)
+    blocs[4] = h2('② Offre de gamme chez Kyocera — MOYEN')
+    expect(contrôler(blocs).ruptures.map((r) => r.code)).not.toContain('axe-est-un-acteur')
   })
 })

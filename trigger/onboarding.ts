@@ -33,7 +33,7 @@ async function dériverLeRéférentiel(
     : []
   const système =
     `Tu écris le référentiel unique d'une organisation pour un programme de veille hebdomadaire : dix à quinze axes, ` +
-    `thèmes de l'écosystème puis types d'organisations concurrentes, chacun avec ses sources nommées (URL réelles, reprises du référentiel de filière ou du site), ` +
+    `thématiques de l'écosystème puis sujets d'offre commerciale (jamais le nom d'une organisation, qui se suit en dossier), chacun avec ses sources nommées (URL réelles, reprises du référentiel de filière ou du site), ` +
     `ses requêtes types, ses acteurs et ses critères FORT et MOYEN. Pars du référentiel de filière quand il existe et spécialise-le à l'organisation ; ` +
     `n'invente aucune URL. La fiche tient en quatre à huit phrases.`
   const utilisateur =

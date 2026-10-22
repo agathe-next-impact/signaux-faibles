@@ -40,12 +40,11 @@ function sortieConforme(): SortieRédigée {
     axes: Array.from({ length: AXES }, (_, i) => {
       const niveau = (['FORT', 'MOYEN', 'RAS'] as const)[i % 3]!
       return niveau === 'RAS'
-        ? { numéro: i + 1, niveau, faits: [], ras: 'Rien de neuf. Les deux sources nommées sont muettes depuis le 3 juillet.' }
+        ? { numéro: i + 1, niveau, faits: [] }
         : {
             numéro: i + 1,
             niveau,
-            faits: [{ texte: `Le texte ${i + 1} est paru le 21 octobre. Il s’applique au 1er janvier.`, date: '2026-10-21', url: URL(i + 1), contexte: false }],
-            ras: null,
+            faits: [{ texte: `Le texte ${i + 1} est paru le 21 octobre. Il s’applique au 1er janvier.`, date: '2026-10-21', url: URL(i + 1), autresUrls: [], contexte: false }],
           }
     }),
     dossiers: [{ nom: 'facturation électronique', compteur: 0, précision: 'décret paru', suivi: 'Le dossier facturation électronique avance : le décret est paru le 21 octobre.' }],
@@ -76,7 +75,7 @@ describe('assemblerLaLettre', () => {
     expect(lettre.propriétés.fenêtreÉlargie).toBe(false)
     expect(lettre.markdown).toContain('## ① Thème 1 — FORT')
     expect(lettre.markdown).toContain('## ③ Thème 3 — RAS')
-    expect(lettre.markdown).toContain('> Rien de neuf.')
+    expect(lettre.markdown).toMatch(/## ③ Thème 3 — RAS\n\n> RAS\n/)
     expect(lettre.markdown).toContain('([exemple.fr](https://exemple.fr/axe-1))')
     expect(lettre.markdown).toContain('# Dossiers suivis')
   })
@@ -88,6 +87,48 @@ describe('assemblerLaLettre', () => {
     sortie.axes = sortie.axes.filter((a) => a.numéro !== 5)
     const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
     expect(lettre.markdown).toContain('## ⑤ Thème 5 — RAS')
+  })
+
+  it('liste les sources non consultées en liens seuls, sans une ligne de rédaction', () => {
+    const ignorées = [
+      { libellé: 'Légifrance', url: 'https://www.legifrance.gouv.fr/' },
+      { libellé: 'Légifrance', url: 'https://www.legifrance.gouv.fr/' },
+      { libellé: '', url: 'https://www.cnil.fr/fr' },
+    ]
+    const lettre = assemblerLaLettre(sortieConforme(), RÉFÉRENTIEL, SÉLECTION, ignorées)
+    expect(lettre.markdown).toContain('# Sources non consultées\n\n- [Légifrance](https://www.legifrance.gouv.fr/)\n- [cnil.fr](https://www.cnil.fr/fr)\n')
+    expect(lettre.urlsIgnorées).toEqual(['https://www.legifrance.gouv.fr/', 'https://www.cnil.fr/fr'])
+    const contrôle = contrôlerLaProduction({ lettre, sortie: sortieConforme(), sélection: SÉLECTION, urlsAdmises: URLS_ADMISES })
+    expect(contrôle.manquements).toEqual([])
+  })
+
+  it('écrit une seconde source quand le fait en a deux, et le validateur l\'accepte', () => {
+    const sortie = sortieConforme()
+    sortie.axes[0]!.faits[0]!.autresUrls = [URL(2)]
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    expect(lettre.markdown).toContain('([exemple.fr](https://exemple.fr/axe-1), [exemple.fr](https://exemple.fr/axe-2))')
+    const contrôle = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES })
+    expect(contrôle.manquements).toEqual([])
+  })
+
+  it('refuse une seconde source absente du dossier', () => {
+    const sortie = sortieConforme()
+    sortie.axes[0]!.faits[0]!.autresUrls = ['https://ailleurs.example/invente']
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    const contrôle = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES })
+    expect(contrôle.manquements.map((m) => m.code)).toContain('citation-non-ouverte')
+  })
+
+  it('sans source ignorée, aucune rubrique', () => {
+    expect(assemblerLaLettre(sortieConforme(), RÉFÉRENTIEL, SÉLECTION).markdown).not.toContain('Sources non consultées')
+  })
+
+  it('un fait ne peut pas citer une source ignorée : elle n’a pas été lue', () => {
+    const sortie = sortieConforme()
+    sortie.axes[0]!.faits[0]!.url = 'https://www.legifrance.gouv.fr/'
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION, [{ libellé: 'Légifrance', url: 'https://www.legifrance.gouv.fr/' }])
+    const contrôle = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES })
+    expect(contrôle.manquements.map((m) => m.code)).toContain('citation-non-ouverte')
   })
 })
 
@@ -105,7 +146,7 @@ describe('contrôlerLaProduction', () => {
 
   it('refuse un fait antérieur à la période qui n’est pas donné comme contexte, et l’admet marqué contexte', () => {
     const sortie = sortieConforme()
-    sortie.axes[0]!.faits[0] = { texte: 'Le texte est paru le 2 septembre.', date: '2026-09-02', url: URL(1), contexte: false }
+    sortie.axes[0]!.faits[0] = { texte: 'Le texte est paru le 2 septembre.', date: '2026-09-02', url: URL(1), autresUrls: [], contexte: false }
     let lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
     expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES }).manquements.map((m) => m.code)).toContain('fait-hors-période')
     sortie.axes[0]!.faits[0]!.contexte = true

@@ -34,35 +34,31 @@ export const schémaDeLaLettre = z.object({
               texte: z
                 .string()
                 .max(LETTRE_UNIQUE.caractèresParFaitMax)
-                .describe(`Une ou deux phrases, ${LETTRE_UNIQUE.caractèresParFaitMax} caractères au plus, sujet verbe complément, la date en toutes lettres dans la phrase (« le 12 septembre »), un seul acteur par phrase, sigles développés`),
+                .describe(`Une ou deux lignes, ${LETTRE_UNIQUE.caractèresParFaitMax} caractères au plus, sujet verbe complément, la date en toutes lettres dans la phrase (« le 12 septembre »), un seul acteur par phrase, sigles développés ; l'information seule, sans commentaire ni conséquence pour le lecteur`),
               date: z.string().describe('AAAA-MM-JJ, la date du fait'),
               url: z.string().describe("L'URL exacte du dossier d'où vient le fait ; jamais une URL absente du dossier"),
+              autresUrls: z.array(z.string()).max(1).describe("Au plus une seconde source du même fait, URL exacte du dossier ; vide s'il n'y en a pas"),
               contexte: z.boolean().describe('vrai si le fait est antérieur à la période et donné comme élément de contexte, non nouveau'),
             }),
           )
           .max(LETTRE_UNIQUE.faitsParAxeMax)
-          .describe(`Zéro à ${LETTRE_UNIQUE.faitsParAxeMax} faits, les plus lourds de conséquence ; vide si RAS`),
-        ras: z
-          .string()
-          .max(LETTRE_UNIQUE.caractèresDuRasMax)
-          .nullable()
-          .describe(`Si RAS : une ou deux phrases, ${LETTRE_UNIQUE.caractèresDuRasMax} caractères au plus, qui nomment ce qui a été vérifié et depuis quand les sources sont muettes ; sinon null`),
+          .describe(`Zéro à ${LETTRE_UNIQUE.faitsParAxeMax} faits, les plus lourds de conséquence ; vide si RAS, et l'axe n'écrit alors rien d'autre que RAS`),
       }),
     )
     .min(LETTRE_UNIQUE.axesMin)
     .max(LETTRE_UNIQUE.axesMax)
-    .describe('Un objet par axe du référentiel, tous les axes, dans leur ordre'),
+    .describe('Un objet par axe du référentiel, tous les axes, dans leur ordre ; un axe est une thématique, jamais une organisation'),
   dossiers: z
     .array(
       z.object({
-        nom: z.string().max(80).describe('Le nom exact du dossier, inchangé d’une édition à l’autre'),
+        nom: z.string().max(80).describe('Le nom exact d’une organisation (entreprise, administration, association), inchangé d’une édition à l’autre ; jamais un thème ni un sujet, qui sont des axes'),
         compteur: z.number().int().min(0).describe('Le compteur de la précédente édition, plus un si le dossier a bougé pendant la période, sinon inchangé'),
         précision: z.string().max(120).describe('Où en est le dossier, en quelques mots ; vide si rien à dire'),
         suivi: z.string().max(300).describe('Une à deux phrases qui nomment le dossier exactement et disent ce qui a bougé ou ce qu’on attend'),
       }),
     )
     .max(20)
-    .describe('Les dossiers ouverts suivis, ceux du référentiel et de la précédente édition, plus ceux que la période ouvre, moins ceux qu’elle clôt (dits clos dans le suivi)'),
+    .describe('Les organisations suivies, une par dossier : celles du référentiel et de la précédente édition, plus celles que la période ouvre, moins celles qu’elle clôt (dites closes dans le suivi)'),
   actionDeLaSemaine: z.string().max(300).describe('Une phrase : la chose à faire ou à surveiller cette semaine, tirée des faits FORT'),
 })
 
@@ -88,8 +84,12 @@ export function systèmeDeRédaction(): string {
     `pour chaque axe du référentiel, les passages nouveaux des sources nommées depuis la dernière parution, les passages inchangés, ` +
     `et les résultats des requêtes types. Tu n'as aucun outil et tu n'inventes rien : chaque fait vient d'un extrait du dossier, ` +
     `porte sa date et l'URL exacte de l'extrait. Une URL absente du dossier est une faute qui fait rejeter la lettre.\n\n` +
-    `CE QUE TU PRODUIS : une lettre très synthétique qui couvre tout le spectre : un objet par axe, tous les axes, ` +
-    `un à ${LETTRE_UNIQUE.faitsParAxeMax} faits de ${LETTRE_UNIQUE.phrasesParFaitMax} phrases au plus pour un axe FORT ou MOYEN, un RAS motivé et court sinon. ` +
+    `CE QUE TU PRODUIS : une seule lettre, très synthétique, qui couvre tout le spectre : un objet par axe, tous les axes, ` +
+    `un à ${LETTRE_UNIQUE.faitsParAxeMax} faits d'une à ${LETTRE_UNIQUE.phrasesParFaitMax} phrases au plus pour un axe FORT ou MOYEN, chacun avec sa source ; ` +
+    `un axe sans fait est RAS et n'écrit rien d'autre : pas de phrase sur ce qui a été vérifié. ` +
+    `Un axe est une thématique, jamais une organisation ; une organisation n'est jamais un axe, elle se suit dans les dossiers, ` +
+    `une par dossier, et un fait la nomme en clair. Tu ne proposes ni idée de post, ni recommandation de publication, ni conseil de communication ; ` +
+    `tu ne parles pas des sources que le programme n'a pas pu lire, il les liste lui-même. ` +
     `Le niveau d'un axe est celui de son fait le plus fort, selon les critères de l'axe ; trois niveaux et trois seulement, FAIBLE n'existe pas. ` +
     `Un fait de la période est daté dedans ; un fait antérieur n'entre que comme élément de contexte (contexte: true) quand il éclaire une échéance à venir, ` +
     `et jamais pour remplir. Un axe sans fait de la période est RAS : le dire est une information, remplir serait une faute.\n\n` +

@@ -80,6 +80,8 @@ export type CodeDeFormeUnique =
   | 'fait-sans-date'
   | 'fait-sans-source'
   | 'ras-trop-long'
+  | 'recommandation-de-post'
+  | 'axe-est-un-acteur'
   | 'dossiers-sans-rubrique'
   | 'lettre-trop-longue'
   | 'absence-en-prose'
@@ -149,12 +151,23 @@ const RUBRIQUE_DES_DOSSIERS = 'dossiers suivis'
 export const LETTRE_UNIQUE = {
   axesMin: 10,
   axesMax: 15,
-  faitsParAxeMax: 3,
+  faitsParAxeMax: 2,
   phrasesParFaitMax: 2,
-  caractèresParFaitMax: 280,
-  caractèresDuRasMax: 200,
+  caractèresParFaitMax: 220,
   motsMax: 1400,
 } as const
+
+/** Les rubriques de conseils de publication : « Trois idées de posts », « Recommandation de post LinkedIn ». */
+const MOTIF_DE_POST = /\bidees?\b.*\bposts?\b|\bposts?\b.*\b(linkedin|reseaux)\b|\brecommandations?\b.*\bposts?\b/
+
+function clefDeNom(texte: string): string {
+  return sansAccent(texte).replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+/** Le nom d'un axe, sans son numéro cerclé ni son niveau : « ③ Agences et studios — MOYEN » devient « Agences et studios ». */
+function nomDAxe(titre: string): string {
+  return titre.replace(/^[\s①-⑳\d.]+/, '').replace(/\s+[—–-]\s+(FORT|MOYEN|RAS|FAIBLE)\s*$/i, '').trim()
+}
 
 /** Une date lisible dans un fait : « 12 septembre », « 1er octobre 2026 », « 12/09/2026 ». */
 const DATE_DANS_UN_FAIT =
@@ -173,14 +186,18 @@ function porteUneSource(bloc: Bloc): boolean {
 function texteSansLaSource(bloc: Bloc): string {
   if (bloc.type !== 'paragraphe') return texteDuBloc(bloc).trim()
   const segments = bloc.segments
-  const n = segments.length
-  const dernier = segments[n - 1]
-  const lien = segments[n - 2]
-  const avant = segments[n - 3]
-  if (n >= 3 && dernier && lien && avant && /^\s*\)\s*$/.test(dernier.texte) && lien.lien !== null && /\(\s*$/.test(avant.texte)) {
-    return (segments.slice(0, n - 3).map((s) => s.texte).join('') + avant.texte.replace(/\(\s*$/, '')).trim()
+  let i = segments.length - 1
+  // La source en fin de fait : « ( lien , lien ) », un ou deux liens (ou plus) séparés par une virgule ou un point-virgule.
+  if (i < 2 || !/^\s*\)\s*$/.test(segments[i]!.texte)) return segments.map((s) => s.texte).join('').trim()
+  i -= 1
+  let liens = 0
+  while (i >= 0 && (segments[i]!.lien !== null || (liens > 0 && /^[\s,;]+$/.test(segments[i]!.texte)))) {
+    if (segments[i]!.lien !== null) liens += 1
+    i -= 1
   }
-  return segments.map((s) => s.texte).join('').trim()
+  const avant = segments[i]
+  if (liens === 0 || !avant || !/\(\s*$/.test(avant.texte)) return segments.map((s) => s.texte).join('').trim()
+  return (segments.slice(0, i).map((s) => s.texte).join('') + avant.texte.replace(/\(\s*$/, '')).trim()
 }
 
 function nombreDeMots(texte: string): number {
@@ -267,7 +284,29 @@ const INTITULÉS_DE_COLLECTE = [
   'grille de collecte',
 ]
 
-function intitulésDeCollecte(document: Document): string[] {
+/**
+ * Seule trace du rapport de collecte admise dans la lettre unique (demande du
+ * 22 octobre 2026) : la rubrique « Sources non consultées », quand elle n'est
+ * qu'une liste de liens, sans une ligne de rédaction.
+ */
+const RUBRIQUE_DES_SOURCES_IGNORÉES = 'sources non consultees'
+
+function estUneListeDeLiens(blocs: readonly Bloc[]): boolean {
+  const listes = blocs.filter((bloc) => bloc.type !== 'séparateur')
+  return (
+    listes.length > 0 &&
+    listes.every(
+      (bloc) =>
+        bloc.type === 'liste' &&
+        bloc.éléments.every((élément) => {
+          const écrits = élément.filter((segment) => segment.texte.trim().length > 0)
+          return écrits.length > 0 && écrits.every((segment) => segment.lien !== null)
+        }),
+    )
+  )
+}
+
+function intitulésDeCollecte(document: Document, forme: Forme): string[] {
   const trouvés = new Set<string>()
   const examiner = (texte: string) => {
     const début = sansAccent(texte).replace(/^[^a-z0-9]+/, '').slice(0, 40)
@@ -275,6 +314,12 @@ function intitulésDeCollecte(document: Document): string[] {
   }
   for (const bloc of document.préambule) examiner(texteDuBloc(bloc))
   for (const rubrique of document.rubriques) {
+    const listeDeLiens =
+      forme === 'unique' &&
+      sansAccent(rubrique.titre).startsWith(RUBRIQUE_DES_SOURCES_IGNORÉES) &&
+      rubrique.axes.length === 0 &&
+      estUneListeDeLiens(rubrique.introduction)
+    if (listeDeLiens) continue
     examiner(rubrique.titre)
     for (const bloc of rubrique.introduction) examiner(texteDuBloc(bloc))
     for (const axe of rubrique.axes) for (const bloc of axe.blocs) examiner(texteDuBloc(bloc))
@@ -527,7 +572,7 @@ export function contrôlerLaLettre(entrée: {
   }
 
   // ── Rapport de collecte : hors de la lettre client (22 octobre 2026) ─────
-  const collecte = intitulésDeCollecte(document)
+  const collecte = intitulésDeCollecte(document, forme)
   if (collecte.length > 0) {
     avertissements.push({
       code: 'collecte-dans-la-lettre',
@@ -537,7 +582,8 @@ export function contrôlerLaLettre(entrée: {
   }
 
   // ── Édition n°1 : la richesse que le gabarit du §6 demande ───────────────
-  if (entrée.numéro === 1) {
+  // La lettre unique est compacte par contrat : ni faits minimum ni rubrique d'analyse.
+  if (entrée.numéro === 1 && forme !== 'unique') {
     const faits = nombreDeFaits(document)
     if (faits < FAITS_MIN_ÉDITION_N1) {
       avertissements.push({
@@ -598,14 +644,14 @@ function contrôlerLaFormeUnique(
   ruptures: Rupture[],
   avertissements: Avertissement[],
 ): void {
-  const { axesMin, axesMax, faitsParAxeMax, phrasesParFaitMax, caractèresParFaitMax, caractèresDuRasMax, motsMax } = LETTRE_UNIQUE
+  const { axesMin, axesMax, faitsParAxeMax, phrasesParFaitMax, caractèresParFaitMax, motsMax } = LETTRE_UNIQUE
 
   // ── Dix à quinze axes ────────────────────────────────────────────────────
   if (axes.length > 0 && axes.length < axesMin) {
     ruptures.push({
       code: 'axes-trop-peu',
       portée: 'portail',
-      message: `${axes.length} axe(s) pour ${axesMin} au moins : la lettre unique couvre tout le spectre du référentiel, un axe par thème ou par type d’organisations concurrentes, en RAS motivé s’il le faut.`,
+      message: `${axes.length} axe(s) pour ${axesMin} au moins : la lettre unique couvre tout le spectre du référentiel, un axe par thématique, en RAS s’il le faut ; les organisations se suivent dans « Dossiers suivis », pas dans les axes.`,
     })
   }
   if (axes.length > axesMax) {
@@ -620,13 +666,14 @@ function contrôlerLaFormeUnique(
   for (const axe of axes) {
     const faits = faitsDe(axe.blocs).filter(estBlocDeFait)
     if (axe.niveau === 'RAS') {
+      // Un axe sans fait n'écrit rien d'autre que « RAS » (demande du 22 octobre 2026).
       const encadrés = axe.blocs.filter((bloc) => bloc.type === 'encadré')
-      const longueur = encadrés.reduce((total, bloc) => total + texteDuBloc(bloc).length, 0)
-      if (longueur > caractèresDuRasMax) {
+      const écrit = encadrés.map(texteDuBloc).join(' ').trim()
+      if (écrit.length > 0 && sansAccent(écrit).replace(/[^a-z]/g, '') !== 'ras') {
         ruptures.push({
           code: 'ras-trop-long',
           portée: 'lettre',
-          message: `l’axe « ${axe.titre} » est en RAS et son encadré fait ${longueur} caractères pour ${caractèresDuRasMax} au plus : nommer ce qui a été vérifié, en une phrase ou deux.`,
+          message: `l’axe « ${axe.titre} » est en RAS et son encadré dit « ${écourter(écrit, 60)} » : un axe sans fait n’écrit que « RAS », sans phrase ni détail de ce qui a été vérifié.`,
         })
       }
       continue
@@ -664,6 +711,29 @@ function contrôlerLaFormeUnique(
         })
       }
     })
+  }
+
+  // ── Pas de recommandation de post dans la lettre ─────────────────────────
+  const intitulés = [...document.rubriques.map((rubrique) => rubrique.titre), ...axes.map((axe) => axe.titre)]
+  const posts = intitulés.filter((titre) => MOTIF_DE_POST.test(sansAccent(titre)))
+  if (posts.length > 0) {
+    ruptures.push({
+      code: 'recommandation-de-post',
+      portée: 'lettre',
+      message: `la lettre porte une rubrique de recommandation de posts (${posts.map((titre) => `« ${écourter(titre, 50)} »`).join(', ')}) : la lettre informe, elle ne propose pas de contenu à publier.`,
+    })
+  }
+
+  // ── Un axe est une thématique, un acteur est une organisation ────────────
+  const nomsDeDossiers = new Set(dossiers.map((dossier) => clefDeNom(dossier.nom)))
+  for (const axe of axes) {
+    if (nomsDeDossiers.has(clefDeNom(nomDAxe(axe.titre)))) {
+      ruptures.push({
+        code: 'axe-est-un-acteur',
+        portée: 'lettre',
+        message: `l’axe « ${axe.titre} » porte le nom d’un dossier suivi : un axe est une thématique, un acteur est une organisation et se suit dans « Dossiers suivis ». Nommer l’axe par le sujet, pas par l’acteur.`,
+      })
+    }
   }
 
   // ── La rubrique des dossiers suivis, quand il y a des dossiers ───────────

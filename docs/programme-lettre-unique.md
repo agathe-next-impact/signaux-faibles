@@ -13,8 +13,10 @@ service jusqu'à la bascule.*
 1. **Une seule lettre par organisation et par parution**, qui intègre les
    données Écosystème et Concurrence : dix à quinze axes, chacun étant un thème
    de l'écosystème (réglementation, marché, financement, technologie,
-   territoire, etc.) ou un type d'organisations concurrentes (constructeurs,
-   intégrateurs, acteurs publics, nouveaux entrants, etc.). Très synthétique,
+   territoire, etc.) ou un sujet d'offre commerciale (prix, formules,
+   positionnement). Un axe est une thématique, jamais une organisation ; les
+   organisations se suivent dans les dossiers (décision du 22 octobre 2026, voir
+   le §2). Très synthétique,
    couvrant le spectre au maximum, sans manquer une information essentielle,
    lisible en cinq minutes et très fiable. La propriété `Famille` et la double
    numérotation disparaissent ; une organisation a un référentiel et une suite
@@ -56,9 +58,12 @@ exigée, vérifiée par `contrôlerLaLettre({ forme: 'unique' })`.
 | « L'essentiel » | titre H1, huit lignes au plus, 140 caractères par ligne ; chaque ligne se lit seule | `essentiel-absent`, `essentiel-trop-long`, `essentiel-ligne-longue` |
 | « Actualités par axe » | titre H1, suivi des axes | `axes-hors-rubrique` |
 | Axes | **dix à quinze** titres H2 « ① Nom — FORT / MOYEN / RAS », numérotés dans l'ordre du référentiel unique ; trois niveaux et trois seulement | `axes-trop-peu`, `axes-trop-nombreux`, `axe-sans-niveau`, `niveau-faible` |
-| Corps d'un axe FORT ou MOYEN | un à **trois faits**, un paragraphe par fait, **deux phrases au plus et 280 caractères au plus** par fait, chaque fait daté et portant une URL ouverte pendant le run ; les constats d'absence en encadré à la suite | `fait-trop-long`, `axe-trop-fourni`, `fait-sans-date`, `fait-sans-source` |
-| Corps d'un axe RAS | un seul encadré, 200 caractères au plus, qui nomme ce qui a été vérifié | `absence-en-prose` (rupture en forme unique) |
+| Corps d'un axe FORT ou MOYEN | un à **deux faits**, un paragraphe par fait, **deux phrases au plus et 220 caractères au plus** par fait (l'information seule, sans commentaire), chaque fait daté et suivi de sa ou de ses sources entre parenthèses (un ou deux liens vers des URL ouvertes pendant le run) | `fait-trop-long`, `axe-trop-fourni`, `fait-sans-date`, `fait-sans-source` |
+| Corps d'un axe RAS | un seul encadré qui dit « RAS » et rien d'autre : aucune phrase sur ce qui a été vérifié | `ras-trop-long`, `absence-en-prose` (rupture en forme unique) |
+| Axes et acteurs | un axe est une thématique, un acteur est une organisation et ne se suit que dans « Dossiers suivis » ; un axe qui porte le nom d'un dossier est refusé | `axe-est-un-acteur` |
+| Recommandations de contenu | aucune rubrique d'idées ou de recommandations de posts | `recommandation-de-post` |
 | « Dossiers suivis » | titre H1 du pied, un paragraphe par dossier ouvert, qui le nomme exactement comme la propriété ; la propriété `Dossiers ouverts suivis` garde le format `nom (compteur, précision)` | `dossier-sans-compteur`, `dossier-non-nommé` |
+| Sources non consultées | seule trace de la collecte admise : une rubrique H1 « Sources non consultées », **une liste de liens et rien d'autre**, écrite par le code d'après les lectures qui n'ont pas abouti (jamais par le modèle) ; une phrase ou une puce qui ajoute du texte au lien la fait refuser | `collecte-dans-la-lettre` |
 | Ce qui n'y figure jamais | rapport de collecte, note de méthode, sources non ouvertes, requêtes non lancées, réserves, ajustements du cadrage, références internes au référentiel | `collecte-dans-la-lettre` et `cadrage-présent` (ruptures en forme unique), `référence-interne` |
 | Longueur | 1 400 mots au plus, lettre entière | `lettre-trop-longue` |
 
@@ -425,3 +430,18 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   `dossier?travail=` sert le dossier décidé, l'onboarding et la découverte
   posent et prennent un travail `premiere_lettre`, la veille `unique` est
   déclarée à l'ouverture d'une organisation, écran `/espaces/file`.
+- **22 octobre 2026, lettre compacte** (demande de l'opératrice, d'après les deux
+  lettres de Next Impact : près de 16 500 mots à elles deux, dont des idées de
+  posts, une note de méthode, des listes de sources lues et non lues) : plus
+  aucune recommandation de post ; un axe sans fait n'écrit que « RAS » ; au plus
+  deux faits de 220 caractères par axe, avec un ou deux liens de source ; les
+  sources non consultées sont une liste de liens écrite par le code
+  (`assemblerLaLettre`, quatrième argument, rubrique « Sources non consultées »),
+  jamais une rédaction du modèle, et un fait ne peut pas citer une source
+  ignorée ; un axe est une thématique et une organisation n'est jamais un axe
+  (`axe-est-un-acteur`), les dossiers sont des organisations. Le schéma de
+  rédaction perd le champ `ras` et gagne `autresUrls` (une seconde source au
+  plus). Les avertissements propres à l'édition n°1 (`lettre-maigre`,
+  `analyse-absente`) ne valent plus en forme unique. Les deux lettres de Next
+  Impact reformulées en une seule tiennent en 700 mots et passent le validateur
+  sans réserve.

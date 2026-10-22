@@ -21,8 +21,8 @@ const sortie: SortieRédigée = {
   essentiel: ['Le raccordement de Telehouse Magny est acté le 27 octobre.', 'Rien de neuf sur le reste.', 'Une consultation s’ouvre le 30 octobre.'],
   axes: Array.from({ length: AXES }, (_, i) =>
     i === 0
-      ? { numéro: 1, niveau: 'FORT' as const, faits: [{ texte: 'Le raccordement de Telehouse Magny est acté le 27 octobre.', date: '2026-10-27', url: URL(1), contexte: false }], ras: null }
-      : { numéro: i + 1, niveau: 'RAS' as const, faits: [], ras: 'Rien de neuf, source relue le 1er novembre.' },
+      ? { numéro: 1, niveau: 'FORT' as const, faits: [{ texte: 'Le raccordement de Telehouse Magny est acté le 27 octobre.', date: '2026-10-27', url: URL(1), autresUrls: [], contexte: false }] }
+      : { numéro: i + 1, niveau: 'RAS' as const, faits: [] },
   ),
   dossiers: [],
   actionDeLaSemaine: 'Suivre le raccordement.',
