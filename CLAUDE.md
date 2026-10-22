@@ -701,8 +701,9 @@ reste celui en service jusqu'à la bascule.
 
 **Lettre compacte, 22 octobre 2026** (`docs/programme-lettre-unique.md`, §2 et
 journal) : dans la forme unique, aucune recommandation de post, un axe sans fait
-écrit « RAS » et rien d'autre, au plus deux faits de 220 caractères par axe avec
-un ou deux liens de source, les sources non consultées en simple liste de liens
+écrit « RAS » et rien d'autre, deux faits exactement de 220 caractères au plus
+par axe non RAS (le second peut être un élément de contexte daté) avec un ou
+deux liens de source, les sources non consultées en simple liste de liens
 écrite par le code (jamais par le modèle), et un axe est une thématique quand un
 acteur est une organisation (`axe-est-un-acteur`). Ce paragraphe prime sur les
 seuils que d'autres pages de ce fichier donnent encore pour la lettre unique.

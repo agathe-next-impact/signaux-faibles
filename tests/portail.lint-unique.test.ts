@@ -4,7 +4,7 @@ import { LETTRE_UNIQUE, contrôlerLaLettre } from '@/lib/portail/lint'
 
 /**
  * Le contrat de la lettre unique (programme du 22 octobre 2026, §2) : dix à
- * quinze axes, un ou deux faits courts par axe, datés et sourcés, un RAS nu en
+ * quinze axes, deux faits courts par axe, datés et sourcés, un RAS nu en
  * encadré, une rubrique « Dossiers suivis », rien du rapport de collecte.
  * Aucun humain ne relit : ce que la forme double tolérait devient une rupture.
  */
@@ -27,7 +27,7 @@ const CERCLÉS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨',
 
 /** Une lettre unique au contrat, à `combien` axes, les niveaux alternés. */
 function lettreUnique(combien = 12, options: { faitsParAxe?: number } = {}): BlocNotion[] {
-  const faitsParAxe = options.faitsParAxe ?? 1
+  const faitsParAxe = options.faitsParAxe ?? 2
   const blocs: BlocNotion[] = [
     h1('L’essentiel'),
     p('Le décret sur la facturation électronique est paru le 12 septembre.'),
@@ -72,8 +72,21 @@ describe('contrôlerLaLettre, forme unique : une lettre au contrat', () => {
     expect(contrôler(lettreUnique(LETTRE_UNIQUE.axesMax)).conforme).toBe(true)
   })
 
-  it('deux faits par axe restent admis', () => {
+  it('deux faits par axe : le contrat', () => {
     expect(contrôler(lettreUnique(12, { faitsParAxe: 2 })).conforme).toBe(true)
+  })
+
+  it('un seul fait dans un axe qui n’est pas en RAS : axe-peu-fourni', () => {
+    const rapport = contrôler(lettreUnique(12, { faitsParAxe: 1 }))
+    expect(rapport.ruptures.map((r) => r.code)).toContain('axe-peu-fourni')
+    expect(rapport.ruptures.find((r) => r.code === 'axe-peu-fourni')?.message).toContain('contexte')
+  })
+
+  it('un élément de contexte compte comme fait et son suffixe n’alourdit pas la longueur', () => {
+    const blocs = lettreUnique(12)
+    const i = blocs.findIndex((b) => b.type === 'paragraph' && b.id !== blocs[1]!.id && b.id !== blocs[2]!.id)
+    blocs[i] = fait(`Le texte est paru le 2 septembre ${'et précise les obligations des plateformes '.repeat(3)}(élément de contexte, non nouveau)`)
+    expect(contrôler(blocs).ruptures.map((r) => r.code)).not.toContain('fait-trop-long')
   })
 
   it('la même lettre, en forme double, est conforme aussi : le contrat commun ne change pas', () => {

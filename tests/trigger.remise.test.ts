@@ -21,7 +21,7 @@ const sortie: SortieRédigée = {
   essentiel: ['Le raccordement de Telehouse Magny est acté le 27 octobre.', 'Rien de neuf sur le reste.', 'Une consultation s’ouvre le 30 octobre.'],
   axes: Array.from({ length: AXES }, (_, i) =>
     i === 0
-      ? { numéro: 1, niveau: 'FORT' as const, faits: [{ texte: 'Le raccordement de Telehouse Magny est acté le 27 octobre.', date: '2026-10-27', url: URL(1), autresUrls: [], contexte: false }] }
+      ? { numéro: 1, niveau: 'FORT' as const, faits: [{ texte: 'Le raccordement de Telehouse Magny est acté le 27 octobre.', date: '2026-10-27', url: URL(1), autresUrls: [], contexte: false }, { texte: 'Le site de Telehouse Magny ouvre le 26 octobre.', date: '2026-10-26', url: URL(1), autresUrls: [], contexte: false }] }
       : { numéro: i + 1, niveau: 'RAS' as const, faits: [] },
   ),
   dossiers: [],
@@ -30,7 +30,7 @@ const sortie: SortieRédigée = {
 
 const rédacteur: Rédacteur = { modèle: 'claude-opus-5-5', usage: { entrée: 10, sortie: 5, cacheLecture: 0, cacheÉcriture: 0 }, rédiger: async () => sortie, reprendre: async () => sortie }
 const fauxFetch = (async () =>
-  new Response(`<p>Le raccordement de Telehouse Magny est acté le 27 octobre. ${'Une phrase de remplissage suffisamment longue pour la page. '.repeat(4)}</p>`, { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch
+  new Response(`<p>Le raccordement de Telehouse Magny est acté le 27 octobre ; le site ouvre le 26 octobre. ${'Une phrase de remplissage suffisamment longue pour la page. '.repeat(4)}</p>`, { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch
 
 describe('la remise d’une production au portail', () => {
   it('respecte le schéma de la route, mode et cible compris', async () => {

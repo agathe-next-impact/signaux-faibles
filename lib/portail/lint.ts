@@ -76,6 +76,7 @@ export type CodeDeFormeUnique =
   | 'axes-trop-peu'
   | 'axes-trop-nombreux'
   | 'axe-trop-fourni'
+  | 'axe-peu-fourni'
   | 'fait-trop-long'
   | 'fait-sans-date'
   | 'fait-sans-source'
@@ -151,6 +152,7 @@ const RUBRIQUE_DES_DOSSIERS = 'dossiers suivis'
 export const LETTRE_UNIQUE = {
   axesMin: 10,
   axesMax: 15,
+  faitsParAxeMin: 2,
   faitsParAxeMax: 2,
   phrasesParFaitMax: 2,
   caractèresParFaitMax: 220,
@@ -644,7 +646,7 @@ function contrôlerLaFormeUnique(
   ruptures: Rupture[],
   avertissements: Avertissement[],
 ): void {
-  const { axesMin, axesMax, faitsParAxeMax, phrasesParFaitMax, caractèresParFaitMax, motsMax } = LETTRE_UNIQUE
+  const { axesMin, axesMax, faitsParAxeMin, faitsParAxeMax, phrasesParFaitMax, caractèresParFaitMax, motsMax } = LETTRE_UNIQUE
 
   // ── Dix à quinze axes ────────────────────────────────────────────────────
   if (axes.length > 0 && axes.length < axesMin) {
@@ -678,6 +680,13 @@ function contrôlerLaFormeUnique(
       }
       continue
     }
+    if (faits.length < faitsParAxeMin) {
+      ruptures.push({
+        code: 'axe-peu-fourni',
+        portée: 'lettre',
+        message: `l’axe « ${axe.titre} » porte ${faits.length} fait(s) pour ${faitsParAxeMin} au moins : ajouter un second fait de la période, ou un élément de contexte daté tiré du dossier (contexte: true) ; sans second fait sourçable, l’axe passe en RAS.`,
+      })
+    }
     if (faits.length > faitsParAxeMax) {
       ruptures.push({
         code: 'axe-trop-fourni',
@@ -687,7 +696,7 @@ function contrôlerLaFormeUnique(
     }
     faits.forEach((fait, i) => {
       // La source entre parenthèses en fin de fait n'est ni une phrase ni du texte à compter.
-      const texte = texteSansLaSource(fait)
+      const texte = texteSansLaSource(fait).replace(/\s*\(élément de contexte, non nouveau\)\s*$/, '')
       const phrases = fait.type === 'paragraphe' ? phrasesDe([{ texte, gras: false, italique: false, code: false, barré: false, lien: null }]).length : 1
       if (texte.length > caractèresParFaitMax || phrases > phrasesParFaitMax) {
         ruptures.push({

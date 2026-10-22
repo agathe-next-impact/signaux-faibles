@@ -42,7 +42,7 @@ export const schémaDeLaLettre = z.object({
             }),
           )
           .max(LETTRE_UNIQUE.faitsParAxeMax)
-          .describe(`Zéro à ${LETTRE_UNIQUE.faitsParAxeMax} faits, les plus lourds de conséquence ; vide si RAS, et l'axe n'écrit alors rien d'autre que RAS`),
+          .describe(`Exactement ${LETTRE_UNIQUE.faitsParAxeMax} faits pour un axe FORT ou MOYEN, les plus lourds de conséquence ; vide si RAS, et l'axe n'écrit alors rien d'autre que RAS`),
       }),
     )
     .min(LETTRE_UNIQUE.axesMin)
@@ -87,14 +87,16 @@ export function systèmeDeRédaction(): string {
     `et les résultats des requêtes types. Tu n'as aucun outil et tu n'inventes rien : chaque fait vient d'un extrait du dossier, ` +
     `porte sa date et l'URL exacte de l'extrait. Une URL absente du dossier est une faute qui fait rejeter la lettre.\n\n` +
     `CE QUE TU PRODUIS : une seule lettre, très synthétique, qui couvre tout le spectre : un objet par axe, tous les axes, ` +
-    `un à ${LETTRE_UNIQUE.faitsParAxeMax} faits d'une à ${LETTRE_UNIQUE.phrasesParFaitMax} phrases au plus pour un axe FORT ou MOYEN, chacun avec sa source ; ` +
+    `${LETTRE_UNIQUE.faitsParAxeMin} faits exactement, d'une à ${LETTRE_UNIQUE.phrasesParFaitMax} phrases au plus pour un axe FORT ou MOYEN, chacun avec sa source ; ` +
     `un axe sans fait est RAS et n'écrit rien d'autre : pas de phrase sur ce qui a été vérifié. ` +
     `Un axe est une thématique, jamais une organisation ; une organisation n'est jamais un axe, elle se suit dans les dossiers, ` +
     `une par dossier, et un fait la nomme en clair. Tu ne proposes ni idée de post, ni recommandation de publication, ni conseil de communication ; ` +
     `tu ne parles pas des sources que le programme n'a pas pu lire, il les liste lui-même. ` +
     `Le niveau d'un axe est celui de son fait le plus fort, selon les critères de l'axe ; trois niveaux et trois seulement, FAIBLE n'existe pas. ` +
-    `Un fait de la période est daté dedans ; un fait antérieur n'entre que comme élément de contexte (contexte: true) quand il éclaire une échéance à venir, ` +
-    `et jamais pour remplir. Un axe sans fait de la période est RAS : le dire est une information, remplir serait une faute.\n\n` +
+    `Un fait de la période est daté dedans. Un axe FORT ou MOYEN porte deux faits : quand la période n'en donne qu'un, le second est un élément de contexte daté (contexte: true), ` +
+    `tiré des articles antérieurs du dossier marqués contexte="oui" ou d'un extrait de source daté, jamais inventé. ` +
+    `Un axe dont le dossier ne donne aucun fait de la période est RAS ; un axe dont le dossier ne donne qu'un fait, sans élément de contexte sourçable, est RAS aussi plutôt que rempli. ` +
+    `Une page qui porte l'attribut miseajour a été modifiée à cette date : un tarif ou une offre qu'elle affiche est un fait de cette date.\n\n` +
     `COMMENT C'EST ÉCRIT : des phrases, sujet verbe complément, une idée par phrase, un acteur par phrase, les sigles développés à leur première apparition, ` +
     `la date en toutes lettres dans la phrase (« le 12 septembre »), le ton sobre et factuel, sans effet d'annonce. ` +
     `Les dates : celle d'un fait est celle que l'extrait donne, jamais celle d'une autre page ; un article porte sa date de publication dans l'attribut date, ` +
@@ -130,12 +132,12 @@ export function blocDuDossier(référentiel: RéférentielUnique, sélection: S�
         if (!l.état.startsWith('ouverte')) return `  <source url="${l.url}" etat="${l.état}" />`
         const nouveautés = l.nouveautés.slice(0, 40).join(' ')
         const corps = nouveautés.length > 0 ? `nouveau depuis la dernière lecture : ${écourter(nouveautés, options.caractèresParSource ?? 3_000)}` : `inchangé depuis la dernière lecture : ${écourter(l.texte, 600)}`
-        return `  <source url="${l.url}" etat="${l.état}" changee="${l.changée === null ? 'inconnu' : l.changée ? 'oui' : 'non'}">\n  ${corps}\n  </source>`
+        return `  <source url="${l.url}" etat="${l.état}" changee="${l.changée === null ? 'inconnu' : l.changée ? 'oui' : 'non'}"${l.miseÀJour ? ` miseajour="${l.miseÀJour}"` : ''}>\n  ${corps}\n  </source>`
       })
       .join('\n')
     const articles = (dossier.articles ?? [])
       .filter((a) => axe.sources.some((s) => s.url === a.source))
-      .map((a) => `  <article url="${a.url}" date="${a.date}" source="${a.source}">${a.titre} : ${écourter(a.extrait, 900)}</article>`)
+      .map((a) => `  <article url="${a.url}" date="${a.date}"${a.contexte ? ' contexte="oui"' : ''} source="${a.source}">${a.titre} : ${écourter(a.extrait, 900)}</article>`)
       .join('\n')
     const résultats = dossier.résultats
       .filter((r) => r.axe === axe.numéro)

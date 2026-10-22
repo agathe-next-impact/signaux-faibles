@@ -26,6 +26,8 @@ export type Lecture = {
   readonly changée: boolean | null
   /** Les liens de la page qui mènent à un article du même site : de quoi suivre une page d'index. */
   readonly liens?: readonly Lien[]
+  /** AAAA-MM-JJ : la date que la page écrit elle-même pour sa dernière modification (« Mis à jour le 16 octobre 2026 »). */
+  readonly miseÀJour?: string
 }
 
 export type Lien = { readonly url: string; readonly texte: string }
@@ -39,6 +41,8 @@ export type Article = {
   /** AAAA-MM-JJ, lue dans la page ; jamais devinée. */
   readonly date: string
   readonly extrait: string
+  /** `true` pour un article antérieur à la période, gardé comme élément de contexte. */
+  readonly contexte: boolean
 }
 
 /** Ce qu'on garde d'une lecture pour la comparer à la suivante. */
@@ -134,6 +138,37 @@ export function liensDe(html: string, base: string): Lien[] {
     liens.push({ url, texte: texte.slice(0, 200) })
   }
   return liens
+}
+
+const MOIS_FR = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+const MOIS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+function numéroDeMois(nom: string): number {
+  const n = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\.$/, '')
+  const i = MOIS_FR.findIndex((m) => m === n || (n.length >= 3 && m.startsWith(n))) 
+  const j = MOIS_EN.findIndex((m) => m === n || (n.length >= 3 && m.startsWith(n)))
+  return (i >= 0 ? i : j) + 1
+}
+
+function isoDe(jour: number, mois: number, année: number): string | null {
+  if (!jour || !mois || !année || jour > 31) return null
+  return `${année}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`
+}
+
+/**
+ * La date de dernière modification qu'une page écrit dans son texte, après
+ * « Mis à jour le », « Modifié le », « Updated », « Dernière mise à jour » :
+ * « 16 octobre 2026 », « 16/10/2026 », « October 16, 2026 ». La plus récente
+ * si plusieurs ; `null` si la page n'en porte pas. Jamais devinée.
+ */
+export function miseÀJourDe(texte: string): string | null {
+  const dates: string[] = []
+  const motif = /(?:mis(?:e)?\s+à\s+jour|modifi[ée]e?|updated|last\s+updated|derni[èe]re\s+mise\s+à\s+jour)\s*(?:le|on|:|\s)\s*(?:le\s+)?(?:(\d{1,2})(?:er)?\s+([\p{L}.]+)\s+(\d{4})|(\d{1,2})[/.](\d{1,2})[/.](\d{4})|([\p{L}.]+)\s+(\d{1,2}),?\s+(\d{4}))/giu
+  for (const m of texte.matchAll(motif)) {
+    const iso = m[1] ? isoDe(Number(m[1]), numéroDeMois(m[2]!), Number(m[3])) : m[4] ? isoDe(Number(m[4]), Number(m[5]), Number(m[6])) : isoDe(Number(m[8]), numéroDeMois(m[7]!), Number(m[9]))
+    if (iso && !Number.isNaN(Date.parse(iso))) dates.push(iso)
+  }
+  return dates.sort().at(-1) ?? null
 }
 
 const ISO = /^(\d{4}-\d{2}-\d{2})/
@@ -240,7 +275,8 @@ export async function collecterLesSources(référentiel: RéférentielUnique, op
         const connues = new Set(précédent?.phrases ?? [])
         const nouveautés = précédent ? phrases.filter((p) => !connues.has(p)) : phrases
         const changée = état.startsWith('ouverte') ? (précédent ? précédent.empreinte !== empreinte : null) : null
-        return { url, état, luLe, texte, empreinte, nouveautés, changée, ...(liens && liens.length > 0 ? { liens } : {}) }
+        const miseÀJour = état.startsWith('ouverte') ? miseÀJourDe(texte) : null
+        return { url, état, luLe, texte, empreinte, nouveautés, changée, ...(liens && liens.length > 0 ? { liens } : {}), ...(miseÀJour ? { miseÀJour } : {}) }
       }),
       options.parallèle ?? 6,
     )
@@ -250,8 +286,12 @@ export async function collecterLesSources(référentiel: RéférentielUnique, op
 }
 
 export type OptionsDeSuivi = {
-  /** Articles lus au plus par source (les plus récents de la page, dans la période). */
+  /** Articles de la période lus au plus par source (les plus récents de la page). */
   readonly parSource?: number
+  /** Articles de contexte (antérieurs à la période) gardés au plus par source. */
+  readonly contexteParSource?: number
+  /** Jusqu'où remonter pour le contexte, en jours avant le début de la période. */
+  readonly contexteJours?: number
   /** Liens essayés au plus par source avant de s'arrêter. */
   readonly essaisParSource?: number
   readonly tailleExtrait?: number
@@ -263,8 +303,7 @@ export type OptionsDeSuivi = {
 /**
  * Suit les pages d'index : pour chaque source ouverte, les premiers liens qui
  * mènent à un article du même site sont lus, et seuls restent ceux que leurs
- * propres métadonnées datent dans la période (ou la veille de son début : un
- * fait de la veille éclaire l'échéance). Une page sans date lisible n'entre
+ * propres métadonnées datent dans la période (ou, pour le contexte, les soixante jours qui précèdent). Une page sans date lisible n'entre
  * pas : le programme ne devine pas une date. Aucune décision éditoriale.
  */
 export async function suivreLesArticles(
@@ -273,7 +312,9 @@ export async function suivreLesArticles(
   options: OptionsDeSuivi = {},
 ): Promise<Article[]> {
   const parSource = options.parSource ?? 4
-  const essais = options.essaisParSource ?? 8
+  const contexteParSource = options.contexteParSource ?? 2
+  const contexteDepuis = reculerD(période.début, options.contexteJours ?? 60)
+  const essais = options.essaisParSource ?? 12
   const tailleExtrait = options.tailleExtrait ?? 1_800
   const délaiMs = options.délaiMs ?? 15_000
   const fetchRéel = options.fetch ?? fetch
@@ -289,21 +330,23 @@ export async function suivreLesArticles(
         const http = await lireParHttp(lien.url, { tailleExtrait: 20_000, délaiMs, fetch: fetchRéel })
         if (http.état !== 'ouverte' || !http.html) return null
         const date = dateDePublication(http.html)
-        if (!date || date > période.fin || date < reculerD(période.début, 1)) return null
-        return { source: lecture.url, url: lien.url, titre: lien.texte, date, extrait: http.texte.slice(0, tailleExtrait) }
+        if (!date || date > période.fin || date < contexteDepuis) return null
+        const contexte = date < reculerD(période.début, 1)
+        return { source: lecture.url, url: lien.url, titre: lien.texte, date, extrait: http.texte.slice(0, tailleExtrait), contexte }
       }
       tâches.push(tâche)
     }
   }
   const lus = (await enParallèle(tâches, options.parallèle ?? 8)).filter((a): a is Article => a !== null)
-  // Au plus `parSource` articles par source, les plus récents d'abord.
+  // Par source, les plus récents d'abord : `parSource` de la période, `contexteParSource` de contexte.
   const gardés = new Map<string, number>()
   return lus
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .filter((a) => {
-      const n = gardés.get(a.source) ?? 0
-      gardés.set(a.source, n + 1)
-      return n < parSource
+      const clé = `${a.source}|${a.contexte ? 'c' : 'p'}`
+      const n = gardés.get(clé) ?? 0
+      gardés.set(clé, n + 1)
+      return n < (a.contexte ? contexteParSource : parSource)
     })
 }
 

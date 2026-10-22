@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dateDePublication, liensDe, suivreLesArticles, type Lecture } from '@/lib/moteur/collecte'
+import { dateDePublication, liensDe, miseÀJourDe, suivreLesArticles, type Lecture } from '@/lib/moteur/collecte'
 import { dateSeLit, dossiersEnDouble } from '@/lib/moteur/portes'
 import { lireLesRésultats } from '@/lib/moteur/recherche'
 import { blocDuDossier, type Sélection } from '@/lib/moteur/redaction'
@@ -69,11 +69,12 @@ describe('suivreLesArticles', () => {
     liens: liensDe(INDEX, 'https://exemple.fr/blog/'),
   }
 
-  it('ne garde que les articles que leurs métadonnées datent dans la période, les plus récents d’abord', async () => {
+  it('garde les articles datés dans la période puis, marqués contexte, ceux des soixante jours qui précèdent ; les plus récents d’abord', async () => {
     const articles = await suivreLesArticles([lecture], { début: '2026-10-14', fin: '2026-10-21' }, { fetch: fauxFetch })
-    expect(articles.map((a) => [a.date, a.url])).toEqual([
-      ['2026-10-20', 'https://exemple.fr/blog/wordpress-7-2-b%C3%AAta'],
-      ['2026-10-19', 'https://exemple.fr/blog/faille-updraftcentral-octobre-2026'],
+    expect(articles.map((a) => [a.date, a.contexte, a.url])).toEqual([
+      ['2026-10-20', false, 'https://exemple.fr/blog/wordpress-7-2-b%C3%AAta'],
+      ['2026-10-19', false, 'https://exemple.fr/blog/faille-updraftcentral-octobre-2026'],
+      ['2026-09-02', true, 'https://exemple.fr/blog/ancien-billet-de-septembre-sur-la-maintenance'],
     ])
     expect(articles[0]!.source).toBe('https://exemple.fr/blog/')
     expect(articles[0]!.extrait.length).toBeLessThanOrEqual(1_800)
@@ -82,7 +83,29 @@ describe('suivreLesArticles', () => {
   it('une source fermée n’est pas suivie, et la limite par source est tenue', async () => {
     const fermée: Lecture = { ...lecture, état: 'http-503' }
     expect(await suivreLesArticles([fermée], { début: '2026-10-14', fin: '2026-10-21' }, { fetch: fauxFetch })).toEqual([])
-    expect(await suivreLesArticles([lecture], { début: '2026-10-14', fin: '2026-10-21' }, { fetch: fauxFetch, parSource: 1 })).toHaveLength(1)
+    expect(await suivreLesArticles([lecture], { début: '2026-10-14', fin: '2026-10-21' }, { fetch: fauxFetch, parSource: 1, contexteParSource: 0 })).toHaveLength(1)
+  })
+})
+
+describe('suivreLesArticles, fenêtre de contexte', () => {
+  it('au-delà de la fenêtre, un article n’est plus gardé', async () => {
+    const lecture: Lecture = { url: 'https://exemple.fr/blog/', état: 'ouverte', luLe: '', texte: 'x'.repeat(300), empreinte: 'e', nouveautés: [], changée: null, liens: liensDe(INDEX, 'https://exemple.fr/blog/') }
+    const articles = await suivreLesArticles([lecture], { début: '2026-10-14', fin: '2026-10-21' }, { fetch: fauxFetch, contexteJours: 10 })
+    expect(articles.map((a) => a.date)).toEqual(['2026-10-20', '2026-10-19'])
+  })
+})
+
+describe('miseÀJourDe', () => {
+  it('lit « mis à jour le », « modifié le », « updated » et « dernière mise à jour », en français, en anglais et en numérique', () => {
+    expect(miseÀJourDe('Run headless. Mis à jour le 16 octobre 2026. Sur devis.')).toBe('2026-10-16')
+    expect(miseÀJourDe('Dernière mise à jour : 1er octobre 2026')).toBe('2026-10-01')
+    expect(miseÀJourDe('Modifié le 14/10/2026')).toBe('2026-10-14')
+    expect(miseÀJourDe('Last updated October 16, 2026')).toBe('2026-10-16')
+    expect(miseÀJourDe('Updated on 3 Oct 2026')).toBe('2026-10-03')
+  })
+  it('garde la plus récente quand une page en porte plusieurs, et null quand elle n’en porte aucune', () => {
+    expect(miseÀJourDe('Mis à jour le 2 septembre 2026. Mise à jour le 19 octobre 2026.')).toBe('2026-10-19')
+    expect(miseÀJourDe('Des tarifs, rien de daté ici.')).toBeNull()
   })
 })
 
@@ -174,9 +197,27 @@ describe('blocDuDossier avec des articles', () => {
     const bloc = blocDuDossier(référentiel, sélection, {
       lectures: [],
       résultats: [],
-      articles: [{ source: 'https://exemple.fr/blog/', url: 'https://exemple.fr/blog/a', titre: 'Titre A', date: '2026-10-19', extrait: 'Texte de l’article.' }],
+      articles: [{ source: 'https://exemple.fr/blog/', url: 'https://exemple.fr/blog/a', titre: 'Titre A', date: '2026-10-19', extrait: 'Texte de l’article.', contexte: false }],
     })
     expect(bloc).toMatch(/<axe numero="1"[^>]*>[\s\S]*<article url="https:\/\/exemple.fr\/blog\/a" date="2026-10-19"[^>]*>Titre A : Texte de l’article\.<\/article>[\s\S]*<\/axe>\n<axe numero="2"/)
     expect(bloc.match(/<article /g)).toHaveLength(1)
+  })
+
+  it('marque le contexte et la date de mise à jour d’une page', () => {
+    const référentiel = lireRéférentielUnique(
+      écrireRéférentielUnique('Next Impact', {
+        fiche: 'Studio web.',
+        axes: Array.from({ length: 10 }, (_, i) => ({ nom: `Thème ${i + 1}`, sorte: 'thème' as const, critères: 'FORT si.', sources: [{ libellé: 'S', url: `https://exemple.fr/s${i}` }], requêtes: [], acteurs: [] })),
+        dossiers: [],
+      }),
+    )
+    const sélection: Sélection = { numéro: 1, dateÉdition: '2026-10-21', période: { début: '2026-10-14', fin: '2026-10-21' }, éditionPrécédente: null }
+    const bloc = blocDuDossier(référentiel, sélection, {
+      lectures: [{ url: 'https://exemple.fr/s0', état: 'ouverte', luLe: '', texte: 'Tarifs. Mis à jour le 16 octobre 2026.', empreinte: 'e', nouveautés: ['Tarifs.'], changée: null, miseÀJour: '2026-10-16' }],
+      résultats: [],
+      articles: [{ source: 'https://exemple.fr/s0', url: 'https://exemple.fr/s0/ancien', titre: 'Ancien', date: '2026-09-02', extrait: 'Texte.', contexte: true }],
+    })
+    expect(bloc).toContain('miseajour="2026-10-16"')
+    expect(bloc).toContain('date="2026-09-02" contexte="oui"')
   })
 })

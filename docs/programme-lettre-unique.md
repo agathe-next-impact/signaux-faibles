@@ -58,7 +58,7 @@ exigée, vérifiée par `contrôlerLaLettre({ forme: 'unique' })`.
 | « L'essentiel » | titre H1, huit lignes au plus, 140 caractères par ligne ; chaque ligne se lit seule | `essentiel-absent`, `essentiel-trop-long`, `essentiel-ligne-longue` |
 | « Actualités par axe » | titre H1, suivi des axes | `axes-hors-rubrique` |
 | Axes | **dix à quinze** titres H2 « ① Nom — FORT / MOYEN / RAS », numérotés dans l'ordre du référentiel unique ; trois niveaux et trois seulement | `axes-trop-peu`, `axes-trop-nombreux`, `axe-sans-niveau`, `niveau-faible` |
-| Corps d'un axe FORT ou MOYEN | un à **deux faits**, un paragraphe par fait, **deux phrases au plus et 220 caractères au plus** par fait (l'information seule, sans commentaire), chaque fait daté et suivi de sa ou de ses sources entre parenthèses (un ou deux liens vers des URL ouvertes pendant le run) | `fait-trop-long`, `axe-trop-fourni`, `fait-sans-date`, `fait-sans-source` |
+| Corps d'un axe FORT ou MOYEN | **deux faits**, ni un ni trois, un paragraphe par fait, **deux phrases au plus et 220 caractères au plus** par fait (l'information seule, sans commentaire), chaque fait daté et suivi de sa ou de ses sources entre parenthèses (un ou deux liens vers des URL ouvertes pendant le run) | `fait-trop-long`, `axe-peu-fourni`, `axe-trop-fourni`, `fait-sans-date`, `fait-sans-source` |
 | Corps d'un axe RAS | un seul encadré qui dit « RAS » et rien d'autre : aucune phrase sur ce qui a été vérifié | `ras-trop-long`, `absence-en-prose` (rupture en forme unique) |
 | Axes et acteurs | un axe est une thématique, un acteur est une organisation et ne se suit que dans « Dossiers suivis » ; un axe qui porte le nom d'un dossier est refusé | `axe-est-un-acteur` |
 | Recommandations de contenu | aucune rubrique d'idées ou de recommandations de posts | `recommandation-de-post` |
@@ -445,3 +445,14 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   `analyse-absente`) ne valent plus en forme unique. Les deux lettres de Next
   Impact reformulées en une seule tiennent en 700 mots et passent le validateur
   sans réserve.
+- **22 octobre 2026, deux informations par axe** (demande de l'opératrice) : un
+  axe FORT ou MOYEN porte exactement deux faits (`axe-peu-fourni` sous deux,
+  `axe-trop-fourni` au-delà). Quand la période n'en donne qu'un, le second est
+  un élément de contexte daté, tiré des articles que la collecte suit sur les
+  soixante jours qui précèdent la période (`contexte="oui"` dans le dossier) ;
+  sans second fait sourçable, l'axe passe en RAS plutôt que d'être rempli. Le
+  suffixe « (élément de contexte, non nouveau) » ne compte pas dans la longueur
+  d'un fait. La collecte lit aussi la date qu'une page écrit pour sa dernière
+  modification (« Mis à jour le 16 octobre 2026 », attribut `miseajour`) : un
+  tarif qu'elle affiche est un fait de cette date, ce qui rattrape les pages de
+  prix sans métadonnée de publication.

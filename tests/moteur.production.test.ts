@@ -44,7 +44,10 @@ function sortieConforme(): SortieRédigée {
         : {
             numéro: i + 1,
             niveau,
-            faits: [{ texte: `Le texte ${i + 1} est paru le 21 octobre. Il s’applique au 1er janvier.`, date: '2026-10-21', url: URL(i + 1), autresUrls: [], contexte: false }],
+            faits: [
+              { texte: `Le texte ${i + 1} est paru le 21 octobre. Il s’applique au 1er janvier.`, date: '2026-10-21', url: URL(i + 1), autresUrls: [], contexte: false },
+              { texte: `Le second texte ${i + 1} est paru le 20 octobre.`, date: '2026-10-20', url: URL(i + 1), autresUrls: [], contexte: false },
+            ],
           }
     }),
     dossiers: [{ nom: 'facturation électronique', compteur: 0, précision: 'décret paru', suivi: 'Le dossier facturation électronique avance : le décret est paru le 21 octobre.' }],
@@ -63,7 +66,7 @@ describe('assemblerLaLettre', () => {
     expect(contrôle.manquements).toEqual([])
     expect(contrôle.franchies).toBe(true)
     expect(contrôle.rapport.aperçu.axes).toHaveLength(AXES)
-    expect(contrôle.faits).toBe(8)
+    expect(contrôle.faits).toBe(16)
   })
 
   it('écrit le titre, les propriétés et la ligne des dossiers au format du portail', () => {
@@ -173,7 +176,7 @@ describe('contrôlerLaProduction', () => {
     const refusé = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: sansDate })
     expect(refusé.manquements.map((m) => m.code)).toContain('fait-date-non-sourcée')
     expect(refusé.messageDeReprise).toContain('2026-10-21')
-    const avecDate = new Map([[URL(1), 'Publié le 21 octobre 2026 : le texte est paru.']])
+    const avecDate = new Map([[URL(1), 'Publié le 21 octobre 2026 : le texte est paru. Complété le 20 octobre.']])
     expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: avecDate }).manquements).toEqual([])
     // Une URL dont le programme n'a aucun texte n'est pas jugée : la porte des citations la tient déjà.
     expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: new Map() }).manquements).toEqual([])
@@ -272,7 +275,7 @@ function rédacteurSimulé(réponses: SortieRédigée[]): Rédacteur & { correct
 }
 
 const fetchDuCycle = (async (entrée: string | URL | Request) =>
-  new Response(`<p>Le texte est paru le 21 octobre, ${String(entrée)}. Une seconde phrase stable et longue, qui fait passer la page au-dessus du seuil de deux cents caractères, pour que la collecte la compte comme ouverte.</p>`, { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch
+  new Response(`<p>Le texte est paru le 21 octobre et complété le 20 octobre, ${String(entrée)}. Une seconde phrase stable et longue, qui fait passer la page au-dessus du seuil de deux cents caractères, pour que la collecte la compte comme ouverte.</p>`, { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch
 
 describe('produireLaLettre', () => {
   it('accepte une première rédaction conforme sans reprise, et rend le gel suivant', async () => {
@@ -284,7 +287,7 @@ describe('produireLaLettre', () => {
     expect(production.acceptée).toBe(true)
     expect(production.mesures.reprises).toBe(0)
     expect(production.mesures.couverture.taux).toBe(1)
-    expect(production.mesures.faits).toBe(8)
+    expect(production.mesures.faits).toBe(16)
     expect(production.mesures.coût).toBeCloseTo((1000 * 4 + 500 * 20) / 1_000_000, 6)
     expect(production.collecte.gelSuivant.size).toBe(AXES)
     expect(production.lettre.blocs.length).toBeGreaterThan(20)
