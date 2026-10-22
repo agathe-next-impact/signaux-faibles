@@ -22,6 +22,7 @@
     "evaluation:lettres": "tsx scripts/evaluation-lettres.ts",
     "evaluation:agent": "tsx scripts/evaluation-agent.ts",
     "evaluation:unique": "tsx scripts/evaluation-unique.ts",
+    "onboarding:local": "tsx scripts/onboarding-local.ts",
     "payload": "payload",
     "payload:generer-types": "payload generate:types",
     "payload:migrer": "payload migrate",

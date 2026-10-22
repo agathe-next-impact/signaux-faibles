@@ -10,50 +10,11 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { logger, task } from '@trigger.dev/sdk'
 import { z } from 'zod'
 import { collecterLesSources, navigateurPlaywright } from '@/lib/moteur/collecte'
-import { convertirLesRéférentiels, lireRéférentielUnique, schémaDuRéférentielUnique, écrireRéférentielUnique } from '@/lib/moteur/referentiel'
+import { dériverLeRéférentiel } from '@/lib/moteur/onboarding'
+import { convertirLesRéférentiels } from '@/lib/moteur/referentiel'
 import type { DossierDOnboarding } from '@/lib/moteur/remise'
 import { clientAnthropic, produireDepuisLeDossier, remiseDe } from './moteur'
 import { lireLeDossierDuTravail, ouvrirLEspace, poserUnTravail, prendreUnTravail, remettreLÉdition, remettreLeRéférentiel, type DossierDUnTravail } from './portail'
-
-/**
- * Le référentiel unique d'une nouvelle organisation, dérivé du référentiel de
- * sa filière et du gel de son site : un appel, à l'onboarding ou à la
- * découverte. Pour un client existant qui a deux référentiels Notion, c'est
- * `convertirLesRéférentiels` qui s'applique.
- */
-async function dériverLeRéférentiel(
-  anthropic: Anthropic,
-  entrée: { organisation: string; site: string | null; filière: string | null; référentielDeFilière: string | null; fiche: string | null },
-): Promise<{ markdown: string; fiche: string; coût: number }> {
-  const extraitsDuSite = entrée.site
-    ? await collecterLesSources(
-        { organisation: entrée.organisation, fiche: '', dossiersBruts: '', dossiers: [], axes: [{ numéro: 1, nom: 'site', sorte: 'thème', critères: '', sources: [{ libellé: 'site', url: entrée.site }], requêtes: [], acteurs: [] }] },
-        { ouvrirNavigateur: () => navigateurPlaywright(), tailleExtrait: 12_000 },
-      )
-    : []
-  const système =
-    `Tu écris le référentiel unique d'une organisation pour un programme de veille hebdomadaire : dix à quinze axes, ` +
-    `thématiques de l'écosystème puis sujets d'offre commerciale (jamais le nom d'une organisation, qui se suit en dossier), chacun avec ses sources nommées (URL réelles, reprises du référentiel de filière ou du site), ` +
-    `ses requêtes types, ses acteurs et ses critères FORT et MOYEN. Pars du référentiel de filière quand il existe et spécialise-le à l'organisation ; ` +
-    `n'invente aucune URL. La fiche tient en quatre à huit phrases.`
-  const utilisateur =
-    `<organisation>${entrée.organisation}</organisation>\n<site>${entrée.site ?? 'inconnu'}</site>\n<filiere>${entrée.filière ?? 'aucune'}</filiere>\n` +
-    `<fiche_existante>${entrée.fiche ?? ''}</fiche_existante>\n<referentiel_de_filiere>\n${entrée.référentielDeFilière ?? 'aucun'}\n</referentiel_de_filiere>\n` +
-    `<extraits_du_site>\n${extraitsDuSite.map((l) => `<page url="${l.url}" etat="${l.état}">\n${l.texte}\n</page>`).join('\n')}\n</extraits_du_site>`
-  const réponse = await anthropic.beta.messages.parse({
-    model: 'claude-opus-5-5',
-    max_tokens: 16_000,
-    system: système,
-    messages: [{ role: 'user', content: utilisateur }],
-    output_format: zodOutputFormat(schémaDuRéférentielUnique),
-  })
-  const structuré = réponse.parsed_output
-  if (!structuré) throw new Error(`Référentiel : aucune sortie structurée (${réponse.stop_reason}).`)
-  const markdown = écrireRéférentielUnique(entrée.organisation, structuré)
-  lireRéférentielUnique(markdown)
-  const u = réponse.usage as { input_tokens?: number; output_tokens?: number }
-  return { markdown, fiche: structuré.fiche, coût: ((u.input_tokens ?? 0) * 4 + (u.output_tokens ?? 0) * 20) / 1_000_000 }
-}
 
 /**
  * La première lettre passe par la file de travaux comme les suivantes : un
