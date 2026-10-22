@@ -24,13 +24,28 @@ export type Lecture = {
   readonly nouveautés: readonly string[]
   /** `null` sans gel précédent. */
   readonly changée: boolean | null
+  /** Les liens de la page qui mènent à un article du même site : de quoi suivre une page d'index. */
+  readonly liens?: readonly Lien[]
+}
+
+export type Lien = { readonly url: string; readonly texte: string }
+
+/** Un article que mène à lire une page d'index, daté par ses propres métadonnées. */
+export type Article = {
+  /** L'URL de la source nommée dont il vient. */
+  readonly source: string
+  readonly url: string
+  readonly titre: string
+  /** AAAA-MM-JJ, lue dans la page ; jamais devinée. */
+  readonly date: string
+  readonly extrait: string
 }
 
 /** Ce qu'on garde d'une lecture pour la comparer à la suivante. */
 export type Gel = { readonly empreinte: string; readonly phrases: readonly string[] }
 
 export type Navigateur = {
-  lire: (url: string) => Promise<{ statut: number; texte: string }>
+  lire: (url: string) => Promise<{ statut: number; texte: string; liens?: readonly Lien[] }>
   fermer: () => Promise<void>
 }
 
@@ -85,7 +100,60 @@ export function gelDe(lecture: Lecture): Gel {
   return { empreinte: lecture.empreinte, phrases: phrasesDuTexte(lecture.texte) }
 }
 
-async function lireParHttp(url: string, options: Required<Pick<OptionsDeCollecte, 'tailleExtrait' | 'délaiMs' | 'fetch'>>): Promise<{ état: string; texte: string }> {
+const CHEMINS_SANS_ARTICLE = /\/(tag|tags|category|categories|categorie|author|auteur|page|feed|wp-json|search|recherche|contact|mentions-legales|politique|cgv|cgu|login|connexion)(\/|$)|\.(jpg|jpeg|png|gif|svg|webp|pdf|zip|css|js)(\?|$)/i
+
+function hôteDe(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Les liens d'une page qui ressemblent à des titres d'articles du même site :
+ * texte d'au moins vingt-cinq caractères (un menu n'en porte pas), même hôte,
+ * ni étiquette, ni auteur, ni pagination. Dans l'ordre de la page, qui range
+ * d'ordinaire du plus récent au plus ancien.
+ */
+export function liensDe(html: string, base: string): Lien[] {
+  const hôte = hôteDe(base)
+  const vus = new Set<string>([base.replace(/#.*$/, '')])
+  const liens: Lien[] = []
+  for (const m of html.matchAll(/<a\b[^>]*?\shref\s*=\s*["']([^"'#]+)(?:#[^"']*)?["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    let url: string
+    try {
+      url = new URL(m[1]!.replace(/&amp;/g, '&'), base).toString()
+    } catch {
+      continue
+    }
+    if (!/^https?:/.test(url) || hôteDe(url) !== hôte || CHEMINS_SANS_ARTICLE.test(url) || vus.has(url)) continue
+    const texte = versTexte(m[2]!).replace(/\s+/g, ' ').trim()
+    if (texte.length < 25 || new URL(url).pathname.length < 6) continue
+    vus.add(url)
+    liens.push({ url, texte: texte.slice(0, 200) })
+  }
+  return liens
+}
+
+const ISO = /^(\d{4}-\d{2}-\d{2})/
+
+/** La date de publication lue dans les métadonnées de la page ; `null` si la page n'en porte pas. */
+export function dateDePublication(html: string): string | null {
+  const candidats = [
+    /<meta[^>]+(?:property|name|itemprop)=["'](?:article:published_time|og:published_time|datePublished|date|pubdate|publishdate|DC\.date\.issued)["'][^>]*content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name|itemprop)=["'](?:article:published_time|og:published_time|datePublished|date|pubdate|publishdate|DC\.date\.issued)["']/i,
+    /"datePublished"\s*:\s*"([^"]+)"/i,
+    /<time[^>]+datetime=["']([^"']+)["']/i,
+  ]
+  for (const motif of candidats) {
+    const trouvé = ISO.exec(motif.exec(html)?.[1] ?? '')?.[1]
+    if (trouvé && !Number.isNaN(Date.parse(trouvé))) return trouvé
+  }
+  return null
+}
+
+async function lireParHttp(url: string, options: Required<Pick<OptionsDeCollecte, 'tailleExtrait' | 'délaiMs' | 'fetch'>>): Promise<{ état: string; texte: string; liens?: Lien[]; html?: string }> {
   const contrôleur = new AbortController()
   const minuterie = setTimeout(() => contrôleur.abort(), options.délaiMs)
   try {
@@ -101,8 +169,9 @@ async function lireParHttp(url: string, options: Required<Pick<OptionsDeCollecte
     if (!réponse.ok) return { état: `http-${réponse.status}`, texte: '' }
     const type = réponse.headers.get('content-type') ?? ''
     if (type && !/text\/|xml|json/.test(type)) return { état: `type-${type.split(';')[0]}`, texte: '' }
-    const texte = versTexte(await réponse.text()).slice(0, options.tailleExtrait)
-    return texte.length >= 200 ? { état: 'ouverte', texte } : { état: 'vide', texte }
+    const html = await réponse.text()
+    const texte = versTexte(html).slice(0, options.tailleExtrait)
+    return texte.length >= 200 ? { état: 'ouverte', texte, liens: liensDe(html, réponse.url || url), html } : { état: 'vide', texte }
   } catch (erreur) {
     return { état: erreur instanceof Error && erreur.name === 'AbortError' ? 'delai' : 'reseau', texte: '' }
   } finally {
@@ -146,7 +215,9 @@ export async function collecterLesSources(référentiel: RéférentielUnique, op
     return await enParallèle(
       urls.map((url) => async () => {
         const luLe = new Date().toISOString()
-        let { état, texte } = await lireParHttp(url, { tailleExtrait, délaiMs, fetch: fetchRéel })
+        const http = await lireParHttp(url, { tailleExtrait, délaiMs, fetch: fetchRéel })
+        let { état, texte } = http
+        let liens: readonly Lien[] | undefined = http.liens
         if (état !== 'ouverte') {
           const n = await auNavigateur()
           if (n) {
@@ -156,6 +227,7 @@ export async function collecterLesSources(référentiel: RéférentielUnique, op
               if (t.length >= 200) {
                 état = 'ouverte-navigateur'
                 texte = t
+                liens = lu.liens
               } else état = `${état}+navigateur-${lu.statut || 'vide'}`
             } catch {
               état = `${état}+navigateur-erreur`
@@ -168,13 +240,77 @@ export async function collecterLesSources(référentiel: RéférentielUnique, op
         const connues = new Set(précédent?.phrases ?? [])
         const nouveautés = précédent ? phrases.filter((p) => !connues.has(p)) : phrases
         const changée = état.startsWith('ouverte') ? (précédent ? précédent.empreinte !== empreinte : null) : null
-        return { url, état, luLe, texte, empreinte, nouveautés, changée }
+        return { url, état, luLe, texte, empreinte, nouveautés, changée, ...(liens && liens.length > 0 ? { liens } : {}) }
       }),
       options.parallèle ?? 6,
     )
   } finally {
     if (navigateur) await navigateur.fermer().catch(() => {})
   }
+}
+
+export type OptionsDeSuivi = {
+  /** Articles lus au plus par source (les plus récents de la page, dans la période). */
+  readonly parSource?: number
+  /** Liens essayés au plus par source avant de s'arrêter. */
+  readonly essaisParSource?: number
+  readonly tailleExtrait?: number
+  readonly parallèle?: number
+  readonly délaiMs?: number
+  readonly fetch?: typeof fetch
+}
+
+/**
+ * Suit les pages d'index : pour chaque source ouverte, les premiers liens qui
+ * mènent à un article du même site sont lus, et seuls restent ceux que leurs
+ * propres métadonnées datent dans la période (ou la veille de son début : un
+ * fait de la veille éclaire l'échéance). Une page sans date lisible n'entre
+ * pas : le programme ne devine pas une date. Aucune décision éditoriale.
+ */
+export async function suivreLesArticles(
+  lectures: readonly Lecture[],
+  période: { début: string; fin: string },
+  options: OptionsDeSuivi = {},
+): Promise<Article[]> {
+  const parSource = options.parSource ?? 4
+  const essais = options.essaisParSource ?? 8
+  const tailleExtrait = options.tailleExtrait ?? 1_800
+  const délaiMs = options.délaiMs ?? 15_000
+  const fetchRéel = options.fetch ?? fetch
+  const sources = new Set(lectures.map((l) => l.url))
+  const dejaVus = new Set<string>(sources)
+  const tâches: Array<() => Promise<Article | null>> = []
+  for (const lecture of lectures) {
+    if (!lecture.état.startsWith('ouverte')) continue
+    for (const lien of (lecture.liens ?? []).filter((l) => !sources.has(l.url)).slice(0, essais)) {
+      if (dejaVus.has(lien.url)) continue
+      dejaVus.add(lien.url)
+      const tâche = async (): Promise<Article | null> => {
+        const http = await lireParHttp(lien.url, { tailleExtrait: 20_000, délaiMs, fetch: fetchRéel })
+        if (http.état !== 'ouverte' || !http.html) return null
+        const date = dateDePublication(http.html)
+        if (!date || date > période.fin || date < reculerD(période.début, 1)) return null
+        return { source: lecture.url, url: lien.url, titre: lien.texte, date, extrait: http.texte.slice(0, tailleExtrait) }
+      }
+      tâches.push(tâche)
+    }
+  }
+  const lus = (await enParallèle(tâches, options.parallèle ?? 8)).filter((a): a is Article => a !== null)
+  // Au plus `parSource` articles par source, les plus récents d'abord.
+  const gardés = new Map<string, number>()
+  return lus
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .filter((a) => {
+      const n = gardés.get(a.source) ?? 0
+      gardés.set(a.source, n + 1)
+      return n < parSource
+    })
+}
+
+function reculerD(iso: string, jours: number): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - jours)
+  return d.toISOString().slice(0, 10)
 }
 
 /** Le navigateur de la machine (Chromium de Playwright), ou `null` s'il n'est pas disponible. */
@@ -189,7 +325,12 @@ export async function navigateurPlaywright(cheminChromium = process.env['CHROMIU
           const réponse = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 })
           await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {})
           const texte = await page.evaluate(() => document.body?.innerText ?? '')
-          return { statut: réponse?.status() ?? 0, texte: texte.replace(/\n{3,}/g, '\n\n') }
+          const brutes = await page.evaluate(() => Array.from(document.querySelectorAll('a[href]')).map((a) => ({ url: (a as HTMLAnchorElement).href, texte: (a as HTMLElement).innerText })))
+          const hôte = hôteDe(url)
+          const liens = brutes
+            .map((l) => ({ url: l.url.replace(/#.*$/, ''), texte: l.texte.replace(/\s+/g, ' ').trim().slice(0, 200) }))
+            .filter((l) => /^https?:/.test(l.url) && hôteDe(l.url) === hôte && l.url !== url && !CHEMINS_SANS_ARTICLE.test(l.url) && l.texte.length >= 25 && new URL(l.url).pathname.length >= 6)
+          return { statut: réponse?.status() ?? 0, texte: texte.replace(/\n{3,}/g, '\n\n'), liens: [...new Map(liens.map((l) => [l.url, l])).values()] }
         } finally {
           await page.close()
         }

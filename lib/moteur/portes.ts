@@ -36,6 +36,55 @@ function citéeParUnFait(sortie: SortieRédigée, url: string): boolean {
   return sortie.axes.some((axe) => axe.faits.some((fait) => [fait.url, ...fait.autresUrls].some((u) => normaliserUrl(u) === cible)))
 }
 
+const MOIS_FR = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+const MOIS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+function sansAccents(texte: string): string {
+  return texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+/** La date AAAA-MM-JJ se lit-elle dans le texte, sous l'une de ses écritures courantes (« 18 octobre », « Oct 18 », « 18/10/2026 », « 2026-10-18 ») ? */
+export function dateSeLit(texte: string, iso: string): boolean {
+  const [a, m, j] = iso.split('-').map(Number)
+  if (!a || !m || !j) return false
+  const t = sansAccents(texte)
+  const jour = `0?${j}(?:er)?`
+  const mois = [MOIS_FR[m - 1]!, MOIS_FR[m - 1]!.slice(0, 4), MOIS_EN[m - 1]!, MOIS_EN[m - 1]!.slice(0, 3)].join('|')
+  const motifs = [
+    new RegExp(`\\b${jour}\\s+(?:de\\s+)?(?:${mois})\\b`),
+    new RegExp(`\\b(?:${mois})\\.?\\s+${jour}(?!\\d)`),
+    new RegExp(`\\b${jour}[/.-]0?${m}(?:[/.-](?:${a}|${String(a).slice(2)}))?(?!\\d)`),
+    new RegExp(`\\b${a}-0?${m}-0?${j}(?!\\d)`),
+    new RegExp(`\\b0?${m}/${jour}/${a}(?!\\d)`),
+  ]
+  return motifs.some((motif) => motif.test(t))
+}
+
+const MOTS_BANALS = new Set(['cette', 'semaine', 'bouge', 'reste', 'avant', 'apres', 'dans', 'pour', 'avec', 'sans', 'depuis', 'attend', 'suite', 'encore', 'toujours', 'plus', 'moins', 'dossier', 'changement'])
+
+function motsDuDossier(d: { nom: string; suivi: string }): Set<string> {
+  return new Set(
+    sansAccents(`${d.nom} ${d.suivi}`)
+      .split(/[^a-z0-9]+/)
+      .filter((mot) => mot.length >= 4 && !MOTS_BANALS.has(mot)),
+  )
+}
+
+/** Les paires de dossiers dont le texte se recouvre aux deux tiers : un même sujet écrit deux fois. */
+export function dossiersEnDouble(dossiers: ReadonlyArray<{ nom: string; suivi: string }>): Array<[string, string]> {
+  const paires: Array<[string, string]> = []
+  for (let i = 0; i < dossiers.length; i += 1) {
+    for (let k = i + 1; k < dossiers.length; k += 1) {
+      const a = motsDuDossier(dossiers[i]!)
+      const b = motsDuDossier(dossiers[k]!)
+      const commun = [...a].filter((mot) => b.has(mot)).length
+      const union = a.size + b.size - commun
+      if (union > 0 && commun >= 4 && commun / union >= 0.5) paires.push([dossiers[i]!.nom, dossiers[k]!.nom])
+    }
+  }
+  return paires
+}
+
 export function urlsDuMarkdown(markdown: string): string[] {
   return [...new Set([...markdown.matchAll(/https?:\/\/[^\s)\]>"']+/g)].map((m) => m[0].replace(/[.,;:]+$/, '')))]
 }
@@ -46,6 +95,8 @@ export function contrôlerLaProduction(entrée: {
   readonly sélection: Sélection
   /** Les URL que le code a réellement ouvertes : sources à l'état ouvert et résultats de recherche. */
   readonly urlsAdmises: ReadonlySet<string>
+  /** Ce que dit chaque URL ouverte, par URL normalisée : la porte des dates y cherche la date du fait. */
+  readonly textes?: ReadonlyMap<string, string>
 }): ContrôleDeProduction {
   const { lettre, sortie, sélection } = entrée
   const rapport = contrôlerLaLettre({
@@ -86,6 +137,31 @@ export function contrôlerLaProduction(entrée: {
         manquements.push({ code: 'fait-futur', message: `axe ${axe.numéro} : le fait est daté du ${fait.date}, après la date d'édition : une échéance à venir se date du jour de son annonce.` })
       }
     }
+  }
+
+  // ── Dates : celle d'un fait se lit dans sa source ─────────────────────────
+  if (entrée.textes) {
+    for (const axe of sortie.axes) {
+      for (const fait of axe.faits) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fait.date)) continue
+        const lus = [fait.url, ...fait.autresUrls].map((u) => entrée.textes?.get(normaliserUrl(u))).filter((t): t is string => typeof t === 'string')
+        if (lus.length > 0 && !lus.some((texte) => dateSeLit(texte, fait.date))) {
+          manquements.push({
+            code: 'fait-date-non-sourcée',
+            message: `axe ${axe.numéro} : le fait daté du ${fait.date} (« ${fait.texte.slice(0, 70)} ») n'a pas cette date dans ${fait.url} : la date d'un fait est celle que son extrait donne, jamais celle d'une autre page. La corriger d'après l'extrait, citer l'article qui porte la date, ou retirer le fait.`,
+          })
+        }
+      }
+    }
+  }
+
+  // ── Dossiers : un même sujet n'ouvre pas deux dossiers ──────────────────
+  const doublons = dossiersEnDouble(sortie.dossiers)
+  if (doublons.length > 0) {
+    manquements.push({
+      code: 'dossiers-doublons',
+      message: `dossiers en double : ${doublons.map(([a, b]) => `« ${a} » et « ${b} »`).join(' ; ')}. Deux organisations dans une même affaire forment un seul dossier, nommé « A et B », avec un seul suivi.`,
+    })
   }
 
   // ── Vocabulaire ───────────────────────────────────────────────────────────

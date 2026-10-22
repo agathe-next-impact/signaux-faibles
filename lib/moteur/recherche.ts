@@ -21,22 +21,32 @@ export type RésultatDeRecherche = {
 
 export type Recherche = {
   readonly résultats: readonly RésultatDeRecherche[]
+  /** Combien de résultats le modèle a rendus avant que le programme ne retienne ceux dont l'URL a été ouverte. */
+  readonly rendus?: number
+  /** Pourquoi la dernière réponse s'est arrêtée (`end_turn`, `max_tokens`, …). */
+  readonly arrêt?: string | null
   readonly urlsOuvertes: readonly string[]
   readonly recherches: number
   readonly usage: unknown
   readonly modèle: string
 }
 
-const schémaDesRésultats = z.object({
-  resultats: z.array(
-    z.object({
-      axe: z.number().int().min(1),
-      titre: z.string().max(200),
-      url: z.string(),
-      date: z.string().nullable(),
-      extrait: z.string().max(600),
-    }),
-  ),
+const DATE_ISO = /^\d{4}-\d{2}-\d{2}$/
+
+/** Un résultat rendu : les champs trop longs sont coupés, une date mal formée devient nulle, jamais le résultat n'est perdu pour si peu. */
+const schémaDUnRésultat = z.object({
+  axe: z.coerce.number().int().min(1),
+  titre: z.string().transform((t) => t.slice(0, 200)),
+  url: z.string().min(8),
+  date: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((d) => (d && DATE_ISO.test(d.trim().slice(0, 10)) ? d.trim().slice(0, 10) : null)),
+  extrait: z
+    .string()
+    .optional()
+    .transform((e) => (e ?? '').slice(0, 600)),
 })
 
 export const MODÈLE_DE_RECHERCHE = 'claude-opus-5-5'
@@ -74,6 +84,44 @@ function texteDe(content: readonly unknown[]): string {
 }
 
 /**
+ * Lit le JSON que le modèle rend, résultat par résultat : un résultat mal formé
+ * est écarté seul, les autres restent. Une URL que l'outil n'a pas ouverte
+ * n'entre pas dans le dossier.
+ */
+export function lireLesRésultats(texte: string, urlsOuvertes: Iterable<string>): { retenus: RésultatDeRecherche[]; rendus: number } {
+  const json = /\{[\s\S]*\}/.exec(texte)?.[0]
+  let liste: unknown[] = []
+  if (json) {
+    try {
+      const brut = (JSON.parse(json) as { resultats?: unknown }).resultats
+      if (Array.isArray(brut)) liste = brut
+    } catch {
+      // Réponse tronquée : on garde les résultats complets qui précèdent la coupure.
+      liste = [...json.matchAll(/\{[^{}]*"url"[^{}]*\}/g)].flatMap((m) => {
+        try {
+          return [JSON.parse(m[0]) as unknown]
+        } catch {
+          return []
+        }
+      })
+    }
+  }
+  const ouvertes = new Set([...urlsOuvertes].map(normaliserUrl))
+  const lus = liste.flatMap((élément) => {
+    const lu = schémaDUnRésultat.safeParse(élément)
+    return lu.success ? [lu.data as RésultatDeRecherche] : []
+  })
+  const vus = new Set<string>()
+  const retenus = lus.filter((r) => {
+    const clé = normaliserUrl(r.url)
+    if (!ouvertes.has(clé) || vus.has(clé)) return false
+    vus.add(clé)
+    return true
+  })
+  return { retenus, rendus: liste.length }
+}
+
+/**
  * Lance les requêtes types de tous les axes dans la période, en un appel
  * (avec les tours `pause_turn` que les outils serveur imposent).
  */
@@ -91,8 +139,8 @@ export async function lancerLesRequêtes(
     `Tu es l'étape de recherche d'un programme de veille. Tu lances chaque requête type listée, ` +
     `pour la période du ${période.début} au ${période.fin}, et tu rends UNIQUEMENT un objet JSON ` +
     `{"resultats":[{"axe":n,"titre":"…","url":"…","date":"AAAA-MM-JJ ou null","extrait":"…"}]} : ` +
-    `un résultat par page pertinente et datée dans la période (ou juste avant, si c'est une échéance à venir), ` +
-    `l'URL exacte telle que l'outil l'a donnée, la date de publication si elle est lisible, et un extrait fidèle de 300 caractères au plus. ` +
+    `au plus trente résultats, un par page pertinente et datée dans la période (ou juste avant, si c'est une échéance à venir), ` +
+    `l'URL exacte telle que l'outil l'a donnée, la date de publication si elle est lisible, et un extrait fidèle de 250 caractères au plus, sans guillemet doublé ni retour à la ligne. ` +
     `Aucune page que tu n'as pas vue par l'outil, aucun commentaire, aucune rédaction : le programme rédige ensuite.`
   const utilisateur = requêtes.map((r) => `axe ${r.axe} (${r.nom}) : ${r.requête}`).join('\n')
 
@@ -109,7 +157,7 @@ export async function lancerLesRequêtes(
     réponse = await anthropic.beta.messages
       .stream({
         model: modèle,
-        max_tokens: 12_000,
+        max_tokens: 20_000,
         system: système,
         messages,
         tools: outils,
@@ -126,17 +174,6 @@ export async function lancerLesRequêtes(
   }
   if (!réponse) throw new Error('Recherche : aucune réponse.')
 
-  const texte = texteDe(réponse.content)
-  const json = /\{[\s\S]*\}/.exec(texte)?.[0] ?? '{"resultats":[]}'
-  let résultats: RésultatDeRecherche[] = []
-  try {
-    const lu = schémaDesRésultats.safeParse(JSON.parse(json))
-    if (lu.success) résultats = lu.data.resultats
-  } catch {
-    résultats = []
-  }
-  // Une URL citée que l'outil n'a pas ouverte n'entre pas dans le dossier.
-  const ouvertes = new Set([...urls].map(normaliserUrl))
-  résultats = résultats.filter((r) => ouvertes.has(normaliserUrl(r.url)))
-  return { résultats, urlsOuvertes: [...urls], recherches, usage: usages, modèle }
+  const { retenus, rendus } = lireLesRésultats(texteDe(réponse.content), urls)
+  return { résultats: retenus, rendus, arrêt: réponse.stop_reason, urlsOuvertes: [...urls], recherches, usage: usages, modèle }
 }

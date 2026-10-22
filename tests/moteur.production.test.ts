@@ -166,6 +166,30 @@ describe('contrôlerLaProduction', () => {
     expect(codes).toContain('axe-omis')
   })
 
+  it('refuse un fait dont la date ne se lit pas dans sa source, l’admet quand elle s’y lit', () => {
+    const sortie = sortieConforme()
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    const sansDate = new Map([[URL(1), 'Une page qui parle du 3 octobre seulement.']])
+    const refusé = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: sansDate })
+    expect(refusé.manquements.map((m) => m.code)).toContain('fait-date-non-sourcée')
+    expect(refusé.messageDeReprise).toContain('2026-10-21')
+    const avecDate = new Map([[URL(1), 'Publié le 21 octobre 2026 : le texte est paru.']])
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: avecDate }).manquements).toEqual([])
+    // Une URL dont le programme n'a aucun texte n'est pas jugée : la porte des citations la tient déjà.
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES, textes: new Map() }).manquements).toEqual([])
+  })
+
+  it('refuse deux dossiers qui écrivent le même sujet', () => {
+    const sortie = sortieConforme()
+    sortie.dossiers = [
+      { nom: 'Automattic', compteur: 0, précision: '', suivi: "Le litige d'Automattic avec WP Engine n'a pas bougé cette semaine ; le procès reste fixé au 19 octobre 2027." },
+      { nom: 'WP Engine', compteur: 0, précision: '', suivi: "Le litige de WP Engine avec Automattic n'a pas bougé cette semaine ; on attend la suite avant le procès du 19 octobre 2027." },
+    ]
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    const contrôle = contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES })
+    expect(contrôle.manquements.map((m) => m.code)).toContain('dossiers-doublons')
+  })
+
   it('relève les URL d’un Markdown', () => {
     expect(urlsDuMarkdown('voir [a](https://a.fr/x) et https://b.fr/y.')).toEqual(['https://a.fr/x', 'https://b.fr/y'])
   })

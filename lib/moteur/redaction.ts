@@ -11,7 +11,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
-import type { Lecture } from '@/lib/moteur/collecte'
+import type { Article, Lecture } from '@/lib/moteur/collecte'
 import type { RésultatDeRecherche } from '@/lib/moteur/recherche'
 import type { RéférentielUnique } from '@/lib/moteur/referentiel'
 import { ESSENTIEL_CARACTÈRES_MAX, ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
@@ -74,6 +74,8 @@ export type Sélection = {
 export type DossierDeCollecte = {
   readonly lectures: readonly Lecture[]
   readonly résultats: readonly RésultatDeRecherche[]
+  /** Les articles que les pages d'index mènent à lire, datés par leurs métadonnées. */
+  readonly articles?: readonly Article[]
 }
 
 export const MODÈLE_DE_RÉDACTION = 'claude-opus-5-5'
@@ -95,6 +97,10 @@ export function systèmeDeRédaction(): string {
     `et jamais pour remplir. Un axe sans fait de la période est RAS : le dire est une information, remplir serait une faute.\n\n` +
     `COMMENT C'EST ÉCRIT : des phrases, sujet verbe complément, une idée par phrase, un acteur par phrase, les sigles développés à leur première apparition, ` +
     `la date en toutes lettres dans la phrase (« le 12 septembre »), le ton sobre et factuel, sans effet d'annonce. ` +
+    `Les dates : celle d'un fait est celle que l'extrait donne, jamais celle d'une autre page ; un article porte sa date de publication dans l'attribut date, ` +
+    `une page d'index ne date pas ce qu'elle liste sauf si l'extrait le dit. Les chiffres : repris tels quels de l'extrait, avec leur unité (par jour n'est pas par mois). ` +
+    `Un dossier est une organisation ; deux organisations dans une même affaire (un litige, une fusion) forment un seul dossier, nommé « A et B », avec un seul suivi. ` +
+    `Un dossier sans mouvement de la période n'écrit que « Sans changement » suivi de ce qui est attendu et de sa date. ` +
     `Pas de référence au référentiel, à ses numéros ni à la méthode : ni « référentiel », ni « § », ni « source non ouverte », ni « requête non lancée ». ` +
     `Les lignes de L'essentiel se lisent seules, elles sont reprises telles quelles. Les dossiers gardent leur nom exact d'une édition à l'autre.`
   )
@@ -127,11 +133,15 @@ export function blocDuDossier(référentiel: RéférentielUnique, sélection: S�
         return `  <source url="${l.url}" etat="${l.état}" changee="${l.changée === null ? 'inconnu' : l.changée ? 'oui' : 'non'}">\n  ${corps}\n  </source>`
       })
       .join('\n')
+    const articles = (dossier.articles ?? [])
+      .filter((a) => axe.sources.some((s) => s.url === a.source))
+      .map((a) => `  <article url="${a.url}" date="${a.date}" source="${a.source}">${a.titre} : ${écourter(a.extrait, 900)}</article>`)
+      .join('\n')
     const résultats = dossier.résultats
       .filter((r) => r.axe === axe.numéro)
       .map((r) => `  <resultat url="${r.url}" date="${r.date ?? 'inconnue'}">${r.titre} : ${r.extrait}</resultat>`)
       .join('\n')
-    return `<axe numero="${axe.numéro}" nom="${axe.nom}">\n${extraits}\n${résultats}\n</axe>`
+    return `<axe numero="${axe.numéro}" nom="${axe.nom}">\n${extraits}\n${articles}\n${résultats}\n</axe>`
   })
   const précédente = sélection.éditionPrécédente
     ? `<edition_precedente date="${sélection.éditionPrécédente.dateÉdition}">\nessentiel :\n${sélection.éditionPrécédente.essentiel.map((l) => `- ${l}`).join('\n')}\ndossiers : ${sélection.éditionPrécédente.dossiersBruts}\n</edition_precedente>`
