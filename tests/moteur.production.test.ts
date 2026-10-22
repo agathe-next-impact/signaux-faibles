@@ -252,6 +252,38 @@ describe('contrôlerLaProduction', () => {
     expect(contrôle.manquements.map((m) => m.code)).toContain('dossiers-doublons')
   })
 
+  it('refuse un relevé qui compte les éléments d’une page', () => {
+    const sortie = sortieConforme()
+    sortie.axes[0]!.faits[0] = { texte: 'Au 26 octobre, le blog compte 11 billets sur les infrastructures de réseau.', date: SÉLECTION.dateÉdition, url: URL(1), autresUrls: [], contexte: true }
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES }).manquements.map((m) => m.code)).toContain('releve-vide')
+    sortie.axes[0]!.faits[0] = { texte: 'Au 26 octobre, le blog affiche une grille de trois formules.', date: SÉLECTION.dateÉdition, url: URL(1), autresUrls: [], contexte: true }
+    expect(contrôlerLaProduction({ lettre: assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION), sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES }).manquements.map((m) => m.code)).not.toContain('releve-vide')
+  })
+
+  it('« référentiel » n’est interdit que pour désigner le dispositif, pas dans le nom d’un document public', () => {
+    const refusés = ['Le référentiel prévoit un texte.', 'Selon le référentiel de veille, rien.', 'Un écart avec notre référentiel.']
+    const admis = [
+      'ANS : référentiel HDS v2 publié.',
+      'Le référentiel ANSSI des mesures de base reste attendu.',
+      'Le référentiel de certification HDS passe en version 2.1.',
+      'Le référentiel SecNumCloud 3.2 est paru le 12 octobre.',
+      'Le référentiel général de sécurité évolue.',
+    ]
+    for (const texte of refusés) {
+      const sortie = sortieConforme()
+      sortie.axes[0]!.faits[0]!.texte = `${texte} Le texte est paru le 21 octobre.`
+      const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+      expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES }).manquements.map((m) => m.code), texte).toContain('vocabulaire-interdit')
+    }
+    for (const texte of admis) {
+      const sortie = sortieConforme()
+      sortie.axes[0]!.faits[0]!.texte = `${texte} Le texte est paru le 21 octobre.`
+      const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+      expect(contrôlerLaProduction({ lettre, sortie, sélection: SÉLECTION, urlsAdmises: URLS_ADMISES }).manquements.map((m) => m.code), texte).not.toContain('vocabulaire-interdit')
+    }
+  })
+
   it('relève les URL d’un Markdown', () => {
     expect(urlsDuMarkdown('voir [a](https://a.fr/x) et https://b.fr/y.')).toEqual(['https://a.fr/x', 'https://b.fr/y'])
   })

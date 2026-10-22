@@ -477,3 +477,12 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   exige l'unité exacte d'un prix (par jour, par mois, par an, forfait) et interdit
   de citer un prix dont l'extrait ne la donne pas. Plafond de longueur relevé à
   1 800 mots (26 faits sur treize axes tenaient en 1 316 mots).
+- **22 octobre 2026, première évaluation sur quatre autres clients** (Konica Minolta,
+  Infralliance, L'Hermitage, La petite vitrine ; conversion des référentiels environ 2 $,
+  lettres 9,27 $ au total) : trois lettres sur quatre acceptées, Konica refusée au
+  vocabulaire. Deux défauts généraux corrigés. (1) Le mot « référentiel » est le nom
+  de documents publics de plusieurs secteurs (référentiel HDS, référentiel ANSSI) : il
+  n'est plus interdit que sans nom propre, sigle ou objet qui le suive. (2) Un relevé
+  qui compte les éléments d'une page (« le blog compte 11 billets ») est refusé
+  (`releve-vide`). Reste mesuré : 15 à 21 faits sur 26 à 28 sont des éléments de
+  contexte, effet de la règle des deux faits par axe.

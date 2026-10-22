@@ -97,7 +97,7 @@ export function systèmeDeRédaction(): string {
     `un élément de contexte daté (contexte: true), tiré des articles antérieurs marqués contexte="oui" ; ` +
     `un relevé de page : pour une source ouverte, ce qu'elle affiche aujourd'hui (prix, formules, offre, état d'un dossier) se dit « Au 21 octobre, … » en prenant le jour et le mois de la date d'édition du dossier, et le fait porte cette date d'édition dans le champ date, ` +
     `contexte: true, et l'URL de la page ouverte. Une page qui porte l'attribut miseajour a été modifiée à cette date : ce qu'elle affiche est une nouveauté de cette date. ` +
-    `Un relevé dit ce que la page montre, avec ses chiffres et leur unité, rien de plus. ` +
+    `Un relevé dit ce que la page montre d'utile à une décision, avec ses chiffres et leur unité : un prix, une formule, un statut, une échéance, une position. Il ne compte jamais les billets, articles ou lignes d'une page. ` +
     `Un axe est RAS seulement si aucune de ses sources n'est ouverte dans le dossier, ou si elles ne donnent rien de chiffré ni de daté à relever. ` +
     `Le niveau de l'axe ne monte jamais à cause d'un relevé : un axe qui n'a que du contexte et des relevés est MOYEN au plus, et FORT seulement si un fait de la période l'est.\n\n` +
     `COMMENT C'EST ÉCRIT : des phrases, sujet verbe complément, une idée par phrase, un acteur par phrase, les sigles développés à leur première apparition, ` +

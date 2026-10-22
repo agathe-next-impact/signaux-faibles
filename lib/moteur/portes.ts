@@ -23,7 +23,9 @@ export type ContrôleDeProduction = {
 }
 
 const VOCABULAIRE_INTERDIT: ReadonlyArray<{ motif: RegExp; libellé: string }> = [
-  { motif: /\bréférentiel\b/i, libellé: '« référentiel »' },
+  // Le mot est le nom de documents publics de plusieurs secteurs (référentiel HDS, référentiel ANSSI, référentiel de certification) :
+  // seul l'emploi qui désigne le dispositif de veille est interdit, c'est-à-dire sans nom propre, sigle ou objet qui le suive.
+  { motif: /\bréférentiel(?!\s+(?:[A-ZÉÈ][\w.\-]*|\d|(?:de|d['’]\s?)\s?(?:certification|qualification|sécurité|sécurisation|accessibilité|conformité|qualité|bonnes pratiques)|général|national|européen))\b/, libellé: '« référentiel » (le dispositif de veille)' },
   { motif: /§\s?\d/, libellé: 'une numérotation « § »' },
   { motif: /\bFAIBLE\b/, libellé: '« FAIBLE »' },
   { motif: /\bnon ouvert(e|es|s)?\b/i, libellé: '« non ouverte »' },
@@ -233,6 +235,18 @@ export function contrôlerLaProduction(entrée: {
       code: 'dossiers-doublons',
       message: `dossiers en double : ${doublons.map(([a, b]) => `« ${a} » et « ${b} »`).join(' ; ')}. Deux organisations dans une même affaire forment un seul dossier, nommé « A et B », avec un seul suivi.`,
     })
+  }
+
+  // ── Un relevé dit ce qu'une source affiche d'utile, il ne compte pas ses lignes ──
+  for (const axe of sortie.axes) {
+    for (const fait of axe.faits) {
+      if (/\b(?:compte|affiche|recense|totalise|liste)\s+(?:\d[\d\s]*|un|une|deux|trois)\s+(?:billets?|articles?|publications?|résultats?|décisions?|actualités?|pages?|entrées?|dates?\s+indicatives?)\b/i.test(fait.texte)) {
+        manquements.push({
+          code: 'releve-vide',
+          message: `axe ${axe.numéro} : « ${fait.texte.slice(0, 80)} » compte les éléments d'une page au lieu de dire ce qu'elle affiche d'utile. Un relevé donne un prix, une formule, un statut, une échéance ou une décision ; sinon le remplacer par un autre fait ou le retirer.`,
+        })
+      }
+    }
   }
 
   // ── Vocabulaire ───────────────────────────────────────────────────────────
