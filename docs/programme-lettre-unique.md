@@ -486,3 +486,12 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   qui compte les éléments d'une page (« le blog compte 11 billets ») est refusé
   (`releve-vide`). Reste mesuré : 15 à 21 faits sur 26 à 28 sont des éléments de
   contexte, effet de la règle des deux faits par axe.
+- **22 octobre 2026, pages Notion v2 en brouillon** : deux surcouches créées sous « Veilles
+  clients », non branchées, qui laissent intactes les pages en service
+  (« Tâche — Lettres de veille » et « Tâche — Onboarding ») : « [Brouillon v2] Tâche Lettres
+  de veille : méthode de preuve et contrat compact » et « [Brouillon v2] Tâche Onboarding :
+  décisions, sources primaires et preuve de la première lettre ». Elles remplacent les étapes
+  1 à 3 des lettres et les paragraphes 3.1, 3.2, 3.4 et 3.6 de l'onboarding. Elles restent en
+  deux lettres par parution, parce que `POST /api/veille/lint` et le chemin Notion de
+  `POST /api/veille/resultat` ne lisent que la forme double ; la lettre unique reste celle du
+  moteur en code. Rien n'a encore tourné sur un client réel.
