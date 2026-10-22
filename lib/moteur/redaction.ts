@@ -182,18 +182,22 @@ export function rédacteurAnthropic(anthropic: Anthropic, options: { modèle?: s
   const modèle = options.modèle ?? MODÈLE_DE_RÉDACTION
   const usage: Usage = { entrée: 0, sortie: 0, cacheLecture: 0, cacheÉcriture: 0 }
   const messages: Anthropic.Beta.BetaMessageParam[] = []
-  const appeler = async (): Promise<SortieRédigée> => {
+  const appeler = async (effort = options.effort): Promise<SortieRédigée> => {
     const réponse = await anthropic.beta.messages.parse({
       model: modèle,
-      max_tokens: 16_000,
+      max_tokens: 21_000,
       system: [{ type: 'text', text: systèmeDeRédaction(), cache_control: { type: 'ephemeral', ttl: '1h' } }],
       messages,
       output_format: zodOutputFormat(schémaDeLaLettre),
-      ...(options.effort ? { output_config: { effort: options.effort } } : {}),
+      ...(effort ? { output_config: { effort } } : {}),
     } as unknown as Parameters<typeof anthropic.beta.messages.parse>[0])
     ajouterUsage(usage, réponse.usage)
     const sortie = (réponse as unknown as { parsed_output?: SortieRédigée | null }).parsed_output
-    if (!sortie) throw new Error(`Rédaction : aucune sortie structurée (${réponse.stop_reason}).`)
+    if (!sortie) {
+      // La réflexion a épuisé le plafond avant la fin de l'objet : une seconde tentative, à effort réduit, plutôt que de perdre le run.
+      if (réponse.stop_reason === 'max_tokens' && effort !== 'low') return appeler('low')
+      throw new Error(`Rédaction : aucune sortie structurée (${réponse.stop_reason}).`)
+    }
     messages.push({ role: 'assistant', content: réponse.content })
     return sortie
   }
