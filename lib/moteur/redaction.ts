@@ -54,7 +54,7 @@ export const schémaDeLaLettre = z.object({
         nom: z.string().max(80).describe('Le nom exact d’une organisation (entreprise, administration, association), inchangé d’une édition à l’autre ; jamais un thème ni un sujet, qui sont des axes'),
         compteur: z.number().int().min(0).describe('Le compteur de la précédente édition, plus un si le dossier a bougé pendant la période, sinon inchangé'),
         précision: z.string().max(120).describe('Où en est le dossier, en quelques mots ; vide si rien à dire'),
-        suivi: z.string().max(300).describe('Une à deux phrases qui nomment le dossier exactement et disent ce qui a bougé ou ce qu’on attend'),
+        suivi: z.string().max(300).describe('Si le dossier a bougé pendant la période : une à deux phrases qui nomment le dossier exactement et disent ce qui a bougé et ce qu’on attend ; chaîne vide si rien n’a bougé'),
       }),
     )
     .max(20)
@@ -106,7 +106,7 @@ export function systèmeDeRédaction(): string {
     `une page d'index ne date pas ce qu'elle liste sauf si l'extrait le dit. Les chiffres : repris tels quels de l'extrait, avec leur unité exacte (par jour, par mois, par an, forfait) ; si l'extrait ne précise pas l'unité d'un prix, le fait ne cite pas ce prix. ` +
     `Un fait dont l'extrait écrit la date du jour de l'édition est une nouveauté du jour, pas un relevé. ` +
     `Un dossier est une organisation ; deux organisations dans une même affaire (un litige, une fusion) forment un seul dossier, nommé « A et B », avec un seul suivi. ` +
-    `Un dossier sans mouvement de la période n'écrit que « Sans changement » suivi de ce qui est attendu et de sa date. ` +
+    `Un dossier qui n'a pas bougé pendant la période a un suivi vide : le programme le range dans une ligne unique, il n'écrit rien pour lui, ni « sans changement » ni date de prochain relevé ; sa précision dit où il en est. ` +
     `Pas de référence au référentiel, à ses numéros ni à la méthode : ni « référentiel », ni « § », ni « source non ouverte », ni « requête non lancée ». ` +
     `Les lignes de L'essentiel se lisent seules, elles sont reprises telles quelles. Les dossiers gardent leur nom exact d'une édition à l'autre.`
   )

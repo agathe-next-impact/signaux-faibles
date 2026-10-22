@@ -94,9 +94,15 @@ export function assemblerLaLettre(
 
   if (sortie.dossiers.length > 0) {
     lignes.push('# Dossiers suivis', '')
-    for (const d of sortie.dossiers) {
+    const bougés = sortie.dossiers.filter((d) => d.suivi.trim().length > 0)
+    const immobiles = sortie.dossiers.filter((d) => d.suivi.trim().length === 0)
+    for (const d of bougés) {
       const suivi = d.suivi.trim()
       lignes.push(suivi.includes(d.nom) ? suivi : `${d.nom} : ${suivi}`, '')
+    }
+    // Les dossiers sans mouvement tiennent en une ligne : nommés (le validateur l'exige), sans rien à lire.
+    if (immobiles.length > 0) {
+      lignes.push(`Sans mouvement cette semaine : ${immobiles.map((d) => (d.précision.trim() ? `${d.nom} (${d.précision.trim()})` : d.nom)).join(' ; ')}.`, '')
     }
   }
 

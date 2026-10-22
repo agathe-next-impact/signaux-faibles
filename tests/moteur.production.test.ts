@@ -92,6 +92,19 @@ describe('assemblerLaLettre', () => {
     expect(lettre.markdown).toContain('## ⑤ Thème 5 — RAS')
   })
 
+  it('range les dossiers sans mouvement dans une ligne unique, nommés, et écrit ceux qui ont bougé', () => {
+    const sortie = sortieConforme()
+    sortie.dossiers = [
+      { nom: 'facturation électronique', compteur: 0, précision: 'décret paru', suivi: 'Le dossier facturation électronique avance : le décret est paru le 21 octobre.' },
+      { nom: 'Kyocera', compteur: 3, précision: 'gamme attendue', suivi: '' },
+      { nom: 'Ricoh', compteur: 2, précision: '', suivi: '' },
+    ]
+    const lettre = assemblerLaLettre(sortie, RÉFÉRENTIEL, SÉLECTION)
+    expect(lettre.markdown).toContain('Sans mouvement cette semaine : Kyocera (gamme attendue) ; Ricoh.')
+    expect(lettre.markdown).toContain('Le dossier facturation électronique avance')
+    expect(lettre.propriétés.dossiersOuvertsSuivis).toBe('facturation électronique (0, décret paru) · Kyocera (3, gamme attendue) · Ricoh (2)')
+  })
+
   it('liste les sources non consultées en liens seuls, sans une ligne de rédaction', () => {
     const ignorées = [
       { libellé: 'Légifrance', url: 'https://www.legifrance.gouv.fr/' },
