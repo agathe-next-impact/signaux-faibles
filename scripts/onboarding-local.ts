@@ -19,7 +19,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Base } from '@/lib/base/client'
@@ -32,7 +32,9 @@ import { composerLettre } from '@/lib/email/lettre'
 import { navigateurPlaywright } from '@/lib/moteur/collecte'
 import { dériverLeRéférentiel } from '@/lib/moteur/onboarding'
 import { produireLaLettre } from '@/lib/moteur/produire'
-import { sélectionDe } from '@/lib/moteur/selection'
+import { essentielDuMarkdown, sélectionDe, type ÉditionPrécédente } from '@/lib/moteur/selection'
+import { lireRéférentielUnique } from '@/lib/moteur/referentiel'
+import type { Gel } from '@/lib/moteur/collecte'
 import { eq } from 'drizzle-orm'
 import { PORTAIL_URL, SORTIES, cléDÉvaluation, horodatageDeSortie, lireArguments, réglerLeMandataire } from './evaluation-lettres'
 
@@ -73,105 +75,147 @@ async function main(): Promise<void> {
   mesures.push({ étape: 'Ouverture (organisation + veille unique)', coût: 0, durée_s: (Date.now() - t) / 1000, détail: `${ouverture.sorte}, ${déclaration.sorte}` })
   trace(`ouverture : ${ouverture.sorte}, veille ${déclaration.sorte}`)
 
-  // 2. Le référentiel, de zéro : le site, l'écosystème, la rédaction structurée.
-  const dérivé = await dériverLeRéférentiel(
-    anthropic,
-    { organisation: nom, site, filière: null, référentielDeFilière: null, fiche: null },
-    { ouvrirNavigateur: () => navigateurPlaywright(process.env['CHROMIUM_PATH'] ?? '/opt/pw-browsers/chromium'), journal: (l) => trace(`  ${l}`) },
-  )
-  for (const é of dérivé.étapes) {
-    mesures.push({
-      étape: `Référentiel : ${é.nom}`,
-      coût: é.coût,
-      durée_s: é.duréeMs / 1000,
-      détail: `${é.usage.entrée} jetons en entrée, ${é.usage.sortie} en sortie, ${é.recherches} recherches`,
-    })
-  }
-  writeFileSync(join(répertoire, 'referentiel-unique.md'), dérivé.markdown)
-  writeFileSync(join(répertoire, 'pages-du-site.json'), JSON.stringify(dérivé.pagesDuSite, null, 2))
-  trace(`référentiel : ${dérivé.référentiel.axes.length} axes, ${dérivé.référentiel.dossiers.length} dossiers, ${dérivé.coût.toFixed(2)} $`)
-
-  // 3. La première lettre passe par la file comme en production.
-  const pose = await poserUnTravailDeLettre({ slug, veille: 'unique', type: 'premiere_lettre', dateDeParution: dateÉdition }, db)
-  if (pose.sorte !== 'créé' && pose.sorte !== 'déjà-en-file') throw new Error(`Travail non posé : ${pose.sorte}`)
-  const { prendreCeTravail, recevoirUneÉdition } = await import('@/lib/portail/file')
-  const travailId = pose.travailId
-  const pris = await prendreCeTravail({ travailId, session }, db)
-  if (!pris) throw new Error('Travail non prenable.')
-  const numéro = pris.travail.contexte.numéro
-  trace(`file : travail ${travailId} pris, numéro attribué ${numéro}`)
-
-  // 4. La production : collecte, requêtes types, rédaction, portes, reprises.
-  const sélection = { ...sélectionDe(dateÉdition, null), numéro: typeof numéro === 'number' ? numéro : 1 }
-  const début = new Date()
-  const production = await produireLaLettre(
-    { référentiel: dérivé.référentiel, sélection },
-    {
+  // 2. Le référentiel : de zéro (le site, l'écosystème, la rédaction structurée), ou repris d'un fichier.
+  let référentiel
+  const réutilisé = valeurs.get('referentiel')
+  if (réutilisé) {
+    const markdown = readFileSync(réutilisé, 'utf8')
+    référentiel = lireRéférentielUnique(markdown)
+    writeFileSync(join(répertoire, 'referentiel-unique.md'), markdown)
+    trace(`référentiel repris de ${réutilisé} : ${référentiel.axes.length} axes, ${référentiel.dossiers.length} dossiers`)
+  } else {
+    const dérivé = await dériverLeRéférentiel(
       anthropic,
-      ouvrirNavigateur: () => navigateurPlaywright(process.env['CHROMIUM_PATH'] ?? '/opt/pw-browsers/chromium'),
-      effort: 'medium',
-      journal: (l) => trace(`  ${l}`),
-    },
-  )
-  const m = production.mesures
-  mesures.push({
-    étape: 'Première lettre : collecte, recherche, rédaction, portes',
-    coût: m.coût,
-    durée_s: m.duréeMs / 1000,
-    détail: `${m.usage.entrée} entrée, ${m.usage.sortie} sortie, ${m.usage.cacheLecture} cache lu, ${m.recherches} recherches, ${m.reprises} reprise(s)`,
-  })
-  writeFileSync(join(répertoire, 'lettre.md'), production.lettre.markdown)
-  writeFileSync(join(répertoire, 'validation.json'), JSON.stringify({ acceptée: production.acceptée, manquements: production.contrôle.manquements, rapport: production.contrôle.rapport }, null, 2))
-  writeFileSync(join(répertoire, 'production.json'), JSON.stringify({ mesures: m, collecte: { lectures: production.collecte.lectures, articles: production.collecte.articles, résultats: production.collecte.résultats } }, null, 2))
+      { organisation: nom, site, filière: null, référentielDeFilière: null, fiche: null },
+      { ouvrirNavigateur: () => navigateurPlaywright(process.env['CHROMIUM_PATH'] ?? '/opt/pw-browsers/chromium'), journal: (l) => trace(`  ${l}`) },
+    )
+    for (const é of dérivé.étapes) {
+      mesures.push({
+        étape: `Référentiel : ${é.nom}`,
+        coût: é.coût,
+        durée_s: é.duréeMs / 1000,
+        détail: `${é.usage.entrée} jetons en entrée, ${é.usage.sortie} en sortie, ${é.recherches} recherches`,
+      })
+    }
+    référentiel = dérivé.référentiel
+    writeFileSync(join(répertoire, 'referentiel-unique.md'), dérivé.markdown)
+    writeFileSync(join(répertoire, 'pages-du-site.json'), JSON.stringify(dérivé.pagesDuSite, null, 2))
+    trace(`référentiel : ${dérivé.référentiel.axes.length} axes, ${dérivé.référentiel.dossiers.length} dossiers, ${dérivé.coût.toFixed(2)} $`)
+  }
 
-  // 5. La réception par le portail, sur la vraie file.
-  const réception = await recevoirUneÉdition(
-    {
-      travailId,
-      session,
-      organisationPayload: registre,
-      titre: production.lettre.propriétés.titre,
-      numéro: production.lettre.propriétés.numéro,
-      dateÉdition: production.lettre.propriétés.dateÉdition,
-      markdown: production.lettre.markdown,
-      dossiersBruts: production.lettre.propriétés.dossiersOuvertsSuivis,
-      acceptéeParLeMoteur: production.acceptée,
-      exécuteur: 'banc-local',
-      début,
-      fin: new Date(),
-      coût: { dollars: m.coût },
-    },
-    db,
-  )
-  const [veille] = await db.select().from(veilles)
-  const [travail] = await db.select().from(travaux).where(eq(travaux.id, travailId))
-  const journalDesRuns = await db.select().from(runs)
-  trace(`portail : ${réception.sorte}, numéro courant de la veille ${veille?.numéroCourant}, travail ${travail?.état}, ${journalDesRuns.length} run(s) journalisé(s)`)
+  // 3. Les parutions, une par semaine simulée, chacune par la file comme en production.
+  const { prendreCeTravail, recevoirUneÉdition } = await import('@/lib/portail/file')
+  const semaines = Number(valeurs.get('semaines') ?? '1')
+  let précédente: ÉditionPrécédente | null = null
+  let gel: ReadonlyMap<string, Gel> = new Map()
+  const lettres: string[] = []
+  const résumés: string[] = []
+  for (let semaine = 1; semaine <= semaines; semaine += 1) {
+    const dossierDeLaSemaine = semaines > 1 ? join(répertoire, `semaine-${semaine}`) : répertoire
+    mkdirSync(dossierDeLaSemaine, { recursive: true })
+    const pose = await poserUnTravailDeLettre({ slug, veille: 'unique', type: semaine === 1 ? 'premiere_lettre' : 'lettre', dateDeParution: dateÉdition }, db)
+    if (pose.sorte !== 'créé' && pose.sorte !== 'déjà-en-file') throw new Error(`Travail non posé : ${pose.sorte}`)
+    const travailId = pose.travailId
+    const pris = await prendreCeTravail({ travailId, session }, db)
+    if (!pris) throw new Error('Travail non prenable.')
+    const numéro = pris.travail.contexte.numéro
+    trace(`semaine ${semaine} : travail ${travailId} pris, numéro attribué ${numéro}`)
 
-  // 6. Le courriel, composé et jamais envoyé.
-  const courriel = composerLettre({
-    objet: `[TEST] ${production.lettre.propriétés.titre}`,
-    édition: { pageId: `test-${slug}`, titre: production.lettre.propriétés.titre, veille: 'Veille', numéro: production.lettre.propriétés.numéro, dateÉdition: production.lettre.propriétés.dateÉdition, périodeCouverte: production.lettre.propriétés.périodeCouverte },
-    blocs: production.lettre.blocs,
-    slug,
-    organisation: nom,
-    portailUrl: PORTAIL_URL,
-    adressePostale: null,
-  })
-  writeFileSync(join(répertoire, 'courriel.html'), courriel.html)
+    const sélection = { ...sélectionDe(dateÉdition, précédente), numéro: typeof numéro === 'number' ? numéro : 1 }
+    const début = new Date()
+    const production = await produireLaLettre(
+      { référentiel, sélection },
+      {
+        anthropic,
+        gel,
+        ouvrirNavigateur: () => navigateurPlaywright(process.env['CHROMIUM_PATH'] ?? '/opt/pw-browsers/chromium'),
+        effort: 'medium',
+        journal: (l) => trace(`  [s${semaine}] ${l}`),
+      },
+    )
+    const m = production.mesures
+    mesures.push({
+      étape: `Lettre n° ${numéro} (semaine ${semaine}) : collecte, recherche, rédaction, portes`,
+      coût: m.coût,
+      durée_s: m.duréeMs / 1000,
+      détail: `${m.usage.entrée} entrée, ${m.usage.sortie} sortie, ${m.usage.cacheLecture} cache lu, ${m.recherches} recherches, ${m.reprises} reprise(s)`,
+    })
+    writeFileSync(join(dossierDeLaSemaine, 'lettre.md'), production.lettre.markdown)
+    writeFileSync(join(dossierDeLaSemaine, 'proprietes.json'), JSON.stringify(production.lettre.propriétés, null, 2))
+    writeFileSync(join(dossierDeLaSemaine, 'validation.json'), JSON.stringify({ acceptée: production.acceptée, manquements: production.contrôle.manquements, rapport: production.contrôle.rapport }, null, 2))
+    writeFileSync(join(dossierDeLaSemaine, 'production.json'), JSON.stringify({ mesures: m, collecte: { lectures: production.collecte.lectures, articles: production.collecte.articles, résultats: production.collecte.résultats } }, null, 2))
+
+    const réception = await recevoirUneÉdition(
+      {
+        travailId,
+        session,
+        organisationPayload: registre,
+        titre: production.lettre.propriétés.titre,
+        numéro: production.lettre.propriétés.numéro,
+        dateÉdition: production.lettre.propriétés.dateÉdition,
+        markdown: production.lettre.markdown,
+        dossiersBruts: production.lettre.propriétés.dossiersOuvertsSuivis,
+        acceptéeParLeMoteur: production.acceptée,
+        exécuteur: 'banc-local',
+        début,
+        fin: new Date(),
+        coût: { dollars: m.coût },
+      },
+      db,
+    )
+    const [veille] = await db.select().from(veilles)
+    const [travail] = await db.select().from(travaux).where(eq(travaux.id, travailId))
+    const journalDesRuns = await db.select().from(runs)
+    trace(`portail : ${réception.sorte}, numéro courant de la veille ${veille?.numéroCourant}, travail ${travail?.état}, ${journalDesRuns.length} run(s) journalisé(s)`)
+
+    const courriel = composerLettre({
+      objet: `[TEST] ${production.lettre.propriétés.titre}`,
+      édition: { pageId: `test-${slug}`, titre: production.lettre.propriétés.titre, veille: 'Veille', numéro: production.lettre.propriétés.numéro, dateÉdition: production.lettre.propriétés.dateÉdition, périodeCouverte: production.lettre.propriétés.périodeCouverte },
+      blocs: production.lettre.blocs,
+      slug,
+      organisation: nom,
+      portailUrl: PORTAIL_URL,
+      adressePostale: null,
+    })
+    writeFileSync(join(dossierDeLaSemaine, 'courriel.html'), courriel.html)
+
+    const changées = production.collecte.lectures.filter((l) => l.changée === true).length
+    résumés.push(
+      `Semaine ${semaine} (n° ${numéro}) : réception **${réception.sorte}**, ${production.contrôle.rapport.aperçu.axes.length} axes, ${m.faits} faits, ${production.collecte.lectures.length} sources dont ${changées} changées depuis le gel, ${production.collecte.articles.length} articles lus, ${m.reprises} reprise(s), manquements restants : ${production.contrôle.manquements.map((x) => x.code).join(', ') || 'aucun'}.`,
+    )
+    lettres.push(production.lettre.markdown)
+    précédente = { dateÉdition, numéro: typeof numéro === 'number' ? numéro : semaine, essentiel: essentielDuMarkdown(production.lettre.markdown), dossiersBruts: production.lettre.propriétés.dossiersOuvertsSuivis }
+    gel = production.collecte.gelSuivant
+  }
+
+  // 4. Ce que la semaine suivante répète de la précédente.
+  const recouvrement: string[] = []
+  if (lettres.length >= 2) {
+    const faitsDe = (md: string) => md.split(/\r?\n/).filter((l) => /\]\(https?:\/\//.test(l) && !/^\s*[-*]\s*\[/.test(l) && !l.startsWith('#') && !l.startsWith('>') && !l.startsWith('- ['))
+    const urlsDe = (ligne: string) => [...ligne.matchAll(/\]\((https?:\/\/[^)\s]+)\)/g)].map((m) => m[1]!.replace(/\/$/, '').toLowerCase())
+    for (let i = 1; i < lettres.length; i += 1) {
+      const avant = faitsDe(lettres[i - 1]!)
+      const après = faitsDe(lettres[i]!)
+      const urlsAvant = new Set(avant.flatMap(urlsDe))
+      const mêmeUrl = après.filter((l) => urlsDe(l).some((u) => urlsAvant.has(u))).length
+      const mêmeTexte = après.filter((l) => avant.includes(l)).length
+      recouvrement.push(`Semaine ${i + 1} contre semaine ${i} : ${après.length} lignes de fait, dont ${mêmeTexte} identiques mot pour mot et ${mêmeUrl} qui citent une URL déjà citée la semaine précédente.`)
+    }
+  }
 
   const total = mesures.reduce((s, x) => s + x.coût, 0)
   const rapport = [
     `# Onboarding local : ${nom}`,
     '',
-    `Site : ${site}. Édition n° ${numéro} du ${dateÉdition}. Réception par le portail : **${réception.sorte}**.`,
+    `Site : ${site}. Date d'édition simulée : ${dateÉdition}. ${semaines} parution(s).`,
     '',
     '| Étape | Coût ($) | Durée (s) | Détail |',
     '|---|---|---|---|',
     ...mesures.map((x) => `| ${x.étape} | ${x.coût.toFixed(2)} | ${x.durée_s.toFixed(0)} | ${x.détail} |`),
     `| **Total** | **${total.toFixed(2)}** | ${mesures.reduce((s, x) => s + x.durée_s, 0).toFixed(0)} | |`,
     '',
-    `Axes : ${production.contrôle.rapport.aperçu.axes.length}. Faits : ${m.faits}. Couverture des sources : ${Math.round(m.couverture.taux * 100)} % (${m.couverture.ouvertes}/${m.couverture.nommées}). Manquements restants : ${production.contrôle.manquements.map((x) => x.code).join(', ') || 'aucun'}.`,
+    ...résumés.map((r) => `- ${r}`),
+    ...recouvrement.map((r) => `- ${r}`),
     '',
   ].join('\n')
   writeFileSync(join(répertoire, 'rapport.md'), rapport)
