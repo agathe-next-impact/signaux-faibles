@@ -6,6 +6,7 @@
 //
 // Écrit sur la sortie standard : le statut HTTP, le titre, puis le texte visible
 // de la page, tronqué à 20 000 caractères par défaut.
+import { existsSync } from 'node:fs'
 import { chromium } from '@playwright/test'
 
 const [url, plafond = '20000'] = process.argv.slice(2)
@@ -16,9 +17,10 @@ if (!url || !/^https?:\/\//.test(url)) {
 
 // Le Chromium de l'environnement n'est pas forcément la version attendue par
 // @playwright/test : on lance l'exécutable installé plutôt que d'en télécharger un.
-const navigateur = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium',
-})
+// Sur un runner GitHub (`playwright install chromium`), il n'y a pas d'exécutable
+// à cet endroit : Playwright prend alors le sien.
+const exécutable = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium'
+const navigateur = await chromium.launch(existsSync(exécutable) ? { executablePath: exécutable } : {})
 try {
   const page = await navigateur.newPage({ locale: 'fr-FR' })
   const réponse = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 })

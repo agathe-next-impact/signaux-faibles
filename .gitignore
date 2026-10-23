@@ -17,3 +17,6 @@ test-results/
 
 # Évaluation des modèles : entrées exportées de Notion, sources gelées, sorties ; jamais commité
 evaluation/
+
+# Tâches planifiées sur l'API : transcriptions, journaux et mesures, archivés par GitHub Actions
+sorties-taches/

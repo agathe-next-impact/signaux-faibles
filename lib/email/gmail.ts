@@ -8,8 +8,15 @@ import { env } from '@/lib/env'
  *
  * Pas de SMTP : l'authentification basique est arrêtée pour Workspace depuis le
  * 14 mars 2025. L'identité est un compte de service avec délégation à l'échelle
- * du domaine, autorisée pour les portées `gmail.send` (envois) et
- * `gmail.compose` (brouillons), qui emprunte une boîte émettrice dédiée.
+ * du domaine, autorisée pour trois portées (`PORTÉES_GMAIL`), chacune demandée
+ * dans son propre jeton, pour deux usages :
+ *
+ *   · le portail emprunte la boîte émettrice dédiée (`GMAIL_EXPEDITEUR`), en
+ *     `gmail.send` (envois) et `gmail.compose` (brouillons commerciaux) ;
+ *   · les tâches planifiées (`scripts/taches/`) empruntent la boîte de
+ *     l'opératrice (`GMAIL_BOITE_OPERATRICE`), en `gmail.compose` (brouillons)
+ *     et `gmail.metadata` (en-têtes des messages envoyés, jamais leur corps),
+ *     plus `gmail.send` pour le seul envoi permis, vers l'opératrice.
  *
  * Le jeton d'accès Google est obtenu par un JWT auto-signé plutôt que par une
  * bibliothèque cliente : c'est une trentaine de lignes, cela évite une
@@ -17,6 +24,17 @@ import { env } from '@/lib/env'
  */
 
 const PORTÉE = 'https://www.googleapis.com/auth/gmail.send'
+
+/**
+ * Les trois portées délégées au compte de service (23 octobre 2026), chacune
+ * demandée dans son propre jeton.
+ */
+export const PORTÉES_GMAIL = {
+  envoi: PORTÉE,
+  brouillons: 'https://www.googleapis.com/auth/gmail.compose',
+  métadonnées: 'https://www.googleapis.com/auth/gmail.metadata',
+} as const
+
 /**
  * Les brouillons (23 octobre 2026) : les courriers commerciaux ne partent plus,
  * ils sont déposés en brouillon dans la boîte émettrice, relus puis envoyés à la
@@ -25,7 +43,7 @@ const PORTÉE = 'https://www.googleapis.com/auth/gmail.send'
  * deux serait refusé en entier tant que `gmail.compose` n'est pas autorisée dans
  * la délégation, et le lien d'accès cesserait de partir.
  */
-const PORTÉE_BROUILLONS = 'https://www.googleapis.com/auth/gmail.compose'
+const PORTÉE_BROUILLONS = PORTÉES_GMAIL.brouillons
 const AUDIENCE = 'https://oauth2.googleapis.com/token'
 const ENVOI = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send'
 const BROUILLONS = 'https://gmail.googleapis.com/gmail/v1/users/me/drafts'
@@ -76,27 +94,7 @@ export function compteDeService(): { email: string; clePrivée: string } {
   const configuration = env()
 
   if (configuration.GOOGLE_COMPTE_SERVICE_JSON) {
-    let fichier: { client_email?: unknown; private_key?: unknown }
-    try {
-      fichier = JSON.parse(configuration.GOOGLE_COMPTE_SERVICE_JSON) as typeof fichier
-    } catch {
-      throw new Error(
-        "GOOGLE_COMPTE_SERVICE_JSON n'est pas du JSON valide. Y coller le contenu " +
-          'entier du fichier de clé téléchargé depuis Google Cloud, accolades comprises.',
-      )
-    }
-
-    if (typeof fichier.client_email !== 'string' || typeof fichier.private_key !== 'string') {
-      throw new Error(
-        'GOOGLE_COMPTE_SERVICE_JSON ne porte pas les champs client_email et ' +
-          "private_key. Ce n'est pas un fichier de clé de compte de service.",
-      )
-    }
-
-    return {
-      email: fichier.client_email,
-      clePrivée: normaliserClePrivée(fichier.private_key),
-    }
+    return lireCompteDeServiceJSON(configuration.GOOGLE_COMPTE_SERVICE_JSON)
   }
 
   const email = configuration.GOOGLE_COMPTE_SERVICE_EMAIL
@@ -109,6 +107,35 @@ export function compteDeService(): { email: string; clePrivée: string } {
   }
 
   return { email, clePrivée: normaliserClePrivée(clé) }
+}
+
+/**
+ * Le fichier de clé entier, tel que `GOOGLE_COMPTE_SERVICE_JSON` le porte. Exposé
+ * pour les tâches planifiées, qui lisent leurs seules variables plutôt que tout
+ * `env()` du portail.
+ */
+export function lireCompteDeServiceJSON(json: string): { email: string; clePrivée: string } {
+  let fichier: { client_email?: unknown; private_key?: unknown }
+  try {
+    fichier = JSON.parse(json) as typeof fichier
+  } catch {
+    throw new Error(
+      "GOOGLE_COMPTE_SERVICE_JSON n'est pas du JSON valide. Y coller le contenu " +
+        'entier du fichier de clé téléchargé depuis Google Cloud, accolades comprises.',
+    )
+  }
+
+  if (typeof fichier.client_email !== 'string' || typeof fichier.private_key !== 'string') {
+    throw new Error(
+      'GOOGLE_COMPTE_SERVICE_JSON ne porte pas les champs client_email et ' +
+        "private_key. Ce n'est pas un fichier de clé de compte de service.",
+    )
+  }
+
+  return {
+    email: fichier.client_email,
+    clePrivée: normaliserClePrivée(fichier.private_key),
+  }
 }
 
 /** Alphabet du base64, plus le remplissage. */
@@ -206,9 +233,21 @@ function signerJWT(revendications: RevendicationsJWT, clésPrivée: string): str
 }
 
 async function obtenirJetonGoogle(portée: string = PORTÉE): Promise<string> {
-  const compte = compteDeService()
+  return jetonDeDélégation(compteDeService(), env().GMAIL_EXPEDITEUR, portée)
+}
+
+/**
+ * Un jeton d'accès Google pour une portée, au nom d'une boîte du domaine. Le
+ * refus garde le corps de la réponse de Google : il nomme `unauthorized_client`
+ * (portée non déléguée) ou `invalid_grant` (boîte inconnue), sans secret.
+ */
+export async function jetonDeDélégation(
+  compte: { email: string; clePrivée: string },
+  boîte: string,
+  portée: string,
+): Promise<string> {
   const jwt = signerJWT(
-    composerRevendications(compte.email, env().GMAIL_EXPEDITEUR, undefined, portée),
+    composerRevendications(compte.email, boîte, Math.floor(Date.now() / 1000), portée),
     compte.clePrivée,
   )
 
