@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
-import { courriersDeParcoursEnSouffrance } from '@/lib/base/courriers'
+import { courriersDeParcoursEnSouffrance, type SorteCourrier } from '@/lib/base/courriers'
 import { migrationsEnAttente } from '@/lib/base/migrer'
 import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
@@ -20,6 +20,9 @@ import { envoyerCourrier } from '@/lib/portail/courriers'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { CONTRAT_DE_FORME_DEPUIS, contrôlerLaLettre, type Rapport } from '@/lib/portail/lint'
 
+
+/** Les brouillons que prépare le webhook Stripe : aucun passage ne les retente. */
+const SORTES_DU_WEBHOOK = new Set<SorteCourrier>(['abonnement_confirme', 'paiement_echec', 'abonnement_resilie'])
 /**
  * Le contrôle des espaces clients — l'étape 3bis de la réconciliation, en code.
  *
@@ -135,8 +138,12 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
             code: c.état === 'echec' ? 'courrier-parcours-echec' : 'courrier-parcours-incertain',
             message:
               c.état === 'echec'
-                ? `courrier de fin d'essai (${c.sorte}) en échec le ${c.prévuLe.toISOString().slice(0, 10)} : il sera retenté au prochain passage.`
-                : `courrier de fin d'essai (${c.sorte}) resté sans issue depuis le ${c.prévuLe.toISOString().slice(0, 10)} : vérifier dans la boîte d'envoi s'il est parti, il ne sera pas retenté.`,
+                ? `courrier commercial (${c.sorte}) en échec le ${c.prévuLe.toISOString().slice(0, 10)} : ${
+                    SORTES_DU_WEBHOOK.has(c.sorte)
+                      ? 'préparé par le webhook Stripe, il ne sera pas retenté, à rédiger à la main.'
+                      : 'il sera retenté au prochain passage.'
+                  }`
+                : `courrier commercial (${c.sorte}) resté sans issue depuis le ${c.prévuLe.toISOString().slice(0, 10)} : vérifier dans les brouillons et la boîte d'envoi, il ne sera pas retenté.`,
           })
         }
       } catch (erreur) {
