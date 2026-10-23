@@ -190,7 +190,7 @@ export default async function VueDEnsemble({
 
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-titre text-h2 font-bold text-encre">Les acteurs</h2>
+          <h2 className="font-titre text-h2 font-bold text-encre">À la une</h2>
           <LienFlèche href={`/${accès.slug}/acteurs`}>Voir tout le suivi</LienFlèche>
         </div>
         <p className="text-ardoise">
