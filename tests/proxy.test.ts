@@ -22,12 +22,14 @@ describe('proxy', () => {
     expect(proxy(requête('/')).status).toBe(200)
     expect(proxy(requête('/demo')).status).toBe(200)
     expect(proxy(requête('/offre')).status).toBe(200)
+    expect(proxy(requête('/exemple')).status).toBe(200)
     expect(proxy(requête('/tarifs')).status).toBe(200)
   })
 
   it('n’ouvre les pages vitrines qu’à l’adresse exacte, pas en préfixe', () => {
     expect(proxy(requête('/offre/lettres')).status).toBe(307)
     expect(proxy(requête('/tarifs-client')).status).toBe(307)
+    expect(proxy(requête('/exemple/lettres')).status).toBe(307)
   })
 
   it('n’ouvre /demo qu’à l’adresse exacte, pas en préfixe', () => {

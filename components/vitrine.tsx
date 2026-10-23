@@ -4,19 +4,21 @@ import { ADRESSE_DE_CONTACT } from '@/lib/email/gabarit'
 
 /**
  * Les pages vitrines (23 octobre 2026) : l'accueil des visiteurs sans session,
- * « L'offre » et « Tarifs ». Elles ne lisent ni Notion ni Postgres : tout ce
+ * « L'offre », « Exemple de lettre » et « Tarifs ». Elles ne lisent ni Notion ni Postgres : tout ce
  * qu'elles disent de l'offre vient de `lib/domaine/offre.ts` et des seuils du
  * contrat de la lettre, pour qu'un prix ou une règle ne soit écrit qu'une fois.
  *
- * Charte tenue ici : un seul bouton primaire par page (`BoutonDémo`, posé une
- * fois par la page, jamais par l'en-tête), « Se connecter » en filet, les
- * autres liens en flèche rose ; sentence case, capitales réservées aux labels
- * mono.
+ * Charte tenue ici : `BoutonDémo` posé une fois par la page, jamais par
+ * l'en-tête ; « Se connecter » sur fond encre dans l'en-tête, à la demande de
+ * l'opératrice (23 octobre 2026), ce qui fait deux boutons sur fond encre là
+ * où la charte n'en veut qu'un ; les autres liens en flèche rose ; sentence
+ * case, capitales réservées aux labels mono.
  */
-export type PageVitrine = 'accueil' | 'offre' | 'tarifs'
+export type PageVitrine = 'accueil' | 'offre' | 'exemple' | 'tarifs'
 
 const LIENS: ReadonlyArray<{ href: string; libellé: string; page: PageVitrine }> = [
   { href: '/offre', libellé: 'L’offre', page: 'offre' },
+  { href: '/exemple', libellé: 'Exemple de lettre', page: 'exemple' },
   { href: '/tarifs', libellé: 'Tarifs', page: 'tarifs' },
 ]
 
@@ -42,10 +44,10 @@ export function EnTêteVitrine({ courante }: { courante: PageVitrine }) {
               {lien.libellé}
             </Link>
           ))}
-          {/* Bouton secondaire, en filet : le primaire est celui de la page. */}
+          {/* Fond encre, texte blanc : décision de l'opératrice du 23 octobre 2026. */}
           <Link
             href="/recevoir-mon-lien"
-            className="rounded-douce border border-gris-ligne px-4 py-2 text-corps text-encre hover:border-ardoise"
+            className="rounded-douce bg-encre px-4 py-2 text-corps font-medium text-blanc hover:bg-encre/90"
           >
             Se connecter
           </Link>
@@ -65,6 +67,7 @@ export function PiedVitrine() {
         </div>
         <nav aria-label="Pied de page" className="flex flex-col gap-2 text-corps">
           <Link href="/offre" className="text-ardoise hover:text-encre">L’offre</Link>
+          <Link href="/exemple" className="text-ardoise hover:text-encre">Exemple de lettre</Link>
           <Link href="/tarifs" className="text-ardoise hover:text-encre">Tarifs</Link>
           <Link href="/demo" className="text-ardoise hover:text-encre">Demander une démo</Link>
           <Link href="/recevoir-mon-lien" className="text-ardoise hover:text-encre">Recevoir mon lien d’accès</Link>

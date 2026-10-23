@@ -59,7 +59,7 @@ export function estUneAdressePayload(pathname: string): boolean {
  * (23 octobre 2026) ; comme `/demo` et `/espaces`, elles masquent un slug
  * identique, qu'aucune organisation ne doit donc porter.
  */
-const PUBLICS_EXACTS = new Set(['/', '/demo', '/offre', '/tarifs'])
+const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/offre', '/tarifs'])
 
 export function proxy(requête: NextRequest): NextResponse {
   const { pathname } = requête.nextUrl
