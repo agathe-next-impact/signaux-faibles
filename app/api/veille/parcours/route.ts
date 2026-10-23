@@ -5,12 +5,14 @@ import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { env } from '@/lib/env'
 import { planifierLaFile } from '@/lib/portail/file'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
+import { préparerLesRappelsDeRenouvellement } from '@/lib/portail/courriers-abonnement'
 import { envoyerLesCourriersDeParcours } from '@/lib/portail/parcours-courriers'
 import { synchroniserLaProspection } from '@/lib/portail/prospection'
 
 /**
- * Les courriers de fin d'essai, une fois par jour, puis la synchronisation de
- * la prospection avec lemlist (19 octobre 2026).
+ * Les courriers d'essai et les rappels de renouvellement annuel, une fois par
+ * jour, déposés en brouillon Gmail (23 octobre 2026), puis la synchronisation
+ * de la prospection avec lemlist (19 octobre 2026).
  *
  *   GET /api/veille/parcours
  *   Authorization: Bearer <CRON_SECRET ou ACTIVATION_SECRET>
@@ -42,8 +44,13 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
     const rapport = await envoyerLesCourriersDeParcours({
       aujourdHui,
       portailUrl: env().PORTAIL_URL,
-      relecteurParDéfaut: process.env['RELECTEUR_EMAIL'] || undefined,
     })
+    const renouvellements = await préparerLesRappelsDeRenouvellement({ maintenant: new Date(), portailUrl: env().PORTAIL_URL }).catch(
+      (erreur: unknown) => {
+        console.error(`[veille/parcours] rappels de renouvellement non préparés : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+        return null
+      },
+    )
     const prospection = await synchroniserLaProspection({ aujourdHui }).catch((erreur: unknown) => {
       console.error(`[veille/parcours] prospection non synchronisée : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
       return { état: 'erreur' as const }
@@ -52,7 +59,7 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       console.error(`[veille/parcours] file non planifiée : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
       return { état: 'erreur' as const }
     })
-    return NextResponse.json({ état: 'passé', ...rapport, prospection, file })
+    return NextResponse.json({ état: 'passé', ...rapport, renouvellements, prospection, file })
   } catch (erreur) {
     // L'erreur sort de lib/base sans donnée : seulement un code.
     console.error(`[veille/parcours] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

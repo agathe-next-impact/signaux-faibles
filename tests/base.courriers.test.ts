@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Base } from '@/lib/base/client'
 import { enregistrerÉvénementDAbonnement } from '@/lib/base/abonnements'
-import { conclureCourrier, courriersDeParcoursEnSouffrance, courriersRécents, organisationsEnEssai, prévoirCourrier } from '@/lib/base/courriers'
-import { lecteurs, organisations } from '@/lib/base/schema'
+import {
+  abonnementsAnnuelsÀÉchéance,
+  conclureCourrier,
+  courriersDeParcoursEnSouffrance,
+  courriersRécents,
+  organisationEtSesLecteurs,
+  organisationsEnEssai,
+  prévoirCourrier,
+} from '@/lib/base/courriers'
+import { abonnements, lecteurs, organisations } from '@/lib/base/schema'
 import { baseEnMémoire } from './aide/base-en-memoire'
 
 describe('journal des courriers', () => {
@@ -62,6 +70,46 @@ describe('journal des courriers', () => {
     // Relecture : pas de lecteur, et pourtant un seul envoi.
     expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', lecteurId: null }, db)).not.toBeNull()
     expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', lecteurId: null }, db)).toBeNull()
+  })
+
+  it('un courrier commercial se réserve une fois par clé ; un brouillon tient la place, un échec la libère', async () => {
+    const org = await organisation()
+    const [l] = await db.insert(lecteurs).values({ organisationId: org, nom: 'Léa', email: 'lea@x.fr', identifiantAcces: 'b'.repeat(32) }).returning({ id: lecteurs.id })
+    const commun = { organisation: { id: org }, destinataireEmpreinte: '12345678', déclencheur: 'stripe', lecteurId: l!.id }
+
+    const a = await prévoirCourrier({ ...commun, sorte: 'paiement_echec', clé: 'sub_1:2026-11-01' }, db)
+    expect(a).not.toBeNull()
+    await conclureCourrier(a!, { état: 'brouillon', messageGmail: 'gb1' }, db)
+    expect(await prévoirCourrier({ ...commun, sorte: 'paiement_echec', clé: 'sub_1:2026-11-01' }, db)).toBeNull()
+    // L'échéance suivante est un autre courrier.
+    const b = await prévoirCourrier({ ...commun, sorte: 'paiement_echec', clé: 'sub_1:2026-12-01' }, db)
+    expect(b).not.toBeNull()
+    await conclureCourrier(b!, { état: 'echec', erreur: 'gmail-403' }, db)
+    expect(await prévoirCourrier({ ...commun, sorte: 'paiement_echec', clé: 'sub_1:2026-12-01' }, db)).not.toBeNull()
+
+    const journal = await courriersRécents(new Date(0), db)
+    expect(journal.find((c) => c.état === 'brouillon')?.messageGmail).toBe('gb1')
+    const souffrance = await courriersDeParcoursEnSouffrance(new Date(), db)
+    expect(souffrance.map((c) => [c.sorte, c.état])).toEqual([['paiement_echec', 'echec']])
+  })
+
+  it('les abonnements annuels actifs à échéance, avec leurs lecteurs, et eux seuls', async () => {
+    const org = await organisation('abonnee')
+    await db.insert(lecteurs).values({ organisationId: org, nom: 'Léa', email: 'lea@x.fr', identifiantAcces: 'c'.repeat(32) })
+    const commun = { organisationId: org, clientStripe: 'cus_1', dernierÉvénement: 'evt', événementLe: new Date(), dernierType: 'customer.subscription.updated' }
+    await db.insert(abonnements).values([
+      { ...commun, abonnementStripe: 'sub_an', état: 'active', formule: 'annuelle', périodeFin: new Date('2026-11-10T00:00:00Z') },
+      { ...commun, abonnementStripe: 'sub_mois', état: 'active', formule: 'mensuelle', périodeFin: new Date('2026-11-10T00:00:00Z') },
+      { ...commun, abonnementStripe: 'sub_loin', état: 'active', formule: 'annuelle', périodeFin: new Date('2027-06-10T00:00:00Z') },
+      { ...commun, abonnementStripe: 'sub_fini', état: 'canceled', formule: 'annuelle', périodeFin: new Date('2026-11-10T00:00:00Z') },
+    ])
+    const àÉchéance = await abonnementsAnnuelsÀÉchéance(
+      { depuis: new Date('2026-10-23T00:00:00Z'), jusquÀ: new Date('2026-11-22T00:00:00Z') },
+      db,
+    )
+    expect(àÉchéance.map((a) => a.abonnementStripe)).toEqual(['sub_an'])
+    expect(àÉchéance[0]!.organisation.lecteurs.map((l) => l.nom)).toEqual(['Léa'])
+    expect((await organisationEtSesLecteurs(org, db))?.lecteurs).toHaveLength(1)
   })
 
   it('un courrier de parcours en échec se retente ; un courrier resté sans issue, non, et le contrôle du soir les voit', async () => {

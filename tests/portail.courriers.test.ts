@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const prévoir = vi.fn()
 const conclure = vi.fn()
 const envoyer = vi.fn()
+const brouillonner = vi.fn()
 const état = { configurée: true, source: 'double' as 'notion' | 'double' | 'postgres' }
 
 vi.mock('@/lib/base/client', () => ({ baseConfigurée: () => état.configurée }))
@@ -14,7 +15,7 @@ vi.mock('@/lib/email/gmail', async () => {
       super(`refus ${statut}`)
     }
   }
-  return { envoyerMessage: envoyer, ErreurDEnvoi }
+  return { envoyerMessage: envoyer, créerBrouillon: brouillonner, ErreurDEnvoi }
 })
 
 const { envoyerCourrier } = await import('@/lib/portail/courriers')
@@ -31,6 +32,7 @@ describe('envoyerCourrier', () => {
     prévoir.mockReset().mockResolvedValue('c1')
     conclure.mockReset().mockResolvedValue(undefined)
     envoyer.mockReset().mockResolvedValue({ idMessage: 'gm1' })
+    brouillonner.mockReset().mockResolvedValue({ idMessage: 'gb1' })
     vi.spyOn(console, 'warn').mockImplementation(() => {})
   })
   afterEach(() => vi.restoreAllMocks())
@@ -41,6 +43,19 @@ describe('envoyerCourrier', () => {
     expect(JSON.stringify(prévoir.mock.calls)).not.toContain('lea@x.fr')
     expect(prévoir.mock.calls[0]![0].destinataireEmpreinte).toMatch(/^[0-9a-f]{8}$/)
     expect(conclure).toHaveBeenCalledWith('c1', { état: 'envoye', messageGmail: 'gm1' })
+  })
+
+  it('un courrier commercial est déposé en brouillon, jamais envoyé, et sa clé va au journal', async () => {
+    expect(await envoyerCourrier({ ...parcours, brouillon: true, clé: 'sub_1' })).toEqual({ sorte: 'brouillon' })
+    expect(envoyer).not.toHaveBeenCalled()
+    expect(prévoir.mock.invocationCallOrder[0]!).toBeLessThan(brouillonner.mock.invocationCallOrder[0]!)
+    expect(prévoir.mock.calls[0]![0].clé).toBe('sub_1')
+    expect(conclure).toHaveBeenCalledWith('c1', { état: 'brouillon', messageGmail: 'gb1' })
+  })
+
+  it('un brouillon hors des courriers uniques est refusé', async () => {
+    await expect(envoyerCourrier({ ...lien, brouillon: true })).rejects.toThrow()
+    expect(brouillonner).not.toHaveBeenCalled()
   })
 
   it('un courrier de parcours déjà réservé ne part pas', async () => {

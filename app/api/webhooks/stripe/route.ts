@@ -1,13 +1,17 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { after, NextResponse, type NextRequest } from 'next/server'
 import { enregistrerÉvénementDAbonnement } from '@/lib/base/abonnements'
+import { préparerLeCourrierDuChangement } from '@/lib/portail/courriers-abonnement'
 import { interpréterLivraisonStripe } from '@/lib/stripe/webhook'
 
 /**
  * Le webhook Stripe (palier 1c) : le seul écrivain de la table `abonnements`.
  *
- * Il vérifie la signature, recopie l'état de l'abonnement et répond. Il
- * n'envoie aucun courrier et ne touche à aucun cache Notion : ce qu'il change,
- * c'est l'étape du parcours, qui est recalculée à la lecture suivante.
+ * Il vérifie la signature, recopie l'état de l'abonnement et répond. Il ne
+ * touche à aucun cache Notion : ce qu'il change, c'est l'étape du parcours, qui
+ * est recalculée à la lecture suivante. Il n'envoie aucun courrier : depuis le
+ * 23 octobre 2026, un changement d'état appliqué (abonnement actif, paiement
+ * refusé, résiliation) prépare un **brouillon** Gmail par lecteur, dans
+ * `after()`, une fois la réponse partie ; l'opératrice le relit et l'envoie.
  *
  * Les codes de réponse disent à Stripe s'il doit relivrer, et c'est leur seul
  * rôle :
@@ -56,6 +60,18 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
         const journal = `[webhook stripe] ${décision.type} ${décision.événement.abonnementStripe} → ${décision.événement.état} : ${résultat.sorte}`
         if (résultat.sorte === 'organisation-inconnue' || résultat.sorte === 'autre-organisation') console.warn(journal)
         else console.info(journal)
+        if (résultat.sorte === 'appliqué' && process.env['PORTAIL_URL']) {
+          const { événement } = décision
+          const portailUrl = process.env['PORTAIL_URL']
+          after(() =>
+            préparerLeCourrierDuChangement({ ...événement, étatPrécédent: résultat.étatPrécédent, portailUrl }).then(
+              () => undefined,
+              (erreur: unknown) => {
+                console.error(`[webhook stripe] brouillon non préparé : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+              },
+            ),
+          )
+        }
         return NextResponse.json({ reçu: true, résultat: résultat.sorte }, { status: 200 })
       } catch (erreur) {
         // Une contrainte violée (23514 : identifiant Stripe mal formé) est une

@@ -3,8 +3,13 @@
 Le portail envoie les liens d'accès par l'API Gmail de Google Workspace. Pas de
 SMTP : l'authentification basique est arrêtée pour Workspace depuis le
 14 mars 2025. L'identité est un compte de service qui **emprunte** une boîte
-dédiée, par délégation à l'échelle du domaine limitée à la seule portée
-`gmail.send`.
+dédiée, par délégation à l'échelle du domaine limitée aux portées
+`gmail.send` (liens d'accès, alerte du soir) et, depuis le 23 octobre 2026,
+`gmail.compose` (les courriers commerciaux, déposés en **brouillon** dans la
+boîte empruntée, relus puis envoyés à la main). Le portail demande un jeton
+par portée : tant que `gmail.compose` n'est pas autorisée, les brouillons
+échouent (`gmail-403` ou refus du jeton, dans le journal des courriers) et les
+liens d'accès partent toujours.
 
 Deux variables d'environnement sortent de cette procédure :
 `GOOGLE_COMPTE_SERVICE_EMAIL` et `GOOGLE_COMPTE_SERVICE_CLE_PRIVEE`.
@@ -52,9 +57,11 @@ console d'administration, pas dans Google Cloud.
    Délégation au niveau du domaine → Gérer la délégation → Ajouter**.
 2. **Client ID** : l'identifiant **numérique** (`client_id` du JSON), pas
    l'adresse email du compte de service. C'est la confusion la plus fréquente.
-3. **Portées OAuth** : `https://www.googleapis.com/auth/gmail.send`, et elle
-   seule. Une portée plus large donnerait au portail le droit de lire les
-   messages, ce dont il n'a aucun besoin.
+3. **Portées OAuth** : `https://www.googleapis.com/auth/gmail.send` et
+   `https://www.googleapis.com/auth/gmail.compose`, séparées par une virgule,
+   et elles seules. `gmail.compose` crée les brouillons sans ouvrir la lecture
+   des messages reçus ; une portée plus large (`gmail.modify`,
+   `mail.google.com`) donnerait ce droit, dont le portail n'a aucun besoin.
 4. Depuis août 2024, une **approbation par un second super-administrateur**
    peut être exigée pour ce type d'autorisation. L'autorisation n'est active
    qu'une fois approuvée.
@@ -130,7 +137,7 @@ secret, et nomme généralement la cause.
 | Symptôme | Cause habituelle |
 |---|---|
 | `unauthorized_client` | la délégation n'est pas autorisée, ou l'a été avec l'email au lieu du Client ID numérique, ou attend l'approbation du second administrateur |
-| `access_denied` sur la portée | une portée autre que `gmail.send` est demandée, ou `gmail.send` n'est pas dans la liste autorisée |
+| `access_denied` sur la portée | une portée autre que `gmail.send` ou `gmail.compose` est demandée, ou la portée demandée n'est pas dans la liste autorisée (brouillons : `gmail.compose` oubliée) |
 | `invalid_grant` | la boîte de `sub` n'existe pas sur le domaine, ou l'horloge du serveur dérive |
 | API désactivée | l'API Gmail n'a pas été activée sur le projet Cloud |
 | `DECODER routines::unsupported` | OpenSSL n'a pas su lire la clé. Le portail réécrit désormais un PEM canonique et devrait absorber la plupart des mutilations ; si l'erreur persiste, la valeur est tronquée ou altérée — basculer sur `GOOGLE_COMPTE_SERVICE_JSON` |

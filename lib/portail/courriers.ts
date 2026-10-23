@@ -1,7 +1,7 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
 import { conclureCourrier, prévoirCourrier, type SorteCourrier } from '@/lib/base/courriers'
-import { ErreurDEnvoi, envoyerMessage, type Message } from '@/lib/email/gmail'
+import { créerBrouillon, ErreurDEnvoi, envoyerMessage, type Message } from '@/lib/email/gmail'
 import { empreinte } from '@/lib/portail/debit'
 
 /**
@@ -26,12 +26,19 @@ import { empreinte } from '@/lib/portail/debit'
  *     orpheline ferait sauter le courrier au passage suivant, en silence. Sans
  *     journal, rien ne part, et c'est dit.
  *
+ * **Les courriers commerciaux sont des brouillons** (23 octobre 2026) : fin
+ * d'essai, rappel J+7, suspension, et tout ce que dit Stripe. `brouillon` les
+ * dépose dans la boîte émettrice au lieu de les envoyer ; l'opératrice les relit
+ * et les envoie elle-même. Ils restent `unique` : une ligne `brouillon` tient la
+ * place, et un brouillon supprimé sans envoi n'est jamais recréé.
+ *
  * `SOURCE_ACCES=notion` n'ouvre jamais Postgres : c'est l'interrupteur de retour
  * en arrière, ici comme pour l'appartenance.
  */
 
 export type IssueDuCourrier =
   | { readonly sorte: 'envoyé'; readonly journalisé: boolean }
+  | { readonly sorte: 'brouillon' }
   | { readonly sorte: 'déjà-envoyé' }
   | { readonly sorte: 'non-journalisable'; readonly raison: string }
 
@@ -47,6 +54,10 @@ export async function envoyerCourrier(courrier: {
   readonly lecteurId: string | null
   /** Courrier de parcours : jamais sans journal, jamais deux fois. */
   readonly unique: boolean
+  /** Déposé en brouillon Gmail, jamais envoyé ; réservé aux courriers `unique`. */
+  readonly brouillon?: boolean
+  /** La clé d'unicité d'un courrier commercial ; nulle pour les autres. */
+  readonly clé?: string
   /**
    * Où exécuter la conclusion du journal, une fois le courrier parti : `after`
    * de `next/server` dans une route qui répond en temps plancher. Par défaut,
@@ -56,6 +67,9 @@ export async function envoyerCourrier(courrier: {
 }): Promise<IssueDuCourrier> {
   const marque = empreinte(courrier.message.destinataire)
   const journalPossible = baseConfigurée() && sourceAccès() !== 'notion'
+
+  const brouillon = courrier.brouillon === true
+  if (brouillon && !courrier.unique) throw new Error('un brouillon est toujours un courrier unique')
 
   if (!journalPossible && courrier.unique) {
     return { sorte: 'non-journalisable', raison: 'base non configurée ou SOURCE_ACCES=notion' }
@@ -70,6 +84,7 @@ export async function envoyerCourrier(courrier: {
         lecteurId: courrier.lecteurId,
         destinataireEmpreinte: marque,
         déclencheur: courrier.déclencheur,
+        clé: courrier.clé ?? null,
       })
       let réservation: string | null | typeof DÉLAI_DÉPASSÉ
       if (courrier.unique) {
@@ -97,7 +112,7 @@ export async function envoyerCourrier(courrier: {
 
   let idMessage: string | null
   try {
-    ;({ idMessage } = await envoyerMessage(courrier.message))
+    ;({ idMessage } = brouillon ? await créerBrouillon(courrier.message) : await envoyerMessage(courrier.message))
   } catch (erreur) {
     if (idCourrier) {
       const code = erreur instanceof ErreurDEnvoi ? `gmail-${erreur.statut}` : 'gmail-injoignable'
@@ -109,7 +124,7 @@ export async function envoyerCourrier(courrier: {
   if (idCourrier) {
     const id = idCourrier
     const conclusion = () =>
-      conclureCourrier(id, { état: 'envoye', messageGmail: idMessage }).catch((erreur: unknown) => {
+      conclureCourrier(id, { état: brouillon ? 'brouillon' : 'envoye', messageGmail: idMessage }).catch((erreur: unknown) => {
       // Le courrier est parti : une conclusion manquée laisse la ligne `prevu`,
       // ce qui se lit comme « tenté, issue inconnue ». On le dit dans le journal.
       console.warn(
@@ -120,5 +135,5 @@ export async function envoyerCourrier(courrier: {
     if (courrier.planifier) courrier.planifier(conclusion)
     else await conclusion()
   }
-  return { sorte: 'envoyé', journalisé: idCourrier !== null }
+  return brouillon ? { sorte: 'brouillon' } : { sorte: 'envoyé', journalisé: idCourrier !== null }
 }

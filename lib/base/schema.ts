@@ -291,8 +291,21 @@ export const sorteCourrier = pgEnum('sorte_courrier', [
   'lettre',
   /** La lettre de filière, aux prospects (palier 1). */
   'lettre_filiere',
+  /**
+   * Les courriers commerciaux du 23 octobre 2026, tous déposés en brouillon
+   * Gmail : rappel de la deuxième parution de l'essai (J+7), espace suspendu
+   * après l'essai, puis ce que dit Stripe (abonnement actif, paiement refusé,
+   * renouvellement annuel à venir, résiliation).
+   */
+  'essai_rappel_j7',
+  'essai_suspendu',
+  'abonnement_confirme',
+  'paiement_echec',
+  'abonnement_renouvellement',
+  'abonnement_resilie',
 ])
-export const étatCourrier = pgEnum('état_courrier', ['prevu', 'envoye', 'echec'])
+/** `brouillon` : déposé dans la boîte émettrice, à relire et envoyer à la main (23 octobre 2026). */
+export const étatCourrier = pgEnum('état_courrier', ['prevu', 'envoye', 'echec', 'brouillon'])
 
 export const courriers = pgTable(
   'courriers',
@@ -311,6 +324,13 @@ export const courriers = pgTable(
     erreur: text('erreur'),
     prévuLe: horodatage('prévu_le').notNull().defaultNow(),
     concluLe: horodatage('conclu_le'),
+    /**
+     * La clé d'unicité d'un courrier commercial (23 octobre 2026) : `parcours`
+     * pour un courrier d'essai, l'abonnement Stripe pour sa confirmation et sa
+     * résiliation, l'abonnement et l'échéance pour un paiement refusé ou un
+     * renouvellement. Nulle pour tout autre courrier.
+     */
+    clé: text('clé'),
   },
   (table) => [
     index('courriers_prevu_le').on(table.prévuLe),
@@ -323,6 +343,16 @@ export const courriers = pgTable(
         sql`coalesce(${table.lecteurId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
       )
       .where(sql`${table.sorte} in ('essai_derniere_parution', 'essai_tronquee') and ${table.état} <> 'echec'`),
+    // Le prédicat ne nomme aucune sorte : une valeur d'enum ajoutée ne peut pas
+    // servir dans la transaction qui l'ajoute, et les migrations en font une seule.
+    uniqueIndex('courriers_commerciaux_unique')
+      .on(
+        table.sorte,
+        table.organisationId,
+        sql`coalesce(${table.lecteurId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+        table.clé,
+      )
+      .where(sql`${table.clé} is not null and ${table.état} <> 'echec'`),
   ],
 )
 

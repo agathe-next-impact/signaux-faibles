@@ -27,7 +27,7 @@ function org(sur: Partial<Record<string, unknown>> = {}) {
   }
 }
 const appel = (aujourdHui: string) =>
-  envoyerLesCourriersDeParcours({ aujourdHui, portailUrl: 'https://www.signauxfaibles.io', relecteurParDéfaut: 'relecture@sf.io' })
+  envoyerLesCourriersDeParcours({ aujourdHui, portailUrl: 'https://www.signauxfaibles.io' })
 
 describe('envoyerLesCourriersDeParcours', () => {
   beforeEach(() => {
@@ -42,16 +42,31 @@ describe('envoyerLesCourriersDeParcours', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
-  it('rien les deux premières semaines, un courrier par lecteur la troisième, unique et journalisé', async () => {
+  it('rien la première semaine, le rappel J+7 la deuxième, la dernière parution la troisième, chaque fois en brouillon', async () => {
     organisationsEnEssai.mockResolvedValue([org()])
-    expect((await appel('2026-10-07')).courriers).toEqual([])
+    expect((await appel('2026-09-30')).courriers).toEqual([])
+    const rappel = await appel('2026-10-07')
+    expect(rappel.courriers.map((c) => c.sorte)).toEqual(['essai_rappel_j7', 'essai_rappel_j7'])
+    expect(envoyerCourrier.mock.calls[0]![0]).toMatchObject({ unique: true, brouillon: true, clé: 'parcours', sorte: 'essai_rappel_j7' })
+    envoyerCourrier.mockClear()
     const rapport = await appel('2026-10-14')
     expect(rapport.courriers.map((c) => c.sorte)).toEqual(['essai_derniere_parution', 'essai_derniere_parution'])
     expect(envoyerCourrier).toHaveBeenCalledTimes(2)
     const premier = envoyerCourrier.mock.calls[0]![0]
-    expect(premier).toMatchObject({ unique: true, sorte: 'essai_derniere_parution', lecteurId: 'l1', organisation: { id: 'o1' } })
+    expect(premier).toMatchObject({ unique: true, brouillon: true, sorte: 'essai_derniere_parution', lecteurId: 'l1', organisation: { id: 'o1' } })
+    expect(premier.clé).toBeUndefined()
     expect(premier.message.destinataire).toBe('lea@acme.fr')
     expect(JSON.stringify(rapport)).not.toContain('@')
+  })
+
+  it('la semaine qui suit la parution réduite, un brouillon de suspension, puis plus rien', async () => {
+    organisationsEnEssai.mockResolvedValue([org()])
+    const suspension = await appel('2026-10-28')
+    expect(suspension.courriers.map((c) => c.sorte)).toEqual(['essai_suspendu', 'essai_suspendu'])
+    expect(envoyerCourrier.mock.calls[0]![0]).toMatchObject({ brouillon: true, clé: 'parcours' })
+    envoyerCourrier.mockClear()
+    expect((await appel('2026-11-04')).courriers).toEqual([])
+    expect(envoyerCourrier).not.toHaveBeenCalled()
   })
 
   it('la quatrième semaine annonce la réduction ; une organisation abonnée chez Stripe ne reçoit rien', async () => {
@@ -60,15 +75,14 @@ describe('envoyerLesCourriersDeParcours', () => {
     expect(rapport.courriers.every((c) => c.slug === 'acme' && c.sorte === 'essai_tronquee')).toBe(true)
   })
 
-  it('en relecture, un seul courrier à l’adresse de relecture, objet préfixé, sans lecteur', async () => {
+  it('en relecture, le brouillon est tout de même adressé aux lecteurs : c’est lui que l’opératrice relit', async () => {
     organisationsEnEssai.mockResolvedValue([org({ relectureRequise: true })])
     await appel('2026-10-14')
-    expect(envoyerCourrier).toHaveBeenCalledTimes(1)
+    expect(envoyerCourrier).toHaveBeenCalledTimes(2)
     const c = envoyerCourrier.mock.calls[0]![0]
-    expect(c.lecteurId).toBeNull()
-    expect(c.message.destinataire).toBe('relecture@sf.io')
-    expect(c.message.sujet.startsWith('[Relecture, pour acme]')).toBe(true)
-    expect(lireAccès).not.toHaveBeenCalled()
+    expect(c).toMatchObject({ brouillon: true, lecteurId: 'l1' })
+    expect(c.message.destinataire).toBe('lea@acme.fr')
+    expect(c.message.sujet.startsWith('[Relecture')).toBe(false)
   })
 
   it('un lecteur révoqué ou rattaché ailleurs dans la source qui fait foi ne reçoit rien', async () => {

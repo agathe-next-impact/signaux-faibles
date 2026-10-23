@@ -52,7 +52,8 @@ Les lire avant toute session.
   passe. Une **tâche Cowork** tient la base « Accès » (création,
   révocation) ; le **portail** recompose et envoie le lien par l'**API
   Gmail de Google Workspace** (compte de service, délégation à l'échelle du
-  domaine limitée à la portée `gmail.send`, boîte émettrice dédiée ; pas de
+  domaine limitée aux portées `gmail.send` et `gmail.compose` (brouillons
+  commerciaux), boîte émettrice dédiée ; pas de
   SMTP, l'authentification basique est arrêtée pour Workspace) depuis la
   page « recevoir mon lien », **et** `POST /api/acces/ouvrir`, que
   l'onboarding Cowork appelle en fin d'activation (jeton
@@ -211,6 +212,22 @@ Les lire avant toute session.
   se lit par `GET /api/veille/courriers?jours=30` (jeton).
   `tests/architecture.test.ts` vérifie le seul appelant d'`envoyerMessage` et
   l'ordre réservation puis envoi.
+  **Courriers commerciaux en brouillons Gmail** (23 octobre 2026) : tout
+  courrier commercial est déposé en **brouillon** dans la boîte émettrice
+  (`créerBrouillon`, portée `gmail.compose`, jeton distinct de celui de
+  `gmail.send`), jamais envoyé par le portail ; l'opératrice le relit et
+  l'envoie. Ce sont les quatre courriers d'essai du passage quotidien (rappel
+  J+7 à la deuxième parution, dernière parution complète, parution réduite,
+  suspension la première semaine seulement), le rappel de renouvellement
+  annuel (trente jours avant l'échéance, même passage), et ce que le webhook
+  Stripe voit changer (`courrierDuChangementDAbonnement` : abonnement actif,
+  paiement refusé, résiliation), préparé dans `after()`. Un brouillon par
+  lecteur actif, revérifié par la façade d'accès ; le brouillon tient lieu de
+  relecture, `relecture_requise` ne détourne plus ces courriers. Unicité par
+  `courriers.clé` (index `courriers_commerciaux_unique`, migration 0010), état
+  `brouillon` au journal ; un brouillon supprimé sans envoi n'est jamais
+  recréé. Le lien d'accès, l'alerte du soir, la demande de démo et les lettres
+  partent toujours directement.
   **Entrée en essai** (18 octobre 2026) : l'onboarding Cowork (étape B) appelle
   `POST /api/veille/organisations` `{ slug, nom, registreNotion }` ; l'activation
   appelle ensuite `importer-acces` puis `/api/acces/ouvrir`, **jamais avant la

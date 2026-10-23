@@ -38,7 +38,7 @@ describe('copie de l’abonnement Stripe (palier 1c)', () => {
   })
 
   it('crée la ligne au premier événement, puis la met à jour', async () => {
-    expect(await enregistrerÉvénementDAbonnement(événement({ état: 'trialing' }), db)).toEqual({ sorte: 'appliqué' })
+    expect(await enregistrerÉvénementDAbonnement(événement({ état: 'trialing' }), db)).toEqual({ sorte: 'appliqué', étatPrécédent: null })
     expect((await lireAbonnement(organisationId, db))?.état).toBe('trialing')
 
     expect(
@@ -46,7 +46,7 @@ describe('copie de l’abonnement Stripe (palier 1c)', () => {
         événement({ événementId: 'evt_2', événementLe: new Date('2026-10-17T11:00:00Z') }),
         db,
       ),
-    ).toEqual({ sorte: 'appliqué' })
+    ).toEqual({ sorte: 'appliqué', étatPrécédent: 'trialing' })
     const ligne = await lireAbonnement(organisationId, db)
     expect(ligne?.état).toBe('active')
     expect(ligne?.dernierÉvénement).toBe('evt_2')
@@ -87,7 +87,7 @@ describe('copie de l’abonnement Stripe (palier 1c)', () => {
     )
     expect(
       await enregistrerÉvénementDAbonnement(événement({ abonnementStripe: 'sub_2', événementId: 'evt_u2', événementLe: même }), db),
-    ).toEqual({ sorte: 'appliqué' })
+    ).toEqual({ sorte: 'appliqué', étatPrécédent: 'incomplete' })
   })
 
   it('la résiliation tardive d’un ancien abonnement ne touche pas le nouveau', async () => {
@@ -107,7 +107,7 @@ describe('copie de l’abonnement Stripe (palier 1c)', () => {
         }),
         db,
       ),
-    ).toEqual({ sorte: 'appliqué' })
+    ).toEqual({ sorte: 'appliqué', étatPrécédent: 'active' })
     const ligne = await lireAbonnement(organisationId, db)
     expect(ligne?.abonnementStripe).toBe('sub_2')
     expect(ligne?.état).toBe('active')
