@@ -1,0 +1,97 @@
+# Tâches planifiées du dispositif, exécutées sur l'API Claude (docs/taches-api.md).
+#
+# Lancement à la main : onglet Actions, « Tâches planifiées (API Claude) »,
+# « Run workflow », choisir la tâche et, au besoin, une organisation. Il remplace
+# « Exécuter maintenant » pour le balayage et la première lettre. Lancer
+# « controle » avant tout premier essai : il ne fait que lire.
+#
+# Récurrences : LIVRÉES DÉSACTIVÉES. Elles s'activent tâche par tâche, le jour où
+# l'opératrice désactive la tâche planifiée correspondante côté Claude ; les deux
+# ne tournent jamais ensemble (une lettre produite deux fois partirait deux fois
+# en relecture). Heures en UTC : l'heure de Paris glisse d'une heure en hiver,
+# l'agent travaille à la date de Paris. Pour activer une tâche, décommenter la
+# ligne `schedule:` puis sa ligne `cron`, sans changer l'expression : le choix de
+# la tâche plus bas se fait sur ce texte exact.
+name: Tâches planifiées (API Claude)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tache:
+        description: Tâche à lancer
+        required: true
+        type: choice
+        options:
+          - controle
+          - lettres
+          - reconciliation
+          - revue
+          - balayage
+          - premiere-lettre
+      organisation:
+        description: Slug d'une seule organisation (facultatif, sans effet sur « controle »)
+        required: false
+        type: string
+        default: ''
+  # schedule:
+  #   - cron: '0 4 * * 1-5'   # lettres, jours ouvrés (6 h à Paris en été, 5 h en hiver)
+  #   - cron: '0 16 * * *'    # revue mensuelle, tous les jours, week-end compris
+  #   - cron: '0 17 * * 1-5'  # réconciliation des envois, jours ouvrés
+
+permissions:
+  contents: read
+
+# Une exécution par tâche à la fois ; une exécution en cours n'est jamais annulée.
+concurrency:
+  group: tache-${{ inputs.tache || (github.event.schedule == '0 4 * * 1-5' && 'lettres') || (github.event.schedule == '0 16 * * *' && 'revue') || (github.event.schedule == '0 17 * * 1-5' && 'reconciliation') || 'inconnue' }}
+  cancel-in-progress: false
+
+jobs:
+  tache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      TACHE: ${{ inputs.tache || (github.event.schedule == '0 4 * * 1-5' && 'lettres') || (github.event.schedule == '0 16 * * *' && 'revue') || (github.event.schedule == '0 17 * * 1-5' && 'reconciliation') || 'inconnue' }}
+      ORGANISATION: ${{ inputs.organisation }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      NOTION_MCP_TOKEN: ${{ secrets.NOTION_MCP_TOKEN }}
+      ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
+      GOOGLE_COMPTE_SERVICE_JSON: ${{ secrets.GOOGLE_COMPTE_SERVICE_JSON }}
+      GMAIL_BOITE_OPERATRICE: ${{ secrets.GMAIL_BOITE_OPERATRICE }}
+      PORTAIL_URL: ${{ vars.PORTAIL_URL }}
+      TACHES_SORTIES: ${{ github.workspace }}/sorties-taches
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Installer les dépendances
+        run: pnpm install --frozen-lockfile
+
+      - name: Installer Chromium (sources fermées aux robots)
+        if: env.TACHE != 'controle'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Exécuter la tâche
+        run: |
+          if [ -n "$ORGANISATION" ] && [ "$TACHE" != "controle" ]; then
+            pnpm tache "$TACHE" --organisation "$ORGANISATION"
+          else
+            pnpm tache "$TACHE"
+          fi
+
+      - name: Archiver transcription, journal et mesure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tache-${{ env.TACHE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: sorties-taches/
+          retention-days: 30
+          if-no-files-found: ignore

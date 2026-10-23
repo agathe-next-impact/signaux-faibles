@@ -111,6 +111,21 @@ Les lire avant toute session.
   interverties. IBM Plex Mono n'a pas de version variable : `weight`
   explicite obligatoire
 - Vitest, Playwright, ESLint en direct (`next lint` n'existe plus)
+- **Tâches planifiées sur l'API Claude** (23 octobre 2026, `docs/taches-api.md`) :
+  les cinq tâches du dispositif (lettres, réconciliation, revue, balayage,
+  première lettre) tournent par GitHub Actions (`.github/workflows/taches.yml`,
+  `pnpm tache <tâche>`), sur la clé API des évaluations, et non plus sur
+  l'abonnement. Le prompt reste le pointeur vers la page Notion, qui fait foi
+  (`scripts/taches/pointeurs.ts`, texte des tâches en service recopié mot pour
+  mot). Opus 5.5 (Sonnet 5.5 pour la réconciliation) ; la lecture des sources
+  est confiée au sous-agent `lecteur`, sur **Haiku 5.5**. Notion par le serveur
+  MCP hébergé (`NOTION_MCP_TOKEN`, plan Business) ; Gmail et le portail par les
+  outils du dépôt (`scripts/taches/outils.ts`), qui n'envoient jamais à un
+  client et gardent `ACTIVATION_SECRET` hors du contexte du modèle ; tout le
+  reste refusé par `scripts/taches/garde.ts`. Chaque exécution écrit son coût
+  (`mesure.json`, lu dans le message `result` du SDK). Récurrences livrées
+  désactivées, activées tâche par tâche à la bascule ; `pnpm tache controle`
+  vérifie tout en lecture avant un essai
 - **Postgres** (Neon, rattachée au projet Vercel, variable `DATABASE_URL`),
   **Drizzle ORM** 0.45 et le pilote `@neondatabase/serverless` en `Pool`
   (WebSocket, pour les transactions interactives). Schéma dans
