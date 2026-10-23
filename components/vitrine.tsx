@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Logo, MarqueIcone } from '@/components/marque'
+import { ADRESSE_DE_CONTACT } from '@/lib/email/gabarit'
 
 /**
  * Les pages vitrines (23 octobre 2026) : l'accueil des visiteurs sans session,
@@ -69,8 +70,8 @@ export function PiedVitrine() {
           <Link href="/recevoir-mon-lien" className="text-ardoise hover:text-encre">Recevoir mon lien d’accès</Link>
         </nav>
         <p className="text-corps text-ardoise">
-          <a href="mailto:contact@signauxfaibles.io" className="underline underline-offset-2 hover:text-encre">
-            contact@signauxfaibles.io
+          <a href={`mailto:${ADRESSE_DE_CONTACT}`} className="underline underline-offset-2 hover:text-encre">
+            {ADRESSE_DE_CONTACT}
           </a>
         </p>
       </div>
