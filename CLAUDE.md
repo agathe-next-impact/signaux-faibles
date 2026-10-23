@@ -102,11 +102,18 @@ Les lire avant toute session.
   `lib/notion/travail.ts` lit les éditions tous statuts et avec leurs
   propriétés internes : c'est pour ces routes seulement, jamais pour un
   écran, et la garde d'architecture le vérifie
-- **Notion sur le plan gratuit** : l'espace de travail reste à **un seul
-  membre** (l'opérateur). Un espace gratuit à plusieurs membres est plafonné
-  à 1 000 blocs à vie et l'API refuse ensuite toute création. Les clients ne
-  sont jamais membres ni invités de Notion. Fichiers limités à 5 Mio. Les
-  tâches Cowork n'utilisent ni la recherche IA ni le mode SQL du connecteur
+- **Notion sur le plan Business, avec Notion AI** (constaté le 23 octobre
+  2026 ; plan gratuit jusque-là) : c'est une condition des tâches sur l'API
+  Claude, dont le jeton du serveur MCP hébergé (`NOTION_MCP_TOKEN`, créé par
+  un propriétaire de l'espace dans le portail développeur, « New MCP token »)
+  n'existe que sur Business et Enterprise. Un retour au plan gratuit couperait
+  les tâches. Sur un plan payant, le plafond de 1 000 blocs ne s'applique pas
+  et les fichiers montent à 5 Gio ; un second membre n'est plus un blocage
+  technique mais un siège facturé. Les clients ne sont jamais membres ni
+  invités de Notion : le portail est leur seule interface. Les tâches
+  n'utilisent ni la recherche IA ni le mode SQL du connecteur : le quota qui
+  imposait la règle ne s'applique plus sur Business avec Notion AI, la règle
+  reste tant qu'elle n'est pas levée (`docs/etat-des-api.md` §2.5)
 - Polices via `next/font/google` : Lora (titres), Public Sans
   (corps/interface), IBM Plex Mono (dates, sources, métadonnées) — jamais
   interverties. IBM Plex Mono n'a pas de version variable : `weight`

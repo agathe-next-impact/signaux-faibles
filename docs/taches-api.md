@@ -35,7 +35,11 @@ refusé et journalisé) :
 - **Notion** : le serveur MCP hébergé (`https://mcp.notion.com/mcp`), jeton
   `NOTION_MCP_TOKEN` en `Authorization: Bearer`. Lire, chercher, interroger une
   base ou une vue, créer et modifier des pages, créer une vue liée ; supprimer,
-  déplacer, dupliquer ou changer un schéma est refusé.
+  déplacer, dupliquer ou changer un schéma est refusé. Le jeton n'existe que
+  sur les plans Business et Enterprise : un propriétaire de l'espace le crée
+  dans le portail développeur de Notion (« New MCP token »). L'espace est sur
+  Business avec Notion AI depuis le 23 octobre ; un retour au plan gratuit
+  couperait les tâches (`docs/etat-des-api.md` §2.5).
 - **Gmail** (`scripts/taches/outils.ts`, boîte `GMAIL_BOITE_OPERATRICE`) :
   `create_draft` et `list_drafts` (portée `gmail.compose`), `list_sent_messages`
   (en-têtes des messages envoyés, portée `gmail.metadata`, sans recherche `q`) et
