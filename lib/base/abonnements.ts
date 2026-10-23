@@ -50,7 +50,8 @@ export type ÉvénementDAbonnement = {
 }
 
 export type RésultatAbonnement =
-  | { readonly sorte: 'appliqué' }
+  /** `étatPrécédent` : l'état de cet abonnement avant l'événement, nul au premier ; c'est lui qui dit quel courrier préparer. */
+  | { readonly sorte: 'appliqué'; readonly étatPrécédent: string | null }
   | { readonly sorte: 'déjà-reçu' }
   | { readonly sorte: 'périmé' }
   | { readonly sorte: 'organisation-inconnue' }
@@ -100,6 +101,7 @@ export async function enregistrerÉvénementDAbonnement(
 
       const [existant] = await tx
         .select({
+          état: abonnements.état,
           dernierÉvénement: abonnements.dernierÉvénement,
           événementLe: abonnements.événementLe,
           dernierType: abonnements.dernierType,
@@ -134,7 +136,7 @@ export async function enregistrerÉvénementDAbonnement(
         .insert(abonnements)
         .values({ organisationId: événement.organisationId, ...valeurs })
         .onConflictDoUpdate({ target: abonnements.abonnementStripe, set: valeurs })
-      return { sorte: 'appliqué' } as const
+      return { sorte: 'appliqué', étatPrécédent: existant?.état ?? null } as const
     }),
   )
 }

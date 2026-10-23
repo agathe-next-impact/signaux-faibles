@@ -3,12 +3,20 @@ import { createSign } from 'node:crypto'
 import { env } from '@/lib/env'
 
 /**
- * Envoi du lien d'accès par l'API Gmail de Google Workspace.
+ * Envoi du lien d'accès, et dépôt des brouillons commerciaux, par l'API Gmail
+ * de Google Workspace.
  *
  * Pas de SMTP : l'authentification basique est arrêtée pour Workspace depuis le
  * 14 mars 2025. L'identité est un compte de service avec délégation à l'échelle
- * du domaine, autorisée pour la seule portée `gmail.send`, qui emprunte une
- * boîte émettrice dédiée.
+ * du domaine, autorisée pour trois portées (`PORTÉES_GMAIL`), chacune demandée
+ * dans son propre jeton, pour deux usages :
+ *
+ *   · le portail emprunte la boîte émettrice dédiée (`GMAIL_EXPEDITEUR`), en
+ *     `gmail.send` (envois) et `gmail.compose` (brouillons commerciaux) ;
+ *   · les tâches planifiées (`scripts/taches/`) empruntent la boîte de
+ *     l'opératrice (`GMAIL_BOITE_OPERATRICE`), en `gmail.compose` (brouillons)
+ *     et `gmail.metadata` (en-têtes des messages envoyés, jamais leur corps),
+ *     plus `gmail.send` pour le seul envoi permis, vers l'opératrice.
  *
  * Le jeton d'accès Google est obtenu par un JWT auto-signé plutôt que par une
  * bibliothèque cliente : c'est une trentaine de lignes, cela évite une
@@ -18,10 +26,8 @@ import { env } from '@/lib/env'
 const PORTÉE = 'https://www.googleapis.com/auth/gmail.send'
 
 /**
- * Les trois portées délégées au compte de service (23 octobre 2026). Le portail
- * n'utilise que `envoi` ; les tâches planifiées (`scripts/taches/`) déposent des
- * brouillons (`brouillons`) et lisent les en-têtes des messages envoyés
- * (`métadonnées`), jamais leur corps.
+ * Les trois portées délégées au compte de service (23 octobre 2026), chacune
+ * demandée dans son propre jeton.
  */
 export const PORTÉES_GMAIL = {
   envoi: PORTÉE,
@@ -29,8 +35,18 @@ export const PORTÉES_GMAIL = {
   métadonnées: 'https://www.googleapis.com/auth/gmail.metadata',
 } as const
 
+/**
+ * Les brouillons (23 octobre 2026) : les courriers commerciaux ne partent plus,
+ * ils sont déposés en brouillon dans la boîte émettrice, relus puis envoyés à la
+ * main. La création d'un brouillon demande `gmail.compose`, que `gmail.send`
+ * n'accorde pas. Le jeton est demandé **par portée** : un seul jeton portant les
+ * deux serait refusé en entier tant que `gmail.compose` n'est pas autorisée dans
+ * la délégation, et le lien d'accès cesserait de partir.
+ */
+const PORTÉE_BROUILLONS = PORTÉES_GMAIL.brouillons
 const AUDIENCE = 'https://oauth2.googleapis.com/token'
 const ENVOI = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send'
+const BROUILLONS = 'https://gmail.googleapis.com/gmail/v1/users/me/drafts'
 
 function base64url(valeur: string | Buffer): string {
   return (typeof valeur === 'string' ? Buffer.from(valeur, 'utf8') : valeur).toString(
@@ -216,8 +232,8 @@ function signerJWT(revendications: RevendicationsJWT, clésPrivée: string): str
   return `${àSigner}.${base64url(signature)}`
 }
 
-async function obtenirJetonGoogle(): Promise<string> {
-  return jetonDeDélégation(compteDeService(), env().GMAIL_EXPEDITEUR, PORTÉE)
+async function obtenirJetonGoogle(portée: string = PORTÉE): Promise<string> {
+  return jetonDeDélégation(compteDeService(), env().GMAIL_EXPEDITEUR, portée)
 }
 
 /**
@@ -366,6 +382,41 @@ export async function envoyerMessage(message: Message): Promise<{ readonly idMes
   }
   const corps = (await réponse.json().catch(() => null)) as { id?: unknown } | null
   return { idMessage: typeof corps?.id === 'string' ? corps.id : null }
+}
+
+/**
+ * Dépose le message en brouillon dans la boîte émettrice, sans l'envoyer, et
+ * rend l'identifiant du message que Gmail donne au brouillon. Même seul appelant
+ * que `envoyerMessage` : `lib/portail/courriers.ts`, après la réservation.
+ */
+export async function créerBrouillon(message: Message): Promise<{ readonly idMessage: string | null }> {
+  const configuration = env()
+  const jeton = await obtenirJetonGoogle(PORTÉE_BROUILLONS)
+
+  const réponse = await fetch(BROUILLONS, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${jeton}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: {
+        raw: base64url(
+          composerMessage(
+            message,
+            configuration.GMAIL_EXPEDITEUR,
+            configuration.GMAIL_EXPEDITEUR_NOM,
+          ),
+        ),
+      },
+    }),
+  })
+
+  if (!réponse.ok) {
+    throw new ErreurDEnvoi(réponse.status, await réponse.text())
+  }
+  const corps = (await réponse.json().catch(() => null)) as { message?: { id?: unknown } } | null
+  return { idMessage: typeof corps?.message?.id === 'string' ? corps.message.id : null }
 }
 
 /** Un refus de Gmail, avec son statut HTTP : c'est lui seul que le journal garde. */

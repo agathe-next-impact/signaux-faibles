@@ -547,6 +547,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     const corps = source.slice(source.indexOf('export async function envoyerCourrier'))
     expect(corps.indexOf('prévoirCourrier(')).toBeGreaterThan(0)
     expect(corps.indexOf('prévoirCourrier(')).toBeLessThan(corps.indexOf('envoyerMessage('))
+    // Les brouillons commerciaux (23 octobre 2026) suivent le même chemin.
+    expect(appelants('créerBrouillon')).toEqual(['lib/email/gmail.ts', 'lib/portail/courriers.ts'])
+    expect(corps.indexOf('prévoirCourrier(')).toBeLessThan(corps.indexOf('créerBrouillon('))
   })
 
   it('l’entrée en essai a un seul chemin, et J0 deux écrivains bornés', () => {
