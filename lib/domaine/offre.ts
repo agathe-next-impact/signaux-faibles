@@ -16,3 +16,24 @@ export const ADRESSE_D_ABONNEMENT = 'agathe@signauxfaibles.io'
  * aucune organisation et n'entre pas dans le compte.
  */
 export const LECTEURS_ACTIFS_MAX = 3
+/** TVA applicable aux deux formules (offre du 17 octobre 2026). */
+export const TAUX_DE_TVA = 0.2
+
+/** Un montant en euros, à la française : « 106,80 », « 1 068 », « 74,17 ». */
+export function enEuros(montant: number): string {
+  const arrondi = Math.round(montant * 100) / 100
+  return arrondi.toLocaleString('fr-FR', {
+    minimumFractionDigits: Number.isInteger(arrondi) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+/** Le montant toutes taxes comprises d'un prix hors taxes. */
+export function prixTTC(prixHT: number): number {
+  return Math.round(prixHT * (1 + TAUX_DE_TVA) * 100) / 100
+}
+
+/** L'annuel ramené au mois : la seule comparaison que le lecteur fait de tête. */
+export function équivalentMensuelDeLAnnuel(): number {
+  return Math.round((PRIX_ANNUEL_HT / 12) * 100) / 100
+}

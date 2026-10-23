@@ -12,7 +12,12 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'signauxfaibles — votre veille',
     short_name: 'signauxfaibles',
     description: 'Votre veille, rédigée. Vos éditions, semaine après semaine.',
-    start_url: '/',
+    // L'identité de l'application reste « / », celle des installations
+    // existantes ; le paramètre dit à la racine qu'elle est ouverte depuis
+    // l'application, où un lecteur sans session cherche à se reconnecter et
+    // non à découvrir l'offre (`app/(portail)/page.tsx`).
+    id: '/',
+    start_url: '/?app=1',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait-primary',

@@ -626,6 +626,21 @@ une demande partie. Le proxy l'ouvre à l'adresse **exacte** (`PUBLICS_EXACTS`),
 jamais en préfixe : `/demo` en préfixe ouvrirait l'espace d'un slug
 commençant par « demo ».
 
+**Trois pages vitrines, hors des sept (23 octobre 2026).** La racine `/` montre
+la vitrine à un visiteur sans session (`components/vitrine-accueil.tsx`) ; une
+session valide y est toujours redirigée vers son espace, et l'application
+installée (`start_url: '/?app=1'`, identité `id: '/'` inchangée) mène au
+formulaire, pas à l'offre. `/offre` et `/tarifs` (`app/(portail)/offre`,
+`app/(portail)/tarifs`, briques communes dans `components/vitrine.tsx`) ne lisent
+ni Notion ni Postgres ; elles présentent la **lettre unique** du programme du
+22 octobre et l'offre du 17 octobre. Aucun chiffre n'y est écrit en dur : prix,
+TVA et équivalent mensuel viennent de `lib/domaine/offre.ts`, les seuils de la
+lettre de `LETTRE_UNIQUE` et `ESSENTIEL_LIGNES_MAX`, l'essai de
+`PARUTIONS_D_ESSAI` ; le tarif early adopter n'y figure pas. Ce sont les seules
+pages indexables (`robots: index`). Le proxy les ouvre à l'adresse exacte, et
+elles masquent un slug identique, qu'aucune organisation ne doit porter. Un seul
+bouton primaire par page, « Demander une démo », vers `/demo`.
+
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
 parle la veille » et « qui bouge » —, et surtout leur coût n'a rien à voir :
