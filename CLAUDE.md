@@ -536,7 +536,7 @@ varie d'une organisation à l'autre.
 ## Les sept écrans de l'espace client
 
 Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, puis **deux
-sections** : « Les acteurs » et « L'écosystème ») · Lettres
+sections** : « À la une », titrée « Les acteurs » jusqu'au 23 octobre 2026, et « L'écosystème ») · Lettres
 (`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
 `/[slug]/lettres/[edition]` pour la lire) · **Les axes** (`/[slug]/axes`,
 grille des axes avec leur mouvement) · **Acteurs** (`/[slug]/acteurs`, le
@@ -761,7 +761,7 @@ coûte rien, il est calculé par le filtre d'actualité qui le jetait.
 
 **L'accueil réunit les deux lettres, il ne les sépare pas.** Le lecteur n'a pas
 à savoir laquelle a relevé quoi. La coupure se fait par nature de ce qui est
-suivi : « Les acteurs » sont les **dossiers ouverts** — des entités nommées,
+suivi : « À la une » réunit les **dossiers ouverts** — des entités nommées,
 concurrent ou administration —, dédoublonnés par nom sur les deux lettres et
 ordonnés de ce qui vient de bouger à ce qui dort ; « L'écosystème » ce sont les
 **axes**, fusionnés par `fusionnerLesAxes` et triés par impact. Ne jamais
