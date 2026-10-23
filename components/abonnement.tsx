@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
-import { PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { enEuros, PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT, équivalentMensuelDeLAnnuel } from '@/lib/domaine/offre'
 import type { Offre } from '@/lib/domaine/parcours'
 
 /**
@@ -31,8 +31,8 @@ export function LienMonAbonnement({ slug }: { slug: string }) {
  * comparaison que le lecteur fait de tête, autant la faire pour lui.
  */
 export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; offre?: Offre }) {
-  const équivalent = (PRIX_ANNUEL_HT / 12).toLocaleString('fr-FR', { maximumFractionDigits: 2 })
-  // L'early adopter (19 octobre 2026) ne voit que sa formule : afficher 89 €
+  const équivalent = enEuros(équivalentMensuelDeLAnnuel())
+  // L'early adopter (19 octobre 2026) ne voit que sa formule : afficher le prix standard
   // à qui paiera 29 € serait faux. L'action serveur revérifie l'offre.
   if (offre === 'early_adopter') {
     return (
@@ -41,7 +41,7 @@ export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; off
           slug={slug}
           formule="early_adopter"
           intitulé="Early adopter"
-          prix={`${PRIX_EARLY_ADOPTER_HT} € HT par mois`}
+          prix={`${enEuros(PRIX_EARLY_ADOPTER_HT)} € HT par mois`}
           détail="Tarif réservé à votre organisation. Sans engagement, résiliable à tout moment."
         />
       </div>
@@ -53,14 +53,14 @@ export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; off
         slug={slug}
         formule="mensuelle"
         intitulé="Mensuel"
-        prix={`${PRIX_MENSUEL_HT} € HT par mois`}
+        prix={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois`}
         détail="Sans engagement, résiliable à tout moment."
       />
       <Formule
         slug={slug}
         formule="annuelle"
         intitulé="Annuel"
-        prix={`${PRIX_ANNUEL_HT} € HT par an`}
+        prix={`${enEuros(PRIX_ANNUEL_HT)} € HT par an`}
         détail={`Soit ${équivalent} € HT par mois, deux mois offerts.`}
       />
     </div>

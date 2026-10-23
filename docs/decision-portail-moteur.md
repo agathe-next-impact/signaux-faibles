@@ -45,7 +45,7 @@ Le parcours client cible (demande par URL, génération sans validation, lettres
 
 | Point | Décision |
 |---|---|
-| Prix | **89 € HT par mois** ou **890 € HT par an**, par organisation. TVA applicable (20 %) : 106,80 € TTC par mois, 1 068 € TTC par an |
+| Prix | **149 € HT par mois** ou **1 490 € HT par an** (deux mois offerts), par organisation, depuis le **23 octobre 2026** ; 89 € et 890 € HT auparavant. TVA applicable (20 %) : 178,80 € TTC par mois, 1 788 € TTC par an. Le montant facturé est celui des prix Stripe (`STRIPE_PRIX_MENSUEL`, `STRIPE_PRIX_ANNUEL`) : un prix Stripe ne se modifie pas, il faut en créer deux nouveaux et changer les deux variables ; les abonnés existants gardent leur prix tant qu'on ne les migre pas |
 | Ce que couvre l'abonnement | une organisation, **deux veilles**, **trois lecteurs actifs au plus** |
 | Quatrième lecteur | **refusé par le portail** : `POST /api/veille/lecteurs` répond `plafond-atteint` (409), à la création comme à la réactivation. Pour ajouter quelqu'un, on en révoque un autre. L'opérateur global n'entre dans le plafond d'aucun client |
 | Période d'essai | **trois parutions complètes**, à J0, J+7 et J+14 (une parution porte les deux lettres de la semaine) |

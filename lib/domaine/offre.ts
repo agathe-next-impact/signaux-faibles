@@ -1,11 +1,12 @@
 /**
- * L'offre, telle qu'Agathe l'a décidée le 17 octobre 2026
- * (`docs/decision-portail-moteur.md`, section « L'offre »). Le seul endroit où
+ * L'offre, telle qu'Agathe l'a décidée le 17 octobre 2026, prix relevés le
+ * 23 octobre 2026 (`docs/decision-portail-moteur.md`, section « L'offre »). Le seul endroit où
  * ses chiffres sont écrits dans le code : un écran qui les recopierait
  * finirait par afficher un ancien prix.
  */
-export const PRIX_MENSUEL_HT = 89
-export const PRIX_ANNUEL_HT = 890
+export const PRIX_MENSUEL_HT = 149
+/** Dix mois payés : « deux mois offerts », la règle tenue depuis l'offre du 17 octobre. */
+export const PRIX_ANNUEL_HT = 1490
 /** Tarif réservé par l'opératrice à une organisation nommée (`offre = early_adopter`), mensuel seul. */
 export const PRIX_EARLY_ADOPTER_HT = 29
 /** Pour un bon de commande, un virement, ou quand la souscription en ligne est indisponible. */
@@ -19,7 +20,7 @@ export const LECTEURS_ACTIFS_MAX = 3
 /** TVA applicable aux deux formules (offre du 17 octobre 2026). */
 export const TAUX_DE_TVA = 0.2
 
-/** Un montant en euros, à la française : « 106,80 », « 1 068 », « 74,17 ». */
+/** Un montant en euros, à la française : « 178,80 », « 1 788 », « 124,17 ». */
 export function enEuros(montant: number): string {
   const arrondi = Math.round(montant * 100) / 100
   return arrondi.toLocaleString('fr-FR', {
