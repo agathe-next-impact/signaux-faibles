@@ -189,6 +189,40 @@ Conséquence : la synchronisation doit **résoudre le `data_source_id` à partir
 
 ### 2.5 Contraintes du plan gratuit Notion
 
+**Mise à jour du 23 octobre 2026 : l'espace est sur le plan Business.**
+Vérifié le 23 octobre 2026 sur la documentation officielle et sur le connecteur
+de l'espace :
+
+- **Jeton MCP** : « you can use Notion MCP without interactive authorization on
+  Business and Enterprise plans » ; un propriétaire de l'espace crée le jeton
+  par « New MCP token » dans le portail développeur, et le client l'envoie en
+  `Authorization: Bearer` à `https://mcp.notion.com/mcp`, sans connexion par
+  navigateur. Seuls les propriétaires de l'espace peuvent en créer. C'est le
+  chemin de `scripts/taches/executer.ts` (`NOTION_MCP_TOKEN`) : sur le plan
+  gratuit, il n'existe pas. La documentation ne dit ni quels contenus le jeton
+  atteint, ni au nom de quel utilisateur il agit, ni s'il expire : `pnpm tache
+  controle` le vérifie en pratique. **[officiel]**
+- **Blocs** : « Paid workspaces and single-member Free workspaces have unlimited
+  blocks. » Le plafond de 1 000 blocs ne concerne plus l'espace. **[officiel]**
+- **Mode SQL** : « SQL across one or more data sources is unlimited on Business
+  and Enterprise plans with Notion AI » ; `query_multiple_data_sources`
+  « Requires a Business or Enterprise plan with Notion AI ». Le quota constaté
+  le 9 septembre ne s'applique donc plus. **[officiel]**
+- **Débit du connecteur** : la page des outils ne donne plus de chiffre par
+  minute ; « Notion MCP uses the standard API request limits », et un appel
+  limité n'est rejoué qu'une fois, si l'attente est de 2 secondes au plus,
+  sinon l'outil rend `rate_limited`. **[officiel]**
+- **Constaté** : `get_tool_access` sur le connecteur de l'espace rend tous les
+  outils disponibles, `query_multiple_data_sources` compris, ce qui suppose
+  Business avec Notion AI. **[constaté]**
+- Source : https://developers.notion.com/docs/get-started-with-mcp (FAQ),
+  https://developers.notion.com/guides/mcp/mcp-supported-tools,
+  https://developers.notion.com/reference/workspace-block-limits.
+
+Ce qui suit est l'état du 9 septembre 2026, sur le plan gratuit. Il redevient
+la règle si l'espace revient au plan gratuit, et les tâches sur l'API Claude
+cessent alors de fonctionner.
+
 Vérifié le 9 septembre 2026, même miroir de la doc officielle.
 
 - **Limite de blocs** : « Free workspaces with more than one member have a limit of 1,000 lifetime blocks. Paid workspaces and single-member Free workspaces have unlimited blocks. Guests do not count as members. Deleting blocks does not restore capacity. » L'API applique cette limite aux intégrations internes : après une période de grâce de trois jours, toute création (page, bloc, base) échoue en HTTP 403 `restricted_resource` avec `additional_data.block_limit: "block_creation"`. Les lectures, modifications de propriétés et suppressions restent possibles. **[officiel]**

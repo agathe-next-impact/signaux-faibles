@@ -7,7 +7,9 @@ tokens soient générés depuis la charte plutôt que réinventés, et pour que 
 règles soient citables en revue.
 
 Baseline : « Votre veille, rédigée. » Domaine porté par la charte :
-`signauxfaibles.io`, contact `contact@signauxfaibles.io`.
+`signauxfaibles.io`, contact `contact@signauxfaibles.io`. Adresse de contact
+en service depuis le 23 octobre 2026 : `agathe@signauxfaibles.io`
+(`ADRESSE_DE_CONTACT`, `lib/email/gabarit.ts`).
 
 ## 01 · Logo
 

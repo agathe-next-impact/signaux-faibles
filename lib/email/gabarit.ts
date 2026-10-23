@@ -37,7 +37,7 @@ export const COULEURS = {
   fondNeutre: '#f7f8f9',
 } as const
 
-export const ADRESSE_DE_CONTACT = 'contact@signauxfaibles.io'
+export const ADRESSE_DE_CONTACT = 'agathe@signauxfaibles.io'
 
 const MONO = `'IBM Plex Mono', Menlo, Consolas, 'Courier New', monospace`
 const SERIF = `Lora, Georgia, 'Times New Roman', serif`

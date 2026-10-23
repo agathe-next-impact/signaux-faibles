@@ -1,0 +1,168 @@
+import type { Metadata } from 'next'
+import { Case, Grille, LienFlèche, Panneau } from '@/components/coquille'
+import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
+import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
+import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
+import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
+import { LETTRE_UNIQUE } from '@/lib/portail/lint'
+
+export const metadata: Metadata = {
+  title: 'L’offre — signauxfaibles',
+  description:
+    'Une veille hebdomadaire rédigée pour votre organisation : une lettre par semaine, des faits datés et sourcés, un espace pour les retrouver.',
+  // Page vitrine : la seule famille de pages du portail que l'on veut voir indexée.
+  robots: { index: true, follow: true },
+}
+
+/**
+ * « L'offre » (23 octobre 2026) : ce que contient la lettre, comment la veille
+ * se met en place, ce que l'espace donne à lire. Page publique, ouverte par le
+ * proxy à l'adresse exacte (`PUBLICS_EXACTS`), sans lecture de Notion ni de
+ * Postgres.
+ */
+export default function Offre() {
+  return (
+    <CoquilleVitrine courante="offre">
+      <OuvertureVitrine
+        surtitre="L’offre"
+        titre="Une veille écrite pour votre organisation, chaque semaine."
+        chapeau="Nous suivons pour vous l’écosystème et la concurrence, et nous en tirons une lettre courte, datée et sourcée. Vous la lisez dans votre boîte de réception, et vous la retrouvez dans votre espace."
+      >
+        <BoutonDémo />
+      </OuvertureVitrine>
+
+      <SectionVitrine
+        surtitre="Mise en place"
+        titre="De votre site à votre première lettre"
+      >
+        <Grille colonnes={3} étiquette="Les étapes de mise en place">
+          <Case>
+            <p className="label-mono text-ardoise">Étape 1</p>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Votre référentiel</h3>
+            <p className="text-ardoise">
+              À partir de votre site et des sources publiques de votre secteur, nous dressons la
+              liste de ce qui vous concerne : {LETTRE_UNIQUE.axesMin} à {LETTRE_UNIQUE.axesMax} axes,
+              les sources nommées de chacun, les acteurs à suivre.
+            </p>
+          </Case>
+          <Case>
+            <p className="label-mono text-ardoise">Étape 2</p>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Votre première lettre</h3>
+            <p className="text-ardoise">
+              Elle paraît dans votre espace, et vos lecteurs reçoivent leur lien d’accès
+              personnel. L’essai commence avec elle.
+            </p>
+          </Case>
+          <Case>
+            <p className="label-mono text-ardoise">Chaque semaine</p>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Une parution</h3>
+            <p className="text-ardoise">
+              Le même jour chaque semaine, une nouvelle lettre : ce qui s’est passé depuis la
+              précédente, et l’avancement des dossiers ouverts.
+            </p>
+          </Case>
+        </Grille>
+      </SectionVitrine>
+
+      <SectionVitrine
+        surtitre="La lettre"
+        titre="Ce qu’elle contient"
+        chapeau={`${LETTRE_UNIQUE.motsMax.toLocaleString('fr-FR')} mots au plus, lettre entière : tout ce qui compte, rien pour remplir.`}
+      >
+        <Grille colonnes={2} étiquette="Les rubriques de la lettre">
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">L’essentiel</h3>
+            <p className="text-ardoise">
+              {ESSENTIEL_LIGNES_MAX} lignes au plus en tête de lettre, chacune lisible seule. Si
+              vous n’avez que trente secondes, c’est elle qu’il faut lire.
+            </p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Les actualités par axe</h3>
+            <p className="text-ardoise">
+              Réglementation, marché, financements, technologie, territoire, et les familles de
+              concurrents qui vous concernent. {LETTRE_UNIQUE.faitsParAxeMax} faits au plus par
+              axe, {LETTRE_UNIQUE.phrasesParFaitMax} phrases au plus par fait.
+            </p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Un niveau d’impact par axe</h3>
+            <p className="text-ardoise">
+              Signal fort, à surveiller, ou RAS. Un axe sans nouveauté le dit, et nomme ce qui a
+              été vérifié.
+            </p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Les dossiers suivis</h3>
+            <p className="text-ardoise">
+              Les sujets ouverts que la veille suit d’une semaine à l’autre, avec leur
+              avancement.
+            </p>
+          </Case>
+        </Grille>
+        <Panneau ton="ardoise">
+          <div className="flex flex-col gap-3">
+            <p className="label-mono text-ardoise">Ce qui n’y figure jamais</p>
+            <ListeCarrée
+              éléments={[
+                'Un fait sans date ni source : chaque fait porte le lien de la page d’où il vient.',
+                'Une note de méthode ou un rapport de collecte : c’est notre travail, pas votre lecture.',
+                'Du remplissage pour faire nombre : une semaine calme donne une lettre courte.',
+              ]}
+            />
+          </div>
+        </Panneau>
+      </SectionVitrine>
+
+      <SectionVitrine
+        surtitre="L’espace"
+        titre="Ce que vous retrouvez en ligne"
+        chapeau="Un espace réservé à votre organisation, accessible par un lien personnel, sans mot de passe. Il s’installe aussi comme une application sur ordinateur et téléphone."
+      >
+        <Grille colonnes={3} étiquette="Les écrans de l’espace">
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Vue d’ensemble</h3>
+            <p className="text-ardoise">Les chiffres de la semaine, l’action recommandée, ce qui est à la une.</p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Lettres et archives</h3>
+            <p className="text-ardoise">Toutes les lettres, et une entrée par semaine depuis le début de la veille.</p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Les axes</h3>
+            <p className="text-ardoise">Chaque axe suivi sur les quatre dernières lettres : ce qui est nouveau, ce qui dure, ce qui dort.</p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Acteurs</h3>
+            <p className="text-ardoise">Chaque dossier ouvert, et les passages des lettres qui le nomment.</p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Recommandations</h3>
+            <p className="text-ardoise">Les actions proposées semaine après semaine.</p>
+          </Case>
+          <Case>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Périmètre</h3>
+            <p className="text-ardoise">Ce que la veille surveille pour vous : axes, sources et acteurs suivis.</p>
+          </Case>
+        </Grille>
+      </SectionVitrine>
+
+      <SectionVitrine
+        surtitre="Pour qui"
+        titre={`Jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs par organisation`}
+        chapeau="Direction, développement, affaires publiques : chaque lecteur a son propre lien, que vous pouvez retirer ou attribuer à quelqu’un d’autre depuis l’espace."
+      >
+        <Panneau ton="rose">
+          <div className="flex flex-col gap-3">
+            <p className="label-mono text-ardoise">Essai</p>
+            <p className="text-encre">
+              {PARUTIONS_D_ESSAI} parutions complètes pour juger sur pièces, sans carte bancaire.
+              Vous décidez ensuite de vous abonner, ou non.
+            </p>
+            <LienFlèche href="/tarifs">Voir les tarifs et le déroulé de l’essai</LienFlèche>
+          </div>
+        </Panneau>
+      </SectionVitrine>
+    </CoquilleVitrine>
+  )
+}

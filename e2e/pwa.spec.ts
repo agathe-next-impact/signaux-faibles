@@ -66,7 +66,8 @@ test.describe('installation et hors-ligne', () => {
 
     const manifeste = await réponse.json()
     expect(manifeste.display).toBe('standalone')
-    expect(manifeste.start_url).toBe('/')
+    expect(manifeste.id).toBe('/')
+    expect(manifeste.start_url).toBe('/?app=1')
     expect(manifeste.icons.length).toBeGreaterThanOrEqual(2)
     expect(manifeste.icons.some((icône: { purpose?: string }) => icône.purpose === 'maskable')).toBe(
       true,
