@@ -72,9 +72,13 @@ commande, et `permissions.allow` dans `.claude/settings.json`, pour les tours
 suivants d'un même lancement. La liste est fermée : lecture et écriture Notion
 (sans suppression), lecture, brouillons et envoi Gmail, recherche et lecture
 web, `openssl rand`, `curl` vers `https://www.signauxfaibles.io/api/acces/`
-et `/api/veille/` seulement, et `node scripts/lire-page.mjs`, qui lit avec le
-Chromium de la session une source que la récupération simple ne lit pas. Un
-outil hors de cette liste redemande la permission, et c'est voulu.
+et `/api/veille/` seulement, `node scripts/lire-page.mjs`, qui lit avec le
+Chromium de la session une source que la récupération simple ne lit pas, et,
+depuis le 23 octobre 2026, `pnpm -s collecte:lire` et `pnpm -s collecte:synthese`
+(la collecte en code de la première lettre). Un outil hors de cette liste
+redemande la permission, et c'est voulu. Ces règles ne lèvent pas une demande
+qui vient de la politique d'outils du connecteur lui-même : voir
+`docs/cout-premiere-lettre.md`, « Ce qui reste à faire ».
 
 **Le §6 des référentiels fixe la richesse des lettres** (19 octobre 2026). Le
 prompt des lettres rédige « selon le §6 du référentiel, sans variation de
