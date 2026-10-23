@@ -23,6 +23,8 @@
     "evaluation:agent": "tsx scripts/evaluation-agent.ts",
     "evaluation:unique": "tsx scripts/evaluation-unique.ts",
     "tache": "tsx scripts/taches/executer.ts",
+    "collecte:lire": "tsx scripts/collecte/lire-sources.ts",
+    "collecte:synthese": "tsx scripts/collecte/synthese.ts",
     "payload": "payload",
     "payload:generer-types": "payload generate:types",
     "payload:migrer": "payload migrate",

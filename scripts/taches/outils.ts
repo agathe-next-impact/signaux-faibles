@@ -18,14 +18,23 @@
  *   · « Veille » : `tirer_identifiant`, 32 caractères hexadécimaux d'un
  *     générateur cryptographique, pour la ligne « Accès » que l'onboarding crée
  *     (§3.7bis) ; la tâche le tirait avec Bash, que la garde ne permet plus.
+ *     `lire_sources` lit en code un lot d'URL et `synthese_de_collecte`
+ *     condense les grilles et les faits des collecteurs (23 octobre 2026).
+ *
+ * `Gmail__deposer_courriel` compose un courriel client par le portail et le
+ * dépose en brouillon sans que le HTML passe par le modèle (23 octobre 2026) :
+ * la première lettre Heritech en avait recopié 210 000 caractères.
  *
  * Les secrets sont lus par `executer.ts` et passés ici ; ce fichier ne lit pas
  * l'environnement.
  */
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
 import { randomBytes } from 'node:crypto'
+import { join, resolve } from 'node:path'
 import { z } from 'zod'
 import { adresseDeRéponseSûre, composerMessage, jetonDeDélégation, PORTÉES_GMAIL } from '@/lib/email/gmail'
+import { lireLesUrls } from '../collecte/lire-sources'
+import { synthétiser } from '../collecte/synthese'
 import { cheminDuPortail, SERVEURS } from './garde'
 
 /** La seule adresse à laquelle une tâche envoie réellement un courriel. */
@@ -45,6 +54,8 @@ export type ConfigurationDesOutils = {
   readonly journal: (ligne: string) => void
   /** Ce que le run relève pour sa mesure : les organisations nommées au portail. */
   readonly relevé: { readonly organisations: Set<string> }
+  /** Le dossier de travail du run, où `lire_sources` et `synthese_de_collecte` écrivent. */
+  readonly espace?: string
   /** Injectables pour les tests. */
   readonly fetch?: typeof fetch
   readonly jetonGoogle?: (portée: string) => Promise<string>
@@ -73,6 +84,8 @@ export async function appelerLePortail(
   méthode: string,
   chemin: string,
   corps: unknown,
+  /** La réponse rendue au modèle est tronquée ; un outil qui la lit lui-même en prend davantage. */
+  plafond: number = PLAFOND_RÉPONSE,
 ): Promise<RéponseDuPortail | { readonly refus: string }> {
   const cible = cheminDuPortail(méthode.toUpperCase(), chemin, configuration.portail)
   if ('refus' in cible) {
@@ -95,7 +108,7 @@ export async function appelerLePortail(
   const brut = await réponse.text()
   configuration.journal(`Portail ${méthode.toUpperCase()} ${cible.url.pathname} → ${réponse.status}`)
   relever(configuration, cible.url, corps, brut)
-  return { statut: réponse.status, corps: masquer(brut, [configuration.jetonPortail]).slice(0, PLAFOND_RÉPONSE) }
+  return { statut: réponse.status, corps: masquer(brut, [configuration.jetonPortail]).slice(0, plafond) }
 }
 
 /** Les organisations que le run a nommées au portail : un slug envoyé, ou la sélection du calendrier. */
@@ -163,6 +176,46 @@ export async function créerBrouillon(configuration: ConfigurationDesOutils, bro
   })
   configuration.journal(`Gmail create_draft : ${brouillon.to.length} destinataire(s)`)
   return { id: String(réponse['id'] ?? ''), destinataires: brouillon.to.length }
+}
+
+/** Une réponse de mise en forme, telle que `POST /api/veille/courriel` la rend. */
+type Composé = { état?: unknown; objet?: unknown; html?: unknown; texte?: unknown; octets?: unknown; avertissement?: unknown }
+
+/**
+ * Compose un courriel client par le portail (`POST /api/veille/courriel`, la
+ * demande telle que la page de la tâche l'écrit) et le dépose en brouillon,
+ * sans jamais le renvoyer au modèle : il ne reçoit que l'identifiant du
+ * brouillon, l'objet et la taille. Une lettre non conforme (422) n'est pas
+ * déposée : la réponse du portail est rendue telle quelle, pour correction de
+ * la page. Rien n'est envoyé.
+ */
+export async function déposerUnCourriel(
+  configuration: ConfigurationDesOutils,
+  demande: Readonly<Record<string, unknown>>,
+  to: readonly string[],
+): Promise<Record<string, unknown>> {
+  // Le brouillon est déposé ici : le portail n'a pas à le faire aussi.
+  const { brouillon: _ignoré, ...sansBrouillon } = demande
+  const r = await appelerLePortail(configuration, 'POST', '/api/veille/courriel', sansBrouillon, 2_000_000)
+  if ('refus' in r) throw new Error(`Refusé : ${r.refus}`)
+  let corps: Composé
+  try {
+    corps = JSON.parse(r.corps) as Composé
+  } catch {
+    throw new Error(`le portail a répondu ${r.statut} sans JSON lisible`)
+  }
+  if (r.statut !== 200 || corps.état !== 'composé' || typeof corps.html !== 'string' || typeof corps.texte !== 'string' || typeof corps.objet !== 'string') {
+    return { brouillon: 'non déposé', statut: r.statut, réponse: corps }
+  }
+  const { id, destinataires } = await créerBrouillon(configuration, { to, subject: corps.objet, body: corps.texte, htmlBody: corps.html })
+  return {
+    brouillon: 'déposé',
+    id,
+    destinataires,
+    objet: corps.objet,
+    octets: corps.octets,
+    ...(corps.avertissement ? { avertissement: corps.avertissement } : {}),
+  }
 }
 
 export async function listerBrouillons(configuration: ConfigurationDesOutils, maximum: number) {
@@ -283,6 +336,22 @@ export function serveursDesOutils(configuration: ConfigurationDesOutils) {
           ),
       ),
       tool(
+        'deposer_courriel',
+        "Met un courriel client en forme par le portail (POST /api/veille/courriel, la demande telle que la page l'écrit : sorte « lettre », page, slug, organisation, objet ; ou sorte « message ») et le dépose en brouillon dans la boîte de l'opératrice. Le HTML ne t'est pas rendu : tu reçois l'identifiant du brouillon, l'objet et la taille. Une lettre non conforme n'est pas déposée et la réponse du portail t'est rendue. Rien n'est envoyé.",
+        {
+          demande: z.record(z.string(), z.unknown()).describe('Le corps de POST /api/veille/courriel'),
+          to: z.union([z.string(), z.array(z.string())]).optional().describe('Destinataire(s) ; absent ou vide : brouillon sans destinataire'),
+        },
+        (a) =>
+          protéger(() =>
+            déposerUnCourriel(
+              configuration,
+              a.demande,
+              (Array.isArray(a.to) ? a.to : a.to ? [a.to] : []).map((x) => x.trim()).filter(Boolean),
+            ),
+          ),
+      ),
+      tool(
         'list_drafts',
         "Liste les brouillons les plus récents de la boîte de l'opératrice (identifiant, destinataires, objet, date).",
         { maxResults: z.number().int().min(1).max(50).optional() },
@@ -349,6 +418,38 @@ export function serveursDesOutils(configuration: ConfigurationDesOutils) {
           configuration.journal('Veille tirer_identifiant')
           return Promise.resolve(texte(randomBytes(16).toString('hex')))
         },
+      ),
+      tool(
+        'lire_sources',
+        "Lit en code un lot de 1 à 30 URL (requête simple, puis navigateur pour celles qui refusent les robots), en quatre minutes au plus. Écrit le texte de chaque page ouverte dans sources/<lot>/NN-domaine.txt du dossier de travail et rend l'index du lot : une ligne de grille par source (OUVERTE avec la dernière date visible, NON OUVERTE avec la raison des deux essais, À RELANCER si l'échéance du lot est atteinte). Lis ensuite les fichiers utiles avec Read.",
+        {
+          lot: z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/).describe('Nom court du lot, par exemple « concurrentiel-1 »'),
+          urls: z.array(z.string().url()).min(1).max(30),
+        },
+        (a) =>
+          protéger(async () => {
+            const espace = configuration.espace
+            if (!espace) throw new Error('dossier de travail inconnu')
+            const urls = a.urls.filter((u) => !/(^|\.)signauxfaibles\.io$/.test(new URL(u).hostname))
+            configuration.journal(`Veille lire_sources ${a.lot} : ${urls.length} URL`)
+            const index = await lireLesUrls(urls, join(espace, 'sources', a.lot), { avecNavigateur: true, ...(configuration.fetch ? { fetch: configuration.fetch } : {}) })
+            return `${index}\nFichiers : sources/${a.lot}/ dans le dossier de travail.`
+          }),
+      ),
+      tool(
+        'synthese_de_collecte',
+        "Condense les grilles (grille/*.md) et les faits (faits/*.md) d'un dossier de collecte en une synthèse par lettre, synthese-concurrentiel.md et synthese-ecosysteme.md, écrites dans ce dossier. Rend les comptes ; signale les lignes de grille sans état, qui interdisent de rédiger.",
+        { dossier: z.string().describe('Chemin du dossier de collecte, relatif au dossier de travail') },
+        (a) =>
+          protéger(async () => {
+            const espace = configuration.espace
+            if (!espace) throw new Error('dossier de travail inconnu')
+            const cible = resolve(espace, a.dossier)
+            if (!(cible + '/').startsWith(espace + '/')) throw new Error('dossier hors du dossier de travail')
+            const { résumé, vides } = synthétiser(cible)
+            configuration.journal(`Veille synthese_de_collecte : ${vides} ligne(s) vide(s)`)
+            return vides ? `${résumé}\n${vides} ligne(s) de grille sans état : la collecte n'est pas terminée.` : résumé
+          }),
       ),
     ],
   })

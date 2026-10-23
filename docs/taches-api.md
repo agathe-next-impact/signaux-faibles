@@ -29,6 +29,19 @@ Effort `high` partout. La lecture des sources est confiée au sous-agent
 `lecteur`, sur Haiku 5.5 : l'agent principal ne reçoit que des extraits recopiés
 mot pour mot, et ne rouvre une page que pour vérifier une citation.
 
+Depuis le 23 octobre 2026 (`docs/cout-premiere-lettre.md`), un second sous-agent,
+`collecteur`, sur **Sonnet 5.5**, collecte un lot de familles quand une page
+demande de confier la collecte à des agents (première lettre) : il lit les
+sources nommées en code (`lire_sources`), lance les requêtes et écrit
+`grille/<lot>.md` et `faits/<lot>.md` dans `collecte/` du dossier de travail ;
+`synthese_de_collecte` en tire une synthèse par lettre, seule lecture du
+rédacteur. Les consignes du harnais disent aussi d'économiser le contexte : une
+lettre à la fois, corps écrit une fois, remplacements ciblés, aucun appel de plus
+de quatre minutes (au-delà, le cache de cinq minutes expire et tout le contexte
+est réécrit). Le cache d'une heure n'est **pas** retenu : il coûte deux fois le
+prix d'entrée à l'écriture au lieu de 1,25 fois, soit 11 $ de plus que les 7 $
+qu'il aurait évités sur la première lettre Heritech.
+
 Outils, tous derrière la garde (`scripts/taches/garde.ts`, tout le reste est
 refusé et journalisé) :
 
@@ -40,7 +53,11 @@ refusé et journalisé) :
   `create_draft` et `list_drafts` (portée `gmail.compose`), `list_sent_messages`
   (en-têtes des messages envoyés, portée `gmail.metadata`, sans recherche `q`) et
   `send_message`, qui n'envoie qu'à `agathe@signauxfaibles.io`. Aucun outil
-  n'envoie à un client ; un test le vérifie.
+  n'envoie à un client ; un test le vérifie. `deposer_courriel` (23 octobre
+  2026) compose un courriel par `POST /api/veille/courriel` et le dépose en
+  brouillon dans le même appel, sans rendre le HTML au modèle ; la réponse du
+  portail lue par cet outil n'est pas tronquée, celle d'`appeler_portail` l'est à
+  100 000 caractères (une lettre de 68 Ko, HTML et texte, la dépassait).
 - **Portail** : `appeler_portail`, limité à `/api/veille/*` et
   `/api/acces/ouvrir`. Il ajoute `ACTIVATION_SECRET` lui-même : le jeton n'entre
   jamais dans le contexte du modèle.
@@ -48,6 +65,9 @@ refusé et journalisé) :
   (`node scripts/lire-page.mjs <url>`, seule commande Bash permise).
 - **Identifiant d'accès** : `tirer_identifiant` (32 caractères hexadécimaux),
   pour la ligne « Accès » de l'onboarding, que la tâche tirait avec Bash.
+- **Collecte en code** : `lire_sources` (30 URL au plus, quatre minutes au plus,
+  un fichier par page dans `sources/<lot>/`, l'index en lignes de grille) et
+  `synthese_de_collecte` (les synthèses par lettre d'un dossier de collecte).
 
 Ce qui ne marche pas comme sous l'abonnement, et que l'agent dit dans son compte
 rendu : le repli n°1 des pages (calcul du calendrier par `git clone` et `node`)

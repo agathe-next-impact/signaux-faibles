@@ -361,7 +361,12 @@ Les lire avant toute session.
   mensuel sont mis en forme par `POST /api/veille/courriel` (`lettre` : la page
   lue dans son ordre par `suiteDeLaLettre`, cadrage compris, refusée en 422 si
   le lint ne passe pas ; `message` : le template champ par champ) ; la tâche
-  pose `html` et `texte` tels quels dans le brouillon Gmail. Les trois emails
+  pose `html` et `texte` tels quels dans le brouillon Gmail, ou, depuis le
+  23 octobre 2026, demande `brouillon: { à }` et **le portail dépose lui-même
+  le brouillon** dans la boîte de l'opératrice (`GMAIL_BOITE_OPERATRICE`,
+  facultative, `déposerChezLOpératrice`, seul appelant la route, après le
+  contrôle) : le HTML ne passe plus par un modèle (`docs/cout-premiere-lettre.md`).
+  Rien ne part ; sans la boîte, la route rend le HTML comme avant. Les trois emails
   lemlist sont générés par `pnpm emails:lemlist` dans `docs/emails/lemlist/`,
   et le test vérifie qu'ils n'ont pas été retouchés. Le rose ne colore jamais
   un texte, un seul bouton, trois badges ; une image Notion n'entre jamais dans
