@@ -20,7 +20,7 @@ export function AccueilVitrine() {
     <CoquilleVitrine courante="accueil">
       <OuvertureVitrine
         surtitre="Veille hebdomadaire rédigée"
-        titre="Ce qui a bougé autour de votre organisation, lisible en cinq minutes."
+        titre="La veille stratégique dédiée à votre organisation"
         chapeau={
           <>
             Chaque semaine, une lettre écrite pour vous : réglementation, marché,
