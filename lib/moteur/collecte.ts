@@ -12,7 +12,7 @@
 import { createHash } from 'node:crypto'
 import type { RéférentielUnique } from '@/lib/moteur/referentiel'
 
-export type ÉtatDeSource = 'ouverte' | 'ouverte-navigateur' | `http-${number}` | `type-${string}` | 'delai' | 'reseau' | 'vide'
+export type ÉtatDeSource = 'ouverte' | 'ouverte-navigateur' | `http-${number}` | `type-${string}` | 'delai' | 'delai-du-lot' | 'reseau' | 'vide'
 
 export type Lecture = {
   readonly url: string
@@ -42,6 +42,14 @@ export type OptionsDeCollecte = {
   readonly tailleExtrait?: number
   readonly parallèle?: number
   readonly délaiMs?: number
+  /**
+   * L'heure (en millisecondes) après laquelle aucune nouvelle source n'est
+   * ouverte : celles qui restent sont rendues `delai-du-lot`, à relancer. Un
+   * appel d'outil qui dure plus de cinq minutes fait expirer le cache du modèle
+   * qui l'attend (23 octobre 2026 : 7 réécritures, 7 $ sur la première lettre
+   * Heritech) ; l'outil qui lit un lot pose donc une échéance plus courte.
+   */
+  readonly échéance?: number
   /** Pour les tests : remplace `fetch`. */
   readonly fetch?: typeof fetch
 }
@@ -129,7 +137,17 @@ export async function enParallèle<T>(tâches: ReadonlyArray<() => Promise<T>>, 
  * que si une source l'exige, et fermé à la fin quoi qu'il arrive.
  */
 export async function collecterLesSources(référentiel: RéférentielUnique, options: OptionsDeCollecte = {}): Promise<Lecture[]> {
-  const urls = [...new Set(référentiel.axes.flatMap((axe) => axe.sources.map((s) => s.url)))]
+  return collecterLesUrls(référentiel.axes.flatMap((axe) => axe.sources.map((s) => s.url)), options)
+}
+
+/**
+ * Ouvre une liste d'URL, quel que soit le format du référentiel qui les nomme
+ * (23 octobre 2026) : c'est ce que la commande de première lettre fait lire en
+ * code, lot par lot, avant que ses agents ne cherchent quoi que ce soit
+ * (`scripts/collecte/lire-sources.ts`). Les doublons sont lus une fois.
+ */
+export async function collecterLesUrls(urlsBrutes: readonly string[], options: OptionsDeCollecte = {}): Promise<Lecture[]> {
+  const urls = [...new Set(urlsBrutes)]
   const gel = options.gel ?? new Map<string, Gel>()
   const tailleExtrait = options.tailleExtrait ?? TAILLE_D_EXTRAIT
   const délaiMs = options.délaiMs ?? 20_000
@@ -146,6 +164,9 @@ export async function collecterLesSources(référentiel: RéférentielUnique, op
     return await enParallèle(
       urls.map((url) => async () => {
         const luLe = new Date().toISOString()
+        if (options.échéance !== undefined && Date.now() > options.échéance) {
+          return { url, état: 'delai-du-lot', luLe, texte: '', empreinte: '', nouveautés: [], changée: null }
+        }
         let { état, texte } = await lireParHttp(url, { tailleExtrait, délaiMs, fetch: fetchRéel })
         if (état !== 'ouverte') {
           const n = await auNavigateur()

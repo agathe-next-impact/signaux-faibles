@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { définitionDuCollecteur, définitionDuLecteur, consignesDuHarnais } from '@/scripts/taches/executer'
 import {
   appelerLePortail,
   créerBrouillon,
+  déposerUnCourriel,
   DESTINATAIRE_OPÉRATRICE,
   envoyerÀLOpératrice,
   listerEnvoyés,
@@ -137,5 +139,52 @@ describe('masquer et pointeurs', () => {
     for (const tâche of TÂCHES) expect(POINTEURS[tâche].texte).toMatch(/Ouvre dans Notion la page/)
     expect(promptDeLaTâche('lettres', null)).toBe(POINTEURS.lettres.texte)
     expect(promptDeLaTâche('lettres', 'konica')).toBe(`${POINTEURS.lettres.texte}\n\nLimite-toi à l'organisation konica.`)
+  })
+})
+
+describe('Gmail : deposer_courriel, le HTML ne passe pas par le modèle', () => {
+  const HTML = `<html><body>${'<p>Une lettre longue.</p>'.repeat(5000)}</body></html>`
+
+  it('compose par le portail sans lui demander de brouillon, dépose le brouillon et ne rend pas le HTML', async () => {
+    const { conf, appels } = configuration((url) =>
+      url.endsWith('/api/veille/courriel')
+        ? json({ état: 'composé', objet: 'Veille Heritech : Concurrentiel', html: HTML, texte: 'texte de la lettre', octets: HTML.length })
+        : json({ id: 'r-9' }),
+    )
+    const r = await déposerUnCourriel(conf, { sorte: 'lettre', page: 'p', slug: 'heritech', brouillon: { à: ['x@y.fr'] } }, ['eric@heritech.fr'])
+    expect(r).toMatchObject({ brouillon: 'déposé', id: 'r-9', destinataires: 1, objet: 'Veille Heritech : Concurrentiel' })
+    expect(JSON.stringify(r)).not.toContain('Une lettre longue')
+    // Le portail compose seulement : la demande lui arrive sans « brouillon ».
+    expect(JSON.parse(String(appels[0]!.init.body))).toEqual({ sorte: 'lettre', page: 'p', slug: 'heritech' })
+    // Le HTML entier, plus long que la réponse rendue au modèle, arrive au brouillon.
+    const brut = Buffer.from(JSON.parse(String(appels[1]!.init.body)).message.raw, 'base64url').toString('utf8')
+    expect(brut).toContain('To: eric@heritech.fr')
+    expect(HTML.length).toBeGreaterThan(100_000)
+    expect(appels[1]!.url).toBe('https://gmail.googleapis.com/gmail/v1/users/me/drafts')
+  })
+
+  it('ne dépose rien pour une lettre non conforme, et rend la réponse du portail', async () => {
+    const { conf, appels } = configuration(() => json({ état: 'non-conforme', ruptures: [{ code: 'axe-sans-niveau' }] }, 422))
+    const r = await déposerUnCourriel(conf, { sorte: 'lettre', page: 'p', slug: 'heritech' }, [])
+    expect(r).toMatchObject({ brouillon: 'non déposé', statut: 422, réponse: { état: 'non-conforme' } })
+    expect(appels).toHaveLength(1)
+  })
+})
+
+describe('sous-agents et consignes du harnais', () => {
+  it('le collecteur est sur Sonnet, le lecteur sur Haiku, et le collecteur n’a pas d’outil d’écriture Notion ni Gmail', () => {
+    expect(définitionDuCollecteur().model).toBe('claude-sonnet-5-5')
+    expect(définitionDuLecteur().model).toBe('claude-haiku-5-5')
+    const outils = définitionDuCollecteur().tools ?? []
+    expect(outils).toContain('mcp__Veille__lire_sources')
+    expect(outils.some((o) => /notion-(create|update)|Gmail/.test(o))).toBe(false)
+  })
+
+  it('les consignes nomment le dépôt sans HTML, la collecte par le collecteur et la borne de quatre minutes', () => {
+    const consignes = consignesDuHarnais(new Date('2026-10-23T08:00:00Z'), 'https://www.signauxfaibles.io')
+    expect(consignes).toContain('mcp__Gmail__deposer_courriel')
+    expect(consignes).toContain('subagent_type « collecteur »')
+    expect(consignes).toContain('synthese_de_collecte')
+    expect(consignes).toContain('plus de quatre minutes')
   })
 })

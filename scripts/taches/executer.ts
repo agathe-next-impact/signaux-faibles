@@ -7,8 +7,10 @@
  * Le prompt est le pointeur de la tâche en service (`pointeurs.ts`) : il dit
  * d'ouvrir une page Notion, et c'est la page qui fait foi. Ce fichier n'ajoute
  * aucune règle métier ; ses consignes de harnais disent la date de Paris, la
- * délégation de la lecture des sources au sous-agent `lecteur` (Haiku), les
- * outils disponibles, et l'interdiction d'écrire un secret.
+ * délégation de la lecture des sources au sous-agent `lecteur` (Haiku) et de la
+ * collecte par familles au sous-agent `collecteur` (Sonnet), les outils
+ * disponibles, la manière d'économiser le contexte, et l'interdiction d'écrire
+ * un secret.
  *
  * Ce que la session peut faire est tenu par `garde.ts` ; Gmail, le portail et
  * l'identifiant d'accès sont les outils de `outils.ts` ; Notion est le serveur
@@ -30,7 +32,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { lireCompteDeServiceJSON } from '@/lib/email/gmail'
 import { contrôler } from './controle'
-import { décisionPour, SERVEURS, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
+import { décisionPour, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RésultatBrut } from './mesure'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
 import { promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
@@ -49,6 +51,7 @@ export const PARAMÈTRES: Readonly<Record<Tâche, { readonly modèle: string; re
 }
 const EFFORT = 'high'
 const MODÈLE_LECTEUR = 'claude-haiku-5-5'
+const MODÈLE_COLLECTEUR = 'claude-sonnet-5-5'
 
 // ── Variables ────────────────────────────────────────────────────────────────
 
@@ -265,9 +268,19 @@ export function consignesDuHarnais(maintenant: Date, portail: string): string {
     `· Notion : les outils du serveur « ${SERVEURS.notion} » (lire, chercher, interroger une base ou une vue, créer et modifier des pages, créer une vue liée). Supprimer, déplacer ou changer un schéma est refusé.`,
     `· Portail : mcp__${SERVEURS.portail}__appeler_portail(methode, chemin, corps), pour ${portail}/api/veille/* et /api/acces/ouvrir. Passe l’adresse telle que la page l’écrit ; l’outil ajoute lui-même l’autorisation, n’en écris aucune.`,
     `· Gmail : mcp__${SERVEURS.gmail}__create_draft (to, subject, body, htmlBody), mcp__${SERVEURS.gmail}__list_drafts, mcp__${SERVEURS.gmail}__send_message (à agathe@signauxfaibles.io seulement : tout autre destinataire est refusé) et mcp__${SERVEURS.gmail}__list_sent_messages (messages envoyés depuis une date, en-têtes seulement : pas de recherche par requête, pas de corps lisible ; filtre toi-même par destinataire et par objet).`,
+    `· Courriels client : mcp__${SERVEURS.gmail}__deposer_courriel(demande, to). Il fait la mise en forme par POST /api/veille/courriel (la demande telle que la page l’écrit) ET dépose le brouillon : quand une page te dit de passer « html » et « texte » de la réponse dans create_draft, fais-le par cet outil, qui ne te rend pas le HTML. N’utilise create_draft avec htmlBody que si deposer_courriel échoue.`,
     `· Identifiant d’accès : mcp__${SERVEURS.veille}__tirer_identifiant.`,
+    `· Sources en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls) lit jusqu’à 30 URL en quatre minutes, écrit chaque page dans sources/<lot>/ et rend l’index du lot, une ligne de grille par source. mcp__${SERVEURS.veille}__synthese_de_collecte(dossier) condense les grilles et les faits d’un dossier de collecte en une synthèse par lettre.`,
     `· Navigateur : node ${LIRE_PAGE} <url> [caractères], seule commande Bash permise. Toute autre commande est refusée : si une page prescrit une commande Bash en repli, constate le refus et passe au repli suivant.`,
     '· Les documents de projet claude.ai (project_read, project_write) n’existent pas dans cet environnement : dis-le là où une page les demande.',
+    '',
+    `COLLECTE D’UNE PREMIÈRE LETTRE. Quand une page te demande de confier la collecte à des agents, famille par famille, confie chaque lot au sous-agent « ${SOUS_AGENT_COLLECTEUR} » (outil Agent, subagent_type « ${SOUS_AGENT_COLLECTEUR} ») : le référentiel et ses familles, la fenêtre, et le dossier où écrire (collecte/ du dossier de travail ; il y écrit grille/<lot>.md et faits/<lot>.md). Lance les lots en parallèle. Puis appelle synthese_de_collecte sur ce dossier : tu ne rédiges pas tant qu’une ligne est vide.`,
+    '',
+    'ÉCONOMIE DU CONTEXTE. Chaque appel relit tout ton contexte : ce que tu y fais entrer se paie à chaque tour suivant.',
+    '· Rédige une lettre à la fois, depuis sa seule synthèse (synthese-<veille>.md), sans relire les grilles ni les faits de l’autre lettre.',
+    '· Écris le corps une seule fois, dans un fichier du dossier de travail, puis publie-le ; corrige par remplacements ciblés, jamais en réécrivant la page entière.',
+    '· Ne relis pas une page Notion déjà lue dans ce run.',
+    '· Aucun appel d’outil ne doit durer plus de quatre minutes : au-delà, ton cache expire et tout ton contexte est réécrit. Découpe un lot de sources trop long.',
     '',
     'SECRETS. N’écris jamais un jeton, une clé ou un mot de passe dans un texte, une page, un courriel ou un fichier, même pour diagnostiquer une erreur.',
   ].join('\n')
@@ -284,6 +297,34 @@ export const PROMPT_DU_LECTEUR = [
   '',
   `Ouvre d’abord avec WebFetch. Si la page est refusée aux robots (403, 503, page vide ou rendue en JavaScript), ouvre-la au navigateur : node ${LIRE_PAGE} <url>. Aucune autre commande n’est permise. Une page que tu n’as pas pu ouvrir est dite non ouverte, avec la raison ; jamais muette.`,
 ].join('\n')
+
+export const PROMPT_DU_COLLECTEUR = [
+  'Tu collectes, pour un agent de veille, un lot de familles d’un référentiel. Tu écris en français, sans tiret cadratin. Tu ne rédiges pas la lettre : tu rends des lignes de grille et des faits sourcés.',
+  '',
+  'ORDRE.',
+  `1. Lis le référentiel qu’on te nomme (mcp__${SERVEURS.notion}__notion-fetch) et n’en garde que ton lot : sources nommées, requêtes types, entités du corpus, dossiers, échéances.`,
+  `2. Ouvre d’abord toutes les sources nommées du lot en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls), 30 URL au plus par appel. Ses lignes OUVERTE et NON OUVERTE vont telles quelles dans ta grille ; relance dans un second appel les lignes À RELANCER. Lis avec Read les seuls fichiers dont tu as besoin.`,
+  `3. Lance chaque requête type, une par une (WebSearch), et requête chaque entité du corpus une par une. N’ouvre un résultat (WebFetch, ou node ${LIRE_PAGE} <url> s’il refuse les robots) que s’il peut porter un fait.`,
+  '4. Requestionne chaque dossier ouvert à sa source primaire (registre public pour une procédure collective).',
+  '5. Fenêtre : celle qu’on te donne. Une famille sans fait daté dans la fenêtre est élargie à 30 jours, puis 90 ; un fait antérieur entre comme « élément de contexte, non nouveau », daté, et l’élargissement est noté.',
+  '',
+  'RÈGLES. Une page non ouverte n’est jamais un RAS : NON OUVERTE et la raison. Un fait n’entre que si sa source a été ouverte pendant ce run, extrait recopié mot pour mot. Un RAS porte la date de la dernière publication trouvée. Tu n’écris jamais dans Notion ni dans Gmail.',
+  '',
+  'CE QUE TU ÉCRIS, dans le dossier qu’on te donne :',
+  '· grille/<lot>.md : une table « | Référentiel | Section et famille | Élément | État | Détail | », une ligne par source nommée, requête, entité, dossier et échéance, état OUVERTE, REQUÊTÉE, FOURNIE ou NON OUVERTE, aucune ligne vide ; puis un titre « ## Élargissements ».',
+  '· faits/<lot>.md : un bloc par fait, « ### titre » puis les lignes « - Référentiel : », « - Famille : », « - Date du fait : », « - Nouveau ou contexte : », « - Source : », « - Extrait : », « - Ce qui s’est passé : », « - Impact proposé : » (FORT, MOYEN ou RAS, avec le critère cité), « - Pour le client : », « - Acteurs nommés : ». Un RAS motivé est un bloc « ### RAS motivé : … ».',
+  '',
+  'Rends un rapport de 15 lignes au plus : comptes par état, faits nouveaux et de contexte par famille, élargissements, sources non ouvertes, échecs. Ne recopie pas les faits : ils sont dans le fichier.',
+].join('\n')
+
+export function définitionDuCollecteur(): AgentDefinition {
+  return {
+    description: 'Collecte un lot de familles d’un référentiel et écrit sa grille et ses faits sourcés dans le dossier de travail.',
+    prompt: PROMPT_DU_COLLECTEUR,
+    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`],
+    model: MODÈLE_COLLECTEUR,
+  }
+}
 
 export function définitionDuLecteur(): AgentDefinition {
   return {
@@ -315,6 +356,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
     nomExpéditeur: variable('GMAIL_NOM_EXPEDITEUR') ?? 'Signaux faibles',
     journal: sorties.journal,
     relevé,
+    espace: sorties.espace,
   }
   const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche' }
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
@@ -328,7 +370,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
     effort: EFFORT,
     systemPrompt: { type: 'preset', preset: 'claude_code', append: consignesDuHarnais(maintenant, portail) },
     tools: ['Agent', 'WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'ToolSearch'],
-    agents: { [SOUS_AGENT_LECTEUR]: définitionDuLecteur() },
+    agents: { [SOUS_AGENT_LECTEUR]: définitionDuLecteur(), [SOUS_AGENT_COLLECTEUR]: définitionDuCollecteur() },
     mcpServers: { [SERVEURS.notion]: serveurNotion(secrets.jetonNotion), ...serveursDesOutils(configuration) },
     ...optionsDeGarde(contexte, sorties.journal),
     maxBudgetUsd: plafondUsd,

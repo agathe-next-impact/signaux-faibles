@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { SEUIL_GMAIL_OCTETS } from '@/lib/email/gabarit'
-import { adressePostale } from '@/lib/email/gmail'
+import { adressePostale, adresseDeRéponseSûre, boîteOpératrice, déposerChezLOpératrice, ErreurDEnvoi } from '@/lib/email/gmail'
 import { composerProspection } from '@/lib/email/lemlist'
 import { composerLettre } from '@/lib/email/lettre'
 import { SCHÉMA_MESSAGE, composerMessageClient } from '@/lib/email/message'
@@ -9,6 +9,7 @@ import { env } from '@/lib/env'
 import { lireBlocsDePage } from '@/lib/notion/editions'
 import { lireÉditionDeTravail } from '@/lib/notion/travail'
 import { identifiantAvecTirets, identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
+import { empreinte } from '@/lib/portail/debit'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 
 /**
@@ -43,7 +44,25 @@ import { contrôlerLaLettre } from '@/lib/portail/lint'
  *
  * Au-delà de 102 Ko, Gmail masque la fin du message : `octets` est rendu, et
  * un dépassement est signalé par `avertissement`.
+ *
+ * **Le brouillon déposé par le portail** (23 octobre 2026). Avec
+ * `"brouillon": { "à": ["client@exemple.fr"] }` (zéro à dix adresses, jamais de
+ * copie), le portail dépose lui-même le courriel en brouillon dans la boîte de
+ * l'opératrice (`GMAIL_BOITE_OPERATRICE`) et rend
+ * `{ état: "brouillon", objet, idBrouillon, idMessage, octets }`, **sans le
+ * HTML** : la tâche n'a plus à recopier 68 Ko par lettre dans `create_draft`.
+ * Rien ne part : l'opératrice relit et envoie. Si la boîte n'est pas configurée
+ * ou si Gmail refuse, la route rend le courriel composé comme sans `brouillon`,
+ * avec `brouillon: { état: "indisponible" | "échec", … }` : la tâche dépose
+ * alors le brouillon elle-même, comme avant.
  */
+
+/** Les destinataires d'un brouillon : des adresses simples, sans retour à la ligne. */
+const BROUILLON = z.object({
+  à: z
+    .array(z.string().trim().refine((a) => adresseDeRéponseSûre(a) !== null, 'adresse illisible'))
+    .max(10),
+})
 
 const LETTRE = z.object({
   sorte: z.literal('lettre'),
@@ -52,6 +71,7 @@ const LETTRE = z.object({
   organisation: z.string().trim().min(1).max(120).nullish(),
   /** L'objet du brouillon, tel que la tâche l'a composé ; à défaut, le titre de l'édition. */
   objet: z.string().trim().min(1).max(160).nullish(),
+  brouillon: BROUILLON.nullish(),
 })
 
 /** Un email de prospection rempli pour Gmail (pilote sans lemlist, 20 octobre 2026). */
@@ -63,28 +83,61 @@ const PROSPECTION = z
     entreprise: z.string().trim().min(1).max(120),
     essentiel: z.string().trim().max(1400).nullish(),
     faitMarquant: z.string().trim().max(300).nullish(),
+    brouillon: BROUILLON.nullish(),
   })
   .refine((d) => d.étape !== 1 || Boolean(d.essentiel), { message: 'requis pour l’étape 1', path: ['essentiel'] })
   .refine((d) => d.étape !== 2 || Boolean(d.faitMarquant), { message: 'requis pour l’étape 2', path: ['faitMarquant'] })
 
 const DEMANDE = z.discriminatedUnion('sorte', [
   LETTRE,
-  SCHÉMA_MESSAGE.extend({ sorte: z.literal('message') }),
+  SCHÉMA_MESSAGE.extend({ sorte: z.literal('message'), brouillon: BROUILLON.nullish() }),
   PROSPECTION,
 ])
 
-function réponse(objet: string, html: string, texte: string): NextResponse {
+type Brouillon = z.infer<typeof BROUILLON>
+
+/**
+ * Le courriel composé, rendu à la tâche ; ou, si elle demande un brouillon et
+ * que la boîte de l'opératrice le permet, déposé par le portail et rendu sans
+ * son HTML.
+ */
+async function réponse(
+  objet: string,
+  html: string,
+  texte: string,
+  brouillon: Brouillon | null | undefined,
+  nomExpéditeur: string,
+): Promise<NextResponse> {
   const octets = Buffer.byteLength(html, 'utf8')
-  return NextResponse.json({
-    état: 'composé',
-    objet,
-    html,
-    texte,
-    octets,
-    ...(octets > SEUIL_GMAIL_OCTETS * 0.9
+  const avertissement =
+    octets > SEUIL_GMAIL_OCTETS * 0.9
       ? { avertissement: `courriel de ${Math.round(octets / 1024)} Ko : Gmail masque la fin au-delà de 102 Ko` }
-      : {}),
-  })
+      : {}
+  const composé = (extra: Record<string, unknown> = {}) =>
+    NextResponse.json({ état: 'composé', objet, html, texte, octets, ...avertissement, ...extra })
+
+  if (!brouillon) return composé()
+  const boîte = boîteOpératrice()
+  if (!boîte) {
+    return composé({ brouillon: { état: 'indisponible', raison: 'boîte de l’opératrice non configurée' } })
+  }
+  try {
+    const { idBrouillon, idMessage } = await déposerChezLOpératrice(
+      { destinataire: brouillon.à.join(', '), sujet: objet, texte, html },
+      boîte,
+      nomExpéditeur,
+    )
+    // Jamais d'adresse dans le journal : l'empreinte de huit caractères.
+    const pour = brouillon.à.length ? brouillon.à.map(empreinte).join(', ') : 'aucun destinataire'
+    console.info(`[veille/courriel] brouillon ${idBrouillon ?? '?'} déposé pour ${pour}.`)
+    return NextResponse.json({ état: 'brouillon', objet, idBrouillon, idMessage, destinataires: brouillon.à.length, octets, ...avertissement })
+  } catch (erreur) {
+    const statut = erreur instanceof ErreurDEnvoi ? erreur.statut : null
+    // Le statut seul, comme le journal des courriers : le corps d'un refus de
+    // Gmail peut reprendre une adresse.
+    console.error(`[veille/courriel] brouillon non déposé : ${statut ? `Gmail ${statut}` : erreur instanceof Error ? erreur.name : 'erreur'}`)
+    return composé({ brouillon: { état: 'échec', statut } })
+  }
 }
 
 export async function POST(requête: NextRequest): Promise<NextResponse> {
@@ -111,7 +164,9 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   const demande = lu.data
 
   try {
-    const portailUrl = env().PORTAIL_URL
+    const configuration = env()
+    const portailUrl = configuration.PORTAIL_URL
+    const nomExpéditeur = configuration.GMAIL_EXPEDITEUR_NOM ?? 'signauxfaibles'
 
     if (demande.sorte === 'prospection') {
       const courriel = composerProspection(
@@ -125,13 +180,13 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
         { portailUrl, adressePostale: adressePostale() },
       )
       console.info(`[veille/courriel] prospection, étape ${demande.étape}, composée.`)
-      return réponse(courriel.objet, courriel.html, courriel.texte)
+      return réponse(courriel.objet, courriel.html, courriel.texte, demande.brouillon, nomExpéditeur)
     }
 
     if (demande.sorte === 'message') {
       const { html, texte } = composerMessageClient(demande, { portailUrl, adressePostale: adressePostale() })
       console.info(`[veille/courriel] message pour ${demande.slug} composé.`)
-      return réponse(demande.objet, html, texte)
+      return réponse(demande.objet, html, texte, demande.brouillon, nomExpéditeur)
     }
 
     const pageId = identifiantAvecTirets(demande.page)
@@ -163,7 +218,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
       adressePostale: adressePostale(),
     })
     console.info(`[veille/courriel] lettre ${pageId} pour ${demande.slug} composée (${lettre.axes} axe(s)).`)
-    return réponse(objet, lettre.html, lettre.texte)
+    return réponse(objet, lettre.html, lettre.texte, demande.brouillon, nomExpéditeur)
   } catch (erreur) {
     console.error(`[veille/courriel] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
     return NextResponse.json({ état: 'erreur' }, { status: 502 })

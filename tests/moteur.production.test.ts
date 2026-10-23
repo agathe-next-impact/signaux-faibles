@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type Anthropic from '@anthropic-ai/sdk'
 import { assemblerLaLettre, phraseDatée, titreDÉdition } from '@/lib/moteur/assemblage'
-import { collecterLesSources, couvertureDe, phrasesDuTexte, versTexte, type Gel } from '@/lib/moteur/collecte'
+import { collecterLesSources, collecterLesUrls, couvertureDe, phrasesDuTexte, versTexte, type Gel } from '@/lib/moteur/collecte'
 import { contrôlerLaProduction, urlsDuMarkdown } from '@/lib/moteur/portes'
 import { produireLaLettre } from '@/lib/moteur/produire'
 import type { Rédacteur, SortieRédigée, Sélection } from '@/lib/moteur/redaction'
@@ -143,6 +143,17 @@ describe('collecterLesSources', () => {
     const html = pages.get(url)
     return html ? new Response(html, { status: 200, headers: { 'content-type': 'text/html' } }) : new Response('', { status: 404 })
   }) as typeof fetch
+
+  it('n’ouvre plus rien après l’échéance du lot : le reste est à relancer, pas fermé', async () => {
+    const lectures = await collecterLesUrls([URL(1), URL(2)], { fetch: fauxFetch, échéance: Date.now() - 1 })
+    expect(lectures.map((l) => l.état)).toEqual(['delai-du-lot', 'delai-du-lot'])
+  })
+
+  it('lit une liste d’URL quel que soit le référentiel, chaque adresse une fois', async () => {
+    const lectures = await collecterLesUrls([URL(1), URL(1), URL(2)], { fetch: fauxFetch })
+    expect(lectures.map((l) => l.url)).toEqual([URL(1), URL(2)])
+    expect(lectures.every((l) => l.état === 'ouverte')).toBe(true)
+  })
 
   it('extrait le texte utile, mesure la couverture et marque ce qui a changé', async () => {
     const premières = await collecterLesSources(RÉFÉRENTIEL, { fetch: fauxFetch, parallèle: 3 })

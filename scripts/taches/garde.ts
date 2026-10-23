@@ -34,8 +34,18 @@ export const OUTILS_NOTION_LECTURE = ['notion-fetch', 'notion-search', 'notion-q
  */
 export const OUTILS_NOTION_ÉCRITURE = ['notion-create-pages', 'notion-update-page', 'notion-create-view', 'notion-get-async-task'] as const
 
-/** Le seul sous-agent : il lit les sources, sur Haiku. */
+/** Le sous-agent qui lit les sources, sur Haiku. */
 export const SOUS_AGENT_LECTEUR = 'lecteur'
+
+/**
+ * Le sous-agent qui collecte un lot de familles et écrit sa grille et ses
+ * faits dans le dossier de travail, sur Sonnet (23 octobre 2026) : la collecte
+ * de la première lettre Heritech, faite sur Opus, en avait coûté 34 $.
+ */
+export const SOUS_AGENT_COLLECTEUR = 'collecteur'
+
+/** Les sous-agents permis ; leur modèle est fixé par leur définition. */
+export const SOUS_AGENTS: readonly string[] = [SOUS_AGENT_LECTEUR, SOUS_AGENT_COLLECTEUR]
 
 export type ContexteDeGarde = {
   /** Le dossier de travail temporaire du run : seul endroit où écrire. */
@@ -117,8 +127,8 @@ export function décisionPour(contexte: ContexteDeGarde, outil: string, entrée:
     }
     case 'Agent':
     case 'Task': {
-      if (entrée['subagent_type'] !== SOUS_AGENT_LECTEUR) return `seul le sous-agent « ${SOUS_AGENT_LECTEUR} » est permis`
-      if (entrée['model'] !== undefined) return 'le modèle du lecteur est fixé par sa définition'
+      if (!SOUS_AGENTS.includes(String(entrée['subagent_type']))) return `seuls les sous-agents ${SOUS_AGENTS.map((a) => `« ${a} »`).join(' et ')} sont permis`
+      if (entrée['model'] !== undefined) return 'le modèle d’un sous-agent est fixé par sa définition'
       return null
     }
     case 'Read':

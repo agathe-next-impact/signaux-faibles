@@ -326,9 +326,11 @@ export function composerMessage(
   expéditeur: string,
   nomExpéditeur: string,
 ): string {
+  // Un brouillon peut n'avoir aucun destinataire (lettre d'un client dont
+  // l'adresse manque encore) : l'en-tête To est alors omis, jamais posé vide.
   const entêtes = [
     `From: ${entêteEncodé(nomExpéditeur)} <${expéditeur}>`,
-    `To: ${message.destinataire}`,
+    ...(message.destinataire ? [`To: ${message.destinataire}`] : []),
     `Subject: ${entêteEncodé(message.sujet)}`,
     'MIME-Version: 1.0',
   ]
@@ -417,6 +419,56 @@ export async function créerBrouillon(message: Message): Promise<{ readonly idMe
   }
   const corps = (await réponse.json().catch(() => null)) as { message?: { id?: unknown } } | null
   return { idMessage: typeof corps?.message?.id === 'string' ? corps.message.id : null }
+}
+
+/**
+ * La boîte de l'opératrice, où les lettres attendent en brouillon d'être relues
+ * et envoyées à la main (23 octobre 2026). Facultative et lue directement dans
+ * l'environnement, comme `ADRESSE_POSTALE` : sans elle, `POST /api/veille/courriel`
+ * rend le HTML comme avant et la tâche dépose le brouillon elle-même.
+ */
+export function boîteOpératrice(): string | null {
+  const valeur = process.env['GMAIL_BOITE_OPERATRICE']?.trim()
+  return valeur && adresseDeRéponseSûre(valeur) ? valeur : null
+}
+
+/**
+ * Dépose une lettre, ou un courriel client composé par la même route, en
+ * brouillon dans la boîte de l'opératrice, sans l'envoyer (23 octobre 2026).
+ *
+ * Avant, la route rendait le HTML et la tâche le recopiait dans
+ * `create_draft` : 68 Ko par lettre écrits en sortie par le modèle, puis relus
+ * à chacun de ses appels suivants. Ici le HTML ne quitte pas le portail.
+ *
+ * Ce n'est pas un courrier du portail : rien ne part, l'opératrice relit et
+ * envoie, et la réconciliation du soir constate l'envoi dans la même boîte.
+ * Il ne passe donc pas par le journal `courriers`. Seul appelant :
+ * `app/api/veille/courriel/route.ts`, après le contrôle de la lettre.
+ */
+export async function déposerChezLOpératrice(
+  message: Message,
+  boîte: string,
+  nomExpéditeur: string,
+): Promise<{ readonly idBrouillon: string | null; readonly idMessage: string | null }> {
+  const jeton = await jetonDeDélégation(compteDeService(), boîte, PORTÉE_BROUILLONS)
+
+  const réponse = await fetch(BROUILLONS, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${jeton}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ message: { raw: base64url(composerMessage(message, boîte, nomExpéditeur)) } }),
+  })
+
+  if (!réponse.ok) {
+    throw new ErreurDEnvoi(réponse.status, await réponse.text())
+  }
+  const corps = (await réponse.json().catch(() => null)) as { id?: unknown; message?: { id?: unknown } } | null
+  return {
+    idBrouillon: typeof corps?.id === 'string' ? corps.id : null,
+    idMessage: typeof corps?.message?.id === 'string' ? corps.message.id : null,
+  }
 }
 
 /** Un refus de Gmail, avec son statut HTTP : c'est lui seul que le journal garde. */

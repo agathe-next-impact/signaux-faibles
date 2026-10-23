@@ -451,6 +451,23 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(corps).not.toContain('envoyerCourrier(')
   })
 
+  /**
+   * Le brouillon déposé par le portail (23 octobre 2026) : un seul chemin, la
+   * route de mise en forme, et toujours après le contrôle de la lettre. Il ne
+   * dépose qu'un brouillon : ni envoi, ni courrier du journal.
+   */
+  it('déposerChezLOpératrice n’est appelé que par la route courriel, après le contrôle de la lettre', () => {
+    expect(appelants('déposerChezLOpératrice')).toEqual(['app/api/veille/courriel/route.ts', 'lib/email/gmail.ts'])
+    const corps = readFileSync(join(process.cwd(), 'app/api/veille/courriel/route.ts'), 'utf8')
+    expect(corps).not.toContain('envoyerMessage(')
+    expect(corps).not.toContain('créerBrouillon(')
+    const source = readFileSync(join(process.cwd(), 'lib/email/gmail.ts'), 'utf8')
+    const fonction = source.slice(source.indexOf('export async function déposerChezLOpératrice'), source.indexOf('export class ErreurDEnvoi'))
+    expect(fonction).toContain('PORTÉE_BROUILLONS')
+    expect(fonction).toContain('BROUILLONS')
+    expect(fonction).not.toContain('ENVOI')
+  })
+
   it('listerÉditionsDeTravail n’est appelée que par le contexte et par la file', () => {
     expect(appelants('listerÉditionsDeTravail')).toEqual([
       'app/api/veille/contexte/route.ts',

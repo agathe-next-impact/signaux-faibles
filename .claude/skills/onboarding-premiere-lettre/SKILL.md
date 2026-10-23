@@ -25,6 +25,8 @@ allowed-tools:
   - "Bash(curl *https://www.signauxfaibles.io/api/acces/*)"
   - "Bash(curl *https://www.signauxfaibles.io/api/veille/*)"
   - "Bash(node scripts/lire-page.mjs *)"
+  - "Bash(pnpm -s collecte:lire *)"
+  - "Bash(pnpm -s collecte:synthese *)"
   - "Agent"
 ---
 
@@ -37,6 +39,18 @@ Tu produis la première édition de chaque veille d'une organisation nouvellemen
 équipée, pour le cabinet Signaux faibles. Tu écris en français. Ce lancement est
 le **B**, le plus coûteux du dispositif et le plus lu : il ne se lance que sur
 ordre, et cette commande est cet ordre.
+
+**Ce que coûte ce lancement, et pourquoi la méthode ci-dessous** (23 octobre
+2026). La première lettre Heritech a coûté 63 $ au tarif de l'API : 34 $ de
+collecte sur Opus, 23,50 $ de rédaction (un seul rédacteur pour les deux lettres,
+contexte monté à 722 000 jetons, HTML des courriels recopié par le modèle, cache
+expiré pendant une attente de 58 minutes), 5,50 $ d'orchestration dans une
+conversation déjà longue. D'où cinq règles : **lance cette commande dans une
+session neuve** (ou par la tâche « Onboarding : première lettre »), jamais à la
+suite d'un autre travail ; la collecte va aux agents `collecteur-veille`, sur
+Sonnet ; les sources nommées sont lues en code ; **un** rédacteur
+`redacteur-veille` par lettre, qui ne lit que sa synthèse ; le brouillon est
+déposé par le portail, et le HTML ne passe jamais par un modèle.
 
 Organisation visée : $ARGUMENTS
 
@@ -79,9 +93,13 @@ Organisation visée : $ARGUMENTS
    d'idempotence (aucune édition existante pour cette organisation), porte
    (Q1–Q3 sans « [hypothèse] », veilles déterminées, priorité 1 répercutée),
    collecte refaite intégralement, éditions n°1 en **brouillon Gmail adressé au
-   client** — jamais envoyées par toi, et mises en forme par le portail
-   (`POST /api/veille/courriel`, `sorte: "lettre"`, après le lint : `html` et
-   `texte` de la réponse vont tels quels dans `htmlBody` et `body`) —, puis
+   client** — jamais envoyées, mises en forme **et déposées** par le portail
+   (`POST /api/veille/courriel`, `sorte: "lettre"`, après le lint, avec
+   `"brouillon": { "à": [<destinataires>] }` : la réponse `"état": "brouillon"`
+   porte `idBrouillon` et pas le HTML ; toute réponse `"état": "composé"`
+   (boîte non configurée, Gmail en échec, ou portail antérieur à cette option),
+   repli : `html` et `texte` de la même réponse vont tels quels dans `htmlBody`
+   et `body` de `create_draft`) —, puis
    `POST /api/veille/organisations` (entrée en essai) et le contrôle (d) du
    §1.3 de la ligne « Accès », **laissée inactive**.
 
@@ -135,35 +153,56 @@ Organisation visée : $ARGUMENTS
    ce §6 qui fixe les rubriques et la profondeur de la lettre ; le contrat de forme
    ne dit que la forme.
 
-   **La collecte, sans raccourci** (étapes 1 et 1bis de « Tâche — Lettres de
-   veille ») :
-   - tiens la **grille de collecte dans un fichier** du répertoire de travail
-     temporaire de la session, une ligne par source nommée, dossier, entité du
-     corpus, requête type, échéance, extrait fourni et alerte, avec son état
-     (OUVERTE, REQUÊTÉE, FOURNIE, NON OUVERTE et sa raison). Aucune rédaction tant
-     qu'une ligne est vide. La note de méthode et le pied de la lettre se tirent
-     de ce fichier, jamais de mémoire : une lettre n'affirme pas qu'une requête a
-     été lancée si la grille ne le porte pas ;
-   - lance **chaque requête type** des deux référentiels, une par une, et requête
-     **chaque entité du corpus** une par une ;
-   - une source qui ne répond pas, ou dont le contenu n'est pas lisible, est
-     rouverte avec le navigateur, `node scripts/lire-page.mjs <url>`, avant
-     d'être classée « non ouverte » ; la raison écrite est celle du second essai ;
-   - **une famille vide dans la fenêtre nominale fait élargir la fenêtre**, famille
-     par famille, comme le prévoit l'étape 1 du prompt : les faits antérieurs
-     entrent comme « élément de contexte, non nouveau », datés, la case « Fenêtre
-     élargie » est cochée et la note de méthode le dit. Le volume minimal du §6
-     (six faits datés hors encadrés) se tient par l'élargissement, jamais par du
-     remplissage ;
-   - la collecte est longue : confie-la, famille par famille, à des agents
-     (`Agent`) qui rendent leurs lignes de grille et leurs faits sourcés, pour que
-     la rédaction ne se fasse pas dans un contexte saturé. Tu restes seul à écrire
-     dans Notion et dans Gmail.
+   **Garde ton propre contexte court.** Tu orchestres : tu ne lis ni les pages des
+   sources, ni les grilles, ni les faits. Les pages de règles longues, lis-les par
+   tranches ciblées ; si un résultat d'outil est sauvegardé dans un fichier,
+   recopie-le dans le dossier de travail pour que les agents le lisent, au lieu de
+   le faire entrer dans ton contexte. Toute commande `curl` porte `-m 60`.
 
-   **Avant le lint**, compte les paragraphes de faits hors encadrés et vérifie la
-   présence de chaque rubrique du §6 (dont « Analyse de la période »). Une rubrique
-   absente ou un volume sous le minimal sans fenêtre élargie : la lettre n'est pas
-   prête. Le lint du portail le signale aussi, en avertissement.
+   **La collecte, sans raccourci** (étapes 1 et 1bis de « Tâche — Lettres de
+   veille »), dans un dossier de travail du répertoire temporaire de la session :
+   - **découpe les deux référentiels en lots** de une ou deux familles du §1 (une
+     seule pour une famille lourde), plus un lot par moitié du corpus §2 avec ses
+     dossiers et le calendrier, plus un lot « canaux » pour la base « Extraits
+     fournis » et les deux recherches Gmail de l'étape 1.b. Huit à dix lots en tout ;
+   - confie chaque lot à un agent **`collecteur-veille`** (`Agent`,
+     `subagent_type: "collecteur-veille"`, sur Sonnet), tous en parallèle, avec :
+     le référentiel et son identifiant, le lot, la fenêtre nominale (la semaine
+     jusqu'à hier soir), le dossier de travail, et le chemin d'une copie des étapes
+     1 et 1bis de « Tâche — Lettres de veille ». Il lit d'abord les sources nommées
+     **en code** (`pnpm -s collecte:lire`), puis lance chaque requête type et
+     requête chaque entité une par une, et écrit `grille/<lot>.md` et
+     `faits/<lot>.md`. Le lot « canaux » se confie à un agent généraliste, parce
+     qu'il lit Gmail ; lecture seule ;
+   - une source qui ne répond pas est rouverte au navigateur avant d'être classée
+     « non ouverte » : la commande en code le fait seule, la raison écrite est
+     celle du second essai ;
+   - **une famille vide dans la fenêtre nominale fait élargir la fenêtre**, famille
+     par famille : les faits antérieurs entrent comme « élément de contexte, non
+     nouveau », datés, la case « Fenêtre élargie » est cochée et la note de
+     méthode le dit. Le volume minimal du §6 (six faits datés hors encadrés) se
+     tient par l'élargissement, jamais par du remplissage ;
+   - puis **`pnpm -s collecte:synthese <dossier>`** : il compte les grilles, rend
+     les sources non ouvertes et les élargissements, et écrit une synthèse par
+     lettre (`synthese-concurrentiel.md`, `synthese-ecosysteme.md`). Il sort en
+     erreur si une ligne de grille n'a pas d'état : **aucune rédaction tant
+     qu'une ligne est vide** ; relance alors le lot concerné.
+
+   **La rédaction, une lettre par agent.** Confie chaque édition à un agent
+   **`redacteur-veille`** (`subagent_type: "redacteur-veille"`), les deux en
+   parallèle, avec : l'organisation (ligne du registre, slug, nom), la veille et
+   son référentiel, la date d'édition, la période, le numéro (1), les
+   destinataires du brouillon, le dossier de travail, sa synthèse, et le chemin
+   d'une copie des étapes 2 à 6 de « Tâche — Lettres de veille » et du « Prompt —
+   Première lettre ». Il écrit la lettre une fois, la publie en Brouillon, la fait
+   passer au lint, fait déposer le brouillon par le portail et rend son rapport.
+   Les deux rédacteurs sont les seuls à écrire une édition ; **toi seul** écris
+   dans le registre, la ligne « Accès » et la notification.
+
+   **Avant d'accepter une lettre**, vérifie dans le rapport du rédacteur : chaque
+   rubrique du §6 présente (dont « Analyse de la période »), six faits datés hors
+   encadrés au moins ou fenêtre élargie dite, lint conforme, brouillon présent une
+   seule fois. Une lettre qui manque l'un de ces points n'est pas prête.
 
 6. **Consomme la case** en fin de run, lettre produite ou non, et écris le
    résultat dans « Dernier lancement manuel ».

@@ -143,6 +143,28 @@ Réponse `200` : `{ état: "composé", objet, html, texte, octets }`, et
 102 Ko). La tâche pose `html` dans `htmlBody` et `texte` dans `body` de
 `mcp__Gmail__create_draft`, **sans retoucher ni l'un ni l'autre**.
 
+### Le brouillon déposé par le portail (23 octobre 2026)
+
+Avec `"brouillon": { "à": ["lecteur@client.fr"] }` (zéro à dix adresses simples,
+jamais de copie), le portail **dépose lui-même** le courriel en brouillon dans la
+boîte de l'opératrice (`GMAIL_BOITE_OPERATRICE`, facultative, portée
+`gmail.compose` de la délégation) et rend
+`{ état: "brouillon", objet, idBrouillon, idMessage, destinataires, octets }`,
+**sans `html` ni `texte`**. Rien ne part : l'opératrice relit et envoie, la
+réconciliation du soir constate l'envoi dans la même boîte. Aucune adresse dans le
+journal : l'empreinte de huit caractères.
+
+Si la boîte n'est pas configurée, ou si Gmail refuse, la réponse est celle d'une
+demande sans `brouillon` (`état: "composé"`, `html`, `texte`), avec
+`brouillon: { état: "indisponible" }` ou `brouillon: { état: "échec", statut }` :
+la tâche dépose alors le brouillon elle-même, comme avant.
+
+Pourquoi : la tâche recopiait le HTML dans `create_draft`, 68 Ko par lettre écrits
+en sortie par le modèle, puis relus à chacun de ses appels suivants. Sur la
+première lettre Heritech, 210 000 caractères (`docs/cout-premiere-lettre.md`).
+`tests/architecture.test.ts` tient le seul appelant de `déposerChezLOpératrice`
+(cette route) et son ordre : après le contrôle de la lettre, jamais d'envoi.
+
 `lettre` : la page est lue avec le parseur de production, tous statuts, et
 contrôlée comme par le lint ; **une lettre non conforme rend `422`**
 (`non-conforme`, avec les ruptures) et n'est pas mise en forme. À appeler après

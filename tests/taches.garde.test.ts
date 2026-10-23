@@ -18,8 +18,9 @@ describe('garde des tâches : ce qui passe', () => {
     expect(permis(tâche, 'Bash', { command: `node ${LIRE_PAGE} https://exemple.fr/a 5000` })).toBe(true)
   })
 
-  it('laisse confier un lot au seul sous-agent lecteur, sans changer son modèle', () => {
+  it('laisse confier un lot au lecteur ou au collecteur, sans changer leur modèle', () => {
     expect(permis(tâche, 'Agent', { subagent_type: 'lecteur', prompt: 'x', description: 'y' })).toBe(true)
+    expect(permis(tâche, 'Agent', { subagent_type: 'collecteur', prompt: 'x', description: 'y' })).toBe(true)
   })
 
   it('laisse lire et écrire dans le dossier de travail', () => {
@@ -60,6 +61,7 @@ describe('garde des tâches : ce qui est refusé', () => {
   it('refuse tout autre sous-agent, et un modèle imposé au lecteur', () => {
     expect(permis(tâche, 'Agent', { subagent_type: 'general-purpose' })).toBe(false)
     expect(permis(tâche, 'Agent', { subagent_type: 'lecteur', model: 'opus' })).toBe(false)
+    expect(permis(tâche, 'Agent', { subagent_type: 'collecteur', model: 'opus' })).toBe(false)
   })
 
   it('refuse d’écrire hors du dossier de travail', () => {
