@@ -14,6 +14,7 @@ CREATE TABLE "prescripteurs" (
 --> statement-breakpoint
 ALTER TABLE "organisations" ADD COLUMN "recommandée_par" uuid;--> statement-breakpoint
 ALTER TABLE "organisations" ADD COLUMN "recommandée_le" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "organisations" ADD COLUMN "partage_avec_prescripteur" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "prescripteurs" ADD CONSTRAINT "prescripteurs_organisation_id_organisations_id_fk" FOREIGN KEY ("organisation_id") REFERENCES "public"."organisations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organisations" ADD CONSTRAINT "organisations_recommandée_par_prescripteurs_id_fk" FOREIGN KEY ("recommandée_par") REFERENCES "public"."prescripteurs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organisations" ADD CONSTRAINT "organisations_recommandée_hors_prospection" CHECK (not ("organisations"."entrée_par_prospection" and "organisations"."recommandée_par" is not null));--> statement-breakpoint

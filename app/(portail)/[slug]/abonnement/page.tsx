@@ -1,10 +1,11 @@
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { ChoixDeFormule, GérerLAbonnement, RetourDAbonnement } from '@/components/abonnement'
-import { Case, EntêteÉcran, Grille, Panneau } from '@/components/coquille'
+import { Case, EntêteÉcran, Grille, LienFlèche, Panneau } from '@/components/coquille'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { ADRESSE_D_ABONNEMENT, LECTEURS_ACTIFS_MAX, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
 import { ajouterLecteur, retirerLecteur } from '@/lib/portail/lecteurs'
+import { espacePrescripteurDe } from '@/lib/portail/prescripteur'
 import { lecteursModifiables, situationDeLEspace } from '@/lib/portail/situation'
 
 /**
@@ -55,7 +56,10 @@ export default async function MonAbonnement({
   const retour = typeof paramètres.abonnement === 'string' ? paramètres.abonnement : undefined
   const issueLecteurs = typeof paramètres.lecteurs === 'string' ? MESSAGES_LECTEURS[paramètres.lecteurs] : undefined
 
-  const situation = await situationDeLEspace(accès.organisationId)
+  const [situation, prescripteur] = await Promise.all([
+    situationDeLEspace(accès.organisationId),
+    espacePrescripteurDe(accès.organisationId),
+  ])
   // L'opérateur en visite n'a pas d'étape calculée par la lecture (elle lui est
   // toujours complète) : elle se calcule ici, des mêmes données, pour qu'il
   // voie l'étape du client. Pour le client, c'est la même fonction : un seul
@@ -91,6 +95,20 @@ export default async function MonAbonnement({
 
       <div className="mt-8 flex max-w-3xl flex-col gap-8">
         <RetourDAbonnement motif={retour} />
+
+        {/* Un prescripteur (24 octobre 2026) suit ses recommandations sur un
+            écran à part, atteint d'ici seulement : ce n'est pas un écran de veille. */}
+        {prescripteur ? (
+          <Panneau>
+            <p className="text-encre">
+              Vous recommandez signauxfaibles : votre lien et les organisations qui ont accepté de
+              partager leur suivi sont sur un écran dédié.
+            </p>
+            <p className="mt-3">
+              <LienFlèche href={`/${slug}/prescripteur`}>Vos recommandations</LienFlèche>
+            </p>
+          </Panneau>
+        ) : null}
 
         <Panneau ton={étape?.étape === 'suspendue' || étape?.étape === 'tronquee' ? 'rose' : 'ardoise'}>
           <p className="text-encre">{phraseDÉtape(étape, situation?.organisation.activéeLe ?? null, historique)}</p>

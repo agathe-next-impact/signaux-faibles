@@ -9,6 +9,7 @@ import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/doma
 import { PARAMÈTRE_DU_PRESCRIPTEUR } from '@/lib/domaine/prescripteurs'
 import { racineDuPortail } from '@/lib/email/gabarit'
 import { env } from '@/lib/env'
+import { réglerLePartageAvecLePrescripteur } from '@/lib/portail/partage'
 
 export const metadata: Metadata = { title: 'Prescripteurs — signauxfaibles' }
 
@@ -18,8 +19,11 @@ export const metadata: Metadata = { title: 'Prescripteurs — signauxfaibles' }
  *
  * Par prescripteur : son code, le lien de recommandation à lui donner, et les
  * organisations qu'il a recommandées avec leur étape, calculée comme dans
- * l'espace du client. Rien ne s'y règle : un prescripteur se crée par
- * `POST /api/veille/prescripteurs`, son accès offert et les réglages de ses
+ * l'espace du client. Un seul réglage s'y fait : l'accord de partage, que
+ * l'opératrice pose après l'accord du client, et qui fait apparaître
+ * l'organisation sur l'écran « Vos recommandations » du prescripteur
+ * (`lib/portail/partage.ts`). Un prescripteur se crée par
+ * `POST /api/veille/prescripteurs` ; son accès offert et les réglages de ses
  * organisations passent par le tableau des abonnements.
  *
  * Comme les autres tableaux, la garde est dans `listerLesPrescripteurs`, avant
@@ -39,8 +43,22 @@ const TYPES: Record<TypePrescripteur, string> = {
   autre: 'autre',
 }
 
-export default async function Prescripteurs() {
+const MESSAGES: Record<string, string> = {
+  'partage-réglé': 'Accord de partage enregistré.',
+  inconnue: 'Organisation inconnue.',
+  'non-recommandée': 'Cette organisation n’a pas de prescripteur : rien à partager.',
+  échec: 'La base n’a pas répondu : rien n’a été modifié.',
+}
+
+export default async function Prescripteurs({
+  searchParams,
+}: {
+  searchParams: Promise<{ partage?: string | string[]; slug?: string | string[] }>
+}) {
   const { accès, lignes } = await listerLesPrescripteurs()
+  const paramètres = await searchParams
+  const message = typeof paramètres.partage === 'string' ? MESSAGES[paramètres.partage] : undefined
+  const slugRéglé = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
   const aujourdHui = aujourdHuiÀParis()
   const portail = racineDuPortail(env().PORTAIL_URL)
 
@@ -58,6 +76,13 @@ export default async function Prescripteurs() {
           </Link>
         </p>
       </header>
+
+      {message ? (
+        <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
+          {slugRéglé ? `${slugRéglé} : ` : ''}
+          {message}
+        </p>
+      ) : null}
 
       {lignes === null ? (
         <Panneau ton="rose">
@@ -117,7 +142,7 @@ function Prescripteur({
           <table className="w-full border-collapse text-corps">
             <thead>
               <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
-                {['organisation', 'recommandée le', 'étape', 'parutions d’essai'].map((entête) => (
+                {['organisation', 'recommandée le', 'étape', 'parutions d’essai', 'partage'].map((entête) => (
                   <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
                     {entête}
                   </th>
@@ -137,6 +162,19 @@ function Prescripteur({
                     {libelléDÉtape(étapeDuParcours({ organisation: r, abonnement: r.abonnement, aujourdHui }))}
                   </td>
                   <td className="px-4 py-3 text-ardoise">{r.parutionsDEssai}</td>
+                  <td className="px-4 py-3">
+                    <form action={réglerLePartageAvecLePrescripteur} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="slug" value={r.slug} />
+                      <input type="hidden" name="partage" value={r.partageAvecPrescripteur ? 'non' : 'oui'} />
+                      <span className="label-mono text-ardoise">{r.partageAvecPrescripteur ? 'accepté' : 'non'}</span>
+                      <button
+                        type="submit"
+                        className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2"
+                      >
+                        {r.partageAvecPrescripteur ? 'Retirer l’accord' : 'Le client a accepté'}
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               ))}
             </tbody>

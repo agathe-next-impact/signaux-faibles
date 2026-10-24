@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
 import { ouvrirEnEssai } from '@/lib/base/organisations'
-import { créerPrescripteur, listeDExclusion, tableauDesPrescripteurs } from '@/lib/base/prescripteurs'
+import {
+  créerPrescripteur,
+  lireLEspacePrescripteur,
+  listeDExclusion,
+  réglerLePartage,
+  tableauDesPrescripteurs,
+} from '@/lib/base/prescripteurs'
 import { abonnements, organisations } from '@/lib/base/schema'
 import { PARUTIONS_D_ESSAI, PARUTIONS_D_ESSAI_RECOMMANDÉE } from '@/lib/domaine/parcours'
 import { baseEnMémoire } from './aide/base-en-memoire'
@@ -136,5 +142,40 @@ describe('prescripteurs', () => {
       expect.objectContaining({ slug: 'client', état: 'essai', parutionsDEssai: 4, abonnement: { état: 'active' } }),
     ])
     expect(JSON.stringify(lignes)).not.toContain('sub_1')
+  })
+
+  it('l’accord de partage ne se pose que sur une organisation recommandée', async () => {
+    await créerPrescripteur({ slug: 'cabinet', code: 'durand', type: 'conseil' }, db)
+    await ouvrirEnEssai({ slug: 'client', nom: 'Client', registreNotion: registre(4), prescripteur: 'durand' }, db)
+    await ouvrirEnEssai({ slug: 'direct', nom: 'Direct', registreNotion: registre(5) }, db)
+    expect((await lire('client')).partageAvecPrescripteur).toBe(false)
+    expect(await réglerLePartage('client', true, db)).toEqual({ sorte: 'partage-réglé', partage: true })
+    expect((await lire('client')).partageAvecPrescripteur).toBe(true)
+    expect(await réglerLePartage('direct', true, db)).toEqual({ sorte: 'non-recommandée' })
+    expect(await réglerLePartage('absente', true, db)).toEqual({ sorte: 'inconnue' })
+  })
+
+  it('l’espace du prescripteur ne montre que ses recommandations qui ont accepté le partage', async () => {
+    await créerPrescripteur({ slug: 'cabinet', code: 'durand', type: 'conseil' }, db)
+    await ouvrirEnEssai({ slug: 'chambre', nom: 'Chambre', registreNotion: registre(2) }, db)
+    await créerPrescripteur({ slug: 'chambre', code: 'chambre', type: 'chambre_consulaire' }, db)
+    await ouvrirEnEssai({ slug: 'client', nom: 'Client', registreNotion: registre(4), prescripteur: 'durand' }, db)
+    await ouvrirEnEssai({ slug: 'discret', nom: 'Discret', registreNotion: registre(5), prescripteur: 'durand' }, db)
+    await ouvrirEnEssai({ slug: 'autre', nom: 'Autre', registreNotion: registre(6), prescripteur: 'chambre' }, db)
+    await réglerLePartage('client', true, db)
+    await réglerLePartage('autre', true, db)
+
+    const espace = await lireLEspacePrescripteur(registre(1), db)
+    expect(espace).toMatchObject({ code: 'durand', actif: true })
+    expect(espace!.partagées.map((r) => r.nom)).toEqual(['Client'])
+    expect(espace!.partagées[0]).toMatchObject({ état: 'essai', parutionsDEssai: 4, abonnement: null })
+    // Rien ne sort qui ne serve à l'étape : ni slug, ni identifiant.
+    expect(Object.keys(espace!.partagées[0]!).sort()).toEqual(
+      ['abonnement', 'activéeLe', 'nom', 'offre', 'parutionsDEssai', 'recommandéeLe', 'état'].sort(),
+    )
+    // Un autre prescripteur ne voit que les siennes ; une organisation qui n'est
+    // pas prescripteur n'a pas d'espace.
+    expect((await lireLEspacePrescripteur(registre(2), db))!.partagées.map((r) => r.nom)).toEqual(['Autre'])
+    expect(await lireLEspacePrescripteur(registre(4), db)).toBeNull()
   })
 })

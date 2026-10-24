@@ -88,9 +88,33 @@ l'opératrice. Jamais d'envoi direct, jamais de séquence.
   `CLAUDE.md`) ne connaît pas d'exception de ce côté : un prescripteur n'est
   jamais lecteur d'une autre organisation que la sienne, et n'a jamais le
   privilège « Tous les espaces ».
-- **Un libellé d'étape sans accord du client.** Le point mensuel nomme une
-  organisation et son étape ; c'est une information commerciale sur le client,
-  à couvrir par une mention à l'onboarding (décision ci-dessous).
+- **Une organisation recommandée sans son accord.** Son nom et son étape sont
+  une information commerciale sur le client. Ils n'apparaissent sur l'écran
+  « Vos recommandations » du prescripteur que si l'opératrice a posé l'accord
+  de partage (`organisations.partage_avec_prescripteur`), après l'accord du
+  client. Sans lui, l'organisation n'est ni nommée ni comptée.
+- **Le détail de l'étape.** L'écran dit l'étape en quatre mots (en
+  préparation, en essai, abonnée, essai terminé : `étapeVueDuPrescripteur`),
+  jamais le numéro de parution, l'offre, la formule ni une suspension posée à
+  la main.
+
+## L'écran « Vos recommandations » (24 octobre 2026)
+
+Dans son propre espace, `/<slug>/prescripteur`, atteint depuis « Mon
+abonnement » (jamais par un onglet : ce n'est pas un écran de veille). Il
+donne au prescripteur son lien de recommandation, puis, pour chaque
+organisation recommandée qui a accepté le partage, son nom, la date de la
+recommandation et son étape en quatre mots, avec trois chiffres (affichées,
+en essai, abonnées). Il lit Postgres par la clé de cloisonnement de la
+session (`lireLEspacePrescripteur`), comme « Mon abonnement », et reste ouvert
+quel que soit le droit de lecture ; une organisation qui n'est pas
+prescripteur n'a pas cet écran (`notFound`). L'opératrice en visite le voit
+tel quel, bandeau compris.
+
+L'accord de partage se pose ou se retire sur `/espaces/prescripteurs`, ligne
+par ligne (« Le client a accepté », « Retirer l'accord »), par l'action
+`réglerLePartageAvecLePrescripteur` (`lib/portail/partage.ts`), derrière le
+privilège opérateur. Faux par défaut.
 
 ## La contrepartie : trois options
 
@@ -116,7 +140,8 @@ apporté trois abonnés, par un contrat à lui.
 | Rattacher une organisation recommandée, quatre parutions d'essai, refus de la prospection (`hors-prospection`, `déjà-prospectée`) | `ouvrirEnEssai` (`lib/base/organisations.ts`), champ `prescripteur` de `POST /api/veille/organisations` |
 | Le code dans la demande de démo, lu à l'envoi du formulaire ; la page reste sans base | `lib/domaine/prescripteurs.ts`, `lib/portail/demo.ts`, `app/(portail)/demo/formulaire.tsx` |
 | Tableau de l'opératrice : lien de recommandation, organisations recommandées et leur étape | `/espaces/prescripteurs`, `listerLesPrescripteurs` (`lib/auth/appartenance.ts`) |
-| Gardes : seul appelant du tableau, `/demo` sans import de `lib/base/` | `tests/architecture.test.ts` |
+| Écran « Vos recommandations » du prescripteur ; accord de partage par organisation, posé par l'opératrice | `app/(portail)/[slug]/prescripteur`, `lireLEspacePrescripteur`, `lib/portail/prescripteur.ts`, `lib/portail/partage.ts`, colonne `partage_avec_prescripteur` |
+| Gardes : seul appelant du tableau et de l'espace prescripteur, action de partage derrière le privilège, écran rangé parmi les écrans ouverts, `/demo` sans import de `lib/base/` | `tests/architecture.test.ts` |
 
 ## Mettre un prescripteur en service
 
@@ -130,14 +155,20 @@ apporté trois abonnés, par un contrat à lui.
    `https://www.signauxfaibles.io/demo?de=<code>`.
 5. À chaque demande de démo qui porte un code, passer
    `"prescripteur": "<code>"` à l'onboarding.
-6. Ajouter la lecture de `GET /api/veille/prescripteurs?exclusions=1` à la
+6. Quand un client recommandé accepte que son prescripteur suive son
+   parcours, cliquer « Le client a accepté » sur sa ligne dans
+   `/espaces/prescripteurs` : il apparaît sur l'écran « Vos recommandations »
+   du prescripteur.
+7. Ajouter la lecture de `GET /api/veille/prescripteurs?exclusions=1` à la
    tâche de prospection, avant la constitution du lot.
 
 ## Ce qui reste
 
-- **Le point mensuel au prescripteur**, en brouillon Gmail : il attend la
-  mention à l'onboarding qui autorise à lui donner le nom et l'étape de ses
-  clients.
+- **La mention à l'onboarding** qui recueille l'accord du client recommandé ;
+  d'ici là, l'opératrice le demande elle-même et le note par le bouton du
+  tableau.
+- **Le point mensuel au prescripteur**, en brouillon Gmail, sur les seules
+  organisations qui ont accepté le partage.
 - **La lettre de filière transmise** par les chambres, clusters et
   fédérations : elle attend la mise en service des lettres de filière
   (`docs/programme-lettre-unique.md`) et une décision de marque.

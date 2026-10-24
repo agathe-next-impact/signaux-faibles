@@ -116,6 +116,13 @@ export const organisations = pgTable(
    */
   recommandéePar: uuid('recommandée_par').references((): AnyPgColumn => prescripteurs.id),
   recommandéeLe: horodatage('recommandée_le'),
+  /**
+   * L'accord du client recommandé pour que son prescripteur voie son nom et son
+   * étape (essai, abonnée, essai terminé) sur l'écran « Vos recommandations ».
+   * Posé par l'opératrice, après l'accord du client ; faux par défaut : sans
+   * lui, le prescripteur ne voit rien de l'organisation. Jamais une lettre.
+   */
+  partageAvecPrescripteur: boolean('partage_avec_prescripteur').notNull().default(false),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),
   emailRelecture: text('email_relecture'),

@@ -1,5 +1,5 @@
 {
-  "id": "94543e74-dd22-40f2-93d9-41ed1089d7b3",
+  "id": "7e4811cd-4481-4595-9c0d-17995ebb5f5d",
   "prevId": "eb26bb5e-694a-43b8-a054-74874cc45528",
   "version": "7",
   "dialect": "postgresql",
@@ -580,6 +580,13 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "partage_avec_prescripteur": {
+          "name": "partage_avec_prescripteur",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "relecture_requise": {
           "name": "relecture_requise",

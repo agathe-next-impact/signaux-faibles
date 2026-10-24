@@ -14,7 +14,8 @@ import type { Offre, ÉtatOrganisation } from '@/lib/domaine/parcours'
  * réservée aux clients finaux. Le rattachement d'une organisation recommandée
  * se fait à son ouverture (`ouvrirEnEssai`, `lib/base/organisations.ts`) ; ce
  * fichier tient le registre des prescripteurs, la liste d'exclusion que lit la
- * tâche de prospection, et le tableau de l'opératrice.
+ * tâche de prospection, le tableau de l'opératrice, l'accord de partage et
+ * l'écran « Vos recommandations » du prescripteur.
  *
  * Rien ici n'expose une lettre, une adresse ni un identifiant d'accès.
  */
@@ -119,6 +120,8 @@ export type OrganisationRecommandée = {
   readonly offre: Offre
   readonly parutionsDEssai: number
   readonly recommandéeLe: Date
+  /** Le client a accepté que son prescripteur voie son nom et son étape. */
+  readonly partageAvecPrescripteur: boolean
   /** L'état Stripe de l'abonnement qui fait foi, pour calculer l'étape ; jamais un identifiant. */
   readonly abonnement: { readonly état: string } | null
 }
@@ -167,6 +170,7 @@ export async function tableauDesPrescripteurs(db: Base = base()): Promise<LigneD
         offre: organisations.offre,
         parutionsDEssai: organisations.parutionsDEssai,
         recommandéeLe: organisations.recommandéeLe,
+        partageAvecPrescripteur: organisations.partageAvecPrescripteur,
       })
       .from(organisations)
       .where(
@@ -216,9 +220,136 @@ export async function tableauDesPrescripteurs(db: Base = base()): Promise<LigneD
             offre: r.offre,
             parutionsDEssai: r.parutionsDEssai,
             recommandéeLe: r.recommandéeLe!,
+            partageAvecPrescripteur: r.partageAvecPrescripteur,
             abonnement: abonnement ? { état: abonnement.état } : null,
           }
         }),
     }))
+  })
+}
+
+export type RésultatDuPartage =
+  | { readonly sorte: 'partage-réglé'; readonly partage: boolean }
+  | { readonly sorte: 'inconnue' | 'non-recommandée' }
+
+/**
+ * Pose ou retire l'accord d'une organisation recommandée pour que son
+ * prescripteur voie son nom et son étape. Seule l'opératrice le règle, après
+ * l'accord du client, par l'action de son tableau (`lib/portail/partage.ts`,
+ * `exigerOpérateur` d'abord) ; `tests/architecture.test.ts` en tient le seul
+ * appelant. Une organisation qui n'a pas de prescripteur est refusée : il n'y a
+ * personne avec qui partager.
+ */
+export async function réglerLePartage(
+  slug: string,
+  partage: boolean,
+  db: Base = base(),
+  maintenant: Date = new Date(),
+): Promise<RésultatDuPartage> {
+  return protéger('accord de partage avec le prescripteur', async () => {
+    const [organisation] = await db
+      .select({ id: organisations.id, recommandéePar: organisations.recommandéePar })
+      .from(organisations)
+      .where(and(eq(organisations.slug, slug), isNull(organisations.archivéeLe)))
+      .limit(1)
+    if (!organisation) return { sorte: 'inconnue' } as const
+    if (!organisation.recommandéePar) return { sorte: 'non-recommandée' } as const
+    await db
+      .update(organisations)
+      .set({ partageAvecPrescripteur: partage, modifiéeLe: maintenant })
+      .where(eq(organisations.id, organisation.id))
+    return { sorte: 'partage-réglé', partage } as const
+  })
+}
+
+export type RecommandationPartagée = {
+  readonly nom: string
+  readonly état: ÉtatOrganisation
+  readonly activéeLe: Date | null
+  readonly offre: Offre
+  readonly parutionsDEssai: number
+  readonly recommandéeLe: Date
+  readonly abonnement: { readonly état: string } | null
+}
+
+export type EspacePrescripteur = {
+  readonly code: string
+  readonly actif: boolean
+  /** Les seules organisations dont le client a accepté le partage, des plus récentes aux plus anciennes. */
+  readonly partagées: readonly RecommandationPartagée[]
+}
+
+/**
+ * Ce que le prescripteur voit de ses recommandations, sur l'écran « Vos
+ * recommandations » de son propre espace. L'organisation est désignée par la
+ * **clé de cloisonnement de la session** (`registre_notion`), comme pour « Mon
+ * abonnement » : un prescripteur ne peut lire que ses propres recommandations.
+ * `null` quand l'organisation n'est pas un prescripteur.
+ *
+ * Une organisation recommandée n'y figure **que si le client a accepté** le
+ * partage ; les autres ne sont ni nommées ni comptées. Rien d'autre ne sort :
+ * ni lettre, ni lecteur, ni formule, ni identifiant.
+ */
+export async function lireLEspacePrescripteur(registreNotion: string, db: Base = base()): Promise<EspacePrescripteur | null> {
+  return protéger('espace du prescripteur', async () => {
+    const clé = registreNotion.replaceAll('-', '').toLowerCase()
+    const [prescripteur] = await db
+      .select({ id: prescripteurs.id, code: prescripteurs.code, actif: prescripteurs.actif })
+      .from(prescripteurs)
+      .innerJoin(organisations, eq(organisations.id, prescripteurs.organisationId))
+      .where(and(eq(organisations.registreNotion, clé), isNull(organisations.archivéeLe)))
+      .limit(1)
+    if (!prescripteur) return null
+
+    const lignes = await db
+      .select({
+        id: organisations.id,
+        nom: organisations.nom,
+        état: organisations.état,
+        activéeLe: organisations.activéeLe,
+        offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
+        recommandéeLe: organisations.recommandéeLe,
+      })
+      .from(organisations)
+      .where(
+        and(
+          eq(organisations.recommandéePar, prescripteur.id),
+          eq(organisations.partageAvecPrescripteur, true),
+          isNull(organisations.archivéeLe),
+        ),
+      )
+      .orderBy(desc(organisations.recommandéeLe))
+
+    const abonnementsLus =
+      lignes.length === 0
+        ? []
+        : await db
+            .select({ organisationId: abonnements.organisationId, état: abonnements.état })
+            .from(abonnements)
+            .where(
+              inArray(
+                abonnements.organisationId,
+                lignes.map((l) => l.id),
+              ),
+            )
+            .orderBy(desc(abonnements.événementLe))
+
+    return {
+      code: prescripteur.code,
+      actif: prescripteur.actif,
+      partagées: lignes.map((l) => {
+        const abonnement = abonnementQuiFaitFoi(abonnementsLus.filter((a) => a.organisationId === l.id))
+        return {
+          nom: l.nom,
+          état: l.état,
+          activéeLe: l.activéeLe,
+          offre: l.offre,
+          parutionsDEssai: l.parutionsDEssai,
+          recommandéeLe: l.recommandéeLe!,
+          abonnement: abonnement ? { état: abonnement.état } : null,
+        }
+      }),
+    }
   })
 }
