@@ -24,8 +24,8 @@ Trois causes traversent ces postes :
   Claude Code, outils, CLAUDE.md), relu à chacun des 466 appels : 12,47 $ (20 %) ;
 - **le cache expiré** : 7 réécritures complètes après une attente de plus de cinq
   minutes, 7,07 $ (11 %). La plus longue, 58 minutes, sur une écriture Notion du
-  rédacteur, sans autre événement dans la transcription : très probablement une
-  demande d'autorisation restée sans réponse ;
+  rédacteur (`notion-update-page`) : une demande d'autorisation restée sans
+  réponse, vérifiée dans la transcription (voir « Ce qui reste à faire ») ;
 - **ce que le rédacteur faisait transiter par le modèle** : le HTML des deux
   courriels recopié dans `create_draft` (210 000 caractères), chaque lettre écrite
   plusieurs fois (285 000 caractères en fichiers, puis 86 000 à la création des
@@ -74,12 +74,12 @@ confirmer à la prochaine, par le même calcul.
 
 ## Ce qui reste à faire, après la fusion
 
-1. **Poser `GMAIL_BOITE_OPERATRICE` sur Vercel** (production), avec l'adresse de la
+1. *Fait le 23 octobre.* **Poser `GMAIL_BOITE_OPERATRICE` sur Vercel** (production), avec l'adresse de la
    boîte où les lettres attendent : `agathe@next-impact.digital`. La délégation
    du compte de service porte déjà `gmail.compose` (contrôle du 23 octobre). Sans
    la variable, la route rend le HTML comme avant et la commande se replie sur
    `create_draft` : rien ne casse.
-2. **Mettre à jour deux pages Notion**, après le déploiement et pas avant (avant,
+2. *Fait le 23 octobre.* **Mettre à jour deux pages Notion**, après le déploiement et pas avant (avant,
    la route ignorerait `brouillon` et la page décrirait un geste impossible) :
    - « Tâche — Lettres de veille », étape 6, paragraphe « MISE EN FORME PAR LE
      PORTAIL » : remplacer « Réponse 200 : passe « html » dans htmlBody et
@@ -91,14 +91,64 @@ confirmer à la prochaine, par le même calcul.
      mcp__Gmail__create_draft, TELS QUELS, comme repli. » ;
    - « Tâche — Onboarding d'une organisation », « Prompt — Première lettre »,
      étape 2, même remplacement dans « CHAQUE LETTRE DEVIENT UN BROUILLON GMAIL ».
-3. **Pistes 4 et 5, deux réglages qui sont à décider, pas à coder** :
-   - l'environnement des tâches Claude Code ne devrait porter que les serveurs
-     MCP utiles (Notion, Gmail) : chaque serveur de plus allonge le contexte fixe
-     de chaque agent ;
-   - l'attente de 58 minutes venait très probablement d'une autorisation demandée
-     par un agent et restée sans réponse. Autoriser à l'avance, dans
-     `.claude/settings.json`, les seules écritures de la commande
-     (`notion-create-pages`, `notion-update-page`, `create_draft`) supprimerait
-     l'attente ; c'est une décision de sécurité, laissée à l'opératrice.
-4. **Mesurer la prochaine première lettre** par le même calcul, et corriger ce
+3. **Piste 4 : ne garder que les connecteurs utiles.** Les tâches planifiées et
+   les sessions de la commande ne devraient porter que Notion et Gmail : chaque
+   serveur MCP de plus (Google Calendar, Google Drive, Vercel, visualize, Claude
+   Docs) allonge le contexte fixe de chaque agent, à chacun de ses appels.
+4. **Piste 5 : lever les demandes d'autorisation de la commande.**
+
+   *Ce qui a causé les 58 minutes, vérifié le 23 octobre.* L'appel bloqué est un
+   `mcp__Notion__notion-update-page` du rédacteur, à 12 h 58 UTC. La décision
+   enregistrée dans sa transcription est `ruleSource: mcpServerPolicy`,
+   `source: user_temporary`, `grantScope: once` : la demande venait de la
+   **politique d'outils du connecteur Notion**, réglée dans claude.ai, et elle a été
+   accordée à la main, une fois, au bout de 58 minutes. Ce n'était pas une règle
+   manquante du dépôt : `.claude/settings.json` autorisait déjà
+   `notion-update-page` depuis le 19 octobre, et cela n'a pas suffi.
+
+   *Ce qui est autorisé dans `.claude/settings.json`* (règles `permissions.allow`,
+   lues par toute session ouverte sur ce seul dépôt, sous-agents compris) :
+   - Notion : `notion-fetch`, `notion-search`, `notion-query-data-sources`,
+     `notion-create-pages`, `notion-update-page` (et, déjà présents,
+     `notion-create-view`, `notion-update-view`, `notion-get-async-task`) ;
+   - Gmail : `create_draft`, `list_drafts` (et, déjà présents, `search_threads`,
+     `get_thread`, `get_draft`, `update_draft`, `send_message`) ;
+   - Bash : `pnpm -s collecte:lire *` et `pnpm -s collecte:synthese *` (ajoutés le
+     23 octobre), `node scripts/lire-page.mjs *`, `openssl rand *`, et `curl`
+     vers `https://www.signauxfaibles.io/api/acces/` et `/api/veille/` seulement
+     (`Bash(curl *https://www.signauxfaibles.io/api/veille/*)` couvre déjà la forme
+     `curl -sS -m 60 … https://www.signauxfaibles.io/api/veille/lint` des agents).
+
+   *Ce qui ne l'est pas, et ne doit pas l'être* : aucun outil Notion de suppression,
+   de déplacement, de duplication ou de schéma (`notion-delete-pages`,
+   `notion-move-pages`, `notion-duplicate-page`, `notion-update-data-source`,
+   `notion-create-database`…), aucun outil Vercel, Stripe ou lemlist, et pas Bash
+   en général : une commande hors de la liste redemande la permission. Une
+   commande composée (`curl … | jq`) est vérifiée morceau par morceau, et redemande
+   donc la permission pour le morceau qui n'est pas listé.
+
+   *Un point à trancher par l'opératrice* : `mcp__Gmail__send_message` est autorisé
+   depuis le 19 octobre, alors qu'aucune lettre ne doit partir d'un agent. Les
+   pages Notion s'en servent pour les notifications internes (`[Relecture]`, à
+   agathe@signauxfaibles.io) ; le retirer ferait redemander la permission à chaque
+   notification, le garder laisse à un agent le moyen d'envoyer. La règle n'a pas
+   été retirée.
+
+   *Ce que seule l'opératrice peut faire, et qui lève vraiment l'attente* : dans
+   claude.ai, Réglages, Connecteurs (https://claude.ai/customize/connectors),
+   ouvrir Notion, puis ses permissions d'outils, et passer `notion-fetch`,
+   `notion-search`, `notion-query-data-sources`, `notion-create-pages` et
+   `notion-update-page` à « toujours autoriser » ; même geste pour Gmail sur
+   `create_draft` et `list_drafts`. Laisser les autres outils, et ceux de
+   suppression en particulier, sur « demander ». Un administrateur d'organisation
+   peut avoir plafonné ce réglage ; il faut alors le lui demander. Le réglage vaut
+   pour le compte, donc pour toutes les sessions et toutes les tâches planifiées.
+
+   *Pour revenir en arrière* : retirer les lignes voulues de `permissions.allow`
+   dans `.claude/settings.json` par un commit sur `main` (la session suivante les
+   relit), et repasser les outils du connecteur à « demander » dans claude.ai.
+   Aucun autre fichier ne porte ces autorisations, hormis `allowed-tools` dans
+   chaque `.claude/skills/*/SKILL.md`, qui vaut pour le seul tour qui lance la
+   commande.
+5. **Mesurer la prochaine première lettre** par le même calcul, et corriger ce
    document.

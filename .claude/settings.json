@@ -22,6 +22,8 @@
       "Bash(curl *https://www.signauxfaibles.io/api/acces/*)",
       "Bash(curl *https://www.signauxfaibles.io/api/veille/*)",
       "Bash(node scripts/lire-page.mjs *)",
+      "Bash(pnpm -s collecte:lire *)",
+      "Bash(pnpm -s collecte:synthese *)",
       "Read(//root/.claude/projects/**)"
     ]
   }
