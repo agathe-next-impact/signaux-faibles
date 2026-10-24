@@ -169,6 +169,8 @@ Décisions prises le 9 septembre 2026 :
 - **Un lien par personne**, pas par client : révocable individuellement
   quand une personne quitte l'entreprise cliente.
 - **Notion sur le plan gratuit** (voir « Contraintes du plan gratuit »).
+  Décision levée le 23 octobre 2026 : l'espace est passé au plan Business,
+  condition des tâches sur l'API Claude (`docs/taches-api.md`).
 - **Lien perdu : email automatisé**, sans intervention de l'opérateur.
 
 Répartition recommandée entre Cowork et le portail, qui découle du secret
@@ -219,8 +221,27 @@ Risques assumés et parades :
 
 ### Contraintes du plan gratuit Notion
 
-Décision : pas d'utilisation payante de Notion. Faits vérifiés (détail et
-sources dans `docs/etat-des-api.md`, §2.5) :
+**Mise à jour du 23 octobre 2026.** L'espace de travail est sur le plan
+Business, avec Notion AI. Les tâches planifiées tournent désormais sur l'API
+Claude et se connectent au serveur MCP hébergé par un jeton (`NOTION_MCP_TOKEN`),
+qui n'existe que sur Business et Enterprise. Ce qui change :
+
+- le plafond de 1 000 blocs ne concerne que les espaces gratuits à plusieurs
+  membres : il ne s'applique plus, et un second membre devient un siège
+  facturé, plus un blocage de l'API ;
+- les fichiers passent de 5 Mio à 5 Gio ;
+- le mode SQL de `query_data_sources` est illimité sur Business avec
+  Notion AI, et `query_multiple_data_sources` devient disponible ;
+- ce qui ne change pas : les clients ne sont jamais membres ni invités, et le
+  portail lit toujours Notion par l'API REST avec son propre jeton
+  d'intégration, sous la même limite de 3 requêtes par seconde.
+
+Un retour au plan gratuit couperait les tâches (jeton MCP refusé) et
+rétablirait les contraintes ci-dessous. La section qui suit décrit la décision
+du 9 septembre 2026 et reste valable pour ce cas.
+
+Décision du 9 septembre 2026 : pas d'utilisation payante de Notion. Faits
+vérifiés (détail et sources dans `docs/etat-des-api.md`, §2.5) :
 
 - **L'espace de travail doit rester à un seul membre.** Un espace gratuit à
   plusieurs membres est plafonné à 1 000 blocs à vie, et l'API refuse toute

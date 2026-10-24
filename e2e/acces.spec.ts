@@ -16,8 +16,14 @@ test('un visiteur sans cookie est renvoyé vers le formulaire, pas vers une erre
   await expect(page.getByRole('heading', { name: 'Recevoir mon lien' })).toBeVisible()
 })
 
-test('la racine oriente vers le formulaire quand il n’y a pas de session', async ({ page }) => {
+test('la racine montre la vitrine quand il n’y a pas de session', async ({ page }) => {
   await page.goto('/')
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByRole('link', { name: 'Demander une démo' })).toBeVisible()
+})
+
+test('ouverte depuis l’application, la racine oriente vers le formulaire', async ({ page }) => {
+  await page.goto('/?app=1')
   await expect(page).toHaveURL(/\/recevoir-mon-lien/)
 })
 

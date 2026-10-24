@@ -55,9 +55,11 @@ export function estUneAdressePayload(pathname: string): boolean {
 /**
  * Pages publiques adressées exactement, et non par préfixe : `/demo` en
  * préfixe ouvrirait aussi `/demonstration` ou l'espace d'un client dont le slug
- * commencerait par « demo ».
+ * commencerait par « demo ». `/offre` et `/tarifs` sont les pages vitrines
+ * (23 octobre 2026) ; comme `/demo` et `/espaces`, elles masquent un slug
+ * identique, qu'aucune organisation ne doit donc porter.
  */
-const PUBLICS_EXACTS = new Set(['/', '/demo'])
+const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/offre', '/tarifs'])
 
 export function proxy(requête: NextRequest): NextResponse {
   const { pathname } = requête.nextUrl

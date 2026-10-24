@@ -41,8 +41,8 @@ describe('composerCourrierDeParcours', () => {
       const { sujet, texte } = composerCourrierDeParcours({ ...base, sorte })
       expect(texte).toContain('https://www.signauxfaibles.io/acme')
       expect(texte).toContain('https://www.signauxfaibles.io/recevoir-mon-lien')
-      expect(texte).toContain('89 € HT par mois')
-      expect(texte).toContain('890 € HT par an')
+      expect(texte).toContain('149 € HT par mois')
+      expect(texte).toContain('1 490 € HT par an')
       expect(texte.startsWith('Bonjour Léa,')).toBe(true)
       expect(`${sujet}${texte}`).not.toContain('—')
       expect(sujet).toMatch(/^[A-ZÉ]/u)
@@ -55,7 +55,7 @@ describe('composerCourrierDeParcours', () => {
       expect(html).toContain(sorte === 'essai_rappel_j7' ? 'Ouvrir mon espace' : 'M’abonner')
       expect(html.match(/class="btn-primary/g)).toHaveLength(1)
       expect(html).toContain('href="https://www.signauxfaibles.io/recevoir-mon-lien"')
-      expect(html).toContain('89 € HT par mois')
+      expect(html).toContain('149 € HT par mois')
       expect(html).toContain('lea@acme.test')
       expect(html).toContain('Gérer mon abonnement')
       expect(html).toContain('1 place Exemple')
@@ -68,7 +68,7 @@ describe('composerCourrierDeParcours', () => {
     expect(quatre).toContain('quatre parutions complètes')
     const early = composerCourrierDeParcours({ ...base, sorte: 'essai_tronquee', offre: 'early_adopter' }).texte
     expect(early).toContain('29 € HT par mois')
-    expect(early).not.toContain('890 € HT par an')
+    expect(early).not.toContain('1 490 € HT par an')
   })
 
   it('salue sans nom quand il manque', () => {
@@ -119,7 +119,7 @@ describe('composerCourrierDAbonnement', () => {
   it('le renouvellement écrit l’échéance en toutes lettres et le tarif annuel', () => {
     const { sujet, texte } = composerCourrierDAbonnement({ ...base, sorte: 'abonnement_renouvellement' })
     expect(sujet).toContain('20 novembre 2026')
-    expect(texte).toContain('890 € HT par an')
+    expect(texte).toContain('1 490 € HT par an')
   })
 
   it('la confirmation nomme la formule que Stripe donne, et rien quand il ne la donne pas', () => {

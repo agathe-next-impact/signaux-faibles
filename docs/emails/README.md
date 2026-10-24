@@ -56,7 +56,7 @@ Délivrabilité : un email froid très mis en forme se classe plus souvent en pr
 ## Ce qui reste à poser avant un envoi réel
 
 1. `ADRESSE_POSTALE` dans Vercel (pied de chaque courriel client, obligatoire avant tout envoi commercial), puis `pnpm emails:lemlist` avec la même valeur pour les fichiers lemlist.
-2. L'adresse `contact@signauxfaibles.io` du template doit exister (alias de la boîte de l'opératrice) : elle est dans chaque pied, et dans le lien « Se désinscrire » des courriels client.
+2. L'adresse de contact est `agathe@signauxfaibles.io` depuis le 23 octobre 2026 (`ADRESSE_DE_CONTACT`, `lib/email/gabarit.ts`, reprise par le pied des pages vitrines) : elle est dans chaque pied, et dans le lien « Se désinscrire » des courriels client. Le template de la charte (`docs/emails/charte/`) porte encore `contact@signauxfaibles.io` ; il fait référence pour la forme, pas pour l'adresse.
 3. Tester un envoi dans Gmail web et mobile, Outlook Windows et Apple Mail (README du template).
 
 ## Aperçus

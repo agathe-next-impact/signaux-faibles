@@ -47,7 +47,7 @@ export const étatOrganisation = pgEnum('état_organisation', [
 
 /**
  * L'offre d'une organisation (19 octobre 2026) : ce qu'elle paie, ou non.
- *   · `standard` : les formules de l'offre du 17 octobre, 89 € ou 890 € HT ;
+ *   · `standard` : les formules de l'offre, 149 € ou 1 490 € HT depuis le 23 octobre 2026 (89 € ou 890 € avant) ;
  *   · `early_adopter` : la seule formule à 29 € HT par mois, réservée par
  *     l'opératrice à une organisation nommée ;
  *   · `gratuite` : accès offert, aucune ligne Stripe, jamais de fin d'essai.

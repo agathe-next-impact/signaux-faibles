@@ -1,4 +1,4 @@
-import { ADRESSE_D_ABONNEMENT, PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { ADRESSE_D_ABONNEMENT, enEuros, PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { dateLongueDeParis, type Offre, type Étape } from '@/lib/domaine/parcours'
 import { composerCourriel, corpsDeParagraphes, dateDuJour, racineDuPortail, type Courriel } from '@/lib/email/gabarit'
 
@@ -74,8 +74,8 @@ export function parutionsEnLettres(parutions: number): string {
 /** Le prix écrit dans le courrier, selon l'offre posée sur l'organisation. */
 export function prixDeLOffre(offre: Offre): string {
   return offre === 'early_adopter'
-    ? `${PRIX_EARLY_ADOPTER_HT} € HT par mois, tarif early adopter`
-    : `${PRIX_MENSUEL_HT} € HT par mois, ou ${PRIX_ANNUEL_HT} € HT par an`
+    ? `${enEuros(PRIX_EARLY_ADOPTER_HT)} € HT par mois, tarif early adopter`
+    : `${enEuros(PRIX_MENSUEL_HT)} € HT par mois, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an`
 }
 
 export function composerCourrierDeParcours(entrée: {
@@ -337,7 +337,7 @@ export function composerCourrierDAbonnement(entrée: {
           titre: échéance ? `Votre abonnement se renouvelle le ${échéance}.` : 'Votre abonnement se renouvelle bientôt.',
           accroche: 'Rien à faire pour continuer.',
           paragraphes: [
-            `Votre abonnement annuel à la veille Signaux Faibles pour ${org} sera renouvelé automatiquement${échéance ? ` le ${échéance}` : ''}, au tarif de ${PRIX_ANNUEL_HT} € HT par an.`,
+            `Votre abonnement annuel à la veille Signaux Faibles pour ${org} sera renouvelé automatiquement${échéance ? ` le ${échéance}` : ''}, au tarif de ${enEuros(PRIX_ANNUEL_HT)} € HT par an.`,
             'Pour changer de formule, mettre à jour votre moyen de paiement ou ne pas renouveler, rendez-vous sur la page « Mon abonnement » avant cette date. Pour toute question, répondez simplement à ce courriel.',
           ],
           action: { libellé: 'Mon abonnement', url: abonnement },
