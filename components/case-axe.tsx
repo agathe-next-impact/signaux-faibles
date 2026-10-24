@@ -37,7 +37,8 @@ export function CaseAxe({
    * pas ; la pastille et le libellé vont ensemble.
    */
   fraîcheur?: { readonly état: Fraîcheur; readonly libellé: string } | null
-  href: string
+  /** Sans adresse (démonstration de la vitrine), la case ne mène nulle part. */
+  href?: string
 }) {
   return (
     // Jamais de fond accentué sur une case d'axe : les trois badges d'impact
@@ -70,9 +71,11 @@ export function CaseAxe({
 
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
         <BadgeImpact niveau={axe.niveau} />
-        <LienFlèche href={href} étendu>
-          Détail
-        </LienFlèche>
+        {href ? (
+          <LienFlèche href={href} étendu>
+            Détail
+          </LienFlèche>
+        ) : null}
       </div>
     </Case>
   )

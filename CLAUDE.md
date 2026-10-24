@@ -646,12 +646,18 @@ pages indexables (`robots: index`). Le proxy les ouvre à l'adresse exacte, et
 elles masquent un slug identique, qu'aucune organisation ne doit porter. Un seul
 bouton primaire par page, « Demander une démo », vers `/demo` ; « Se connecter »,
 dans l'en-tête, est aussi sur fond encre, par décision de l'opératrice du
-23 octobre 2026, écart à la charte assumé. **`/exemple`** (« Exemple de lettre »,
-même jour) rend une édition réelle, la veille de Next Impact du 21 octobre 2026,
-avec `markdownVersBlocs`, `construireDocument` et `RenduDocument`, comme l'espace
-client ; le texte est dans `lib/vitrine/lettre-de-demonstration.ts`, jamais lu
-dans Notion. Jamais la lettre d'un client : la page est publique. Le test la
-passe au lint de la lettre unique.
+23 octobre 2026, écart à la charte assumé. **`/exemple`** (« Exemples »,
+24 octobre 2026) est une seule page à onglets : un onglet par profil de client
+(cabinet de conseil, PME industrielle, entreprise de l'ESS à enjeu de
+financement), et dans chacun deux vues, le tableau de bord et la lettre
+(`components/onglets.tsx`, motif ARIA, ancre `#conseil`, `#pme`, `#ess`). Les
+trois organisations, leurs concurrents et leurs faits sont **fictifs**
+(`lib/vitrine/demonstrations.ts`), sources sur le domaine réservé `.example` ;
+jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord est
+calculé comme la vue d'ensemble (`synthétiser`, `fusionnerLesAxes`,
+`acteursEnVue`) et la lettre rendue par `RenduDocument`, sur `markdownVersBlocs`
+(`components/demonstration.tsx`) ; les cases ne mènent nulle part. Le test passe
+chaque lettre au lint de la lettre unique.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
