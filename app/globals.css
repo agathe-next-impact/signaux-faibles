@@ -106,7 +106,7 @@ body {
   mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
 }
 .bandeau-logos .piste {
-  animation: defilement 40s linear infinite;
+  animation: defilement 56s linear infinite;
 }
 .bandeau-logos:hover .piste {
   animation-play-state: paused;

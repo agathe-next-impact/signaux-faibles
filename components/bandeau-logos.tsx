@@ -25,14 +25,17 @@ const LOGOS: readonly Logo[] = [
   { nom: 'Heritech', fichier: 'heritech', largeur: 72, hauteur: 44 },
 ]
 
+/** L'écart entre deux logos (24 octobre 2026 : doublé, de 4 à 8 rem). */
+const ÉCART = '8rem'
+
 function Liste({ copie }: { copie: boolean }) {
   return (
-    // La marge de fin est en style : elle doit égaler l'écart entre deux
-    // logos pour que la copie raccorde sans saut, et une remise à zéro des
-    // listes l'emporterait sur un utilitaire.
+    // L'écart et la marge de fin sont posés ensemble, en style : la marge doit
+    // égaler l'écart entre deux logos pour que la copie raccorde sans saut, et
+    // une remise à zéro des listes l'emporterait sur un utilitaire.
     <ul
-      className={`flex shrink-0 items-center gap-16${copie ? ' copie' : ''}`}
-      style={{ paddingRight: '4rem' }}
+      className={`flex shrink-0 items-center${copie ? ' copie' : ''}`}
+      style={{ columnGap: ÉCART, paddingRight: ÉCART }}
       aria-hidden={copie ? true : undefined}
     >
       {LOGOS.map((logo) => (
