@@ -1,4 +1,5 @@
 import { BadgeImpact } from '@/components/badge-impact'
+import { BandeauLogos } from '@/components/bandeau-logos'
 import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
@@ -38,6 +39,8 @@ export function AccueilVitrine() {
           Essai de {PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire ni engagement.
         </p>
       </OuvertureVitrine>
+
+      <BandeauLogos />
 
       <SectionVitrine
         surtitre="Ce que vous recevez"

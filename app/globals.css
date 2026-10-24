@@ -88,3 +88,40 @@ body {
   outline: 2px solid var(--color-ardoise);
   outline-offset: 2px;
 }
+
+/* Le bandeau de logos de la vitrine (`components/bandeau-logos.tsx`). La piste
+   porte deux fois la liste et glisse de la moitié de sa largeur : la seconde
+   copie prend exactement la place de la première, sans saut. Il s'arrête au
+   survol et ne bouge pas du tout quand le système demande moins d'animation :
+   la liste s'affiche alors une seule fois, à plat. */
+@keyframes defilement {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.bandeau-logos {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+.bandeau-logos .piste {
+  animation: defilement 40s linear infinite;
+}
+.bandeau-logos:hover .piste {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bandeau-logos {
+    mask-image: none;
+  }
+  .bandeau-logos .piste {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .bandeau-logos .copie {
+    display: none;
+  }
+}

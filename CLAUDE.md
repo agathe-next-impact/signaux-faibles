@@ -657,7 +657,13 @@ jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord est
 calculé comme la vue d'ensemble (`synthétiser`, `fusionnerLesAxes`,
 `acteursEnVue`) et la lettre rendue par `RenduDocument`, sur `markdownVersBlocs`
 (`components/demonstration.tsx`) ; les cases ne mènent nulle part. Le test passe
-chaque lettre au lint de la lettre unique.
+chaque lettre au lint de la lettre unique. **Bandeau de logos** (24 octobre 2026) : sous
+l'ouverture de l'accueil, dans le premier écran dès 720 px de haut, les logos
+des organisations clientes défilent en niveaux de gris
+(`components/bandeau-logos.tsx`, fichiers dans `public/logos/`, ouverts par le
+proxy en préfixe `/logos/`, qu'aucun slug ne doit donc porter) ; immobile si le
+système demande moins d'animation. Afficher un logo suppose l'accord de
+l'organisation.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi

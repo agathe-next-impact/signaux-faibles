@@ -23,6 +23,7 @@ describe('proxy', () => {
     expect(proxy(requête('/demo')).status).toBe(200)
     expect(proxy(requête('/offre')).status).toBe(200)
     expect(proxy(requête('/exemple')).status).toBe(200)
+    expect(proxy(requête('/logos/suneido.webp')).status).toBe(200)
     expect(proxy(requête('/tarifs')).status).toBe(200)
   })
 
