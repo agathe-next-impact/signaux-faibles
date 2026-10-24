@@ -4,7 +4,7 @@ import { ADRESSE_DE_CONTACT } from '@/lib/email/gabarit'
 
 /**
  * Les pages vitrines (23 octobre 2026) : l'accueil des visiteurs sans session,
- * « L'offre », « Exemple de lettre » et « Tarifs ». Elles ne lisent ni Notion ni Postgres : tout ce
+ * « L'offre », « Exemples » et « Tarifs ». Elles ne lisent ni Notion ni Postgres : tout ce
  * qu'elles disent de l'offre vient de `lib/domaine/offre.ts` et des seuils du
  * contrat de la lettre, pour qu'un prix ou une règle ne soit écrit qu'une fois.
  *
@@ -18,7 +18,7 @@ export type PageVitrine = 'accueil' | 'offre' | 'exemple' | 'tarifs'
 
 const LIENS: ReadonlyArray<{ href: string; libellé: string; page: PageVitrine }> = [
   { href: '/offre', libellé: 'L’offre', page: 'offre' },
-  { href: '/exemple', libellé: 'Exemple de lettre', page: 'exemple' },
+  { href: '/exemple', libellé: 'Exemples', page: 'exemple' },
   { href: '/tarifs', libellé: 'Tarifs', page: 'tarifs' },
 ]
 
@@ -67,7 +67,7 @@ export function PiedVitrine() {
         </div>
         <nav aria-label="Pied de page" className="flex flex-col gap-2 text-corps">
           <Link href="/offre" className="text-ardoise hover:text-encre">L’offre</Link>
-          <Link href="/exemple" className="text-ardoise hover:text-encre">Exemple de lettre</Link>
+          <Link href="/exemple" className="text-ardoise hover:text-encre">Exemples</Link>
           <Link href="/tarifs" className="text-ardoise hover:text-encre">Tarifs</Link>
           <Link href="/demo" className="text-ardoise hover:text-encre">Demander une démo</Link>
           <Link href="/recevoir-mon-lien" className="text-ardoise hover:text-encre">Recevoir mon lien d’accès</Link>
