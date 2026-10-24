@@ -225,7 +225,7 @@ Une ligne de `prospections` par lead lemlist, c'est-à-dire par adresse engagée
 
 ## Le parcours, calculé et non stocké
 
-`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, puis J+7 et J+14 par semaines ISO, trois parutions complètes qui forment l'essai ; à J+21 sans abonnement, une parution réduite à « L'essentiel » de chaque lettre ; `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de J+21 sans abonnement (offre décidée le 17 octobre 2026, `docs/decision-portail-moteur.md`). Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
+`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, puis par semaines ISO autant de parutions complètes que `parutions_d_essai` (deux par défaut depuis le 24 octobre 2026, J0 et J+7 ; trois auparavant) ; la semaine suivante (J+14 par défaut) sans abonnement, une parution réduite à « L'essentiel » de chaque lettre ; `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de cette parution réduite sans abonnement (offre décidée le 17 octobre 2026, `docs/decision-portail-moteur.md`). Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
 
 ## Migration depuis Notion (palier 1)
 

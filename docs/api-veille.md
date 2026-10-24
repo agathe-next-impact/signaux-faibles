@@ -426,8 +426,8 @@ l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
   sur son propre prix Stripe (`STRIPE_PRIX_EARLY_ADOPTER`). 200 `offre-posée`
   avec `offre` et `état` ;
 - `{ "slug", "action": "parutions", "parutions": 1..8 }` règle le nombre de
-  parutions complètes de l'essai (trois par défaut ; quatre pour un essai à
-  J+28). 200 `parutions-réglées` ; 409 `parutions-invalides` ;
+  parutions complètes de l'essai (deux par défaut depuis le 24 octobre 2026,
+  trois auparavant ; quatre pour un essai à J+28). 200 `parutions-réglées` ; 409 `parutions-invalides` ;
 - `{ "slug", "action": "parcours", "prochaineLettre": "AAAA-MM-JJ", "restantes": n }`
   fait entrer une organisation dans le parcours à une date choisie : J0 est le
   lundi de la semaine de la prochaine lettre, reculé de `parutions − restantes`

@@ -34,10 +34,11 @@ ce document ne décrit que la part du portail.*
   la date de la plus ancienne édition publiée datée de la semaine d'entrée en
   essai ou après, une seule fois. Avant, l'espace
   est en lecture complète et aucun courrier de fin d'essai n'est dû.
-- **L'essai** : trois parutions complètes (semaine de J0 et les deux
-  suivantes), une parution réduite à « L'essentiel », puis suspension sans
-  abonnement Stripe. Le portail écrit au lecteur à la troisième et à la
-  quatrième semaine (journal `courriers`).
+- **L'essai** : deux parutions complètes par défaut depuis le 24 octobre 2026
+  (semaine de J0 et la suivante ; trois auparavant), une parution réduite à
+  « L'essentiel », puis suspension sans abonnement Stripe. Le portail écrit au
+  lecteur à la dernière parution complète et à la parution réduite, soit la
+  deuxième et la troisième semaine (journal `courriers`).
 
 ## Les deux pièges qui restent vrais
 
