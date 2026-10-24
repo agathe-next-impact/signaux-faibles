@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { codeDePrescripteurValide, PARAMÈTRE_DU_PRESCRIPTEUR } from '@/lib/domaine/prescripteurs'
 import type { ChampDeDémo } from '@/lib/portail/demo'
 import { demanderUneDémo, type RésultatDemande } from './actions'
 
@@ -19,6 +20,13 @@ const MESSAGES_D_ERREUR: Record<ChampDeDémo, string> = {
 
 export function Formulaire({ champPiège }: { readonly champPiège: string }) {
   const [résultat, action, enCours] = useActionState(demanderUneDémo, DÉPART)
+  // Le code du prescripteur vient de l'adresse (`/demo?de=<code>`), lu à
+  // l'envoi : la page reste statique, sans lecture de `searchParams`.
+  function envoyer(données: FormData) {
+    const code = new URLSearchParams(window.location.search).get(PARAMÈTRE_DU_PRESCRIPTEUR)?.toLowerCase() ?? ''
+    if (codeDePrescripteurValide(code)) données.set(PARAMÈTRE_DU_PRESCRIPTEUR, code)
+    action(données)
+  }
 
   if (résultat.état === 'envoyée') {
     return (
@@ -47,7 +55,7 @@ export function Formulaire({ champPiège }: { readonly champPiège: string }) {
   }
 
   return (
-    <form action={action} className="flex flex-col gap-5" noValidate>
+    <form action={envoyer} className="flex flex-col gap-5" noValidate>
       <div className="flex flex-col gap-2">
         <label htmlFor="nom" className="text-corps text-ardoise">Votre nom</label>
         <input id="nom" name="nom" type="text" required maxLength={120} autoComplete="name"

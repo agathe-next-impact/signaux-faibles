@@ -172,3 +172,15 @@ describe('offre et parutions réglées (19 octobre 2026)', () => {
     expect(étapeDuParcours(entrée('2026-10-05', { organisation: org({ état: 'suspendue', offre: 'gratuite' }) })).étape).toBe('suspendue')
   })
 })
+
+describe('étapeVueDuPrescripteur', () => {
+  it('ne dit au prescripteur que quatre mots, jamais le détail', async () => {
+    const { étapeVueDuPrescripteur } = await import('@/lib/domaine/prescripteurs')
+    expect(étapeVueDuPrescripteur({ étape: 'hors-parcours', raison: 'aucune date d’activation' })).toBe('en préparation')
+    expect(étapeVueDuPrescripteur({ étape: 'essai', parution: 2, parutions: 4 })).toBe('en essai')
+    expect(étapeVueDuPrescripteur({ étape: 'abonnee', source: 'offerte', paiementEnRetard: false })).toBe('abonnée')
+    expect(étapeVueDuPrescripteur({ étape: 'abonnee', source: 'stripe', paiementEnRetard: true })).toBe('abonnée')
+    expect(étapeVueDuPrescripteur({ étape: 'tronquee' })).toBe('essai terminé')
+    expect(étapeVueDuPrescripteur({ étape: 'suspendue', manuelle: true })).toBe('essai terminé')
+  })
+})

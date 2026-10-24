@@ -1,8 +1,8 @@
 import { and, eq, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
-import { abonnements, organisations } from '@/lib/base/schema'
-import { dateDeParis, type Offre } from '@/lib/domaine/parcours'
+import { abonnements, organisations, prescripteurs } from '@/lib/base/schema'
+import { dateDeParis, PARUTIONS_D_ESSAI_RECOMMANDÉE, type Offre } from '@/lib/domaine/parcours'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 
 /**
@@ -29,6 +29,14 @@ import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
  * c'est le moment où le client reçoit vraiment quelque chose. Tant qu'il est
  * nul, l'étape est « hors parcours » et la lecture reste complète.
  *
+ * **Une organisation recommandée par un prescripteur** (24 octobre 2026,
+ * `docs/prescripteurs.md`) porte son code : elle lui est rattachée une fois,
+ * le premier garde l'organisation, et son essai compte quatre parutions tant
+ * que J0 n'est pas posé. La recommandation et la prospection s'excluent : une
+ * organisation recommandée, ou un prescripteur, n'entre jamais en prospection
+ * (`hors-prospection`), et une organisation déjà prospectée n'est pas
+ * attribuée (`déjà-prospectée`).
+ *
  * `relecture_requise` vaut faux : les courriers de fin d'essai vont au client.
  * Les lettres, elles, restent relues : elles arrivent en brouillon Gmail que
  * seule l'opératrice envoie.
@@ -39,6 +47,7 @@ export type RésultatDOuverture =
   | { readonly sorte: 'état-incompatible'; readonly état: string }
   | { readonly sorte: 'registre-pris'; readonly slug: string }
   | { readonly sorte: 'registre-différent'; readonly registreActuel: string }
+  | { readonly sorte: 'prescripteur-inconnu' | 'hors-prospection' | 'déjà-prospectée' | 'recommandée-par-elle-même' }
 
 export async function ouvrirEnEssai(
   entrée: {
@@ -47,6 +56,8 @@ export async function ouvrirEnEssai(
     readonly registreNotion: string
     /** Entrée par prospection : l'essai n'ouvre qu'à la première visite (`essai_ouvert_le` reste nul). */
     readonly prospection?: boolean
+    /** Le code du prescripteur qui recommande l'organisation ; exclusif de `prospection`. */
+    readonly prescripteur?: string
   },
   db: Base = base(),
   maintenant: Date = new Date(),
@@ -73,11 +84,42 @@ export async function ouvrirEnEssai(
           crééeLe: organisations.crééeLe,
           activéeLe: organisations.activéeLe,
           registreNotion: organisations.registreNotion,
+          entréeParProspection: organisations.entréeParProspection,
+          recommandéePar: organisations.recommandéePar,
         })
         .from(organisations)
         .where(eq(organisations.slug, entrée.slug))
         .for('update')
         .limit(1)
+
+      // La prospection automatisée est réservée aux clients finaux : ni un
+      // prescripteur, ni une organisation qu'un prescripteur a recommandée.
+      if (entrée.prospection) {
+        if (entrée.prescripteur !== undefined || existante?.recommandéePar) return { sorte: 'hors-prospection' } as const
+        if (existante && (await estPrescripteur(tx, existante.id))) return { sorte: 'hors-prospection' } as const
+      }
+
+      let recommandation: { readonly recommandéePar: string; readonly recommandéeLe: Date; readonly parutionsDEssai?: number } | null =
+        null
+      if (entrée.prescripteur !== undefined) {
+        const [prescripteur] = await tx
+          .select({ id: prescripteurs.id, organisationId: prescripteurs.organisationId })
+          .from(prescripteurs)
+          .where(and(eq(prescripteurs.code, entrée.prescripteur), eq(prescripteurs.actif, true)))
+          .limit(1)
+        if (!prescripteur) return { sorte: 'prescripteur-inconnu' } as const
+        if (existante?.id === prescripteur.organisationId) return { sorte: 'recommandée-par-elle-même' } as const
+        if (existante?.entréeParProspection) return { sorte: 'déjà-prospectée' } as const
+        // Le premier prescripteur garde l'organisation ; l'avantage d'essai
+        // n'est posé que tant que J0 ne l'est pas.
+        if (!existante?.recommandéePar) {
+          recommandation = {
+            recommandéePar: prescripteur.id,
+            recommandéeLe: maintenant,
+            ...(existante?.activéeLe ? {} : { parutionsDEssai: PARUTIONS_D_ESSAI_RECOMMANDÉE }),
+          }
+        }
+      }
 
       if (!existante) {
         const [créée] = await tx
@@ -90,6 +132,7 @@ export async function ouvrirEnEssai(
             relectureRequise: false,
             essaiOuvertLe: entrée.prospection ? null : maintenant,
             entréeParProspection: entrée.prospection === true,
+            ...recommandation,
           })
           .returning({ id: organisations.id })
         return { sorte: 'créée', organisationId: créée!.id } as const
@@ -105,6 +148,12 @@ export async function ouvrirEnEssai(
           await tx
             .update(organisations)
             .set({ registreNotion, nom: entrée.nom, modifiéeLe: maintenant })
+            .where(eq(organisations.id, existante.id))
+        }
+        if (recommandation) {
+          await tx
+            .update(organisations)
+            .set({ ...recommandation, modifiéeLe: maintenant })
             .where(eq(organisations.id, existante.id))
         }
         return { sorte: 'déjà-en-essai', organisationId: existante.id } as const
@@ -123,12 +172,22 @@ export async function ouvrirEnEssai(
           relectureRequise: false,
           essaiOuvertLe: entrée.prospection ? null : maintenant,
           entréeParProspection: entrée.prospection === true,
+          ...recommandation,
           modifiéeLe: maintenant,
         })
         .where(eq(organisations.id, existante.id))
       return { sorte: 'passée-en-essai', organisationId: existante.id } as const
     }),
   )
+}
+
+async function estPrescripteur(tx: Pick<Base, 'select'>, organisationId: string): Promise<boolean> {
+  const [ligne] = await tx
+    .select({ id: prescripteurs.id })
+    .from(prescripteurs)
+    .where(eq(prescripteurs.organisationId, organisationId))
+    .limit(1)
+  return ligne !== undefined
 }
 
 /** Les organisations importées avant cette date sont les clients historiques, d'avant l'offre. */

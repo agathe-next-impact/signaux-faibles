@@ -9,6 +9,7 @@ import { sourceAccès } from '@/lib/auth/source-acces'
 import { identifiantDeLaSession } from '@/lib/auth/session'
 import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
+import { tableauDesPrescripteurs, type LigneDePrescripteur } from '@/lib/base/prescripteurs'
 import { lireLaFile } from '@/lib/portail/file'
 import type { ÉtatDeLaFile } from '@/lib/base/travaux'
 import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
@@ -168,6 +169,24 @@ export async function listerLesAbonnements(): Promise<{
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null }
   return { accès, lignes: await tableauDesAbonnements() }
+}
+
+/**
+ * Les prescripteurs et les organisations qu'ils ont recommandées, pour
+ * l'opératrice (24 octobre 2026, `docs/prescripteurs.md`).
+ *
+ * Même forme que `listerLesAbonnements` : la garde est **dans** la fonction,
+ * avant la lecture qui traverse les clients, et `tableauDesPrescripteurs` n'a
+ * pas d'autre appelant (`tests/architecture.test.ts`). `lignes` vaut `null`
+ * quand Postgres n'est pas en service.
+ */
+export async function listerLesPrescripteurs(): Promise<{
+  readonly accès: Accès
+  readonly lignes: LigneDePrescripteur[] | null
+}> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null }
+  return { accès, lignes: await tableauDesPrescripteurs() }
 }
 
 /**

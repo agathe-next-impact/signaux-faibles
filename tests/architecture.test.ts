@@ -630,6 +630,36 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('listerLesAbonnements')).toEqual(['app/(portail)/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
     expect(appelants('lireSituationDAbonnement')).toEqual(['lib/base/situation.ts', 'lib/portail/situation.ts'])
     expect(appelants('situationDeLEspace')).toEqual(['app/(portail)/[slug]/abonnement/page.tsx', 'lib/portail/situation.ts'])
+    // Les prescripteurs (24 octobre 2026) : même forme, la garde dans la
+    // fonction, un seul écran.
+    expect(appelants('tableauDesPrescripteurs')).toEqual(['lib/auth/appartenance.ts', 'lib/base/prescripteurs.ts'])
+    expect(appelants('listerLesPrescripteurs')).toEqual(['app/(portail)/espaces/prescripteurs/page.tsx', 'lib/auth/appartenance.ts'])
+    // L'écran « Vos recommandations » lit par la clé de cloisonnement de la
+    // session, par un seul lecteur ; l'accord de partage ne s'écrit que par
+    // l'action de l'opératrice, derrière son privilège.
+    expect(appelants('lireLEspacePrescripteur')).toEqual(['lib/base/prescripteurs.ts', 'lib/portail/prescripteur.ts'])
+    expect(appelants('espacePrescripteurDe')).toEqual([
+      'app/(portail)/[slug]/abonnement/page.tsx',
+      'app/(portail)/[slug]/prescripteur/page.tsx',
+      'lib/portail/prescripteur.ts',
+    ])
+    expect(appelants('réglerLePartage')).toEqual(['lib/base/prescripteurs.ts', 'lib/portail/partage.ts'])
+    const partage = readFileSync(join(process.cwd(), 'lib', 'portail', 'partage.ts'), 'utf8')
+    expect(partage.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(partage.indexOf('exigerOpérateur()')).toBeLessThan(partage.indexOf('réglerLePartage('))
+  })
+
+  it('la page /demo ne lit pas Postgres, même pour le code d’un prescripteur', () => {
+    // Le code de recommandation (`/demo?de=<code>`) n'est vérifié qu'à
+    // l'onboarding : la page publique reste sans base (24 octobre 2026).
+    for (const fichier of [
+      'lib/portail/demo.ts',
+      'app/(portail)/demo/page.tsx',
+      'app/(portail)/demo/formulaire.tsx',
+      'app/(portail)/demo/actions.ts',
+    ]) {
+      expect(readFileSync(join(process.cwd(), fichier), 'utf8'), fichier).not.toMatch(/@\/lib\/base\//)
+    }
   })
 
   it('toute route /api/veille commence par la garde du jeton', () => {
@@ -783,6 +813,9 @@ describe('chaque écran de l’espace obéit au droit de lecture', () => {
     join('lettres', 'page.tsx'),
     join('lettres', '[edition]', 'page.tsx'),
     join('abonnement', 'page.tsx'),
+    // « Vos recommandations » (24 octobre 2026), l'écran du prescripteur : il ne
+    // lit aucune édition, seulement Postgres, comme « Mon abonnement ».
+    join('prescripteur', 'page.tsx'),
   ]
 
   it('les écrans de contenu assemblé exigent la lecture complète', () => {

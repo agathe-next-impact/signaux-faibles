@@ -540,6 +540,53 @@ Sans `LEMLIST_API_KEY`, rien ne part : la prospection est tenue dans Postgres
 et `enAttente` compte ce qui attend. Le portail n'ajoute jamais un contact à
 une campagne et ne lance rien : c'est le rôle de la tâche de prospection.
 
+## Prescripteurs (24 octobre 2026)
+
+La prospection automatisée est réservée aux clients finaux. Un prescripteur
+(expert-comptable, cabinet de conseil, chambre, cluster, fédération, réseau de
+l'ESS) recommande des clients et n'entre jamais dans une séquence ; ses
+recommandations non plus. Le canal est décrit dans `docs/prescripteurs.md`.
+
+### `POST /api/veille/prescripteurs` — déclarer un prescripteur
+
+```
+{ "slug": "cabinet-durand", "code": "durand", "type": "conseil" }
+```
+
+L'organisation doit déjà être ouverte dans le portail (son propre espace).
+`type` : `conseil`, `expertise_comptable`, `juridique`, `chambre_consulaire`,
+`developpement_economique`, `cluster_federation`, `ess_financeur`, `autre`.
+Le code (3 à 40 caractères, minuscules, chiffres et tirets) est celui du lien
+de recommandation, `/demo?de=<code>`. 201 `créé` ; 200 `déjà-prescripteur`
+(rejeu) ; 404 `organisation-inconnue` ; 409 `code-pris` ou `en-prospection`
+(organisation entrée par prospection : arrêter sa séquence d'abord). La route
+ne pose pas l'accès offert : `PATCH /api/veille/organisations`
+`{ "action": "offre", "offre": "gratuite" }` le fait, parce qu'un client qui
+paie peut aussi devenir prescripteur.
+
+### `GET /api/veille/prescripteurs?exclusions=1` — ce que la prospection ne contacte jamais
+
+```
+{ "état": "lu", "nombre": 2, "exclusions": [
+  { "slug": "cabinet-durand", "nom": "Cabinet Durand", "registreNotion": "…", "rôle": "prescripteur" },
+  { "slug": "client", "nom": "Client", "registreNotion": "…", "rôle": "recommandée" } ] }
+```
+
+La tâche de prospection la lit **avant** de constituer son lot, et écarte toute
+ligne du registre qui y figure (par `registreNotion`, à défaut par le nom).
+
+### Organisation recommandée : `prescripteur` sur `POST /api/veille/organisations`
+
+La demande de démo porte le code du prescripteur (ligne « Recommandée par le
+prescripteur » du courrier) ; l'onboarding le passe en `"prescripteur": "<code>"`.
+Le premier prescripteur garde l'organisation, son essai compte quatre
+parutions tant que J0 n'est pas posé, et elle sort de la prospection.
+Exclusif de `"origine": "prospection"` (400). 404 `prescripteur-inconnu`
+(code inconnu ou inactif) ; 409 `déjà-prospectée` (l'organisation est entrée
+par prospection : elle n'est pas attribuée), `recommandée-par-elle-même`, et
+`hors-prospection` quand `"origine": "prospection"` vise un prescripteur ou
+une organisation recommandée.
+
 ## La file de travaux (palier 2, 21 octobre 2026)
 
 Le palier 2 de la décision du 15 octobre (`docs/decision-portail-moteur.md`,

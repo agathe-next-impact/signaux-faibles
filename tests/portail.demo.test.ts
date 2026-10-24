@@ -32,8 +32,17 @@ describe('lireLaDemande', () => {
         organisation: 'Office de tourisme',
         fonction: 'Directrice',
         message: 'Suivre la concurrence\ndes autres offices.',
+        prescripteur: '',
       },
     })
+  })
+
+  it('garde le code d’un prescripteur bien formé, ignore un code mal formé sans refuser la demande', () => {
+    const bon = lireLaDemande(formulaire({ ...COMPLET, de: 'Cabinet-Durand' }))
+    expect(bon.sorte === 'valide' && bon.demande.prescripteur).toBe('cabinet-durand')
+    const mauvais = lireLaDemande(formulaire({ ...COMPLET, de: 'x\r\nBcc: y@z.test' }))
+    expect(mauvais.sorte).toBe('valide')
+    expect(mauvais.sorte === 'valide' && mauvais.demande.prescripteur).toBe('')
   })
 
   it('laisse la fonction et le message facultatifs', () => {
@@ -77,6 +86,12 @@ describe('composerCourrierDeDémo', () => {
     expect(courrier.destinataire).toBe('agathe@signauxfaibles.io')
     expect(courrier.répondreÀ).toBe('jeanne.martin@exemple.test')
     expect(courrier.sujet).toBe('Demande de démo : Office de tourisme')
+  })
+
+  it('nomme le prescripteur seulement quand la demande en porte un', () => {
+    expect(courrier.texte).not.toContain('prescripteur')
+    const recommandée = composerCourrierDeDémo({ ...lecture.demande, prescripteur: 'cabinet-durand' })
+    expect(recommandée.texte).toContain('Recommandée par le prescripteur : cabinet-durand')
   })
 
   it('reprend chaque champ dans le corps', () => {
