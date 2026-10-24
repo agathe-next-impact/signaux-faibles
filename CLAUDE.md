@@ -319,7 +319,12 @@ Les lire avant toute session.
   l'envoi du formulaire, la page restant sans base ; l'opératrice suit sur
   `/espaces/prescripteurs` (`listerLesPrescripteurs`, garde dans la fonction).
   Un prescripteur a son espace en accès offert et ne lit jamais les lettres de
-  ses clients. Sans `LEMLIST_API_KEY`, tout est tenu dans
+  ses clients. Son écran « Vos recommandations » (`/[slug]/prescripteur`, hors
+  des sept, atteint depuis « Mon abonnement », ouvert comme lui) ne montre que
+  son lien et les organisations recommandées dont l'opératrice a posé l'accord
+  de partage (`partage_avec_prescripteur`, action `lib/portail/partage.ts`),
+  nom et étape en quatre mots (`étapeVueDuPrescripteur`), lues par la clé de
+  cloisonnement de la session (`lireLEspacePrescripteur`). Sans `LEMLIST_API_KEY`, tout est tenu dans
   Postgres et rien ne part. **Le mois d'essai d'une entrée par prospection
   commence à la première visite** (`origine: "prospection"` sur
   `POST /api/veille/organisations`, colonne `entrée_par_prospection`,
