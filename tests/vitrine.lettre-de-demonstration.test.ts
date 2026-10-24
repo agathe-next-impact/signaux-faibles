@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { axesDuDocument, construireDocument } from '@/lib/domaine/document'
+import { axesDuDocument, construireDocument, faitsDe } from '@/lib/domaine/document'
 import { markdownVersBlocs } from '@/lib/domaine/markdown'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 import { DÉMONSTRATIONS } from '@/lib/vitrine/demonstrations'
@@ -29,10 +29,17 @@ describe('démonstrations de la vitrine', () => {
         expect(rapport.ruptures).toEqual([])
       })
 
-      it('rend dix axes au moins, chacun avec un badge', () => {
+      // La densité des lettres du moteur (mesure du 24 octobre 2026 : 13 à 15
+      // axes, 26 à 28 faits) : une démonstration plus mince sous-vendrait la
+      // lettre réelle.
+      it('a la densité d’une lettre du moteur : treize axes badgés, deux faits par axe, un RAS au plus', () => {
         const axes = axesDuDocument(construireDocument(blocs))
-        expect(axes.length).toBeGreaterThanOrEqual(10)
+        expect(axes.length).toBeGreaterThanOrEqual(13)
         expect(axes.every((axe) => axe.niveau !== null)).toBe(true)
+        expect(axes.filter((axe) => axe.niveau === 'RAS').length).toBeLessThanOrEqual(1)
+        for (const axe of axes.filter((a) => a.niveau !== 'RAS')) {
+          expect(faitsDe(axe.blocs).filter((b) => b.type === 'paragraphe').length).toBeGreaterThanOrEqual(2)
+        }
       })
 
       it('ne cite que des sources fictives, sur le domaine réservé .example', () => {
