@@ -1,0 +1,1 @@
+ALTER TABLE "organisations" ALTER COLUMN "parutions_d_essai" SET DEFAULT 2;

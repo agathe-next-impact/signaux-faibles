@@ -100,11 +100,13 @@ export const organisations = pgTable(
   suspendueLe: horodatage('suspendue_le'),
   offre: offreOrganisation('offre').notNull().default('standard'),
   /**
-   * Parutions complètes de l'essai avant « L'essentiel » seul : trois par
-   * défaut (J0, J+7, J+14), réglable par l'opératrice pour qu'un essai à J+28
-   * ne soit pas un cas codé en dur.
+   * Parutions complètes de l'essai avant « L'essentiel » seul : deux par
+   * défaut (J0, J+7) depuis le 24 octobre 2026, trois auparavant (migration
+   * 0011, qui ne touche pas aux organisations existantes), réglable par
+   * l'opératrice pour qu'un essai plus long ne soit pas un cas codé en dur.
+   * Même valeur que `PARUTIONS_D_ESSAI`, qu'affiche la vitrine.
    */
-  parutionsDEssai: smallint('parutions_d_essai').notNull().default(3),
+  parutionsDEssai: smallint('parutions_d_essai').notNull().default(2),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),
   emailRelecture: text('email_relecture'),
