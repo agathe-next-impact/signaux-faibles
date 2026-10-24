@@ -2,6 +2,8 @@
 
 *Décidé le 19 octobre 2026. Offre : une lettre 1 envoyée sans sollicitation à partir du site du prospect, qui ouvre un espace et un mois d'essai ; abonnement à 89 € HT par mois ensuite.*
 
+**Réservée aux clients finaux** (24 octobre 2026) : un prescripteur (expert-comptable, cabinet de conseil, chambre consulaire, cluster, fédération, réseau de l'ESS) n'entre jamais dans la séquence ; son canal est décrit dans `docs/prescripteurs.md`.
+
 ## Le partage des rôles
 
 Trois acteurs, et aucun ne fait le travail d'un autre.

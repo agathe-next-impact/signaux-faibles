@@ -306,7 +306,9 @@ Les lire avant toute session.
   des variables : **le portail n'ajoute jamais un contact à une campagne et ne
   lance rien**, c'est le rôle de la tâche de prospection. Le jeton d'accès ne
   voyage pas dans lemlist : le bouton de la lettre 1 mène à « recevoir mon
-  lien ». `desinscrit` est final. Sans `LEMLIST_API_KEY`, tout est tenu dans
+  lien ». `desinscrit` est final. **Réservée aux clients finaux** (24 octobre
+  2026) : un prescripteur n'entre jamais dans une séquence, son canal est
+  proposé dans `docs/prescripteurs.md` (non codé). Sans `LEMLIST_API_KEY`, tout est tenu dans
   Postgres et rien ne part. **Le mois d'essai d'une entrée par prospection
   commence à la première visite** (`origine: "prospection"` sur
   `POST /api/veille/organisations`, colonne `entrée_par_prospection`,
