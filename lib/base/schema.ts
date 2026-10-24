@@ -13,6 +13,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 
 /**
@@ -107,6 +108,14 @@ export const organisations = pgTable(
    * Même valeur que `PARUTIONS_D_ESSAI`, qu'affiche la vitrine.
    */
   parutionsDEssai: smallint('parutions_d_essai').notNull().default(2),
+  /**
+   * Le prescripteur qui a recommandé l'organisation (24 octobre 2026,
+   * `docs/prescripteurs.md`). Le premier garde l'organisation : jamais réécrit.
+   * Exclusif de l'entrée par prospection : une organisation recommandée ne
+   * reçoit pas de séquence, une organisation prospectée n'est pas attribuée.
+   */
+  recommandéePar: uuid('recommandée_par').references((): AnyPgColumn => prescripteurs.id),
+  recommandéeLe: horodatage('recommandée_le'),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),
   emailRelecture: text('email_relecture'),
@@ -123,7 +132,56 @@ export const organisations = pgTable(
       sql`${table.registreNotion} is null or ${table.registreNotion} ~ '^[0-9a-f]{32}$'`,
     ),
     check('organisations_parutions_d_essai', sql`${table.parutionsDEssai} between 1 and 8`),
+    check(
+      'organisations_recommandée_hors_prospection',
+      sql`not (${table.entréeParProspection} and ${table.recommandéePar} is not null)`,
+    ),
+    check(
+      'organisations_recommandée_datée',
+      sql`(${table.recommandéePar} is null) = (${table.recommandéeLe} is null)`,
+    ),
   ],
+)
+
+/** Le métier du prescripteur, pour le tableau de l'opératrice ; il ne change aucune règle. */
+export const typePrescripteur = pgEnum('type_prescripteur', [
+  'conseil',
+  'expertise_comptable',
+  'juridique',
+  'chambre_consulaire',
+  'developpement_economique',
+  'cluster_federation',
+  'ess_financeur',
+  'autre',
+])
+
+/**
+ * Les prescripteurs (24 octobre 2026, `docs/prescripteurs.md`) : expert-comptable,
+ * cabinet de conseil, chambre, cluster, fédération, réseau de l'ESS. Ils
+ * recommandent des clients et ne sont **jamais prospectés** : la prospection
+ * automatisée est réservée aux clients finaux.
+ *
+ * Un prescripteur est une organisation du portail, qui a son propre espace en
+ * accès offert ; cette table n'y ajoute que son code de recommandation. Il ne
+ * lit jamais les lettres des organisations qu'il recommande (règles 2 et 7).
+ */
+export const prescripteurs = pgTable(
+  'prescripteurs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .unique()
+      .references(() => organisations.id),
+    /** Porté par le lien de recommandation (`/demo?de=<code>`), en clair : ce n'est pas un secret. */
+    code: text('code').notNull().unique(),
+    type: typePrescripteur('type').notNull(),
+    /** Faux : le code ne rattache plus d'organisation ; les rattachements passés restent. */
+    actif: boolean('actif').notNull().default(true),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+    modifiéLe: horodatage('modifié_le').notNull().defaultNow(),
+  },
+  (table) => [check('prescripteurs_code_forme', sql`${table.code} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(${table.code}) between 3 and 40`)],
 )
 
 export const cadenceVeille = pgEnum('cadence_veille', ['hebdomadaire', 'bimensuelle', 'mensuelle'])

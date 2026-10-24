@@ -1,4 +1,5 @@
 import { dateDuJour } from '@/lib/email/gabarit'
+import { codeDePrescripteurValide, PARAMÈTRE_DU_PRESCRIPTEUR } from '@/lib/domaine/prescripteurs'
 import { adresseDeRéponseSûre, type Message } from '@/lib/email/gmail'
 
 /**
@@ -27,6 +28,13 @@ export type DemandeDeDémo = {
   readonly organisation: string
   readonly fonction: string
   readonly message: string
+  /**
+   * Le code du prescripteur qui a envoyé le lien (`/demo?de=<code>`, 24 octobre
+   * 2026), ou une chaîne vide. Un code mal formé est ignoré, jamais une erreur :
+   * la demande part quand même. Le code n'est pas vérifié ici (la page ne lit pas
+   * Postgres) : il l'est à l'onboarding, par `POST /api/veille/organisations`.
+   */
+  readonly prescripteur: string
 }
 
 export type ChampDeDémo = 'nom' | 'email' | 'organisation' | 'fonction' | 'message'
@@ -52,6 +60,11 @@ function unTexte(valeur: FormDataEntryValue | null): string {
     .trim()
 }
 
+function codeLu(valeur: FormDataEntryValue | null): string {
+  const code = uneLigne(valeur).toLowerCase()
+  return codeDePrescripteurValide(code) ? code : ''
+}
+
 /**
  * Lit et contrôle le formulaire. Les champs obligatoires sont le nom,
  * l'adresse et l'organisation ; la fonction et le message sont facultatifs.
@@ -68,6 +81,7 @@ export function lireLaDemande(formulaire: { get(nom: string): FormDataEntryValue
     organisation: uneLigne(formulaire.get('organisation')),
     fonction: uneLigne(formulaire.get('fonction')),
     message: unTexte(formulaire.get('message')),
+    prescripteur: codeLu(formulaire.get(PARAMÈTRE_DU_PRESCRIPTEUR)),
   }
 
   const champs: ChampDeDémo[] = []
@@ -91,6 +105,9 @@ export function composerCourrierDeDémo(demande: DemandeDeDémo, maintenant: Dat
     `Adresse : ${demande.email}`,
     `Organisation : ${demande.organisation}`,
     `Fonction : ${demande.fonction || 'non indiquée'}`,
+    ...(demande.prescripteur
+      ? [`Recommandée par le prescripteur : ${demande.prescripteur} (à porter à l'onboarding, champ prescripteur)`]
+      : []),
     '',
     'Message :',
     demande.message || '(aucun message)',

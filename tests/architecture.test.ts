@@ -630,6 +630,23 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('listerLesAbonnements')).toEqual(['app/(portail)/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
     expect(appelants('lireSituationDAbonnement')).toEqual(['lib/base/situation.ts', 'lib/portail/situation.ts'])
     expect(appelants('situationDeLEspace')).toEqual(['app/(portail)/[slug]/abonnement/page.tsx', 'lib/portail/situation.ts'])
+    // Les prescripteurs (24 octobre 2026) : même forme, la garde dans la
+    // fonction, un seul écran.
+    expect(appelants('tableauDesPrescripteurs')).toEqual(['lib/auth/appartenance.ts', 'lib/base/prescripteurs.ts'])
+    expect(appelants('listerLesPrescripteurs')).toEqual(['app/(portail)/espaces/prescripteurs/page.tsx', 'lib/auth/appartenance.ts'])
+  })
+
+  it('la page /demo ne lit pas Postgres, même pour le code d’un prescripteur', () => {
+    // Le code de recommandation (`/demo?de=<code>`) n'est vérifié qu'à
+    // l'onboarding : la page publique reste sans base (24 octobre 2026).
+    for (const fichier of [
+      'lib/portail/demo.ts',
+      'app/(portail)/demo/page.tsx',
+      'app/(portail)/demo/formulaire.tsx',
+      'app/(portail)/demo/actions.ts',
+    ]) {
+      expect(readFileSync(join(process.cwd(), fichier), 'utf8'), fichier).not.toMatch(/@\/lib\/base\//)
+    }
   })
 
   it('toute route /api/veille commence par la garde du jeton', () => {

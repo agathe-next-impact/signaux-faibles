@@ -40,6 +40,13 @@ const ÉTATS_ABONNÉS = new Set(['trialing', 'active', 'past_due'])
  */
 export const PARUTIONS_D_ESSAI = 2
 
+/**
+ * Parutions complètes de l'essai d'une organisation recommandée par un
+ * prescripteur (24 octobre 2026, `docs/prescripteurs.md`) : l'avantage que le
+ * prescripteur peut offrir, posé à l'ouverture tant que J0 ne l'est pas.
+ */
+export const PARUTIONS_D_ESSAI_RECOMMANDÉE = 4
+
 export type ÉtatOrganisation = 'demande' | 'generation' | 'essai' | 'abonnee' | 'suspendue' | 'ecartee' | 'test'
 
 /** L'offre posée par l'opératrice (19 octobre 2026) : standard, early adopter, ou accès offert. */

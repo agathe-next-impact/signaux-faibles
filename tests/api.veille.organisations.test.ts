@@ -70,6 +70,33 @@ describe('POST /api/veille/organisations', () => {
     }
   })
 
+  it('porte le code du prescripteur, refuse un code mal formé et son mélange avec la prospection', async () => {
+    organisations.ouvrirEnEssai.mockResolvedValue({ sorte: 'créée', organisationId: 'o' })
+    expect((await appel({ ...corps, prescripteur: 'cabinet-durand' })).status).toBe(201)
+    expect(organisations.ouvrirEnEssai).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'acme', prescripteur: 'cabinet-durand', prospection: false }),
+    )
+    organisations.ouvrirEnEssai.mockClear()
+    expect((await appel({ ...corps, prescripteur: 'Cabinet Durand' })).status).toBe(400)
+    expect((await appel({ ...corps, prescripteur: 'cabinet-durand', origine: 'prospection' })).status).toBe(400)
+    expect(organisations.ouvrirEnEssai).not.toHaveBeenCalled()
+  })
+
+  it('traduit les refus liés aux prescripteurs', async () => {
+    const cas: Array<[string, number]> = [
+      ['prescripteur-inconnu', 404],
+      ['hors-prospection', 409],
+      ['déjà-prospectée', 409],
+      ['recommandée-par-elle-même', 409],
+    ]
+    for (const [sorte, statut] of cas) {
+      organisations.ouvrirEnEssai.mockResolvedValueOnce({ sorte })
+      const réponse = await appel(corps)
+      expect(réponse.status, sorte).toBe(statut)
+      expect(await réponse.json()).toEqual({ état: sorte })
+    }
+  })
+
   it('une erreur de base rend 502 sans détail', async () => {
     organisations.ouvrirEnEssai.mockRejectedValue(new Error('23505'))
     const réponse = await appel(corps)

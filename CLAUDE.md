@@ -307,8 +307,19 @@ Les lire avant toute session.
   lance rien**, c'est le rôle de la tâche de prospection. Le jeton d'accès ne
   voyage pas dans lemlist : le bouton de la lettre 1 mène à « recevoir mon
   lien ». `desinscrit` est final. **Réservée aux clients finaux** (24 octobre
-  2026) : un prescripteur n'entre jamais dans une séquence, son canal est
-  proposé dans `docs/prescripteurs.md` (non codé). Sans `LEMLIST_API_KEY`, tout est tenu dans
+  2026) : un prescripteur n'entre jamais dans une séquence, ni les
+  organisations qu'il recommande (`docs/prescripteurs.md`). Table
+  `prescripteurs` (migration 0012 : organisation du prescripteur, code, type),
+  `organisations.recommandée_par` et `recommandée_le`, exclusives de
+  `entrée_par_prospection` par contrainte ; `POST /api/veille/prescripteurs`
+  (déclarer), `GET /api/veille/prescripteurs?exclusions=1` (lue par la tâche de
+  prospection), `prescripteur: <code>` sur `POST /api/veille/organisations`
+  (le premier garde l'organisation, quatre parutions d'essai,
+  `PARUTIONS_D_ESSAI_RECOMMANDÉE`) ; le code voyage par `/demo?de=<code>`, lu à
+  l'envoi du formulaire, la page restant sans base ; l'opératrice suit sur
+  `/espaces/prescripteurs` (`listerLesPrescripteurs`, garde dans la fonction).
+  Un prescripteur a son espace en accès offert et ne lit jamais les lettres de
+  ses clients. Sans `LEMLIST_API_KEY`, tout est tenu dans
   Postgres et rien ne part. **Le mois d'essai d'une entrée par prospection
   commence à la première visite** (`origine: "prospection"` sur
   `POST /api/veille/organisations`, colonne `entrée_par_prospection`,

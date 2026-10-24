@@ -1,6 +1,8 @@
 # Prescripteurs : un canal à part de la prospection automatisée
 
-*Proposition du 24 octobre 2026, à valider. Rien n'est codé.*
+*Décidé le 24 octobre 2026 : réciprocité (option A) et quatre parutions d'essai
+pour le client recommandé. Codé le même jour, sauf le point mensuel et la
+lettre de filière transmise (« Ce qui reste »).*
 
 ## La règle
 
@@ -105,24 +107,41 @@ an).
 d'argent et s'appuie sur ce qui existe ; passer à B pour un prescripteur qui a
 apporté trois abonnés, par un contrat à lui.
 
-## Ce que cela demande en code
+## Ce qui est codé
 
-| Pièce | Travail |
+| Pièce | Où |
 | --- | --- |
-| Migration 0012 | Table `prescripteurs` (organisation du prescripteur, code unique, type, conditions) ; `organisations.prescripteur_id` et `organisations.origine` (`directe`, `prospection`, `prescripteur`) |
-| Formulaire `/demo` | Lire `de`, vérifier le code, le porter dans le courrier |
-| `POST /api/veille/organisations` | Accepter `prescripteur`, refuser `prospection` pour une organisation recommandée |
-| Liste d'exclusion | `GET /api/veille/prescripteurs?exclusions=1`, lue par la tâche de prospection |
-| Tableau de l'opératrice | `/espaces/prescripteurs`, garde dans la fonction |
-| Point mensuel | Brouillon Gmail par prescripteur, dans le passage quotidien, un par mois |
-| Gardes d'architecture | Un prescripteur jamais dans `prospections` ; le tableau, seul lecteur qui traverse les organisations recommandées |
+| Table `prescripteurs` (organisation du prescripteur, code unique, type, actif) ; `organisations.recommandée_par` et `recommandée_le` ; contrainte : jamais à la fois recommandée et entrée par prospection | `lib/base/schema.ts`, migration `drizzle/0012_prescripteurs.sql` |
+| Déclarer un prescripteur ; liste d'exclusion ; tableau | `lib/base/prescripteurs.ts`, `POST` et `GET /api/veille/prescripteurs` (`docs/api-veille.md`) |
+| Rattacher une organisation recommandée, quatre parutions d'essai, refus de la prospection (`hors-prospection`, `déjà-prospectée`) | `ouvrirEnEssai` (`lib/base/organisations.ts`), champ `prescripteur` de `POST /api/veille/organisations` |
+| Le code dans la demande de démo, lu à l'envoi du formulaire ; la page reste sans base | `lib/domaine/prescripteurs.ts`, `lib/portail/demo.ts`, `app/(portail)/demo/formulaire.tsx` |
+| Tableau de l'opératrice : lien de recommandation, organisations recommandées et leur étape | `/espaces/prescripteurs`, `listerLesPrescripteurs` (`lib/auth/appartenance.ts`) |
+| Gardes : seul appelant du tableau, `/demo` sans import de `lib/base/` | `tests/architecture.test.ts` |
 
-## Décisions à prendre
+## Mettre un prescripteur en service
 
-1. La contrepartie : A, B, C, ou A puis B.
-2. L'avantage du client recommandé : quatre parutions d'essai, ou autre.
-3. La durée de l'attribution : le premier prescripteur qui recommande garde
-   l'organisation douze mois, ou toujours.
-4. La mention à l'onboarding qui autorise le point mensuel au prescripteur.
-5. La lettre de filière transmise par les chambres, clusters et fédérations :
-   oui ou non, et sous quelle marque (signauxfaibles seul, ou « transmis par »).
+1. Ouvrir son espace comme celui d'un client (`/onboarding-demande`,
+   référentiels, première lettre, activation).
+2. `POST /api/veille/prescripteurs` `{ "slug", "code", "type" }`.
+3. Poser l'accès offert : `PATCH /api/veille/organisations`
+   `{ "slug", "action": "offre", "offre": "gratuite" }`, ou le tableau des
+   abonnements.
+4. Lui donner son lien, affiché sur `/espaces/prescripteurs` :
+   `https://www.signauxfaibles.io/demo?de=<code>`.
+5. À chaque demande de démo qui porte un code, passer
+   `"prescripteur": "<code>"` à l'onboarding.
+6. Ajouter la lecture de `GET /api/veille/prescripteurs?exclusions=1` à la
+   tâche de prospection, avant la constitution du lot.
+
+## Ce qui reste
+
+- **Le point mensuel au prescripteur**, en brouillon Gmail : il attend la
+  mention à l'onboarding qui autorise à lui donner le nom et l'étape de ses
+  clients.
+- **La lettre de filière transmise** par les chambres, clusters et
+  fédérations : elle attend la mise en service des lettres de filière
+  (`docs/programme-lettre-unique.md`) et une décision de marque.
+- **La commission (option B)** : pour un prescripteur qui a apporté trois
+  abonnés, par un contrat à lui ; le relevé se lira dans `abonnements`.
+- **La durée de l'attribution** : aujourd'hui, le premier prescripteur garde
+  l'organisation sans limite ; une durée ne compte qu'avec une commission.
