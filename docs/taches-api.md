@@ -127,12 +127,17 @@ contrôle comparent les noms sans ce préfixe, et les consignes du harnais disen
 à l'agent qu'une page qui écrit `notion-fetch` désigne `fetch`. `ai-search`
 (recherche IA) reste hors de la liste permise.
 
-**Les pages longues sont rendues en entier.** Au-delà de son plafond par
-défaut, Claude Code range une réponse d'outil MCP dans un fichier hors du
-dossier de travail, que la garde interdit de lire : la page de la tâche Lettres
-(64 571 caractères) et la vue « Veilles actives » (67 126) étaient illisibles au
-contrôle du 25 octobre. La session reçoit donc `MAX_MCP_OUTPUT_TOKENS=80000`
-(`PLAFOND_SORTIE_MCP`, `environnementDeLaSession`).
+**Les pages longues restent lisibles.** La page de la tâche Lettres (64 571
+caractères) et la vue « Veilles actives » (67 126) ont buté deux fois au
+contrôle du 25 octobre. D'abord sur le plafond de jetons des réponses MCP : la
+session reçoit `MAX_MCP_OUTPUT_TOKENS=80000` (`PLAFOND_SORTIE_MCP`). Puis, au-delà
+d'une cinquantaine de kilo-octets, le CLI range la réponse dans
+`~/.claude/projects/<dossier de travail>/<session>/tool-results/` et ne rend qu'un
+aperçu et le chemin, alors que la garde ne laissait lire que le dossier de
+travail. La garde laisse désormais relire, avec Read et Grep seulement, les
+fichiers `tool-results/` du dossier de projet de **cette** session
+(`dossierDesRéponsesPersistées`), et rien d'autre de la configuration de Claude
+Code ; le contrôle reçoit Read et Grep pour cela.
 
 Dans les deux cas, relancer `controle` après avoir changé le secret : la ligne
 « Notion : jeton MCP accepté par le serveur » doit passer à `ok` avant tout essai

@@ -34,6 +34,7 @@ import {
   lireLesSecrets,
   optionsDeGarde,
   ouvrirLesSorties,
+  réponsesPersistéesDe,
   serveurNotion,
   valeursSecrètes,
   variable,
@@ -109,6 +110,8 @@ const PROMPT_NOTION = `Tu vérifies, en lecture seule, l'accès à Notion d'une 
 2. Lis la page ${PAGE_LETTRES} (outil fetch). Relève son titre, et si elle contient une section « Prompt de la tâche ».
 3. Interroge la vue ${VUE_VEILLES_ACTIVES} (outil query-data-sources, en mode vue). Relève seulement le nombre de lignes rendues.
 
+Si une réponse est trop longue et rangée dans un fichier, lis ce fichier avec Read ou cherches-y avec Grep : c'est permis pour ce fichier seulement.
+
 Réponds par un seul bloc JSON, sans rien d'autre :
 {"pointeurs":{"ok":true|false,"titre":"…"},"lettres":{"ok":true|false,"titre":"…","prompt":true|false},"vue":{"ok":true|false,"lignes":n},"erreurs":["message d'erreur exact de chaque outil en échec"]}`
 
@@ -171,9 +174,10 @@ export async function contrôler(): Promise<number> {
       cwd: sorties.espace,
       model: 'claude-sonnet-5-5',
       effort: 'low',
-      tools: ['ToolSearch'],
+      // Read et Grep : seulement pour relire une réponse longue rangée par le CLI (garde).
+      tools: ['ToolSearch', 'Read', 'Grep'],
       mcpServers: { [SERVEURS.notion]: serveurNotion(secrets.jetonNotion) },
-      ...optionsDeGarde({ espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'lecture' }, sorties.journal),
+      ...optionsDeGarde({ espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'lecture', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }, sorties.journal),
       maxTurns: 20,
       maxBudgetUsd: 2,
       env: environnementDeLaSession(secrets.cléApi),

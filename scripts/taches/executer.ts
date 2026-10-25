@@ -28,11 +28,12 @@
  */
 import { query, type AgentDefinition, type CanUseTool, type McpServerConfig, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { lireCompteDeServiceJSON } from '@/lib/email/gmail'
 import { contrôler } from './controle'
-import { décisionPour, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
+import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
@@ -147,12 +148,12 @@ export function écrireLeRésuméDuJob(markdown: string, secrets: readonly strin
 /**
  * Le plafond, en jetons, d'une réponse d'outil MCP rendue telle quelle à l'agent.
  *
- * Au-delà du plafond par défaut, Claude Code range la réponse dans un fichier
- * hors du dossier de travail, que la garde interdit de lire : la page de la
- * tâche Lettres (64 571 caractères) et la vue « Veilles actives » (67 126) sont
- * restées illisibles au contrôle du 25 octobre 2026. Les tâches lisent ces pages
- * en entier, comme sous l'abonnement ; 80 000 jetons couvrent les plus longues
- * avec de la marge, et restent loin de la fenêtre de contexte.
+ * Au-delà du plafond par défaut, l'outil échoue (« exceeds maximum allowed
+ * tokens ») : la page de la tâche Lettres (64 571 caractères) et la vue
+ * « Veilles actives » (67 126) ont échoué ainsi au contrôle du 25 octobre 2026.
+ * 80 000 jetons couvrent les plus longues avec de la marge. Au-delà d'une
+ * cinquantaine de kilo-octets, le CLI range ensuite la réponse dans un fichier,
+ * que la garde laisse relire (`dossierDesRéponsesPersistées`).
  */
 export const PLAFOND_SORTIE_MCP = 80_000
 
@@ -193,6 +194,11 @@ function garde(contexte: ContexteDeGarde, journal: (ligne: string) => void): { c
     ],
   }
   return { canUseTool, hooks }
+}
+
+/** Le dossier où le CLI de la session range ses réponses d'outil trop longues (`garde.ts`). */
+export function réponsesPersistéesDe(espace: string): string {
+  return dossierDesRéponsesPersistées(espace, join(homedir(), '.claude'))
 }
 
 export function optionsDeGarde(contexte: ContexteDeGarde, journal: (ligne: string) => void): Pick<Options, 'canUseTool' | 'hooks' | 'permissionMode' | 'settingSources'> {
@@ -387,7 +393,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
     relevé,
     espace: sorties.espace,
   }
-  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche' }
+  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
   const maintenant = new Date()
   const prompt = promptDeLaTâche(tâche, organisation)

@@ -75,6 +75,35 @@ export type ContexteDeGarde = {
   readonly portail: string
   /** `lecture` : la tâche « controle », qui ne touche à rien. */
   readonly mode: 'tâche' | 'lecture'
+  /**
+   * Le dossier de projet de la session dans la configuration de Claude Code
+   * (`dossierDesRéponsesPersistées`), où le CLI range une réponse d'outil trop
+   * longue pour être rendue telle quelle. Seuls ses fichiers `tool-results/`
+   * se lisent, et seulement avec Read et Grep.
+   */
+  readonly réponsesPersistées?: string
+}
+
+/**
+ * Le dossier de projet que Claude Code tient pour une session ouverte dans
+ * `espace` : `<racine>/projects/<espace, chaque caractère hors [A-Za-z0-9] en « - »>`.
+ *
+ * Au-delà d'une cinquantaine de kilo-octets, le CLI ne rend pas la réponse d'un
+ * outil MCP : il l'écrit dans `<ce dossier>/<session>/tool-results/` et rend à
+ * l'agent un aperçu et le chemin. La page de la tâche Lettres (64 Ko) et la vue
+ * « Veilles actives » (68 Ko) y sont passées au contrôle du 25 octobre 2026 ; sans
+ * le droit de lire ce fichier, l'agent ne pouvait rien en tirer.
+ */
+export function dossierDesRéponsesPersistées(espace: string, racineClaude: string): string {
+  return resolve(racineClaude, 'projects', espace.replace(/[^a-zA-Z0-9]/g, '-'))
+}
+
+/** Un fichier `tool-results/` du dossier de projet de la session, et rien d'autre. */
+function estUneRéponsePersistée(contexte: ContexteDeGarde, chemin: unknown): boolean {
+  if (!contexte.réponsesPersistées || typeof chemin !== 'string') return false
+  const absolu = resolve(contexte.espace, chemin)
+  if (!absolu.startsWith(contexte.réponsesPersistées + '/')) return false
+  return absolu.slice(contexte.réponsesPersistées.length).split('/').includes('tool-results')
 }
 
 const échapper = (texte: string) => texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -126,6 +155,9 @@ export function décisionPour(contexte: ContexteDeGarde, outil: string, entrée:
     typeof chemin === 'string' && (resolve(contexte.espace, chemin) + '/').startsWith(contexte.espace + '/')
 
   if (outil.startsWith('mcp__')) return décisionMcp(contexte, outil, entrée)
+
+  // Une réponse d'outil persistée par le CLI se relit, dans les deux modes.
+  if ((outil === 'Read' && estUneRéponsePersistée(contexte, entrée['file_path'])) || (outil === 'Grep' && estUneRéponsePersistée(contexte, entrée['path']))) return null
 
   if (contexte.mode === 'lecture') {
     return outil === 'ToolSearch' ? null : `outil ${outil} refusé : la tâche « controle » ne lit que Notion`
