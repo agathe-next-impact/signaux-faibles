@@ -143,6 +143,39 @@ Dans les deux cas, relancer `controle` après avoir changé le secret : la ligne
 « Notion : jeton MCP accepté par le serveur » doit passer à `ok` avant tout essai
 réel. Le `request_id` de la réponse est dans le résumé, pour le support Notion.
 
+## Partager les onboardings avec Cowork (25 octobre 2026)
+
+Décision de l'opératrice : **deux onboardings de demandes par semaine au plus sur
+Cowork** (tâches à la demande « Onboarding : référentiels, répercussion et
+activation » et « Onboarding : première lettre », sur l'abonnement), **le reste sur
+l'API** (tâches `balayage` et `premiere-lettre` de ce workflow). Les deux exécuteurs
+lisent la même page, et la page ne laisse chacun traiter que ses lignes.
+
+- **Attribution, à la main.** Propriété « Exécuteur » du registre (Cowork ou API),
+  posée avant ▶ A ; « Exécuteur fixé le » date le choix de Cowork. Vide vaut API.
+  La vue « Créneaux Cowork de la semaine » montre les créneaux pris.
+- **Règle.** Paragraphe « PARTAGE DES ONBOARDINGS » en tête du « Prompt —
+  Balayage » de « Tâche — Onboarding d'une organisation », repris à l'étape 0 du
+  « Prompt — Première lettre » : une ligne qui n'est pas pour l'exécuteur n'est ni
+  modifiée ni décochée, et sa case ▶ reste pour l'autre. Au-delà de deux lignes
+  Cowork datées de la semaine ISO, Cowork traite les deux plus anciennes et
+  signale les autres.
+- **Comment chacun se reconnaît.** Le harnais écrit « EXÉCUTEUR : API » dans les
+  consignes de toute session API (`consignesDuHarnais`, test dans
+  `tests/taches.outils.test.ts`) ; sans cette mention, la session est Cowork.
+- **Commandes Cowork.** `/onboarding-referentiels` et `/onboarding-premiere-lettre`
+  refusent une ligne « API », poursuivent une ligne « Cowork », et posent
+  « Cowork » sur une ligne vide si un créneau reste (sinon elles s'arrêtent et
+  donnent la commande API). `/onboarding-demande` n'écrit « Exécuteur » que si la
+  demande le dit, et donne la commande suivante selon l'exécuteur.
+- **Prospects : hors règle et hors quota.** Une ligne d'Origine « Prospection » garde
+  son circuit, la tâche Cowork « Prospection · lot du lundi » ; l'API ne la traite
+  jamais.
+- **Lancer un onboarding sur l'API** : Run workflow, tâche `balayage` (puis
+  `premiere-lettre`), organisation = le slug ou, avant le §3, le nom. Mesuré le
+  25 octobre sur Mastora : référentiels 4,82 $, répercussion 1,51 $, première
+  lettre 13,70 $, soit 20,03 $ avec un passage bloqué de 0,97 $.
+
 ## Lire ce qu'une exécution a coûté
 
 Le résumé du job donne le coût total, le nombre de tours, et pour chaque modèle

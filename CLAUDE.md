@@ -138,7 +138,11 @@ Les lire avant toute session.
   reste refusé par `scripts/taches/garde.ts`. Chaque exécution écrit son coût
   (`mesure.json`, lu dans le message `result` du SDK). Récurrences livrées
   désactivées, activées tâche par tâche à la bascule ; `pnpm tache controle`
-  vérifie tout en lecture avant un essai
+  vérifie tout en lecture avant un essai. **Onboardings partagés avec Cowork**
+  (25 octobre 2026) : deux demandes par semaine au plus sur Cowork, le reste sur
+  l'API, selon la propriété « Exécuteur » du registre (vide vaut API) et la règle
+  « PARTAGE DES ONBOARDINGS » de la page d'onboarding ; le harnais se déclare par
+  « EXÉCUTEUR : API » ; les prospects restent sur le lot du lundi, hors quota
 - **Postgres** (Neon, rattachée au projet Vercel, variable `DATABASE_URL`),
   **Drizzle ORM** 0.45 et le pilote `@neondatabase/serverless` en `Pool`
   (WebSocket, pour les transactions interactives). Schéma dans

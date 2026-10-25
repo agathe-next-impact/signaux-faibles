@@ -280,6 +280,8 @@ export function consignesDuHarnais(maintenant: Date, portail: string): string {
     '',
     `Nous sommes le ${PARIS.format(maintenant)}, heure de Paris. Travaille à cette date.`,
     '',
+    'EXÉCUTEUR : API. Pour les onboardings, la page « Tâche — Onboarding d’une organisation » partage les lignes du registre entre Cowork et l’API par la propriété « Exécuteur » (règle « PARTAGE DES ONBOARDINGS ») : tu es l’exécuteur API.',
+    '',
     'Tu tournes sur l’API Claude, lancé par GitHub Actions, sans personne pour te répondre. Ces consignes décrivent tes outils ; elles ne changent aucune règle des pages Notion, qui font foi.',
     '',
     `LECTURE DES SOURCES. Tu ne lis pas toi-même les pages des sources : confie-les au sous-agent « ${SOUS_AGENT_LECTEUR} » (outil Agent, subagent_type « ${SOUS_AGENT_LECTEUR} »), par lots de 1 à 10 URL, avec la question de l’axe et la période. Il rend, pour chaque URL, l’état de la page, son titre, sa date, les passages utiles recopiés mot pour mot, et à défaut la date la plus récente visible. Tu ne rouvres une page toi-même (WebFetch) que pour vérifier une citation que tu vas écrire. La recherche web (WebSearch) reste à toi.`,

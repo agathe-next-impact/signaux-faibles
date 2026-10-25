@@ -74,7 +74,12 @@ Demande reçue : $ARGUMENTS
    - Lecteur final = le nom donné, sinon vide ;
    - Objectifs de veille = la réponse à l'étape 1 bis, telle quelle, sinon vide ;
    - Statut = « 1 · Demande reçue » ;
-   - ▶ Générer les référentiels (A) = cochée.
+   - ▶ Générer les référentiels (A) = cochée ;
+   - Exécuteur = « Cowork » ou « API » seulement si la demande le dit, avec
+     « Exécuteur fixé le » = la date du jour pour Cowork ; sinon vide (vide
+     vaut API, règle « PARTAGE DES ONBOARDINGS » de la page). Pour Cowork, au-delà
+     de deux lignes d'Origine « Demande » déjà « Cowork » dans la semaine ISO
+     (vue « Créneaux Cowork de la semaine »), écris « API » et dis-le.
 
    Pas d'autre champ, pas même le Slug : le §3 du balayage le fait. N'invente
    aucune valeur. Une précision qui correspond à un autre champ du registre
@@ -86,6 +91,10 @@ Demande reçue : $ARGUMENTS
    balayage). Relis la ligne créée et vérifie chaque
    valeur. Ne crée jamais de ligne « Accès » : le §3.7bis la crée, inactive.
 
-5. **Compte rendu, court** : le lien de la ligne, les valeurs écrites, et
-   l'étape suivante en clair — « lancer `/onboarding-referentiels <nom>` ».
+5. **Compte rendu, court** : le lien de la ligne, les valeurs écrites, les
+   créneaux Cowork pris cette semaine (n sur 2), et l'étape suivante en clair
+   selon l'exécuteur : Cowork, ou vide si un créneau reste et qu'Agathe le
+   choisit, « lancer `/onboarding-referentiels <nom>` » ; API, « lancer le
+   workflow GitHub « Tâches planifiées (API Claude) », tâche `balayage`,
+   organisation = <nom> ».
    Aucun jeton à manipuler : n'en écris jamais dans une commande.

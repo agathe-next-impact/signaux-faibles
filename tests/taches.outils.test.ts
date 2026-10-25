@@ -186,5 +186,7 @@ describe('sous-agents et consignes du harnais', () => {
     expect(consignes).toContain('subagent_type « collecteur »')
     expect(consignes).toContain('synthese_de_collecte')
     expect(consignes).toContain('plus de quatre minutes')
+    // La page d'onboarding reconnaît l'exécuteur API à cette mention exacte (25 octobre 2026).
+    expect(consignes).toContain('EXÉCUTEUR : API')
   })
 })
