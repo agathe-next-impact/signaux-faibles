@@ -127,7 +127,12 @@ Les lire avant toute session.
   (`scripts/taches/pointeurs.ts`, texte des tâches en service recopié mot pour
   mot). Opus 5.5 (Sonnet 5.5 pour la réconciliation) ; la lecture des sources
   est confiée au sous-agent `lecteur`, sur **Haiku 5.5**. Notion par le serveur
-  MCP hébergé (`NOTION_MCP_TOKEN`, plan Business) ; Gmail et le portail par les
+  MCP hébergé (`NOTION_MCP_TOKEN`, plan Business : un jeton « New MCP token »
+  créé par un propriétaire de l'espace, **jamais** le secret d'intégration
+  interne du portail, que le serveur reconnaît mais refuse en `403
+  restricted_resource` ; les six premières exécutions du workflow ont échoué
+  là, 23 au 25 octobre 2026, et `scripts/taches/notion-mcp.ts` sonde le serveur
+  avant toute session pour nommer ce refus) ; Gmail et le portail par les
   outils du dépôt (`scripts/taches/outils.ts`), qui n'envoient jamais à un
   client et gardent `ACTIVATION_SECRET` hors du contexte du modèle ; tout le
   reste refusé par `scripts/taches/garde.ts`. Chaque exécution écrit son coût
