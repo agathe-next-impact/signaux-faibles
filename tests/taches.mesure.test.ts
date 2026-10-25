@@ -86,6 +86,8 @@ describe('environnement de la session enfant', () => {
         expect(env[nom], nom).toBeUndefined()
       }
       expect(env['PATH']).toBe('/usr/bin')
+      // Une page Notion de 65 000 caractères est rendue à l'agent, pas rangée hors de son dossier.
+      expect(Number(env['MAX_MCP_OUTPUT_TOKENS'])).toBeGreaterThanOrEqual(80_000)
     } finally {
       for (const clé of Object.keys(process.env)) if (!(clé in avant)) delete process.env[clé]
       Object.assign(process.env, avant)

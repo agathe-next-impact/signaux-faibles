@@ -34,11 +34,12 @@ import {
   lireLesSecrets,
   optionsDeGarde,
   ouvrirLesSorties,
+  réponsesPersistéesDe,
   serveurNotion,
   valeursSecrètes,
   variable,
 } from './executer'
-import { OUTILS_NOTION_LECTURE, SERVEURS } from './garde'
+import { nomDOutilNotion, OUTILS_NOTION_ÉCRITURE, OUTILS_NOTION_LECTURE, SERVEURS } from './garde'
 import { lireLaMesure } from './mesure'
 import { décrireLaSonde, sonderLeServeurNotion } from './notion-mcp'
 import { appelerLePortail, type ConfigurationDesOutils } from './outils'
@@ -105,9 +106,11 @@ async function contrôlerLePortail(configuration: ConfigurationDesOutils): Promi
 
 const PROMPT_NOTION = `Tu vérifies, en lecture seule, l'accès à Notion d'une tâche planifiée. Tu ne modifies rien et tu ne recopies aucun contenu de page.
 
-1. Lis la page ${PAGE_POINTEURS} (notion-fetch). Relève son titre.
-2. Lis la page ${PAGE_LETTRES} (notion-fetch). Relève son titre, et si elle contient une section « Prompt de la tâche ».
-3. Interroge la vue ${VUE_VEILLES_ACTIVES} (notion-query-data-sources, en mode vue). Relève seulement le nombre de lignes rendues.
+1. Lis la page ${PAGE_POINTEURS} (outil fetch du serveur notion). Relève son titre.
+2. Lis la page ${PAGE_LETTRES} (outil fetch). Relève son titre, et si elle contient une section « Prompt de la tâche ».
+3. Interroge la vue ${VUE_VEILLES_ACTIVES} (outil query-data-sources, en mode vue). Relève seulement le nombre de lignes rendues.
+
+Si une réponse est trop longue et rangée dans un fichier, lis ce fichier avec Read ou cherches-y avec Grep : c'est permis pour ce fichier seulement.
 
 Réponds par un seul bloc JSON, sans rien d'autre :
 {"pointeurs":{"ok":true|false,"titre":"…"},"lettres":{"ok":true|false,"titre":"…","prompt":true|false},"vue":{"ok":true|false,"lignes":n},"erreurs":["message d'erreur exact de chaque outil en échec"]}`
@@ -171,9 +174,10 @@ export async function contrôler(): Promise<number> {
       cwd: sorties.espace,
       model: 'claude-sonnet-5-5',
       effort: 'low',
-      tools: ['ToolSearch'],
+      // Read et Grep : seulement pour relire une réponse longue rangée par le CLI (garde).
+      tools: ['ToolSearch', 'Read', 'Grep'],
       mcpServers: { [SERVEURS.notion]: serveurNotion(secrets.jetonNotion) },
-      ...optionsDeGarde({ espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'lecture' }, sorties.journal),
+      ...optionsDeGarde({ espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'lecture', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }, sorties.journal),
       maxTurns: 20,
       maxBudgetUsd: 2,
       env: environnementDeLaSession(secrets.cléApi),
@@ -187,8 +191,11 @@ export async function contrôler(): Promise<number> {
       lignes.push({ contrôle: 'Notion : connexion au serveur hébergé', ok: serveur?.status === 'connected', détail: serveur ? serveur.status : 'serveur absent de la session' })
       const outils = (issue.init?.outils ?? []).filter((o) => o.startsWith(`mcp__${SERVEURS.notion}__`)).map((o) => o.slice(`mcp__${SERVEURS.notion}__`.length))
       lignes.push({ contrôle: 'Notion : outils exposés', ok: outils.length > 0, détail: outils.length ? `${outils.length} : ${outils.sort().join(', ')}` : 'aucun' })
-      for (const attendu of [...OUTILS_NOTION_LECTURE, 'notion-create-pages', 'notion-update-page', 'notion-create-view']) {
-        lignes.push({ contrôle: `Notion : outil ${attendu}`, ok: outils.includes(attendu), détail: outils.includes(attendu) ? 'exposé' : 'absent' })
+      // Le serveur nomme ses outils `fetch` avec un jeton MCP, `notion-fetch` en
+      // OAuth : on compare sans le préfixe, comme la garde.
+      const exposés = new Set(outils.map(nomDOutilNotion))
+      for (const attendu of [...OUTILS_NOTION_LECTURE, ...OUTILS_NOTION_ÉCRITURE.filter((o) => o !== 'get-async-task')]) {
+        lignes.push({ contrôle: `Notion : outil ${attendu}`, ok: exposés.has(attendu), détail: exposés.has(attendu) ? 'exposé' : 'absent' })
       }
       const réponse = lireLaRéponseNotion(issue.résultat?.result ?? '')
       if (!réponse) {

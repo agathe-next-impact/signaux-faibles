@@ -28,11 +28,12 @@
  */
 import { query, type AgentDefinition, type CanUseTool, type McpServerConfig, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { lireCompteDeServiceJSON } from '@/lib/email/gmail'
 import { contrôler } from './controle'
-import { décisionPour, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
+import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
@@ -144,12 +145,25 @@ export function écrireLeRésuméDuJob(markdown: string, secrets: readonly strin
 // ── Session ──────────────────────────────────────────────────────────────────
 
 /** L'environnement de la session enfant : sans aucun secret, sauf la clé API qui l'authentifie. */
+/**
+ * Le plafond, en jetons, d'une réponse d'outil MCP rendue telle quelle à l'agent.
+ *
+ * Au-delà du plafond par défaut, l'outil échoue (« exceeds maximum allowed
+ * tokens ») : la page de la tâche Lettres (64 571 caractères) et la vue
+ * « Veilles actives » (67 126) ont échoué ainsi au contrôle du 25 octobre 2026.
+ * 80 000 jetons couvrent les plus longues avec de la marge. Au-delà d'une
+ * cinquantaine de kilo-octets, le CLI range ensuite la réponse dans un fichier,
+ * que la garde laisse relire (`dossierDesRéponsesPersistées`).
+ */
+export const PLAFOND_SORTIE_MCP = 80_000
+
 export function environnementDeLaSession(cléApi: string): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {}
   const exclus =
     /^(CLAUDE|CCR_|ANTHROPIC_|AI_AGENT|SESSION_INGRESS|CLOUDSDK_AUTH|GH_TOKEN|GITHUB_TOKEN|ACTIONS_|AWS_ACCESS|AWS_SECRET|NOTION|ACTIVATION_SECRET|CRON_SECRET|GOOGLE_|GMAIL_|EVALUATION_API_KEY|STRIPE|DATABASE_URL|LEMLIST)/
   for (const [clé, valeur] of Object.entries(process.env)) if (!exclus.test(clé)) env[clé] = valeur
   env['ANTHROPIC_API_KEY'] = cléApi
+  env['MAX_MCP_OUTPUT_TOKENS'] = String(PLAFOND_SORTIE_MCP)
   return env
 }
 
@@ -180,6 +194,11 @@ function garde(contexte: ContexteDeGarde, journal: (ligne: string) => void): { c
     ],
   }
   return { canUseTool, hooks }
+}
+
+/** Le dossier où le CLI de la session range ses réponses d'outil trop longues (`garde.ts`). */
+export function réponsesPersistéesDe(espace: string): string {
+  return dossierDesRéponsesPersistées(espace, join(homedir(), '.claude'))
 }
 
 export function optionsDeGarde(contexte: ContexteDeGarde, journal: (ligne: string) => void): Pick<Options, 'canUseTool' | 'hooks' | 'permissionMode' | 'settingSources'> {
@@ -221,7 +240,7 @@ export async function déroulerLaSession(prompt: string, options: Options, sorti
         for (const bloc of message.message.content) {
           if (bloc.type !== 'tool_use') continue
           sorties.journal(`outil ${bloc.name}`)
-          if (bloc.name === `mcp__${SERVEURS.notion}__notion-create-pages`) {
+          if (bloc.name.startsWith(`mcp__${SERVEURS.notion}__`) && nomDOutilNotion(bloc.name.slice(`mcp__${SERVEURS.notion}__`.length)) === 'create-pages') {
             const pages = (bloc.input as { pages?: unknown[] } | undefined)?.pages
             créationsEnAttente.set(bloc.id, Array.isArray(pages) ? pages.length : 1)
           }
@@ -266,7 +285,7 @@ export function consignesDuHarnais(maintenant: Date, portail: string): string {
     `LECTURE DES SOURCES. Tu ne lis pas toi-même les pages des sources : confie-les au sous-agent « ${SOUS_AGENT_LECTEUR} » (outil Agent, subagent_type « ${SOUS_AGENT_LECTEUR} »), par lots de 1 à 10 URL, avec la question de l’axe et la période. Il rend, pour chaque URL, l’état de la page, son titre, sa date, les passages utiles recopiés mot pour mot, et à défaut la date la plus récente visible. Tu ne rouvres une page toi-même (WebFetch) que pour vérifier une citation que tu vas écrire. La recherche web (WebSearch) reste à toi.`,
     '',
     'OUTILS.',
-    `· Notion : les outils du serveur « ${SERVEURS.notion} » (lire, chercher, interroger une base ou une vue, créer et modifier des pages, créer une vue liée). Supprimer, déplacer ou changer un schéma est refusé.`,
+    `· Notion : les outils du serveur « ${SERVEURS.notion} » (lire, chercher, interroger une base ou une vue, créer et modifier des pages, créer une vue liée). Supprimer, déplacer ou changer un schéma est refusé. Ils s’appellent mcp__${SERVEURS.notion}__fetch, search, query-data-sources, create-pages, update-page, create-view et get-async-task : une page qui écrit notion-fetch ou notion-create-pages désigne le même outil. La recherche IA (ai-search) n’est pas permise.`,
     `· Portail : mcp__${SERVEURS.portail}__appeler_portail(methode, chemin, corps), pour ${portail}/api/veille/* et /api/acces/ouvrir. Passe l’adresse telle que la page l’écrit ; l’outil ajoute lui-même l’autorisation, n’en écris aucune.`,
     `· Gmail : mcp__${SERVEURS.gmail}__create_draft (to, subject, body, htmlBody), mcp__${SERVEURS.gmail}__list_drafts, mcp__${SERVEURS.gmail}__send_message (à agathe@signauxfaibles.io seulement : tout autre destinataire est refusé) et mcp__${SERVEURS.gmail}__list_sent_messages (messages envoyés depuis une date, en-têtes seulement : pas de recherche par requête, pas de corps lisible ; filtre toi-même par destinataire et par objet).`,
     `· Courriels client : mcp__${SERVEURS.gmail}__deposer_courriel(demande, to). Il fait la mise en forme par POST /api/veille/courriel (la demande telle que la page l’écrit) ET dépose le brouillon : quand une page te dit de passer « html » et « texte » de la réponse dans create_draft, fais-le par cet outil, qui ne te rend pas le HTML. N’utilise create_draft avec htmlBody que si deposer_courriel échoue.`,
@@ -303,7 +322,7 @@ export const PROMPT_DU_COLLECTEUR = [
   'Tu collectes, pour un agent de veille, un lot de familles d’un référentiel. Tu écris en français, sans tiret cadratin. Tu ne rédiges pas la lettre : tu rends des lignes de grille et des faits sourcés.',
   '',
   'ORDRE.',
-  `1. Lis le référentiel qu’on te nomme (mcp__${SERVEURS.notion}__notion-fetch) et n’en garde que ton lot : sources nommées, requêtes types, entités du corpus, dossiers, échéances.`,
+  `1. Lis le référentiel qu’on te nomme (mcp__${SERVEURS.notion}__fetch) et n’en garde que ton lot : sources nommées, requêtes types, entités du corpus, dossiers, échéances.`,
   `2. Ouvre d’abord toutes les sources nommées du lot en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls), 30 URL au plus par appel. Ses lignes OUVERTE et NON OUVERTE vont telles quelles dans ta grille ; relance dans un second appel les lignes À RELANCER. Lis avec Read les seuls fichiers dont tu as besoin.`,
   `3. Lance chaque requête type, une par une (WebSearch), et requête chaque entité du corpus une par une. N’ouvre un résultat (WebFetch, ou node ${LIRE_PAGE} <url> s’il refuse les robots) que s’il peut porter un fait.`,
   '4. Requestionne chaque dossier ouvert à sa source primaire (registre public pour une procédure collective).',
@@ -322,7 +341,8 @@ export function définitionDuCollecteur(): AgentDefinition {
   return {
     description: 'Collecte un lot de familles d’un référentiel et écrit sa grille et ses faits sourcés dans le dossier de travail.',
     prompt: PROMPT_DU_COLLECTEUR,
-    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`],
+    // Les deux noms de la lecture Notion : `fetch` avec un jeton MCP, `notion-fetch` en OAuth.
+    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__fetch`, `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`],
     model: MODÈLE_COLLECTEUR,
   }
 }
@@ -373,7 +393,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
     relevé,
     espace: sorties.espace,
   }
-  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche' }
+  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
   const maintenant = new Date()
   const prompt = promptDeLaTâche(tâche, organisation)
