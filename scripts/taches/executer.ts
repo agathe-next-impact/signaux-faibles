@@ -34,12 +34,13 @@ import { lireCompteDeServiceJSON } from '@/lib/email/gmail'
 import { contrôler } from './controle'
 import { décisionPour, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RésultatBrut } from './mesure'
+import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
 import { promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
 
 export const RACINE = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 export const LIRE_PAGE = join(RACINE, 'scripts', 'lire-page.mjs')
-export const SERVEUR_NOTION = 'https://mcp.notion.com/mcp'
+export { SERVEUR_NOTION }
 
 /** Modèle et plafond de chaque tâche (décisions du 23 octobre 2026). */
 export const PARAMÈTRES: Readonly<Record<Tâche, { readonly modèle: string; readonly plafondUsd: number }>> = {
@@ -345,6 +346,20 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
 
   const sorties = ouvrirLesSorties(organisation ? `${tâche}-${organisation}` : tâche, masques)
   const relevé = { organisations: new Set<string>(organisation ? [organisation] : []) }
+
+  // Le serveur Notion est sondé avant d'ouvrir la session : un jeton refusé
+  // laisserait l'agent sans ses pages, et le dirait à travers un modèle, après
+  // coup. Ici le refus est nommé tout de suite, et rien n'est facturé.
+  const sonde = await sonderLeServeurNotion(secrets.jetonNotion)
+  sorties.journal(`serveur Notion MCP : ${décrireLaSonde(sonde)}`)
+  if (!sonde.ok) {
+    const échec = `le serveur Notion MCP refuse le jeton : ${décrireLaSonde(sonde)}`
+    sorties.écrire('mesure.json', JSON.stringify(lireLaMesure({ subtype: 'erreur' }, { tâche, organisation, date: new Date(), plafondUsd: PARAMÈTRES[tâche].plafondUsd, organisationsTraitées: relevé.organisations, pagesNotionCréées: 0 }), null, 2) + '\n')
+    sorties.clore()
+    écrireLeRésuméDuJob(`## ${tâche} : non lancée\n\n**Échec** : ${échec}\n`, masques)
+    return 1
+  }
+
   if (!secrets.jetonPortail) sorties.journal('ACTIVATION_SECRET absent : le portail répondra par un refus')
   if (!secrets.compteGoogle || !boîte) sorties.journal(`Gmail indisponible : ${secrets.erreurCompteGoogle ?? 'GOOGLE_COMPTE_SERVICE_JSON ou GMAIL_BOITE_OPERATRICE absent'}`)
 

@@ -50,9 +50,12 @@ refusé et journalisé) :
   base ou une vue, créer et modifier des pages, créer une vue liée ; supprimer,
   déplacer, dupliquer ou changer un schéma est refusé. Le jeton n'existe que
   sur les plans Business et Enterprise : un propriétaire de l'espace le crée
-  dans le portail développeur de Notion (« New MCP token »). L'espace est sur
-  Business avec Notion AI depuis le 23 octobre ; un retour au plan gratuit
-  couperait les tâches (`docs/etat-des-api.md` §2.5).
+  dans le portail développeur de Notion (« New MCP token »). **Ce n'est pas le
+  secret d'intégration interne du portail** (`NOTION_TOKEN`, `ntn_…`) : celui-ci
+  est reconnu par Notion mais refusé par le serveur MCP (`403
+  restricted_resource`), voir « Quand le serveur Notion refuse le jeton ».
+  L'espace est sur Business avec Notion AI depuis le 23 octobre ; un retour au
+  plan gratuit couperait les tâches (`docs/etat-des-api.md` §2.5).
 - **Gmail** (`scripts/taches/outils.ts`, boîte `GMAIL_BOITE_OPERATRICE`) :
   `create_draft` et `list_drafts` (portée `gmail.compose`), `list_sent_messages`
   (en-têtes des messages envoyés, portée `gmail.metadata`, sans recherche `q`) et
@@ -91,11 +94,34 @@ n'est arrivé dans la boîte depuis 30 à 60 jours).
    présentes, `GET /api/veille/etat?notifier=0`, délégation Gmail (un jeton
    demandé pour `gmail.compose`, `gmail.metadata` et `gmail.send` au nom de la
    boîte, puis une lecture pour les deux premières, sans rien écrire ni
-   envoyer), et une courte session Sonnet qui liste les outils du serveur Notion,
-   lit la page « Pointeurs » et celle de la tâche Lettres, et interroge la vue
-   « Veilles actives ». Le résultat est dans le résumé du job.
+   envoyer), la **sonde du serveur Notion MCP** (une requête `initialize` avec
+   le jeton, sans modèle ni frais, `scripts/taches/notion-mcp.ts`), puis, si le
+   serveur a ouvert, une courte session Sonnet qui liste les outils du serveur
+   Notion, lit la page « Pointeurs » et celle de la tâche Lettres, et interroge
+   la vue « Veilles actives ». Le résultat est dans le résumé du job.
 
 En local : `pnpm tache controle`, avec les mêmes variables dans l'environnement.
+
+Toute tâche fait la même sonde avant d'ouvrir sa session : un jeton refusé rend
+le job rouge tout de suite, sans rien facturer, avec le refus de Notion dans le
+résumé.
+
+### Quand le serveur Notion refuse le jeton
+
+Les six premières exécutions du workflow (23 au 25 octobre 2026) ont échoué
+ainsi : le code envoyait bien le secret en `Authorization: Bearer`, mais le
+serveur hébergé répondait `403 restricted_resource`, « This token cannot access
+Notion MCP. ». Le défaut était dans la nature du secret, pas dans le code. La
+sonde lit la réponse de Notion et dit laquelle des deux situations se présente :
+
+| Réponse de Notion | Ce que c'est | Ce qu'il faut faire |
+|---|---|---|
+| `401 unauthorized`, `token_invalid` (même réponse qu'avec un jeton inventé) | La valeur du secret n'est pas un jeton Notion : coquille, troncature au collage, jeton révoqué | Recopier le jeton depuis le portail développeur de Notion dans le secret `NOTION_MCP_TOKEN` |
+| `403 restricted_resource`, « This token cannot access Notion MCP. » | Notion reconnaît le jeton, mais ce n'est pas un jeton MCP : c'est ce que rend un secret d'intégration interne (`ntn_…`, celui du portail) | Un **propriétaire de l'espace** crée un jeton « New MCP token » dans le portail développeur (plan Business ou Enterprise), et le pose dans le secret ; le secret d'intégration du portail n'est jamais réutilisé ici |
+
+Dans les deux cas, relancer `controle` après avoir changé le secret : la ligne
+« Notion : jeton MCP accepté par le serveur » doit passer à `ok` avant tout essai
+réel. Le `request_id` de la réponse est dans le résumé, pour le support Notion.
 
 ## Lire ce qu'une exécution a coûté
 
