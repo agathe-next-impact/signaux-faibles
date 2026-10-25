@@ -469,9 +469,19 @@ async function main(): Promise<void> {
   process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation)
 }
 
+// Le processus est terminé explicitement, une fois la mesure, le compte rendu et
+// le résumé du job écrits (tous en écriture synchrone). Le 25 octobre 2026, la
+// première lettre de Mastora a fini sa session à 8 h 09 UTC (succès, 13,70 $) et
+// le processus est resté vivant cinquante-cinq minutes de plus, retenu par une
+// poignée ouverte après la session (sous-processus, minuteur ou socket d'un
+// serveur MCP) : le job aurait attendu son délai de 180 minutes, et une tâche
+// planifiée suivante aurait été bloquée par le groupe de concurrence.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  main().catch((e) => {
-    console.error(e instanceof Error ? e.message : String(e))
-    process.exitCode = 1
-  })
+  main().then(
+    () => process.exit(process.exitCode ?? 0),
+    (e) => {
+      console.error(e instanceof Error ? e.message : String(e))
+      process.exit(1)
+    },
+  )
 }
