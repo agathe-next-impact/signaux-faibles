@@ -34,10 +34,12 @@ on:
         type: string
         default: ''
   # Réconciliation basculée le 25 octobre 2026 : la tâche planifiée côté Claude
-  # (trig_01BXfAjwQEdmitFkuiUkv6BB) est désactivée le même jour.
+  # (trig_01BXfAjwQEdmitFkuiUkv6BB) est désactivée le même jour. Revue basculée
+  # le 25 octobre 2026 : la tâche planifiée côté Claude (trig_01J6j4oBrxa7LsSXY89Qnqu9)
+  # est désactivée avant la fusion.
   schedule:
   #   - cron: '0 4 * * 1-5'   # lettres, jours ouvrés (6 h à Paris en été, 5 h en hiver)
-  #   - cron: '0 16 * * *'    # revue mensuelle, tous les jours, week-end compris
+    - cron: '0 16 * * *'    # revue mensuelle, tous les jours, week-end compris (18 h à Paris en été, 17 h en hiver)
     - cron: '0 17 * * 1-5'  # réconciliation des envois, jours ouvrés (19 h à Paris en été, 18 h en hiver)
 
 permissions:
