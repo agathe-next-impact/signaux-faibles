@@ -144,12 +144,25 @@ export function écrireLeRésuméDuJob(markdown: string, secrets: readonly strin
 // ── Session ──────────────────────────────────────────────────────────────────
 
 /** L'environnement de la session enfant : sans aucun secret, sauf la clé API qui l'authentifie. */
+/**
+ * Le plafond, en jetons, d'une réponse d'outil MCP rendue telle quelle à l'agent.
+ *
+ * Au-delà du plafond par défaut, Claude Code range la réponse dans un fichier
+ * hors du dossier de travail, que la garde interdit de lire : la page de la
+ * tâche Lettres (64 571 caractères) et la vue « Veilles actives » (67 126) sont
+ * restées illisibles au contrôle du 25 octobre 2026. Les tâches lisent ces pages
+ * en entier, comme sous l'abonnement ; 80 000 jetons couvrent les plus longues
+ * avec de la marge, et restent loin de la fenêtre de contexte.
+ */
+export const PLAFOND_SORTIE_MCP = 80_000
+
 export function environnementDeLaSession(cléApi: string): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {}
   const exclus =
     /^(CLAUDE|CCR_|ANTHROPIC_|AI_AGENT|SESSION_INGRESS|CLOUDSDK_AUTH|GH_TOKEN|GITHUB_TOKEN|ACTIONS_|AWS_ACCESS|AWS_SECRET|NOTION|ACTIVATION_SECRET|CRON_SECRET|GOOGLE_|GMAIL_|EVALUATION_API_KEY|STRIPE|DATABASE_URL|LEMLIST)/
   for (const [clé, valeur] of Object.entries(process.env)) if (!exclus.test(clé)) env[clé] = valeur
   env['ANTHROPIC_API_KEY'] = cléApi
+  env['MAX_MCP_OUTPUT_TOKENS'] = String(PLAFOND_SORTIE_MCP)
   return env
 }
 

@@ -127,6 +127,13 @@ contrôle comparent les noms sans ce préfixe, et les consignes du harnais disen
 à l'agent qu'une page qui écrit `notion-fetch` désigne `fetch`. `ai-search`
 (recherche IA) reste hors de la liste permise.
 
+**Les pages longues sont rendues en entier.** Au-delà de son plafond par
+défaut, Claude Code range une réponse d'outil MCP dans un fichier hors du
+dossier de travail, que la garde interdit de lire : la page de la tâche Lettres
+(64 571 caractères) et la vue « Veilles actives » (67 126) étaient illisibles au
+contrôle du 25 octobre. La session reçoit donc `MAX_MCP_OUTPUT_TOKENS=80000`
+(`PLAFOND_SORTIE_MCP`, `environnementDeLaSession`).
+
 Dans les deux cas, relancer `controle` après avoir changé le secret : la ligne
 « Notion : jeton MCP accepté par le serveur » doit passer à `ok` avant tout essai
 réel. Le `request_id` de la réponse est dans le résumé, pour le support Notion.
