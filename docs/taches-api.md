@@ -119,6 +119,14 @@ sonde lit la réponse de Notion et dit laquelle des deux situations se présente
 | `401 unauthorized`, `token_invalid` (même réponse qu'avec un jeton inventé) | La valeur du secret n'est pas un jeton Notion : coquille, troncature au collage, jeton révoqué | Recopier le jeton depuis le portail développeur de Notion dans le secret `NOTION_MCP_TOKEN` |
 | `403 restricted_resource`, « This token cannot access Notion MCP. » | Notion reconnaît le jeton, mais ce n'est pas un jeton MCP : c'est ce que rend un secret d'intégration interne (`ntn_…`, celui du portail) | Un **propriétaire de l'espace** crée un jeton « New MCP token » dans le portail développeur (plan Business ou Enterprise), et le pose dans le secret ; le secret d'intégration du portail n'est jamais réutilisé ici |
 
+**Les noms des outils changent avec l'authentification** (constaté le 25 octobre
+2026, à la première session ouverte par un jeton MCP). En OAuth, le serveur
+expose `notion-fetch`, `notion-create-pages` ; avec un jeton MCP, `fetch`,
+`create-pages`, sans préfixe. La garde (`nomDOutilNotion`, `garde.ts`) et le
+contrôle comparent les noms sans ce préfixe, et les consignes du harnais disent
+à l'agent qu'une page qui écrit `notion-fetch` désigne `fetch`. `ai-search`
+(recherche IA) reste hors de la liste permise.
+
 Dans les deux cas, relancer `controle` après avoir changé le secret : la ligne
 « Notion : jeton MCP accepté par le serveur » doit passer à `ok` avant tout essai
 réel. Le `request_id` de la réponse est dans le résumé, pour le support Notion.

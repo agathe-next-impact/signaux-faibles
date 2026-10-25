@@ -35,6 +35,19 @@ describe('garde des tâches : ce qui passe', () => {
     }
   })
 
+  it('admet les noms du serveur ouvert par un jeton MCP, sans le préfixe notion- (25 octobre 2026)', () => {
+    for (const outil of ['fetch', 'search', 'query-data-sources', 'create-pages', 'update-page', 'create-view', 'get-async-task']) {
+      expect(permis(tâche, `mcp__notion__${outil}`), outil).toBe(true)
+    }
+    for (const outil of ['ai-search', 'move-pages', 'duplicate-page', 'update-data-source', 'create-database', 'update-view', 'create-comment', 'convert-page-to-skill', 'query-multiple-data-sources']) {
+      expect(permis(tâche, `mcp__notion__${outil}`), outil).toBe(false)
+    }
+    expect(permis(tâche, 'mcp__notion__update-page', { allow_deleting_content: true })).toBe(false)
+    expect(permis(lecture, 'mcp__notion__fetch')).toBe(true)
+    expect(permis(lecture, 'mcp__notion__query-data-sources')).toBe(true)
+    expect(permis(lecture, 'mcp__notion__create-pages')).toBe(false)
+  })
+
   it('laisse passer les outils Gmail, Portail et Veille du dépôt, qui tiennent leur propre règle', () => {
     expect(permis(tâche, 'mcp__Gmail__create_draft')).toBe(true)
     expect(permis(tâche, 'mcp__Gmail__send_message')).toBe(true)

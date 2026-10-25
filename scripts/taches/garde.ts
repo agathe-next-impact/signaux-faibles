@@ -23,8 +23,27 @@ export const SERVEURS = {
   veille: 'Veille',
 } as const
 
-/** Ce que les tâches lisent dans Notion. */
-export const OUTILS_NOTION_LECTURE = ['notion-fetch', 'notion-search', 'notion-query-data-sources'] as const
+/**
+ * Le nom d'un outil Notion sans le préfixe « notion- ».
+ *
+ * Le serveur hébergé ne nomme pas ses outils de la même façon selon
+ * l'authentification : en OAuth, `notion-fetch`, `notion-create-pages` ; avec
+ * un jeton MCP (« New MCP token »), `fetch`, `create-pages`. Constaté le
+ * 25 octobre 2026 à la première session ouverte par le jeton : la garde, qui
+ * ne connaissait que la première forme, refusait toutes les lectures. Les
+ * listes ci-dessous sont donc écrites sans préfixe, et tout nom est ramené à
+ * cette forme avant d'être comparé.
+ */
+export function nomDOutilNotion(nom: string): string {
+  return nom.startsWith('notion-') ? nom.slice('notion-'.length) : nom
+}
+
+/**
+ * Ce que les tâches lisent dans Notion. `search` est la recherche simple ;
+ * `ai-search` (recherche IA) n'y est pas, conformément à la règle des tâches
+ * (`docs/etat-des-api.md` §2.5).
+ */
+export const OUTILS_NOTION_LECTURE = ['fetch', 'search', 'query-data-sources'] as const
 
 /**
  * Ce que les tâches écrivent dans Notion : des pages (éditions, référentiels,
@@ -32,7 +51,7 @@ export const OUTILS_NOTION_LECTURE = ['notion-fetch', 'notion-search', 'notion-q
  * leur contenu, et les vues liées de l'onboarding (§3.7). Jamais de suppression,
  * de déplacement, de duplication, de base créée ni de schéma modifié.
  */
-export const OUTILS_NOTION_ÉCRITURE = ['notion-create-pages', 'notion-update-page', 'notion-create-view', 'notion-get-async-task'] as const
+export const OUTILS_NOTION_ÉCRITURE = ['create-pages', 'update-page', 'create-view', 'get-async-task'] as const
 
 /** Le sous-agent qui lit les sources, sur Haiku. */
 export const SOUS_AGENT_LECTEUR = 'lecteur'
@@ -148,8 +167,8 @@ function décisionMcp(contexte: ContexteDeGarde, outil: string, entrée: Record<
   if (!serveur || !nom) return `outil ${outil} illisible`
 
   if (serveur === SERVEURS.notion) {
-    const lecture = (OUTILS_NOTION_LECTURE as readonly string[]).includes(nom)
-    const écriture = (OUTILS_NOTION_ÉCRITURE as readonly string[]).includes(nom)
+    const lecture = (OUTILS_NOTION_LECTURE as readonly string[]).includes(nomDOutilNotion(nom))
+    const écriture = (OUTILS_NOTION_ÉCRITURE as readonly string[]).includes(nomDOutilNotion(nom))
     if (contexte.mode === 'lecture') return lecture ? null : `outil Notion ${nom} refusé : la tâche « controle » ne fait que lire`
     if (!lecture && !écriture) return `outil Notion ${nom} hors de la liste permise`
     if (entrée['allow_deleting_content'] === true) return 'suppression de sous-pages ou de bases refusée'
