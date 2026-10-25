@@ -22,7 +22,7 @@ qu'une phrase : « Limite-toi à l'organisation <slug>. »
 | `lettres` | Opus 5.5 | 60 $ | `0 4 * * 1-5` |
 | `premiere-lettre` | Opus 5.5 | 40 $ | à la main |
 | `balayage` | Opus 5.5 | 30 $ | à la main |
-| `revue` | Opus 5.5 | 10 $ | `0 16 * * *` (week-end compris) |
+| `revue` | Opus 5.5 | 10 $ | `0 16 * * *` (week-end compris), **active depuis le 25 octobre 2026** |
 | `reconciliation` | Sonnet 5.5 | 5 $ | `0 17 * * 1-5`, **active depuis le 25 octobre 2026** |
 
 Effort `high` partout. La lecture des sources est confiée au sous-agent
@@ -170,9 +170,13 @@ ensemble : une lettre produite deux fois partirait deux fois en relecture.
 | Tâche | Basculée le | Essai réel | Tâche planifiée côté Claude |
 |---|---|---|---|
 | `reconciliation` | 25 octobre 2026 | [exécution 14](https://github.com/agathe-next-impact/signaux-faibles/actions/runs/40167707335) : succès, 16 tours, 0,33 $, aucune écriture Notion, une notification à l'opératrice | « Réconciliation des envois » (`trig_01BXfAjwQEdmitFkuiUkv6BB`, 19 h 07 à Paris) désactivée |
+| `revue` | 25 octobre 2026 | [exécution 15](https://github.com/agathe-next-impact/signaux-faibles/actions/runs/40170531343) : succès, 8 tours, 0,34 $, porte seule (aucune revue due le 26 octobre), aucune écriture ; première vraie revue le 1er novembre (Hermitage, Suneido) | « Revue mensuelle des référentiels » (`trig_01J6j4oBrxa7LsSXY89Qnqu9`, 18 h 06 à Paris) désactivée |
 
-La récurrence GitHub tourne à 17 h UTC, soit 18 h à Paris en hiver et 19 h en été,
-un peu avant l'ancienne heure (19 h 07 à Paris).
+La réconciliation tourne à 17 h UTC, soit 18 h à Paris en hiver et 19 h en été,
+un peu avant l'ancienne heure (19 h 07 à Paris). La revue tourne à 16 h UTC, soit
+17 h à Paris en hiver et 18 h en été (ancienne heure : 18 h 06) ; sa porte ne
+retient que les organisations dont la première parution du mois tombe le
+lendemain.
 
 ## Revenir en arrière
 
