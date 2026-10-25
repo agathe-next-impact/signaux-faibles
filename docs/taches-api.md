@@ -23,7 +23,7 @@ qu'une phrase : « Limite-toi à l'organisation <slug>. »
 | `premiere-lettre` | Opus 5.5 | 40 $ | à la main |
 | `balayage` | Opus 5.5 | 30 $ | à la main |
 | `revue` | Opus 5.5 | 10 $ | `0 16 * * *` (week-end compris) |
-| `reconciliation` | Sonnet 5.5 | 5 $ | `0 17 * * 1-5` |
+| `reconciliation` | Sonnet 5.5 | 5 $ | `0 17 * * 1-5`, **active depuis le 25 octobre 2026** |
 
 Effort `high` partout. La lecture des sources est confiée au sous-agent
 `lecteur`, sur Haiku 5.5 : l'agent principal ne reçoit que des extraits recopiés
@@ -166,6 +166,13 @@ Ordre : réconciliation, revue, lettres, puis balayage et première lettre. Le
 même jour, l'opératrice désactive la tâche planifiée côté Claude et décommente
 la récurrence correspondante dans `taches.yml`. Les deux ne tournent jamais
 ensemble : une lettre produite deux fois partirait deux fois en relecture.
+
+| Tâche | Basculée le | Essai réel | Tâche planifiée côté Claude |
+|---|---|---|---|
+| `reconciliation` | 25 octobre 2026 | [exécution 14](https://github.com/agathe-next-impact/signaux-faibles/actions/runs/40167707335) : succès, 16 tours, 0,33 $, aucune écriture Notion, une notification à l'opératrice | « Réconciliation des envois » (`trig_01BXfAjwQEdmitFkuiUkv6BB`, 19 h 07 à Paris) désactivée |
+
+La récurrence GitHub tourne à 17 h UTC, soit 18 h à Paris en hiver et 19 h en été,
+un peu avant l'ancienne heure (19 h 07 à Paris).
 
 ## Revenir en arrière
 
