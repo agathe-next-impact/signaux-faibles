@@ -67,6 +67,24 @@ Organisation visée : $ARGUMENTS
    dis-le, arrête-toi. Argument vide : suis l'étape 0 du prompt sur la vue
    « Premières lettres à produire » (`view://3d6fe829-ce71-81e4-b79d-000ced6a49ff`).
 
+   **Garde d'exécuteur** (25 octobre 2026, règle « PARTAGE DES ONBOARDINGS » de la
+   page) : cette commande est l'exécuteur **Cowork**. Elle ne vaut que pour une
+   ligne d'Origine « Demande » ; une ligne « Prospection » passe sans garde.
+   - « Exécuteur » = API : ne fais rien. Dis que la ligne se lance par l'API
+     (GitHub, workflow « Tâches planifiées (API Claude) », tâche `premiere-lettre`,
+     organisation = le slug ou le nom) et arrête-toi.
+   - « Exécuteur » = Cowork : poursuis.
+   - « Exécuteur » vide (ligne équipée avant le 25/10/2026, ou posée sans choix) :
+     la lancer ici est le choix de Cowork, sous quota.
+     Compte les lignes d'Origine « Demande », « Exécuteur » = Cowork, dont
+     « Exécuteur fixé le » tombe dans la semaine ISO en cours (vue « Créneaux
+     Cowork de la semaine », `view://404fe829-ce71-8181-9c61-000cc70e4977`).
+     Moins de deux : pose « Exécuteur » = Cowork et « Exécuteur fixé le » = la
+     date du jour, puis poursuis. Deux ou plus : n'écris rien, dis que le quota
+     de la semaine est atteint et donne la commande API, arrête-toi.
+   Le créneau se compte une fois par onboarding, à la première commande qui le
+   pose : une ligne déjà « Cowork » ne le consomme pas une seconde fois ici.
+
 3. **Vérifie le portail avant tout travail.** La collecte prend une heure ; un
    appel refusé ne doit pas se découvrir après. Sans en-tête `Authorization` :
    - `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200
