@@ -587,6 +587,79 @@ par prospection : elle n'est pas attribuée), `recommandée-par-elle-même`, et
 `hors-prospection` quand `"origine": "prospection"` vise un prescripteur ou
 une organisation recommandée.
 
+## Outils stratégiques : les faits étiquetés (26 octobre 2026)
+
+Plan : `docs/plan-outils-strategiques.md` (lot 3). La route est réservée aux
+organisations du pilote (`organisations.outils_strategiques`) : ailleurs, elle
+répond `hors-pilote` en 200, sans aucune lecture Notion, et la tâche passe
+l'étape. **Les étiquettes ne bloquent jamais l'envoi d'une lettre** : un échec
+se consigne au compte rendu, et la lettre part.
+
+### `POST /api/veille/faits` : poster les étiquettes d'une édition
+
+```
+{ "slug": "infralliance", "page": "<page_id de l'édition>", "etiquettes": [
+  { "section": "axe", "axe": 4, "rang": 1,
+    "titre": "Telehouse a annoncé le 20 octobre 2026 un nouveau module de 3 MW …",
+    "date": "2026-10-20", "source": "https://www.telehouse.fr/actualites/…",
+    "pestel": "economique", "rupture": true, "impact": "FORT", "nouveaute": "nouveau" },
+  { "section": "axe", "axe": 1, "rang": 3, "titre": "CISPE a publié …", "date": "2026-10-20",
+    "source": "https://www.cispe.cloud/…", "porter": "rivalite", "entite": "CISPE",
+    "ansoff": "penetration", "rupture": false, "impact": "MOYEN", "nouveaute": "nouveau" } ] }
+```
+
+Une entrée par fait d'axe non RAS et de « L'actualité des acteurs »
+(`section: "acteurs"`, sans `axe`). Un fait commence à sa phrase-titre en gras ;
+`rang` compte les faits dans leur axe à partir de 1, et `titre` recopie la
+phrase-titre telle qu'écrite (elle est vérifiée puis jetée : Postgres n'en garde
+que l'empreinte). Exactement un de `pestel` (`politique`, `economique`,
+`socioculturel`, `technologique`, `ecologique`, `legal`) ou `porter`
+(`rivalite`, `nouveaux_entrants`, `substituts`, `pouvoir_clients`,
+`pouvoir_fournisseurs`) ; `ansoff` (`penetration`, `developpement_produit`,
+`developpement_marche`, `diversification`) seulement sous `rivalite` ou
+`nouveaux_entrants` avec une `entite` ; `impact` `FORT` ou `MOYEN`, jamais
+au-dessus du niveau de l'axe ; `nouveaute` `nouveau` ou `contexte` ; `source`
+doit être une URL citée dans le fait ; `date` au plus tard le jour de l'édition.
+
+Ordre des contrôles : organisation et pilote (Postgres), édition (lecture
+cachée), relation `Organisation` de l'édition rapportée au registre de
+l'organisation (règle 2), corps de la lettre (lecture cachée), porte
+(`contrôlerLesÉtiquettes`), écriture. La route **n'expire aucun tag** : elle se
+place après le lint (étape 4bis), qui vient de le faire.
+
+| Réponse | Statut | Quoi faire |
+|---|---|---|
+| `accepté` (`faits`, `insérées`, `archivées`) | 200 | rien ; un nouveau lot de la même édition remplace celui-ci |
+| `refusé` (`refus`, `message`) | 422 | corriger chaque point de `message` et renvoyer le lot **complet** ; deux reprises au plus |
+| `hors-pilote` | 200 | passer l'étape |
+| `organisation-inconnue`, `édition-introuvable` | 404 | vérifier le slug et l'identifiant de page |
+| `organisation-différente`, `organisations-multiples` | 409 | anomalie de la relation `Organisation` de l'édition : ne pas réessayer, la signaler |
+| `édition-sans-date` | 422 | renseigner « Date d'édition », puis renvoyer |
+| `invalide` (`raison` nomme le champ) | 400 | corriger la forme |
+
+Codes de refus de la porte : `section-inconnue`, `doublon`, `fait-introuvable`,
+`axe-ras`, `titre-différent`, `étiquette-inconnue`, `cadre-ambigu`,
+`ansoff-manquant`, `ansoff-hors-concurrent`, `entité-hors-grille` (une fois la
+grille postée), `longueur`, `impact-supérieur-à-l-axe`, `date-invalide`,
+`date-future`, `source-absente`, `lot-incomplet`. Un seul refus rejette le lot
+entier.
+
+### `GET /api/veille/faits?slug=<slug>&debut=AAAA-MM-JJ&fin=AAAA-MM-JJ` : les faits d'une fenêtre
+
+```
+{ "état": "lu", "organisation": "infralliance", "fenêtre": { "début": "2026-10-05", "fin": "2026-11-01" },
+  "nombre": 11, "titresIntrouvables": 0, "faits": [
+  { "id": "<uuid>", "édition": "<page_id>", "dateÉdition": "2026-10-21", "famille": "ecosysteme",
+    "section": "axe", "axe": 4, "rang": 1, "titre": "Telehouse a annoncé …", "date": "2026-10-20",
+    "source": "https://…", "pestel": "economique", "porter": null, "ansoff": null, "entite": null,
+    "rupture": true, "impact": "FORT", "nouveaute": "nouveau" } ] }
+```
+
+Les faits des éditions parues dans la fenêtre, bornes comprises, cent jours au
+plus. La phrase-titre est relue dans la lettre, une lecture cachée de corps par
+édition ; elle vaut `null` si la lettre a changé depuis l'étiquetage ou ne se lit
+plus, et `titresIntrouvables` les compte. L'`id` est celui que la synthèse cite.
+
 ## La file de travaux (palier 2, 21 octobre 2026)
 
 Le palier 2 de la décision du 15 octobre (`docs/decision-portail-moteur.md`,
