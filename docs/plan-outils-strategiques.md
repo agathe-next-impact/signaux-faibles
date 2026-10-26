@@ -337,6 +337,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Fichiers** : `lib/portail/strategie.ts` (lecture par organisation de la session), écrans Acteurs et Recommandations, composants de la carte (cases à angle droit, `Grille` et `Case` de `components/coquille.tsx`).
 - **Tests** : architecture (droit de lecture, aucune donnée d'un autre client), Playwright avec un compte par client (règle 7).
 - **Hors du lot** : écran nouveau.
+- **Avancé le 26/10/2026, à la demande de l'opératrice, pour L'Hermitage** : une section « Lecture stratégique » sur la vue d'ensemble (comptes PESTEL et Porter, entités, mouvements d'Ansoff, ruptures des trois dernières lettres), visible seulement pour une organisation du pilote et mentionnée « outil en test ». L'Hermitage entre dans le pilote pour cela. Les écrans Acteurs et Recommandations et la vue PESTEL restent au lot 11.
 
 ### Lot 12 (après décision). L'onboarding
 

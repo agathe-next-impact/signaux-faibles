@@ -190,6 +190,32 @@ export async function faitsDeLaFenêtre(
 }
 
 /**
+ * Les faits vivants d'éditions désignées, pour l'écran : la vue d'ensemble les
+ * demande pour les lettres qu'elle vient de lire. Toujours sous la clé de
+ * l'organisation : une édition d'un autre client ne rend rien, même désignée.
+ */
+export async function faitsDesÉditions(
+  entrée: { readonly organisationId: string; readonly éditions: readonly string[] },
+  db: Base = base(),
+): Promise<FaitÉtiqueté[]> {
+  const éditions = [...new Set(entrée.éditions)].filter((e) => /^[0-9a-f]{32}$/.test(e))
+  if (éditions.length === 0) return []
+  return protéger('lecture des faits étiquetés d’éditions', () =>
+    db
+      .select()
+      .from(faitsÉtiquetés)
+      .where(
+        and(
+          eq(faitsÉtiquetés.organisationId, entrée.organisationId),
+          isNull(faitsÉtiquetés.archivéeLe),
+          inArray(faitsÉtiquetés.éditionNotion, éditions),
+        ),
+      )
+      .orderBy(desc(faitsÉtiquetés.dateÉdition), asc(faitsÉtiquetés.section), asc(faitsÉtiquetés.numéroAxe), asc(faitsÉtiquetés.rang)),
+  )
+}
+
+/**
  * Les faits cités par une synthèse, tels que la porte doit les connaître : un
  * identifiant d'une autre organisation, ou d'un fait archivé par un
  * ré-étiquetage, n'y figure pas et la porte le refuse (`fait-inconnu`).

@@ -375,6 +375,88 @@ export function contrôlerLesÉtiquettes(entrée: {
   return { acceptées: refus.length === 0 ? acceptées : [], refus, faits: faits.length }
 }
 
+// ── Lecture des étiquettes, pour l'espace client ────────────────────────────
+
+/** Les libellés affichés : sentence case, accents, jamais les clés techniques. */
+export const LIBELLÉS_PESTEL: Readonly<Record<Pestel, string>> = {
+  politique: 'Politique',
+  economique: 'Économique',
+  socioculturel: 'Socioculturel',
+  technologique: 'Technologique',
+  ecologique: 'Écologique',
+  legal: 'Légal',
+}
+
+export const LIBELLÉS_PORTER: Readonly<Record<ForcePorter, string>> = {
+  rivalite: 'Rivalité entre acteurs',
+  nouveaux_entrants: 'Nouveaux entrants',
+  substituts: 'Substituts',
+  pouvoir_clients: 'Pouvoir des clients',
+  pouvoir_fournisseurs: 'Pouvoir des fournisseurs',
+}
+
+export const LIBELLÉS_ANSOFF: Readonly<Record<Ansoff, string>> = {
+  penetration: 'pénétration',
+  developpement_produit: 'développement de produit',
+  developpement_marche: 'développement de marché',
+  diversification: 'diversification',
+}
+
+/** Un fait étiqueté tel que l'écran le reçoit : ses étiquettes, et sa phrase-titre quand elle a été relue. */
+export type FaitÀLire = {
+  readonly pestel: string | null
+  readonly porter: string | null
+  readonly ansoff: string | null
+  readonly entite: string | null
+  readonly rupture: boolean
+  readonly date: string
+  readonly titre: string | null
+}
+
+export type LectureDesÉtiquettes = {
+  readonly total: number
+  /** Les six dimensions, dans l'ordre du cadre, zéro compris : un trou se lit. */
+  readonly pestel: readonly { readonly clé: Pestel; readonly libellé: string; readonly faits: number }[]
+  /** Les cinq forces, dans l'ordre du cadre, avec les entités nommées les plus citées. */
+  readonly forces: readonly { readonly clé: ForcePorter; readonly libellé: string; readonly faits: number; readonly entités: readonly string[] }[]
+  readonly mouvements: readonly { readonly libellé: string; readonly faits: number }[]
+  /** Les ruptures dont la phrase-titre a été relue, de la plus récente à la plus ancienne. */
+  readonly ruptures: readonly { readonly titre: string; readonly date: string }[]
+}
+
+/** Trois entités par force : au-delà, la case devient une liste que l'écran des acteurs tient déjà. */
+const ENTITÉS_PAR_FORCE = 3
+
+/**
+ * Ce que les étiquettes d'un ensemble de faits donnent à lire : la répartition
+ * sur le cadre PESTEL et sur les cinq forces, les mouvements d'Ansoff, et les
+ * ruptures. Un simple compte, sans interprétation : l'énoncé d'une synthèse
+ * viendra de la revue mensuelle, relue, jamais d'ici.
+ */
+export function lectureDesÉtiquettes(faits: readonly FaitÀLire[]): LectureDesÉtiquettes {
+  const compter = <T extends string>(liste: readonly T[], valeur: (f: FaitÀLire) => string | null) =>
+    new Map(liste.map((clé) => [clé, faits.filter((f) => valeur(f) === clé).length]))
+  const parPestel = compter(PESTEL, (f) => f.pestel)
+  const parForce = compter(FORCES_PORTER, (f) => f.porter)
+
+  const entitésDe = (force: ForcePorter) => {
+    const comptes = new Map<string, number>()
+    for (const f of faits) if (f.porter === force && f.entite) comptes.set(f.entite, (comptes.get(f.entite) ?? 0) + 1)
+    return [...comptes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr')).slice(0, ENTITÉS_PAR_FORCE).map(([nom]) => nom)
+  }
+
+  return {
+    total: faits.length,
+    pestel: PESTEL.map((clé) => ({ clé, libellé: LIBELLÉS_PESTEL[clé], faits: parPestel.get(clé) ?? 0 })),
+    forces: FORCES_PORTER.map((clé) => ({ clé, libellé: LIBELLÉS_PORTER[clé], faits: parForce.get(clé) ?? 0, entités: entitésDe(clé) })),
+    mouvements: ANSOFF.map((clé) => ({ libellé: LIBELLÉS_ANSOFF[clé], faits: faits.filter((f) => f.ansoff === clé).length })).filter((m) => m.faits > 0),
+    ruptures: faits
+      .filter((f): f is FaitÀLire & { titre: string } => f.rupture && f.titre !== null)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map((f) => ({ titre: f.titre, date: f.date })),
+  }
+}
+
 // ── Porte de la grille ───────────────────────────────────────────────────────
 
 export type AxeDeGroupes = { readonly clé: string; readonly libellé: string; readonly crans: readonly string[] }
