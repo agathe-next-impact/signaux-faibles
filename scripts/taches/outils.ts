@@ -20,6 +20,9 @@
  *     (§3.7bis) ; la tâche le tirait avec Bash, que la garde ne permet plus.
  *     `lire_sources` lit en code un lot d'URL et `synthese_de_collecte`
  *     condense les grilles et les faits des collecteurs (23 octobre 2026).
+ *     `annonces_bodacc` et `fiches_entreprises` interrogent les registres
+ *     publics pour les familles « Capital et santé financière » et « Nouveaux
+ *     entrants » (26 octobre 2026, `scripts/collecte/registres.ts`).
  *
  * `Gmail__deposer_courriel` compose un courriel client par le portail et le
  * dépose en brouillon sans que le HTML passe par le modèle (23 octobre 2026) :
@@ -34,6 +37,7 @@ import { join, resolve } from 'node:path'
 import { z } from 'zod'
 import { adresseDeRéponseSûre, composerMessage, jetonDeDélégation, PORTÉES_GMAIL } from '@/lib/email/gmail'
 import { lireLesUrls } from '../collecte/lire-sources'
+import { annoncesBodacc, FAMILLES_BODACC, fichesEntreprises } from '../collecte/registres'
 import { synthétiser } from '../collecte/synthese'
 import { cheminDuPortail, SERVEURS } from './garde'
 
@@ -434,6 +438,43 @@ export function serveursDesOutils(configuration: ConfigurationDesOutils) {
             configuration.journal(`Veille lire_sources ${a.lot} : ${urls.length} URL`)
             const index = await lireLesUrls(urls, join(espace, 'sources', a.lot), { avecNavigateur: true, ...(configuration.fetch ? { fetch: configuration.fetch } : {}) })
             return `${index}\nFichiers : sources/${a.lot}/ dans le dossier de travail.`
+          }),
+      ),
+      tool(
+        'annonces_bodacc',
+        "Interroge le BODACC (annonces commerciales) depuis une date. Pour « Capital et santé financière » : les SIREN du corpus, familles par défaut procédures collectives, conciliations, ventes et cessions, dépôts des comptes, radiations, modifications. Pour « Nouveaux entrants » : les départements du client, familles « creation » et « immatriculation », et un texte d'activité. Rend une ligne par annonce (date, famille, entité, SIREN, lieu, nature, lien), les plus récentes d'abord.",
+        {
+          depuis: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe('AAAA-MM-JJ'),
+          sirens: z.array(z.string()).max(40).optional(),
+          familles: z.array(z.enum(FAMILLES_BODACC)).optional(),
+          departements: z.array(z.string()).max(13).optional(),
+          texte: z.string().max(80).optional().describe("Mots de l'activité, recherchés en texte intégral"),
+          limite: z.number().int().min(1).max(100).optional(),
+        },
+        (a) =>
+          protéger(async () => {
+            configuration.journal(`Veille annonces_bodacc : ${a.sirens?.length ?? 0} SIREN, ${a.departements?.length ?? 0} département(s)`)
+            return annoncesBodacc(
+              {
+                depuis: a.depuis,
+                ...(a.sirens ? { sirens: a.sirens } : {}),
+                ...(a.familles ? { familles: a.familles } : {}),
+                ...(a.departements ? { departements: a.departements } : {}),
+                ...(a.texte ? { texte: a.texte } : {}),
+                ...(a.limite ? { limite: a.limite } : {}),
+              },
+              configuration.fetch ?? fetch,
+            )
+          }),
+      ),
+      tool(
+        'fiches_entreprises',
+        "Lit dans l'API Recherche d'entreprises la fiche de 1 à 40 entités par leur SIREN : état administratif, date de création, NAF, catégorie, effectif, établissements ouverts, comptes des deux derniers exercices publiés, dirigeants, marqueurs (ESS, Qualiopi…), date de mise à jour du registre et lien vers l'annuaire. Une fiche par entité, quelques lignes.",
+        { sirens: z.array(z.string()).min(1).max(40) },
+        (a) =>
+          protéger(async () => {
+            configuration.journal(`Veille fiches_entreprises : ${a.sirens.length} SIREN`)
+            return fichesEntreprises(a.sirens, configuration.fetch ?? fetch)
           }),
       ),
       tool(
