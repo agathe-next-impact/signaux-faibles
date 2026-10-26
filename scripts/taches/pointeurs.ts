@@ -90,7 +90,7 @@ Si la page est inaccessible ou ne contient pas de prompt, n'improvise aucune ex�
 
 Ouvre dans Notion la page « Tâche — Lettres de veille (balayage quotidien) » (id 3d5fe829ce718107af65f4fccf8089ab) et lis son étape « 4ter ÉTIQUETTES ». N'exécute que cette étape, après coup, sur les éditions déjà publiées (Statut « Envoyé ») de l'organisation désignée à la fin de ce message, de la plus ancienne à la plus récente. Si elle n'a aucune édition publiée (organisation de test, ou pas encore activée), applique l'étape à ses éditions au statut « Brouillon », sans en changer le statut. Tu ne collectes rien, tu n'écris aucune lettre, tu ne modifies aucune page Notion et tu n'envoies aucun courriel à un client.
 
-Avant la première édition, appelle GET /api/veille/faits avec le slug de l'organisation, debut à la date de sa plus ancienne édition publiée et fin à aujourd'hui (cent jours au plus par appel). Si la réponse est « hors-pilote », arrête-toi. Une édition qui a déjà des faits dans la réponse est passée.
+Avant la première édition, appelle GET /api/veille/faits avec le slug de l'organisation, debut à la date de sa plus ancienne édition publiée et fin à aujourd'hui (cent jours au plus par appel). Si la réponse est « hors-pilote », arrête-toi. Une édition qui a déjà des faits dans la réponse est passée, sauf si ce lancement te demande de reprendre. Une édition dont aucun fait ne cite d'URL n'est pas étiquetable : passe-la sans appeler POST /api/veille/faits, et dis-le au compte rendu.
 
 Cette page est la seule source de vérité de l'étape. N'exécute aucune autre étape de la page : si ce message et la page divergent, c'est la page qui fait foi.
 
@@ -98,10 +98,17 @@ Si la page est inaccessible ou ne contient pas d'étape « 4ter ÉTIQUETTES », 
   },
 }
 
-/** La seule phrase ajoutée au pointeur, quand le lancement vise une organisation. */
-export function promptDeLaTâche(tâche: Tâche, organisation: string | null): string {
+/**
+ * Les seules phrases ajoutées au pointeur : l'organisation visée, et, pour
+ * l'étiquetage seulement, la reprise des éditions déjà étiquetées (après une
+ * révision des règles de classement de l'étape 4ter, 26 octobre 2026).
+ */
+export function promptDeLaTâche(tâche: Tâche, organisation: string | null, reprendre = false): string {
   const texte = POINTEURS[tâche].texte
-  return organisation ? `${texte}\n\nLimite-toi à l'organisation ${organisation}.` : texte
+  const avecOrganisation = organisation ? `${texte}\n\nLimite-toi à l'organisation ${organisation}.` : texte
+  return tâche === 'etiquetage' && reprendre
+    ? `${avecOrganisation}\n\nReprends aussi les éditions qui ont déjà des faits : un nouveau lot remplace l'ancien.`
+    : avecOrganisation
 }
 
 /** Un slug d'organisation tel que le registre l'écrit : court, sans espace ni accent. */

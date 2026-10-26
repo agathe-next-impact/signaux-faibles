@@ -2,7 +2,7 @@
  * Une tâche planifiée du dispositif, exécutée sur l'API Claude.
  *
  *   pnpm tache <lettres|reconciliation|revue|balayage|premiere-lettre> [--organisation <slug>]
- *   pnpm tache etiquetage --organisation <slug>
+ *   pnpm tache etiquetage --organisation <slug> [--reprendre]
  *   pnpm tache controle
  *
  * Le prompt est le pointeur de la tâche en service (`pointeurs.ts`) : il dit
@@ -364,7 +364,7 @@ export function définitionDuLecteur(): AgentDefinition {
   }
 }
 
-async function exécuterUneTâche(tâche: Tâche, organisation: string | null): Promise<number> {
+async function exécuterUneTâche(tâche: Tâche, organisation: string | null, reprendre = false): Promise<number> {
   const secrets = lireLesSecrets()
   const masques = valeursSecrètes(secrets)
   const portail = variable('PORTAIL_URL') ?? 'https://www.signauxfaibles.io'
@@ -404,7 +404,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
   const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
   const maintenant = new Date()
-  const prompt = promptDeLaTâche(tâche, organisation)
+  const prompt = promptDeLaTâche(tâche, organisation, reprendre)
   sorties.écrire('prompt.txt', prompt)
 
   const options: Options = {
@@ -451,14 +451,17 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
 
 // ── Ligne de commande ────────────────────────────────────────────────────────
 
-export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'controle'; organisation: string | null } {
+export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'controle'; organisation: string | null; reprendre: boolean } {
   const [premier, ...reste] = argv
   if (premier !== 'controle' && !(TÂCHES as readonly string[]).includes(premier ?? '')) {
     throw new Error(`usage : pnpm tache <${[...TÂCHES, 'controle'].join('|')}> [--organisation <slug>]`)
   }
   let organisation: string | null = null
+  let reprendre = false
   for (let i = 0; i < reste.length; i++) {
-    if (reste[i] === '--organisation') {
+    if (reste[i] === '--reprendre') {
+      reprendre = true
+    } else if (reste[i] === '--organisation') {
       const valeur = (reste[i + 1] ?? '').trim()
       i++
       if (!valeur) continue
@@ -470,12 +473,13 @@ export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'con
   }
   if (premier === 'controle' && organisation) throw new Error('la tâche « controle » ne prend pas d’organisation')
   if (premier === 'etiquetage' && !organisation) throw new Error('la tâche « etiquetage » exige --organisation <slug>')
-  return { tâche: premier as Tâche | 'controle', organisation }
+  if (reprendre && premier !== 'etiquetage') throw new Error('--reprendre ne vaut que pour la tâche « etiquetage »')
+  return { tâche: premier as Tâche | 'controle', organisation, reprendre }
 }
 
 async function main(): Promise<void> {
-  const { tâche, organisation } = lireLaCommande(process.argv.slice(2))
-  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation)
+  const { tâche, organisation, reprendre } = lireLaCommande(process.argv.slice(2))
+  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation, reprendre)
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
