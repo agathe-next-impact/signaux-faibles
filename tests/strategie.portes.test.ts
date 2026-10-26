@@ -10,6 +10,7 @@ import {
   faitsDeLaLettre,
   forcesNonSuivies,
   messageDeRefus,
+  normaliserUrl,
   trousDuPestel,
   type ContexteDeSynthèse,
   type Grille,
@@ -137,6 +138,32 @@ describe('la porte des étiquettes', () => {
     const message = messageDeRefus(contrôler(avec(0, { date: '2026-10-22' })).refus)
     expect(message).toMatch(/^LE LOT N’EST PAS ACCEPTÉ/)
     expect(message).toContain('- [date-future] axe 1, fait 1 :')
+  })
+})
+
+describe('les URL se comparent sous toutes leurs formes encodées', () => {
+  const FORMES = [
+    'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0138%28COD%29',
+    'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026/0138(COD)',
+    // La forme que l'API Notion rend dans `href` (constaté le 26 octobre 2026).
+    'https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026%2F0138(COD)',
+    'oeil.europarl.europa.eu/oeil/en/procedure-file?reference=2026%2F0138%28COD%29/',
+  ]
+
+  it('normaliserUrl ramène les quatre formes à une seule', () => {
+    expect(new Set(FORMES.map(normaliserUrl)).size).toBe(1)
+    // Une URL mal encodée ne fait pas tomber la porte.
+    expect(normaliserUrl('https://exemple.fr/%E0%A4%A')).toBe('exemple.fr/%e0%a4%a')
+  })
+
+  it('accepte la source d’un fait quand Notion encode la barre oblique en %2F', () => {
+    const blocs = JSON.parse(
+      JSON.stringify(BLOCS_OCTOBRE).replaceAll('reference=2026/0138%28COD%29', 'reference=2026%2F0138(COD)'),
+    ) as typeof BLOCS_OCTOBRE
+    expect(JSON.stringify(blocs)).toContain('2026%2F0138(COD)')
+    const r = contrôlerLesÉtiquettes({ blocs, dateÉdition: DATE_OCTOBRE, lot: ÉTIQUETTES_OCTOBRE })
+    expect(r.refus).toEqual([])
+    expect(r.acceptées).toHaveLength(11)
   })
 })
 
