@@ -1,8 +1,11 @@
 /**
  * Les étiquettes de l'édition n°6 Écosystème d'Infralliance (21 octobre 2026),
- * posées à la main le 26 octobre 2026, à relire par l'opératrice.
+ * posées à la main le 26 octobre 2026 et validées telles quelles par
+ * l'opératrice le même jour. C'est le lot de référence de la porte : un
+ * changement de la segmentation ou des règles qui le ferait refuser est une
+ * régression, pas une étiquette à corriger.
  *
- * Choix à relire, fait par fait :
+ * Choix validés, fait par fait :
  *   · ①1 Digital Networks Act au Conseil : légal (un règlement en négociation).
  *   · ①2 rendez-vous du rapporteur du règlement cloud : politique (l'influence
  *     sur le texte, pas encore le texte).
