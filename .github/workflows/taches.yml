@@ -28,15 +28,25 @@ on:
           - revue
           - balayage
           - premiere-lettre
+          - etiquetage
       organisation:
-        description: Slug d'une seule organisation (facultatif, sans effet sur « controle »)
+        description: Slug d'une seule organisation (facultatif, sans effet sur « controle », obligatoire pour « etiquetage »)
         required: false
         type: string
         default: ''
-  # schedule:
+      reprendre:
+        description: « etiquetage » seulement, reprendre aussi les éditions déjà étiquetées (après une révision des règles)
+        required: false
+        type: boolean
+        default: false
+  # Réconciliation basculée le 25 octobre 2026 : la tâche planifiée côté Claude
+  # (trig_01BXfAjwQEdmitFkuiUkv6BB) est désactivée le même jour. Revue basculée
+  # le 25 octobre 2026 : la tâche planifiée côté Claude (trig_01J6j4oBrxa7LsSXY89Qnqu9)
+  # est désactivée avant la fusion.
+  schedule:
   #   - cron: '0 4 * * 1-5'   # lettres, jours ouvrés (6 h à Paris en été, 5 h en hiver)
-  #   - cron: '0 16 * * *'    # revue mensuelle, tous les jours, week-end compris
-  #   - cron: '0 17 * * 1-5'  # réconciliation des envois, jours ouvrés
+    - cron: '0 16 * * *'    # revue mensuelle, tous les jours, week-end compris (18 h à Paris en été, 17 h en hiver)
+    - cron: '0 17 * * 1-5'  # réconciliation des envois, jours ouvrés (19 h à Paris en été, 18 h en hiver)
 
 permissions:
   contents: read
@@ -53,6 +63,7 @@ jobs:
     env:
       TACHE: ${{ inputs.tache || (github.event.schedule == '0 4 * * 1-5' && 'lettres') || (github.event.schedule == '0 16 * * *' && 'revue') || (github.event.schedule == '0 17 * * 1-5' && 'reconciliation') || 'inconnue' }}
       ORGANISATION: ${{ inputs.organisation }}
+      REPRENDRE: ${{ inputs.reprendre && 'oui' || '' }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       NOTION_MCP_TOKEN: ${{ secrets.NOTION_MCP_TOKEN }}
       ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
@@ -81,7 +92,9 @@ jobs:
 
       - name: Exécuter la tâche
         run: |
-          if [ -n "$ORGANISATION" ] && [ "$TACHE" != "controle" ]; then
+          if [ -n "$ORGANISATION" ] && [ "$TACHE" = "etiquetage" ] && [ -n "$REPRENDRE" ]; then
+            pnpm tache "$TACHE" --organisation "$ORGANISATION" --reprendre
+          elif [ -n "$ORGANISATION" ] && [ "$TACHE" != "controle" ]; then
             pnpm tache "$TACHE" --organisation "$ORGANISATION"
           else
             pnpm tache "$TACHE"

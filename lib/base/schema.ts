@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -13,6 +14,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 
 /**
@@ -100,11 +102,36 @@ export const organisations = pgTable(
   suspendueLe: horodatage('suspendue_le'),
   offre: offreOrganisation('offre').notNull().default('standard'),
   /**
-   * Parutions complètes de l'essai avant « L'essentiel » seul : trois par
-   * défaut (J0, J+7, J+14), réglable par l'opératrice pour qu'un essai à J+28
-   * ne soit pas un cas codé en dur.
+   * Parutions complètes de l'essai avant « L'essentiel » seul : deux par
+   * défaut (J0, J+7) depuis le 24 octobre 2026, trois auparavant (migration
+   * 0011, qui ne touche pas aux organisations existantes), réglable par
+   * l'opératrice pour qu'un essai plus long ne soit pas un cas codé en dur.
+   * Même valeur que `PARUTIONS_D_ESSAI`, qu'affiche la vitrine.
    */
-  parutionsDEssai: smallint('parutions_d_essai').notNull().default(3),
+  parutionsDEssai: smallint('parutions_d_essai').notNull().default(2),
+  /**
+   * Le prescripteur qui a recommandé l'organisation (24 octobre 2026,
+   * `docs/prescripteurs.md`). Le premier garde l'organisation : jamais réécrit.
+   * Exclusif de l'entrée par prospection : une organisation recommandée ne
+   * reçoit pas de séquence, une organisation prospectée n'est pas attribuée.
+   */
+  recommandéePar: uuid('recommandée_par').references((): AnyPgColumn => prescripteurs.id),
+  recommandéeLe: horodatage('recommandée_le'),
+  /**
+   * L'accord du client recommandé pour que son prescripteur voie son nom et son
+   * étape (essai, abonnée, essai terminé) sur l'écran « Vos recommandations ».
+   * Posé par l'opératrice, après l'accord du client ; faux par défaut : sans
+   * lui, le prescripteur ne voit rien de l'organisation. Jamais une lettre.
+   */
+  partageAvecPrescripteur: boolean('partage_avec_prescripteur').notNull().default(false),
+  /**
+   * Le pilote des outils stratégiques (26 octobre 2026,
+   * `docs/plan-outils-strategiques.md`) : tant que faux, les routes des faits,
+   * de la grille et des synthèses répondent `hors-pilote`, et les tâches passent
+   * l'étape. C'est ce qui borne le pilote sans propriété nouvelle dans le
+   * registre Notion. Posé par l'opératrice.
+   */
+  outilsStratégiques: boolean('outils_strategiques').notNull().default(false),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),
   emailRelecture: text('email_relecture'),
@@ -121,7 +148,56 @@ export const organisations = pgTable(
       sql`${table.registreNotion} is null or ${table.registreNotion} ~ '^[0-9a-f]{32}$'`,
     ),
     check('organisations_parutions_d_essai', sql`${table.parutionsDEssai} between 1 and 8`),
+    check(
+      'organisations_recommandée_hors_prospection',
+      sql`not (${table.entréeParProspection} and ${table.recommandéePar} is not null)`,
+    ),
+    check(
+      'organisations_recommandée_datée',
+      sql`(${table.recommandéePar} is null) = (${table.recommandéeLe} is null)`,
+    ),
   ],
+)
+
+/** Le métier du prescripteur, pour le tableau de l'opératrice ; il ne change aucune règle. */
+export const typePrescripteur = pgEnum('type_prescripteur', [
+  'conseil',
+  'expertise_comptable',
+  'juridique',
+  'chambre_consulaire',
+  'developpement_economique',
+  'cluster_federation',
+  'ess_financeur',
+  'autre',
+])
+
+/**
+ * Les prescripteurs (24 octobre 2026, `docs/prescripteurs.md`) : expert-comptable,
+ * cabinet de conseil, chambre, cluster, fédération, réseau de l'ESS. Ils
+ * recommandent des clients et ne sont **jamais prospectés** : la prospection
+ * automatisée est réservée aux clients finaux.
+ *
+ * Un prescripteur est une organisation du portail, qui a son propre espace en
+ * accès offert ; cette table n'y ajoute que son code de recommandation. Il ne
+ * lit jamais les lettres des organisations qu'il recommande (règles 2 et 7).
+ */
+export const prescripteurs = pgTable(
+  'prescripteurs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .unique()
+      .references(() => organisations.id),
+    /** Porté par le lien de recommandation (`/demo?de=<code>`), en clair : ce n'est pas un secret. */
+    code: text('code').notNull().unique(),
+    type: typePrescripteur('type').notNull(),
+    /** Faux : le code ne rattache plus d'organisation ; les rattachements passés restent. */
+    actif: boolean('actif').notNull().default(true),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+    modifiéLe: horodatage('modifié_le').notNull().defaultNow(),
+  },
+  (table) => [check('prescripteurs_code_forme', sql`${table.code} ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(${table.code}) between 3 and 40`)],
 )
 
 export const cadenceVeille = pgEnum('cadence_veille', ['hebdomadaire', 'bimensuelle', 'mensuelle'])
@@ -569,3 +645,250 @@ export type Travail = typeof travaux.$inferSelect
 export type Run = typeof runs.$inferSelect
 export type TypeTravail = Travail['type']
 export type ÉtatTravail = Travail['état']
+
+// ── Outils stratégiques (26 octobre 2026, migration 0013) ────────────────────
+//
+// Plan : `docs/plan-outils-strategiques.md`. Les listes fermées sont celles de
+// `lib/domaine/strategie.ts`, qui en fait foi ; `tests/base.strategie.test.ts`
+// vérifie qu'elles n'ont pas divergé. Chaque ligne porte `organisation_id`, et
+// aucune lecture de `lib/base/strategie.ts` ne se fait sans lui.
+//
+// **Exception bornée à « Postgres ne contient jamais le texte d'un
+// référentiel ni le corps d'une lettre »**, accordée par l'opératrice le
+// 26 octobre 2026 : la grille recopie des libellés courts (40 caractères au
+// plus, les critères complets restent dans Notion), et les énoncés de synthèse
+// sont une analyse nouvelle, ni corps de lettre ni texte de référentiel. Un
+// fait étiqueté, lui, ne garde que l'empreinte de sa phrase-titre.
+
+export const pestelDeFait = pgEnum('pestel', ['politique', 'economique', 'socioculturel', 'technologique', 'ecologique', 'legal'])
+export const forcePorter = pgEnum('force_porter', ['rivalite', 'nouveaux_entrants', 'substituts', 'pouvoir_clients', 'pouvoir_fournisseurs'])
+export const mouvementAnsoff = pgEnum('ansoff', ['penetration', 'developpement_produit', 'developpement_marche', 'diversification'])
+export const sectionDeFait = pgEnum('section_de_fait', ['axe', 'acteurs'])
+export const impactDeFait = pgEnum('impact_de_fait', ['FORT', 'MOYEN'])
+export const nouveautéDeFait = pgEnum('nouveauté_de_fait', ['nouveau', 'contexte'])
+/** `ge` : la matrice McKinsey/GE, annuelle, au lot 13. */
+export const outilDeSynthèse = pgEnum('outil_de_synthèse', ['pestel', 'swot', 'tows', 'scenario', 'indice_cycle', 'benchmark', 'ge'])
+export const étatDÉlément = pgEnum('état_d_élément', ['nouveau', 'renforce', 'inchange', 'affaibli'])
+export const origineDÉlément = pgEnum('origine_d_élément', ['faits', 'declaratif'])
+export const outilDePosition = pgEnum('outil_de_position', ['groupes', 'mendelow', 'forces', 'ge'])
+export const tendanceDeForce = pgEnum('tendance_de_force', ['hausse', 'stable', 'baisse'])
+/** `propose` pendant le pilote : rien ne va au client. */
+export const étatDePublication = pgEnum('état_de_publication', ['propose', 'publie', 'retire'])
+
+/** `AAAA-MM` (mensuel), `AAAA-T1` à `AAAA-T4` (trimestriel), `AAAA` (annuel). */
+const FORME_DE_PÉRIODE = '^[0-9]{4}(-(0[1-9]|1[0-2])|-T[1-4])?$'
+
+/**
+ * Un fait d'une lettre, étiqueté (PESTEL ou force de Porter, mouvement
+ * d'Ansoff, rupture). Désigné par sa place dans l'édition (section, axe, rang)
+ * et par l'empreinte de sa phrase-titre : **le texte n'est pas conservé**.
+ *
+ * Un lot remplace les étiquettes précédentes de la même édition : les
+ * anciennes sont archivées, jamais supprimées, et une synthèse qui les citait
+ * les retrouve. L'unicité ne vaut donc que parmi les lignes non archivées.
+ */
+export const faitsÉtiquetés = pgTable(
+  'faits_etiquetes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    /** La page Édition, 32 hexadécimaux sans tirets. */
+    éditionNotion: text('édition_notion').notNull(),
+    /** La propriété interne `Famille` de l'édition, en minuscules sans accent ; nulle pour la lettre unique. */
+    familleÉdition: text('famille_édition'),
+    dateÉdition: date('date_édition', { mode: 'string' }).notNull(),
+    section: sectionDeFait('section').notNull(),
+    /** Requis pour un fait d'axe, nul pour l'actualité des acteurs. */
+    numéroAxe: smallint('numéro_axe'),
+    rang: smallint('rang').notNull(),
+    /** `empreinteDeTitre` (`lib/domaine/strategie.ts`) : huit hexadécimaux. */
+    empreinteTitre: text('empreinte_titre').notNull(),
+    dateFait: date('date_fait', { mode: 'string' }).notNull(),
+    sourceUrl: text('source_url').notNull(),
+    pestel: pestelDeFait('pestel'),
+    forcePorter: forcePorter('force_porter'),
+    ansoff: mouvementAnsoff('ansoff'),
+    entité: text('entité'),
+    rupture: boolean('rupture').notNull(),
+    impact: impactDeFait('impact').notNull(),
+    nouveauté: nouveautéDeFait('nouveauté').notNull(),
+    runId: uuid('run_id').references(() => runs.id),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+    archivéeLe: horodatage('archivée_le'),
+  },
+  (table) => [
+    // Une place, un fait vivant. `coalesce` range l'actualité des acteurs (axe
+    // nul) sous 0, sans quoi Postgres tiendrait deux valeurs nulles pour
+    // distinctes.
+    uniqueIndex('faits_etiquetes_place_unique')
+      .on(table.éditionNotion, table.section, sql`coalesce(${table.numéroAxe}, 0)`, table.rang)
+      .where(sql`${table.archivéeLe} is null`),
+    index('faits_etiquetes_organisation').on(table.organisationId, table.dateÉdition),
+    check('faits_etiquetes_edition_forme', sql`${table.éditionNotion} ~ '^[0-9a-f]{32}$'`),
+    check('faits_etiquetes_empreinte_forme', sql`${table.empreinteTitre} ~ '^[0-9a-f]{8}$'`),
+    check('faits_etiquetes_axe', sql`(${table.section} = 'axe') = (${table.numéroAxe} is not null)`),
+    check('faits_etiquetes_rang', sql`${table.rang} >= 1 and (${table.numéroAxe} is null or ${table.numéroAxe} >= 1)`),
+    check('faits_etiquetes_date', sql`${table.dateFait} <= ${table.dateÉdition}`),
+    // Exactement un cadre : une lettre PESTEL ou une force de Porter.
+    check('faits_etiquetes_un_cadre', sql`(${table.pestel} is null) <> (${table.forcePorter} is null)`),
+    // Ansoff seulement pour un concurrent nommé, sous rivalité ou nouveaux entrants.
+    check(
+      'faits_etiquetes_ansoff',
+      sql`${table.ansoff} is null or (${table.forcePorter} in ('rivalite', 'nouveaux_entrants') and ${table.entité} is not null)`,
+    ),
+    check('faits_etiquetes_entite', sql`${table.entité} is null or length(${table.entité}) between 1 and 120`),
+  ],
+)
+
+/**
+ * La grille de l'organisation : axes des groupes stratégiques, correspondance
+ * des familles avec PESTEL et Porter, entités suivies, parties prenantes,
+ * offres. Versionnée : un re-post identique (même empreinte) ne crée pas de
+ * version. Les critères complets des crans restent dans la section « Grille
+ * stratégique » du référentiel, dans Notion ; seuls les libellés courts sont ici.
+ */
+export const grilles = pgTable(
+  'grilles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    version: integer('version').notNull(),
+    /** `empreinteDeLaGrille` : insensible à l'ordre des familles, entités et parties prenantes. */
+    empreinte: text('empreinte').notNull(),
+    /** La page du référentiel qui porte la grille, 32 hexadécimaux. */
+    référentielNotion: text('référentiel_notion').notNull(),
+    axesGroupes: jsonb('axes_groupes').$type<unknown[]>().notNull(),
+    familles: jsonb('familles').$type<unknown[]>().notNull(),
+    entités: jsonb('entités').$type<unknown[]>().notNull(),
+    partiesPrenantes: jsonb('parties_prenantes').$type<unknown[]>().notNull(),
+    /** Pour la matrice GE, seulement si la fiche porte plusieurs offres. */
+    offres: jsonb('offres').$type<unknown[]>(),
+    /** Quand les points de validation des axes sont répondus. */
+    validéeLe: horodatage('validée_le'),
+    crééeLe: horodatage('créée_le').notNull().defaultNow(),
+    archivéeLe: horodatage('archivée_le'),
+  },
+  (table) => [
+    uniqueIndex('grilles_version_unique').on(table.organisationId, table.version),
+    check('grilles_version', sql`${table.version} >= 1`),
+    check('grilles_empreinte_forme', sql`${table.empreinte} ~ '^[0-9a-f]{8}$'`),
+    check('grilles_referentiel_forme', sql`${table.référentielNotion} ~ '^[0-9a-f]{32}$'`),
+  ],
+)
+
+/**
+ * Un élément de synthèse : une lettre PESTEL, un élément SWOT, une option
+ * TOWS, un scénario, l'interprétation d'un calcul. `énoncé` est écrit par le
+ * modèle ; `valeur` est calculée par le portail, jamais fournie par le modèle.
+ * Une synthèse remplace la précédente de la même période (archivage).
+ */
+export const élémentsSynthèse = pgTable(
+  'elements_synthese',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    période: text('période').notNull(),
+    /** De première parution à première parution. */
+    fenêtreDébut: date('fenêtre_début', { mode: 'string' }).notNull(),
+    fenêtreFin: date('fenêtre_fin', { mode: 'string' }).notNull(),
+    outil: outilDeSynthèse('outil').notNull(),
+    /** `forces`, `SO`, `pestel:legal`, `scenario-1`… */
+    clé: text('clé').notNull(),
+    rang: smallint('rang').notNull(),
+    énoncé: text('énoncé'),
+    /** SWOT seulement. */
+    état: étatDÉlément('état'),
+    origine: origineDÉlément('origine').notNull().default('faits'),
+    hypothèse: boolean('hypothèse').notNull().default(false),
+    /** L'élément de la période précédente qu'il prolonge (renforcé, inchangé, affaibli). */
+    filiation: uuid('filiation').references((): AnyPgColumn => élémentsSynthèse.id),
+    /** Au moins un fait de l'organisation, sauf pour un élément déclaratif ou une lettre PESTEL sans fait. */
+    faits: uuid('faits').array().notNull().default(sql`'{}'::uuid[]`),
+    /** Éléments SWOT croisés (TOWS), indicateurs (scénario), section de fiche (déclaratif). */
+    références: jsonb('références').$type<Record<string, unknown>>().notNull().default({}),
+    valeur: jsonb('valeur').$type<Record<string, unknown>>(),
+    /** TOWS : une seule par période. */
+    candidateRecommandation: boolean('candidate_recommandation').notNull().default(false),
+    grilleVersion: integer('grille_version').notNull(),
+    étatPublication: étatDePublication('état_publication').notNull().default('propose'),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+    archivéeLe: horodatage('archivée_le'),
+  },
+  (table) => [
+    uniqueIndex('elements_synthese_place_unique')
+      .on(table.organisationId, table.période, table.outil, table.clé, table.rang)
+      .where(sql`${table.archivéeLe} is null`),
+    // Une seule candidate par période parmi les lignes vivantes.
+    uniqueIndex('elements_synthese_candidate_unique')
+      .on(table.organisationId, table.période)
+      .where(sql`${table.candidateRecommandation} and ${table.archivéeLe} is null`),
+    check('elements_synthese_periode_forme', sql`${table.période} ~ '${sql.raw(FORME_DE_PÉRIODE)}'`),
+    check('elements_synthese_fenetre', sql`${table.fenêtreDébut} <= ${table.fenêtreFin}`),
+    check('elements_synthese_cle', sql`length(${table.clé}) between 1 and 40`),
+    check('elements_synthese_rang', sql`${table.rang} >= 1`),
+    check(
+      'elements_synthese_enonce',
+      sql`${table.énoncé} is null or length(${table.énoncé}) <= case when ${table.outil} = 'scenario' then 400 else 240 end`,
+    ),
+    check('elements_synthese_etat_swot', sql`(${table.outil} = 'swot') = (${table.état} is not null)`),
+    check(
+      'elements_synthese_declaratif',
+      sql`${table.origine} = 'faits' or (${table.outil} = 'swot' and ${table.clé} in ('forces', 'faiblesses'))`,
+    ),
+    check('elements_synthese_candidate', sql`not ${table.candidateRecommandation} or ${table.outil} = 'tows'`),
+    check('elements_synthese_grille_version', sql`${table.grilleVersion} >= 1`),
+  ],
+)
+
+/**
+ * Une position en crans : une entité sur un axe des groupes stratégiques, une
+ * partie prenante en pouvoir et intérêt (Mendelow), l'intensité d'une force.
+ * Un changement de cran par rapport à la période précédente exige un fait de la
+ * fenêtre : la porte (`contrôlerLaSynthèse`) le vérifie avant l'écriture.
+ */
+export const positions = pgTable(
+  'positions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    période: text('période').notNull(),
+    outil: outilDePosition('outil').notNull(),
+    /** Entité, partie prenante, force ou offre ; doit figurer dans la grille. */
+    sujet: text('sujet').notNull(),
+    /** Clé d'axe de la grille, ou `pouvoir`, `interet`, `intensite`. */
+    axe: text('axe').notNull(),
+    /** Nul si `non_suivi`. */
+    cran: smallint('cran'),
+    nonSuivi: boolean('non_suivi').notNull().default(false),
+    tendance: tendanceDeForce('tendance'),
+    faits: uuid('faits').array().notNull().default(sql`'{}'::uuid[]`),
+    grilleVersion: integer('grille_version').notNull(),
+    étatPublication: étatDePublication('état_publication').notNull().default('propose'),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+    archivéeLe: horodatage('archivée_le'),
+  },
+  (table) => [
+    uniqueIndex('positions_place_unique')
+      .on(table.organisationId, table.période, table.outil, table.sujet, table.axe)
+      .where(sql`${table.archivéeLe} is null`),
+    check('positions_periode_forme', sql`${table.période} ~ '${sql.raw(FORME_DE_PÉRIODE)}'`),
+    check('positions_sujet', sql`length(${table.sujet}) between 1 and 80`),
+    check('positions_axe', sql`length(${table.axe}) between 1 and 40`),
+    check('positions_cran', sql`(${table.nonSuivi} and ${table.cran} is null) or (not ${table.nonSuivi} and ${table.cran} between 1 and 5)`),
+    check('positions_tendance', sql`${table.tendance} is null or ${table.outil} = 'forces'`),
+    check('positions_grille_version', sql`${table.grilleVersion} >= 1`),
+  ],
+)
+
+export type FaitÉtiqueté = typeof faitsÉtiquetés.$inferSelect
+export type LigneDeGrille = typeof grilles.$inferSelect
+export type ÉlémentDeSynthèse = typeof élémentsSynthèse.$inferSelect
+export type Position = typeof positions.$inferSelect

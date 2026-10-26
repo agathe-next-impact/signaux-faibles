@@ -78,6 +78,27 @@
       "when": 1792728258219,
       "tag": "0010_courriers_commerciaux",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792821280723,
+      "tag": "0011_essai_deux_parutions",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792851324517,
+      "tag": "0012_prescripteurs",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792990631645,
+      "tag": "0013_outils_strategiques",
+      "breakpoints": true
     }
   ]
 }

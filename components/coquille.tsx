@@ -17,9 +17,10 @@ export type Onglet = {
   readonly href: string
   readonly libellé: string
   /**
-   * Le libellé du menu de pied, où cinq entrées se partagent la largeur d'un
-   * téléphone. C'est le même mot, abrégé : un synonyme ferait croire à deux
-   * destinations différentes.
+   * Le libellé du menu de pied, pour les écrans posés directement dans la
+   * barre (trois éléments au plus, `répartirLeMenuBas`). C'est le même mot,
+   * abrégé : un synonyme ferait croire à deux destinations différentes. Les
+   * écrans ouverts par « Plus » y sont listés sous leur libellé entier.
    */
   readonly libelléCourt: string
   /**

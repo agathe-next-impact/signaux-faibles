@@ -20,7 +20,21 @@ elle remplace la règle « pas de base de données » de cette page. Toute
 lecture ou écriture Postgres passe par `lib/base/`, jamais depuis un
 composant ni une route ; `tests/architecture.test.ts` le vérifie. Postgres
 ne contient jamais le corps d'une lettre ni le texte d'un référentiel, il en
-contient les identifiants Notion.
+contient les identifiants Notion. **Une exception bornée, accordée par
+l'opératrice le 26 octobre 2026** pour les outils stratégiques
+(`docs/plan-outils-strategiques.md`, §8, décisions 1 et 2 ; migration 0013) :
+`grilles` recopie les **libellés courts** de la grille stratégique du
+référentiel (axes et crans des groupes stratégiques, 40 caractères au plus,
+noms d'entités et de parties prenantes ; les critères complets restent dans
+Notion), et `elements_synthese` porte les **énoncés de synthèse** (240
+caractères au plus, 400 pour un scénario), analyse nouvelle et non texte de
+lettre ou de référentiel. Rien d'autre : un fait étiqueté (`faits_etiquetes`)
+ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
+`lib/base/strategie.ts`, lui-même appelé par la seule orchestration
+`lib/portail/strategie.ts`, qui passe la porte de `lib/domaine/strategie.ts`
+avant d'écrire ; `tests/architecture.test.ts` tient la frontière, et le pilote
+est borné par `organisations.outils_strategiques` (faux par défaut, réponse
+`hors-pilote`).
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et
@@ -121,19 +135,31 @@ Les lire avant toute session.
 - Vitest, Playwright, ESLint en direct (`next lint` n'existe plus)
 - **Tâches planifiées sur l'API Claude** (23 octobre 2026, `docs/taches-api.md`) :
   les cinq tâches du dispositif (lettres, réconciliation, revue, balayage,
-  première lettre) tournent par GitHub Actions (`.github/workflows/taches.yml`,
+  première lettre), plus `etiquetage` (26 octobre 2026, à la main, une
+  organisation du pilote des outils stratégiques : l'étape 4ter après coup,
+  rien d'écrit dans Notion), tournent par GitHub Actions (`.github/workflows/taches.yml`,
   `pnpm tache <tâche>`), sur la clé API des évaluations, et non plus sur
   l'abonnement. Le prompt reste le pointeur vers la page Notion, qui fait foi
   (`scripts/taches/pointeurs.ts`, texte des tâches en service recopié mot pour
   mot). Opus 5.5 (Sonnet 5.5 pour la réconciliation) ; la lecture des sources
   est confiée au sous-agent `lecteur`, sur **Haiku 5.5**. Notion par le serveur
-  MCP hébergé (`NOTION_MCP_TOKEN`, plan Business) ; Gmail et le portail par les
+  MCP hébergé (`NOTION_MCP_TOKEN`, plan Business : un jeton « New MCP token »
+  créé par un propriétaire de l'espace, **jamais** le secret d'intégration
+  interne du portail, que le serveur reconnaît mais refuse en `403
+  restricted_resource` ; les six premières exécutions du workflow ont échoué
+  là, 23 au 25 octobre 2026, et `scripts/taches/notion-mcp.ts` sonde le serveur
+  avant toute session pour nommer ce refus) ; Gmail, le portail et les registres publics (BODACC, Recherche d'entreprises :
+  `annonces_bodacc`, `fiches_entreprises`, 26 octobre 2026) par les
   outils du dépôt (`scripts/taches/outils.ts`), qui n'envoient jamais à un
   client et gardent `ACTIVATION_SECRET` hors du contexte du modèle ; tout le
   reste refusé par `scripts/taches/garde.ts`. Chaque exécution écrit son coût
   (`mesure.json`, lu dans le message `result` du SDK). Récurrences livrées
   désactivées, activées tâche par tâche à la bascule ; `pnpm tache controle`
-  vérifie tout en lecture avant un essai
+  vérifie tout en lecture avant un essai. **Onboardings partagés avec Cowork**
+  (25 octobre 2026) : deux demandes par semaine au plus sur Cowork, le reste sur
+  l'API, selon la propriété « Exécuteur » du registre (vide vaut API) et la règle
+  « PARTAGE DES ONBOARDINGS » de la page d'onboarding ; le harnais se déclare par
+  « EXÉCUTEUR : API » ; les prospects restent sur le lot du lundi, hors quota
 - **Postgres** (Neon, rattachée au projet Vercel, variable `DATABASE_URL`),
   **Drizzle ORM** 0.45 et le pilote `@neondatabase/serverless` en `Pool`
   (WebSocket, pour les transactions interactives). Schéma dans
@@ -185,7 +211,7 @@ Les lire avant toute session.
   selon `STRIPE_MODE` pour que Stripe relivre et alerte ; `tests/architecture.test.ts` vérifie le seul écrivain). L'étape du
   parcours n'est jamais stockée : `étapeDuParcours` (`lib/domaine/parcours.ts`)
   la calcule de la date d'activation, de l'état de l'organisation et de l'état
-  Stripe (essai J0, J+7, J+14 ; « L'essentiel » seul à J+21 ; suspension
+  Stripe (essai J0, J+7 ; « L'essentiel » seul à J+14 ; suspension
   au-delà ; `past_due` reste abonné ; une suspension ou un écart posé par
   l'opérateur prime sur Stripe ; un paiement jamais abouti ne retire rien à un
   client historique). La lettre tronquée est retirée à la
@@ -277,7 +303,8 @@ Les lire avant toute session.
   (`standard`, `early_adopter` à 29 € HT par mois sur son propre prix Stripe
   `STRIPE_PRIX_EARLY_ADOPTER`, `gratuite` = accès offert, jamais de fin
   d'essai, étape « accès offert ») et `organisations.parutions_d_essai`
-  (trois par défaut, quatre pour un essai à J+28), migration 0004. Le même
+  (deux par défaut depuis le 24 octobre 2026, migration 0011, trois
+  auparavant ; quatre pour un essai à J+28), migration 0004. Le même
   `réglerLeParcours` porte trois réglages de plus (`offre`, `parutions`,
   `parcours`), par la route PATCH et par le tableau de l'opératrice. `parcours`
   est **le chemin assumé pour un client historique qui devient payant** : la
@@ -305,7 +332,25 @@ Les lire avant toute session.
   des variables : **le portail n'ajoute jamais un contact à une campagne et ne
   lance rien**, c'est le rôle de la tâche de prospection. Le jeton d'accès ne
   voyage pas dans lemlist : le bouton de la lettre 1 mène à « recevoir mon
-  lien ». `desinscrit` est final. Sans `LEMLIST_API_KEY`, tout est tenu dans
+  lien ». `desinscrit` est final. **Réservée aux clients finaux** (24 octobre
+  2026) : un prescripteur n'entre jamais dans une séquence, ni les
+  organisations qu'il recommande (`docs/prescripteurs.md`). Table
+  `prescripteurs` (migration 0012 : organisation du prescripteur, code, type),
+  `organisations.recommandée_par` et `recommandée_le`, exclusives de
+  `entrée_par_prospection` par contrainte ; `POST /api/veille/prescripteurs`
+  (déclarer), `GET /api/veille/prescripteurs?exclusions=1` (lue par la tâche de
+  prospection), `prescripteur: <code>` sur `POST /api/veille/organisations`
+  (le premier garde l'organisation, quatre parutions d'essai,
+  `PARUTIONS_D_ESSAI_RECOMMANDÉE`) ; le code voyage par `/demo?de=<code>`, lu à
+  l'envoi du formulaire, la page restant sans base ; l'opératrice suit sur
+  `/espaces/prescripteurs` (`listerLesPrescripteurs`, garde dans la fonction).
+  Un prescripteur a son espace en accès offert et ne lit jamais les lettres de
+  ses clients. Son écran « Vos recommandations » (`/[slug]/prescripteur`, hors
+  des sept, atteint depuis « Mon abonnement », ouvert comme lui) ne montre que
+  son lien et les organisations recommandées dont l'opératrice a posé l'accord
+  de partage (`partage_avec_prescripteur`, action `lib/portail/partage.ts`),
+  nom et étape en quatre mots (`étapeVueDuPrescripteur`), lues par la clé de
+  cloisonnement de la session (`lireLEspacePrescripteur`). Sans `LEMLIST_API_KEY`, tout est tenu dans
   Postgres et rien ne part. **Le mois d'essai d'une entrée par prospection
   commence à la première visite** (`origine: "prospection"` sur
   `POST /api/veille/organisations`, colonne `entrée_par_prospection`,
@@ -588,6 +633,22 @@ suivi des dossiers ouverts) · Recommandations · Archives (une entrée par
 semaine) · **Périmètre** (`/[slug]/perimetre`, décidé le 10 septembre 2026
 sous le nom « Cadrage », renommé le 14 septembre en accueillant les acteurs
 suivis). Pas d'autre écran sans discussion.
+
+**Une troisième section de la vue d'ensemble, pour le seul pilote des outils
+stratégiques (26 octobre 2026, à la demande de l'opératrice pour L'Hermitage) :
+« Lecture stratégique ».** Elle compte les étiquettes des trois dernières
+lettres que l'écran lit déjà (`récentes`) : les six dimensions PESTEL et les
+cinq forces de Porter dans l'ordre du cadre, zéro compris, les trois entités les
+plus citées par force, les mouvements d'Ansoff, et les ruptures avec leur
+phrase-titre relue dans ces mêmes documents par empreinte. Des comptes, jamais
+une analyse ; mention « outil en test ». `lectureStratégiqueDeLEspace`
+(`lib/portail/strategie.ts`) ne lit **aucun corps Notion de plus**, n'ouvre pas
+Postgres en mode `notion`, est bornée à 400 ms et rend `null` dans tout doute,
+hors du pilote (`organisations.outils_strategiques`) ou sans fait : la section
+n'existe alors pas, et l'écran reste celui d'avant. Agrégation pure dans
+`lectureDesÉtiquettes` (`lib/domaine/strategie.ts`), rendu dans
+`components/lecture-strategique.tsx` ; la vue d'ensemble est son seul appelant
+(`tests/architecture.test.ts`).
 
 **Deux écrans d'abonnement, hors des sept (19 octobre 2026).** `/[slug]/abonnement`
 (« Mon abonnement ») n'est pas un écran de veille : il ne lit aucune édition,

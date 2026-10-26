@@ -7,11 +7,15 @@ import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
  * L'offre (décision d'Agathe du 17 octobre 2026, `docs/decision-portail-moteur.md`)
  * en fixe la forme :
  *
- *   · trois parutions complètes, la semaine de l'activation (J0) puis les deux
- *     suivantes (J+7, J+14) : c'est l'essai ;
- *   · la quatrième semaine (J+21), sans abonnement, une parution réduite à
+ *   · deux parutions complètes, la semaine de l'activation (J0) puis la
+ *     suivante (J+7) : c'est l'essai (trois jusqu'au 24 octobre 2026) ;
+ *   · la troisième semaine (J+14), sans abonnement, une parution réduite à
  *     « L'essentiel » de chaque lettre, avec une invitation à s'abonner ;
  *   · au-delà, sans abonnement, l'espace est suspendu.
+ *
+ * Le nombre de parutions complètes est porté par chaque organisation
+ * (`organisations.parutions_d_essai`) : les dates ci-dessus sont celles du
+ * défaut.
  *
  * **Rien de cela n'est stocké.** L'étape se calcule à chaque fois à partir de la
  * date d'activation, de l'état de l'organisation et de l'état que Stripe donne
@@ -28,8 +32,20 @@ import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
 /** Les états d'abonnement Stripe qui ouvrent l'espace. */
 const ÉTATS_ABONNÉS = new Set(['trialing', 'active', 'past_due'])
 
-/** Parutions complètes de l'essai : J0, J+7, J+14. */
-export const PARUTIONS_D_ESSAI = 3
+/**
+ * Parutions complètes de l'essai par défaut : J0, J+7 (24 octobre 2026 ; trois
+ * auparavant). Le défaut de la colonne `organisations.parutions_d_essai` porte
+ * la même valeur (migration 0011) : changer l'un sans l'autre ferait annoncer
+ * par la vitrine un essai que la base n'accorde pas.
+ */
+export const PARUTIONS_D_ESSAI = 2
+
+/**
+ * Parutions complètes de l'essai d'une organisation recommandée par un
+ * prescripteur (24 octobre 2026, `docs/prescripteurs.md`) : l'avantage que le
+ * prescripteur peut offrir, posé à l'ouverture tant que J0 ne l'est pas.
+ */
+export const PARUTIONS_D_ESSAI_RECOMMANDÉE = 4
 
 export type ÉtatOrganisation = 'demande' | 'generation' | 'essai' | 'abonnee' | 'suspendue' | 'ecartee' | 'test'
 
@@ -53,7 +69,7 @@ export type Étape =
       readonly paiementEnRetard: boolean
     }
   /**
-   * Au-delà de J+21 sans abonnement (`manuelle: false`), ou suspendue à la main
+   * Au-delà de la parution réduite sans abonnement (`manuelle: false`), ou suspendue à la main
    * par l'opérateur (`manuelle: true`, qui prime sur Stripe).
    */
   | { readonly étape: 'suspendue'; readonly manuelle: boolean }
@@ -66,7 +82,7 @@ export type EntréeDuParcours = {
     /** Fixe J0. */
     readonly activéeLe: Date | null
     readonly offre: Offre
-    /** Parutions complètes de l'essai avant « L'essentiel » seul ; trois par défaut. */
+    /** Parutions complètes de l'essai avant « L'essentiel » seul ; deux par défaut. */
     readonly parutionsDEssai: number
   }
   /** L'état de l'abonnement tel que Stripe le donne, ou `null` s'il n'y en a pas. */

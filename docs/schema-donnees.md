@@ -1,6 +1,6 @@
 # Schéma de données du portail (Postgres)
 
-*Proposé le 15 octobre 2026 (action 9 du plan de travail), validé le 16 octobre 2026 avec la décision d'architecture. Palier 1a livré : `organisations`, `veilles`, `lecteurs` (`lib/base/schema.ts`, migration `drizzle/0000_*`). Palier 2, première livraison le 21 octobre 2026 : `travaux` et `runs` (migration 0009 sur `main`, après `0008_lettres_du_moteur`), et `veilles` enfin écrite (`POST /api/veille/veilles`). Le schéma décrit l'état cible à la fin du palier 2 ; chaque palier n'en crée que ce dont il a besoin. Conventions : identifiants `uuid` générés par la base, horodatages `timestamptz`, noms en français comme le reste du code, suppression jamais physique (colonne `archivée_le`).*
+*Proposé le 15 octobre 2026 (action 9 du plan de travail), validé le 16 octobre 2026 avec la décision d'architecture. Palier 1a livré : `organisations`, `veilles`, `lecteurs` (`lib/base/schema.ts`, migration `drizzle/0000_*`). Palier 2, première livraison le 21 octobre 2026 : `travaux` et `runs` (migration 0009 sur `main`, après `0008_lettres_du_moteur`), et `veilles` enfin écrite (`POST /api/veille/veilles`). Outils stratégiques le 26 octobre 2026 : `faits_etiquetes`, `grilles`, `elements_synthese`, `positions` et `organisations.outils_strategiques` (migration 0013). Le schéma décrit l'état cible à la fin du palier 2 ; chaque palier n'en crée que ce dont il a besoin. Conventions : identifiants `uuid` générés par la base, horodatages `timestamptz`, noms en français comme le reste du code, suppression jamais physique (colonne `archivée_le`).*
 
 ## Ce qui va où
 
@@ -11,8 +11,11 @@
 | Les sources d'une veille et ce qui a changé dessus (palier 3) | Postgres | le portail, seul |
 | Le texte d'un référentiel, le corps d'une lettre, les points de validation | Notion | les tâches Claude, après acceptation du résultat par le portail |
 | L'abonnement (source de vérité) | Stripe | Stripe ; le portail en tient une copie dans `abonnements` |
+| Les étiquettes des faits, la grille stratégique, les synthèses et les positions (outils stratégiques, 26 octobre 2026) | Postgres | le portail, seul, après la porte de `lib/domaine/strategie.ts` |
 
 Règle : Postgres ne contient jamais le corps d'une lettre ni le texte d'un référentiel ; il contient leurs identifiants Notion. La migration du contenu, si elle vient un jour, ajoute une colonne, elle ne change pas le schéma.
+
+**Exception bornée, accordée par l'opératrice le 26 octobre 2026** (`docs/plan-outils-strategiques.md`, §8, décisions 1 et 2) : la grille stratégique recopie dans `grilles` des **libellés courts** du référentiel (axes et crans des groupes stratégiques, 40 caractères au plus ; noms d'entités et de parties prenantes), les critères complets restant dans la section « Grille stratégique » du référentiel, dans Notion ; et `elements_synthese` porte des **énoncés de synthèse** (240 caractères au plus, 400 pour un scénario), qui sont une analyse nouvelle écrite à partir des faits, ni corps de lettre ni texte de référentiel. Rien d'autre : un fait étiqueté ne garde que l'empreinte de sa phrase-titre, jamais son texte.
 
 ## Les tables
 
@@ -33,6 +36,7 @@ Une par client, prospect ou organisation de test.
 | `essai_ouvert_le` | timestamptz, nullable | entrée dans l'essai par l'onboarding (`ouvrirEnEssai`) ; plancher de J0 (lundi de cette semaine). Nulle pour une entrée par prospection tant que le lecteur n'a pas fait sa première visite |
 | `entrée_par_prospection` | boolean, défaut faux | lettre 1 partie sans sollicitation (migration 0006) ; l'essai n'ouvre qu'à la première visite, qui pose `essai_ouvert_le` |
 | `relecture_requise` | boolean, défaut vrai | tant que vrai, les envois vont à l'adresse de relecture |
+| `outils_strategiques` | boolean, défaut faux | pilote des outils stratégiques (migration 0013) : tant que faux, faits, grille et synthèses rendent `hors-pilote` |
 | `email_relecture` | text, nullable | vide : l'adresse par défaut de l'environnement |
 | `créée_le`, `modifiée_le`, `archivée_le` | timestamptz | |
 
@@ -209,6 +213,62 @@ Une ligne de `prospections` par lead lemlist, c'est-à-dire par adresse engagée
 
 `événements_prospection` : le journal des webhooks, une ligne par activité lemlist (`activité_lemlist` unique, `act_…`), avec `type` (`emailsSent`, `emailsOpened`…), `étape` de la séquence, `survenu_le`, `reçu_le`. Le score d'un prospect se calcule dans la tâche à partir de ces comptes.
 
+### Outils stratégiques : `faits_etiquetes`, `grilles`, `elements_synthese`, `positions` (créées le 26 octobre 2026, migration 0013)
+
+Le plan est `docs/plan-outils-strategiques.md` (lot 2). Les listes fermées des enums sont celles de `lib/domaine/strategie.ts`, qui en fait foi ; `tests/base.strategie.test.ts` vérifie qu'elles n'ont pas divergé. Chaque ligne porte `organisation_id`, et aucune fonction de `lib/base/strategie.ts` ne lit sans lui. Ce fichier n'a qu'un appelant, l'orchestration `lib/portail/strategie.ts` (lot 3), qui passe la porte avant d'écrire (`tests/architecture.test.ts`). Les noms des tables sont ceux du plan ; ceux des colonnes suivent la convention du schéma (accents compris).
+
+**Drapeau du pilote** : `organisations.outils_strategiques` (boolean, faux par défaut). Tant qu'il est faux, les écritures rendent `hors-pilote` et les routes le rendront aux tâches, qui passent l'étape. Il est relu dans chaque transaction d'écriture : un drapeau retiré entre la porte et l'écriture n'écrit rien.
+
+`faits_etiquetes` : un fait d'une lettre, étiqueté.
+
+| Colonne | Type | Notes |
+|---|---|---|
+| `id` | uuid | |
+| `organisation_id` | uuid, référence | celle de l'édition, vérifiée par la relation `Organisation` (règle 2) |
+| `édition_notion` | text | 32 hexadécimaux |
+| `famille_édition` | text, nullable | propriété interne `Famille`, en minuscules sans accent ; nulle pour la lettre unique |
+| `date_édition`, `date_fait` | date | `date_fait` ≤ `date_édition` (contrainte) |
+| `section` | enum `section_de_fait` | `axe`, `acteurs` |
+| `numéro_axe` | smallint, nullable | requis si et seulement si `section = axe` (contrainte) |
+| `rang` | smallint | à partir de 1, dans la section |
+| `empreinte_titre` | text | huit hexadécimaux (`empreinteDeTitre`) ; **le texte n'est pas conservé** |
+| `source_url` | text | citée dans les blocs du fait (vérifié par la porte) |
+| `pestel`, `force_porter` | enums, nullables | exactement un des deux (contrainte) |
+| `ansoff` | enum, nullable | seulement sous `rivalite` ou `nouveaux_entrants` avec une entité nommée (contrainte) |
+| `entité` | text, nullable | 1 à 120 caractères |
+| `rupture` | boolean | |
+| `impact` | enum `impact_de_fait` | `FORT`, `MOYEN` ; un fait d'axe RAS n'est pas étiqueté |
+| `nouveauté` | enum | `nouveau`, `contexte` |
+| `run_id` | uuid, référence `runs`, nullable | |
+| `créé_le`, `archivée_le` | timestamptz | |
+
+Unicité de la place (`édition_notion`, `section`, `numéro_axe`, `rang`) parmi les lignes non archivées. Un lot remplace le précédent de la même édition dans une transaction (`remplacerLesÉtiquettes` : archivage, puis insertion) ; un lot qui viole une contrainte n'archive rien. Une édition déjà étiquetée pour une autre organisation est refusée (`organisation-différente`). Un fait archivé reste lisible par les synthèses qui le citaient, mais n'est plus connu de la porte (`faitsConnus`).
+
+`grilles` : la grille de l'organisation, versionnée (`version` croissante, unique par organisation). `empreinte` (huit hexadécimaux, `empreinteDeLaGrille`, insensible à l'ordre) : un re-post identique ne crée pas de version. `référentiel_notion` (32 hexadécimaux), `axes_groupes`, `familles`, `entités`, `parties_prenantes` (jsonb, forme `Grille` de `lib/domaine/strategie.ts`), `offres` (jsonb, nullable, matrice GE), `validée_le` (posée quand les points de validation des axes sont répondus ; une nouvelle version n'en hérite pas).
+
+`elements_synthese` : une lettre PESTEL, un élément SWOT, une option TOWS, un scénario, une interprétation.
+
+| Colonne | Type | Notes |
+|---|---|---|
+| `période` | text | `AAAA-MM`, `AAAA-T1` à `T4`, `AAAA` (contrainte de forme) |
+| `fenêtre_début`, `fenêtre_fin` | date | de première parution à première parution |
+| `outil` | enum `outil_de_synthèse` | `pestel`, `swot`, `tows`, `scenario`, `indice_cycle`, `benchmark`, `ge` |
+| `clé`, `rang` | text ≤ 40, smallint | `forces`, `SO`, `pestel:legal`, `scenario-1` |
+| `énoncé` | text, nullable | 240 caractères au plus, 400 pour un scénario ; nul pour une lettre PESTEL sans fait (un trou) |
+| `état` | enum, nullable | requis pour un élément SWOT, interdit ailleurs |
+| `origine`, `hypothèse` | enum, boolean | `declaratif` seulement pour les forces et faiblesses (contrainte) |
+| `filiation` | uuid, référence, nullable | l'élément de la période précédente qu'il prolonge |
+| `faits` | uuid[] | les faits cités, revérifiés dans la transaction |
+| `références` | jsonb | `éléments` (TOWS : identifiants des éléments SWOT croisés, résolus depuis les identifiants provisoires dans la transaction), indicateurs, section de fiche |
+| `valeur` | jsonb, nullable | chiffres calculés par le portail, jamais par le modèle |
+| `candidate_recommandation` | boolean | TOWS seulement ; une seule par période (index partiel) |
+| `grille_version` | integer | revérifiée contre la dernière grille dans la transaction (`grille-périmée`) |
+| `état_publication` | enum | `propose` (pilote), `publie`, `retire` |
+
+`positions` : `période`, `outil` (`groupes`, `mendelow`, `forces`, `ge`), `sujet` (1 à 80 caractères), `axe` (clé d'axe de la grille, ou `pouvoir`, `interet`, `intensite`), `cran` (1 à 5, nul si et seulement si `non_suivi`), `tendance` (cinq forces seulement), `faits`, `grille_version`, `état_publication`. Unicité (`organisation_id`, `période`, `outil`, `sujet`, `axe`) parmi les lignes non archivées.
+
+Une synthèse remplace la précédente de la même période (`enregistrerLaSynthèse`, archivage puis insertion, dans une transaction) ; `synthèsePrécédente` rend la dernière de même granularité (un mois suit un mois, un trimestre un trimestre), d'où la porte tire filiations et crans précédents.
+
 ### `sources` (palier 3)
 
 | Colonne | Type | Notes |
@@ -225,7 +285,7 @@ Une ligne de `prospections` par lead lemlist, c'est-à-dire par adresse engagée
 
 ## Le parcours, calculé et non stocké
 
-`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, puis J+7 et J+14 par semaines ISO, trois parutions complètes qui forment l'essai ; à J+21 sans abonnement, une parution réduite à « L'essentiel » de chaque lettre ; `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de J+21 sans abonnement (offre décidée le 17 octobre 2026, `docs/decision-portail-moteur.md`). Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
+`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, puis par semaines ISO autant de parutions complètes que `parutions_d_essai` (deux par défaut depuis le 24 octobre 2026, J0 et J+7 ; trois auparavant) ; la semaine suivante (J+14 par défaut) sans abonnement, une parution réduite à « L'essentiel » de chaque lettre ; `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de cette parution réduite sans abonnement (offre décidée le 17 octobre 2026, `docs/decision-portail-moteur.md`). Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
 
 ## Migration depuis Notion (palier 1)
 
@@ -240,3 +300,4 @@ Une ligne de `prospections` par lead lemlist, c'est-à-dire par adresse engagée
 - `lecteurs` n'est jamais interrogée par email sans normalisation en minuscules, et jamais par `identifiant_acces` sans comparaison exacte.
 - Aucune fonction cachée ne reçoit un `lecteur_id` : seulement un `organisation_id`.
 - `envois` est écrite avant `envoyerMessage`, dans la même fonction, et le test le vérifie par lecture du source.
+- `lib/base/strategie.ts` n'est importé que par `lib/portail/strategie.ts` (en place depuis le 26 octobre 2026).

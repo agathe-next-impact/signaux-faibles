@@ -140,6 +140,24 @@ describe('masquer et pointeurs', () => {
     expect(promptDeLaTâche('lettres', null)).toBe(POINTEURS.lettres.texte)
     expect(promptDeLaTâche('lettres', 'konica')).toBe(`${POINTEURS.lettres.texte}\n\nLimite-toi à l'organisation konica.`)
   })
+
+  it('le pointeur d’étiquetage n’applique que l’étape 4ter, aux éditions publiées, sans rien écrire dans Notion', () => {
+    const texte = POINTEURS.etiquetage.texte
+    expect(texte).toContain('3d5fe829ce718107af65f4fccf8089ab')
+    expect(texte).toContain('« 4ter ÉTIQUETTES »')
+    expect(texte).toContain('N\'exécute que cette étape')
+    expect(texte).toContain('tu ne modifies aucune page Notion')
+    expect(texte).toContain('« hors-pilote », arrête-toi')
+    // Les brouillons seulement à défaut d'édition publiée, et jamais en changeant leur statut.
+    expect(texte).toContain('Si elle n\'a aucune édition publiée')
+    expect(texte).toContain('sans en changer le statut')
+    expect(texte).toContain('aucun fait ne cite d\'URL n\'est pas étiquetable')
+    // La reprise n'ajoute qu'une phrase, et seulement à l'étiquetage.
+    expect(promptDeLaTâche('etiquetage', 'infralliance', true)).toBe(
+      `${texte}\n\nLimite-toi à l'organisation infralliance.\n\nReprends aussi les éditions qui ont déjà des faits : un nouveau lot remplace l'ancien.`,
+    )
+    expect(promptDeLaTâche('lettres', 'konica', true)).toBe(promptDeLaTâche('lettres', 'konica'))
+  })
 })
 
 describe('Gmail : deposer_courriel, le HTML ne passe pas par le modèle', () => {
@@ -177,6 +195,9 @@ describe('sous-agents et consignes du harnais', () => {
     expect(définitionDuLecteur().model).toBe('claude-haiku-5-5')
     const outils = définitionDuCollecteur().tools ?? []
     expect(outils).toContain('mcp__Veille__lire_sources')
+    // Capital et santé financière, nouveaux entrants : par les registres publics, en code (26 octobre 2026).
+    expect(outils).toContain('mcp__Veille__annonces_bodacc')
+    expect(outils).toContain('mcp__Veille__fiches_entreprises')
     expect(outils.some((o) => /notion-(create|update)|Gmail/.test(o))).toBe(false)
   })
 
@@ -186,5 +207,9 @@ describe('sous-agents et consignes du harnais', () => {
     expect(consignes).toContain('subagent_type « collecteur »')
     expect(consignes).toContain('synthese_de_collecte')
     expect(consignes).toContain('plus de quatre minutes')
+    // La page d'onboarding reconnaît l'exécuteur API à cette mention exacte (25 octobre 2026).
+    expect(consignes).toContain('EXÉCUTEUR : API')
+    expect(consignes).toContain('mcp__Veille__annonces_bodacc')
+    expect(consignes).toContain('mcp__Veille__fiches_entreprises')
   })
 })

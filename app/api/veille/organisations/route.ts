@@ -9,19 +9,30 @@ import {
   type RésultatDOuverture,
   type RésultatDuRéglage,
 } from '@/lib/base/organisations'
+import { codeDePrescripteurValide } from '@/lib/domaine/prescripteurs'
 import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
+import { réglerLePilote } from '@/lib/portail/strategie'
 
 /**
  * Ouvre une nouvelle organisation en essai (18 octobre 2026).
  *
  *   POST /api/veille/organisations
  *   Authorization: Bearer <ACTIVATION_SECRET>
- *   { "slug": "acme", "nom": "Acme", "registreNotion": "<page_id de la ligne du registre>", "origine": "demande" | "prospection" }
+ *   { "slug": "acme", "nom": "Acme", "registreNotion": "<page_id de la ligne du registre>", "origine": "demande" | "prospection", "prescripteur": "<code>" }
  *
  * `origine: "prospection"` (19 octobre 2026) : la lettre 1 part de lemlist
  * sans sollicitation, et l'essai n'ouvre qu'à la **première visite** du
  * lecteur ; `essai_ouvert_le` reste nul jusque-là, J0 n'est pas fixé, et les
  * lettres publiées avant la visite ne comptent pas dans l'essai.
+ *
+ * `prescripteur` (24 octobre 2026, `docs/prescripteurs.md`) : le code du
+ * prescripteur qui a recommandé l'organisation, lu dans la demande de démo. Le
+ * premier garde l'organisation, l'essai compte quatre parutions tant que J0
+ * n'est pas posé, et l'organisation sort de la prospection. Exclusif de
+ * `origine: "prospection"` (400) ; un code inconnu ou inactif rend
+ * `prescripteur-inconnu` (404) ; une organisation déjà prospectée,
+ * `déjà-prospectée` (409). Un prescripteur ou une organisation recommandée ne
+ * passe jamais en prospection : `hors-prospection` (409).
  *
  * Appelée par l'onboarding Cowork (étape B), **avant** `POST
  * /api/veille/importer-acces` puis `POST /api/acces/ouvrir`. Sans elle,
@@ -42,6 +53,13 @@ import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/ga
  *   { "slug": "acme", "action": "offre", "offre": "standard" | "early_adopter" | "gratuite" }
  *   { "slug": "acme", "action": "parutions", "parutions": 3 }
  *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
+ *   { "slug": "acme", "action": "outils", "actif": true | false }
+ *
+ * `outils` (26 octobre 2026, `docs/plan-outils-strategiques.md`, lot 4) fait
+ * entrer l'organisation dans le pilote des outils stratégiques, ou l'en fait
+ * sortir : `pilote-réglé` (200) ou `inconnue` (404). Ce n'est pas un réglage
+ * du parcours, et il passe par l'orchestration des outils, seule à toucher
+ * leurs tables.
  *
  * Les deux réglages de l'opératrice sur un parcours d'essai (`réglerLeParcours`) :
  * décaler J0, jamais au-delà d'aujourd'hui, ou faire partir les courriers de fin
@@ -53,7 +71,11 @@ const demande = z.object({
   registreNotion: z.string().trim().refine(identifiantNotionValide),
   /** `prospection` : la lettre 1 part sans sollicitation, l'essai n'ouvre qu'à la première visite. */
   origine: z.enum(['demande', 'prospection']).optional(),
+  /** Le code du prescripteur qui recommande l'organisation ; exclusif de la prospection. */
+  prescripteur: z.string().trim().refine(codeDePrescripteurValide).optional(),
 })
+
+const pilote = z.object({ slug: z.string().trim().min(1), action: z.literal('outils'), actif: z.boolean() })
 
 const réglage = z.discriminatedUnion('action', [
   z.object({
@@ -98,6 +120,10 @@ const STATUT: Record<RésultatDOuverture['sorte'], number> = {
   'état-incompatible': 409,
   'registre-pris': 409,
   'registre-différent': 409,
+  'prescripteur-inconnu': 404,
+  'hors-prospection': 409,
+  'déjà-prospectée': 409,
+  'recommandée-par-elle-même': 409,
 }
 
 export async function POST(requête: NextRequest): Promise<NextResponse> {
@@ -109,9 +135,18 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   const lue = demande.safeParse(await requête.json().catch(() => null))
   if (!lue.success) return NextResponse.json({ état: 'invalide' }, { status: 400 })
 
-  const { slug, nom, registreNotion, origine } = lue.data
+  const { slug, nom, registreNotion, origine, prescripteur } = lue.data
+  if (origine === 'prospection' && prescripteur !== undefined) {
+    return NextResponse.json({ état: 'invalide', raison: 'prospection et prescripteur s’excluent' }, { status: 400 })
+  }
   try {
-    const résultat = await ouvrirEnEssai({ slug, nom, registreNotion, prospection: origine === 'prospection' })
+    const résultat = await ouvrirEnEssai({
+      slug,
+      nom,
+      registreNotion,
+      prospection: origine === 'prospection',
+      ...(prescripteur !== undefined ? { prescripteur } : {}),
+    })
     console.info(`[veille/organisations] ${slug} : ${résultat.sorte}.`)
     return NextResponse.json({ état: résultat.sorte, ...détail(résultat) }, { status: STATUT[résultat.sorte] })
   } catch (erreur) {
@@ -126,7 +161,23 @@ export async function PATCH(requête: NextRequest): Promise<NextResponse> {
   const indisponible = baseIndisponible()
   if (indisponible) return indisponible
 
-  const lue = réglage.safeParse(await requête.json().catch(() => null))
+  const corps: unknown = await requête.json().catch(() => null)
+  const outils = pilote.safeParse(corps)
+  if (outils.success) {
+    const { slug, actif } = outils.data
+    try {
+      const résultat = await réglerLePilote({ slug, actif })
+      console.info(`[veille/organisations] ${slug} : outils stratégiques ${actif ? 'ouverts' : 'fermés'}, ${résultat}.`)
+      return résultat === 'réglé'
+        ? NextResponse.json({ état: 'pilote-réglé', actif })
+        : NextResponse.json({ état: 'inconnue' }, { status: 404 })
+    } catch (erreur) {
+      console.error(`[veille/organisations] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return NextResponse.json({ état: 'échec' }, { status: 502 })
+    }
+  }
+
+  const lue = réglage.safeParse(corps)
   if (!lue.success) return NextResponse.json({ état: 'invalide' }, { status: 400 })
 
   const demande = lue.data

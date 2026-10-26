@@ -2,6 +2,7 @@
  * Une tâche planifiée du dispositif, exécutée sur l'API Claude.
  *
  *   pnpm tache <lettres|reconciliation|revue|balayage|premiere-lettre> [--organisation <slug>]
+ *   pnpm tache etiquetage --organisation <slug> [--reprendre]
  *   pnpm tache controle
  *
  * Le prompt est le pointeur de la tâche en service (`pointeurs.ts`) : il dit
@@ -28,18 +29,20 @@
  */
 import { query, type AgentDefinition, type CanUseTool, type McpServerConfig, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { lireCompteDeServiceJSON } from '@/lib/email/gmail'
 import { contrôler } from './controle'
-import { décisionPour, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
+import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RésultatBrut } from './mesure'
+import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
 import { promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
 
 export const RACINE = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 export const LIRE_PAGE = join(RACINE, 'scripts', 'lire-page.mjs')
-export const SERVEUR_NOTION = 'https://mcp.notion.com/mcp'
+export { SERVEUR_NOTION }
 
 /** Modèle et plafond de chaque tâche (décisions du 23 octobre 2026). */
 export const PARAMÈTRES: Readonly<Record<Tâche, { readonly modèle: string; readonly plafondUsd: number }>> = {
@@ -48,6 +51,9 @@ export const PARAMÈTRES: Readonly<Record<Tâche, { readonly modèle: string; re
   balayage: { modèle: 'claude-opus-5-5', plafondUsd: 30 },
   revue: { modèle: 'claude-opus-5-5', plafondUsd: 10 },
   reconciliation: { modèle: 'claude-sonnet-5-5', plafondUsd: 5 },
+  // Classer des faits déjà écrits ne demande ni recherche ni rédaction : le
+  // modèle de la réconciliation suffit (plan des outils stratégiques, §3.4).
+  etiquetage: { modèle: 'claude-sonnet-5-5', plafondUsd: 10 },
 }
 const EFFORT = 'high'
 const MODÈLE_LECTEUR = 'claude-haiku-5-5'
@@ -143,12 +149,25 @@ export function écrireLeRésuméDuJob(markdown: string, secrets: readonly strin
 // ── Session ──────────────────────────────────────────────────────────────────
 
 /** L'environnement de la session enfant : sans aucun secret, sauf la clé API qui l'authentifie. */
+/**
+ * Le plafond, en jetons, d'une réponse d'outil MCP rendue telle quelle à l'agent.
+ *
+ * Au-delà du plafond par défaut, l'outil échoue (« exceeds maximum allowed
+ * tokens ») : la page de la tâche Lettres (64 571 caractères) et la vue
+ * « Veilles actives » (67 126) ont échoué ainsi au contrôle du 25 octobre 2026.
+ * 80 000 jetons couvrent les plus longues avec de la marge. Au-delà d'une
+ * cinquantaine de kilo-octets, le CLI range ensuite la réponse dans un fichier,
+ * que la garde laisse relire (`dossierDesRéponsesPersistées`).
+ */
+export const PLAFOND_SORTIE_MCP = 80_000
+
 export function environnementDeLaSession(cléApi: string): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {}
   const exclus =
     /^(CLAUDE|CCR_|ANTHROPIC_|AI_AGENT|SESSION_INGRESS|CLOUDSDK_AUTH|GH_TOKEN|GITHUB_TOKEN|ACTIONS_|AWS_ACCESS|AWS_SECRET|NOTION|ACTIVATION_SECRET|CRON_SECRET|GOOGLE_|GMAIL_|EVALUATION_API_KEY|STRIPE|DATABASE_URL|LEMLIST)/
   for (const [clé, valeur] of Object.entries(process.env)) if (!exclus.test(clé)) env[clé] = valeur
   env['ANTHROPIC_API_KEY'] = cléApi
+  env['MAX_MCP_OUTPUT_TOKENS'] = String(PLAFOND_SORTIE_MCP)
   return env
 }
 
@@ -179,6 +198,11 @@ function garde(contexte: ContexteDeGarde, journal: (ligne: string) => void): { c
     ],
   }
   return { canUseTool, hooks }
+}
+
+/** Le dossier où le CLI de la session range ses réponses d'outil trop longues (`garde.ts`). */
+export function réponsesPersistéesDe(espace: string): string {
+  return dossierDesRéponsesPersistées(espace, join(homedir(), '.claude'))
 }
 
 export function optionsDeGarde(contexte: ContexteDeGarde, journal: (ligne: string) => void): Pick<Options, 'canUseTool' | 'hooks' | 'permissionMode' | 'settingSources'> {
@@ -220,7 +244,7 @@ export async function déroulerLaSession(prompt: string, options: Options, sorti
         for (const bloc of message.message.content) {
           if (bloc.type !== 'tool_use') continue
           sorties.journal(`outil ${bloc.name}`)
-          if (bloc.name === `mcp__${SERVEURS.notion}__notion-create-pages`) {
+          if (bloc.name.startsWith(`mcp__${SERVEURS.notion}__`) && nomDOutilNotion(bloc.name.slice(`mcp__${SERVEURS.notion}__`.length)) === 'create-pages') {
             const pages = (bloc.input as { pages?: unknown[] } | undefined)?.pages
             créationsEnAttente.set(bloc.id, Array.isArray(pages) ? pages.length : 1)
           }
@@ -260,17 +284,20 @@ export function consignesDuHarnais(maintenant: Date, portail: string): string {
     '',
     `Nous sommes le ${PARIS.format(maintenant)}, heure de Paris. Travaille à cette date.`,
     '',
+    'EXÉCUTEUR : API. Pour les onboardings, la page « Tâche — Onboarding d’une organisation » partage les lignes du registre entre Cowork et l’API par la propriété « Exécuteur » (règle « PARTAGE DES ONBOARDINGS ») : tu es l’exécuteur API.',
+    '',
     'Tu tournes sur l’API Claude, lancé par GitHub Actions, sans personne pour te répondre. Ces consignes décrivent tes outils ; elles ne changent aucune règle des pages Notion, qui font foi.',
     '',
     `LECTURE DES SOURCES. Tu ne lis pas toi-même les pages des sources : confie-les au sous-agent « ${SOUS_AGENT_LECTEUR} » (outil Agent, subagent_type « ${SOUS_AGENT_LECTEUR} »), par lots de 1 à 10 URL, avec la question de l’axe et la période. Il rend, pour chaque URL, l’état de la page, son titre, sa date, les passages utiles recopiés mot pour mot, et à défaut la date la plus récente visible. Tu ne rouvres une page toi-même (WebFetch) que pour vérifier une citation que tu vas écrire. La recherche web (WebSearch) reste à toi.`,
     '',
     'OUTILS.',
-    `· Notion : les outils du serveur « ${SERVEURS.notion} » (lire, chercher, interroger une base ou une vue, créer et modifier des pages, créer une vue liée). Supprimer, déplacer ou changer un schéma est refusé.`,
+    `· Notion : les outils du serveur « ${SERVEURS.notion} » (lire, chercher, interroger une base ou une vue, créer et modifier des pages, créer une vue liée). Supprimer, déplacer ou changer un schéma est refusé. Ils s’appellent mcp__${SERVEURS.notion}__fetch, search, query-data-sources, create-pages, update-page, create-view et get-async-task : une page qui écrit notion-fetch ou notion-create-pages désigne le même outil. La recherche IA (ai-search) n’est pas permise.`,
     `· Portail : mcp__${SERVEURS.portail}__appeler_portail(methode, chemin, corps), pour ${portail}/api/veille/* et /api/acces/ouvrir. Passe l’adresse telle que la page l’écrit ; l’outil ajoute lui-même l’autorisation, n’en écris aucune.`,
     `· Gmail : mcp__${SERVEURS.gmail}__create_draft (to, subject, body, htmlBody), mcp__${SERVEURS.gmail}__list_drafts, mcp__${SERVEURS.gmail}__send_message (à agathe@signauxfaibles.io seulement : tout autre destinataire est refusé) et mcp__${SERVEURS.gmail}__list_sent_messages (messages envoyés depuis une date, en-têtes seulement : pas de recherche par requête, pas de corps lisible ; filtre toi-même par destinataire et par objet).`,
     `· Courriels client : mcp__${SERVEURS.gmail}__deposer_courriel(demande, to). Il fait la mise en forme par POST /api/veille/courriel (la demande telle que la page l’écrit) ET dépose le brouillon : quand une page te dit de passer « html » et « texte » de la réponse dans create_draft, fais-le par cet outil, qui ne te rend pas le HTML. N’utilise create_draft avec htmlBody que si deposer_courriel échoue.`,
     `· Identifiant d’accès : mcp__${SERVEURS.veille}__tirer_identifiant.`,
     `· Sources en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls) lit jusqu’à 30 URL en quatre minutes, écrit chaque page dans sources/<lot>/ et rend l’index du lot, une ligne de grille par source. mcp__${SERVEURS.veille}__synthese_de_collecte(dossier) condense les grilles et les faits d’un dossier de collecte en une synthèse par lettre.`,
+    `· Registres publics : mcp__${SERVEURS.veille}__annonces_bodacc(depuis, sirens | departements, familles, texte) et mcp__${SERVEURS.veille}__fiches_entreprises(sirens). Les familles « Capital et santé financière » et « Nouveaux entrants » se collectent par ces deux outils, pas en ouvrant les pages du BODACC ou de l’annuaire une à une.`,
     `· Navigateur : node ${LIRE_PAGE} <url> [caractères], seule commande Bash permise. Toute autre commande est refusée : si une page prescrit une commande Bash en repli, constate le refus et passe au repli suivant.`,
     '· Les documents de projet claude.ai (project_read, project_write) n’existent pas dans cet environnement : dis-le là où une page les demande.',
     '',
@@ -302,10 +329,11 @@ export const PROMPT_DU_COLLECTEUR = [
   'Tu collectes, pour un agent de veille, un lot de familles d’un référentiel. Tu écris en français, sans tiret cadratin. Tu ne rédiges pas la lettre : tu rends des lignes de grille et des faits sourcés.',
   '',
   'ORDRE.',
-  `1. Lis le référentiel qu’on te nomme (mcp__${SERVEURS.notion}__notion-fetch) et n’en garde que ton lot : sources nommées, requêtes types, entités du corpus, dossiers, échéances.`,
+  `1. Lis le référentiel qu’on te nomme (mcp__${SERVEURS.notion}__fetch) et n’en garde que ton lot : sources nommées, requêtes types, entités du corpus, dossiers, échéances.`,
   `2. Ouvre d’abord toutes les sources nommées du lot en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls), 30 URL au plus par appel. Ses lignes OUVERTE et NON OUVERTE vont telles quelles dans ta grille ; relance dans un second appel les lignes À RELANCER. Lis avec Read les seuls fichiers dont tu as besoin.`,
   `3. Lance chaque requête type, une par une (WebSearch), et requête chaque entité du corpus une par une. N’ouvre un résultat (WebFetch, ou node ${LIRE_PAGE} <url> s’il refuse les robots) que s’il peut porter un fait.`,
   '4. Requestionne chaque dossier ouvert à sa source primaire (registre public pour une procédure collective).',
+  `4 bis. Familles « Capital et santé financière » et « Nouveaux entrants » : mcp__${SERVEURS.veille}__annonces_bodacc (les SIREN du corpus, ou les départements et le texte d’activité que le référentiel donne) et mcp__${SERVEURS.veille}__fiches_entreprises (les SIREN du corpus), une fois chacun. Chaque annonce ou changement de fiche dans la fenêtre est un fait, sourcé par son lien ; une requête sans résultat est une ligne de grille REQUÊTÉE, avec la date.`,
   '5. Fenêtre : celle qu’on te donne. Une famille sans fait daté dans la fenêtre est élargie à 30 jours, puis 90 ; un fait antérieur entre comme « élément de contexte, non nouveau », daté, et l’élargissement est noté.',
   '',
   'RÈGLES. Une page non ouverte n’est jamais un RAS : NON OUVERTE et la raison. Un fait n’entre que si sa source a été ouverte pendant ce run, extrait recopié mot pour mot. Un RAS porte la date de la dernière publication trouvée. Tu n’écris jamais dans Notion ni dans Gmail.',
@@ -321,7 +349,8 @@ export function définitionDuCollecteur(): AgentDefinition {
   return {
     description: 'Collecte un lot de familles d’un référentiel et écrit sa grille et ses faits sourcés dans le dossier de travail.',
     prompt: PROMPT_DU_COLLECTEUR,
-    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`],
+    // Les deux noms de la lecture Notion : `fetch` avec un jeton MCP, `notion-fetch` en OAuth.
+    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__fetch`, `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`, `mcp__${SERVEURS.veille}__annonces_bodacc`, `mcp__${SERVEURS.veille}__fiches_entreprises`],
     model: MODÈLE_COLLECTEUR,
   }
 }
@@ -335,7 +364,7 @@ export function définitionDuLecteur(): AgentDefinition {
   }
 }
 
-async function exécuterUneTâche(tâche: Tâche, organisation: string | null): Promise<number> {
+async function exécuterUneTâche(tâche: Tâche, organisation: string | null, reprendre = false): Promise<number> {
   const secrets = lireLesSecrets()
   const masques = valeursSecrètes(secrets)
   const portail = variable('PORTAIL_URL') ?? 'https://www.signauxfaibles.io'
@@ -345,6 +374,20 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
 
   const sorties = ouvrirLesSorties(organisation ? `${tâche}-${organisation}` : tâche, masques)
   const relevé = { organisations: new Set<string>(organisation ? [organisation] : []) }
+
+  // Le serveur Notion est sondé avant d'ouvrir la session : un jeton refusé
+  // laisserait l'agent sans ses pages, et le dirait à travers un modèle, après
+  // coup. Ici le refus est nommé tout de suite, et rien n'est facturé.
+  const sonde = await sonderLeServeurNotion(secrets.jetonNotion)
+  sorties.journal(`serveur Notion MCP : ${décrireLaSonde(sonde)}`)
+  if (!sonde.ok) {
+    const échec = `le serveur Notion MCP refuse le jeton : ${décrireLaSonde(sonde)}`
+    sorties.écrire('mesure.json', JSON.stringify(lireLaMesure({ subtype: 'erreur' }, { tâche, organisation, date: new Date(), plafondUsd: PARAMÈTRES[tâche].plafondUsd, organisationsTraitées: relevé.organisations, pagesNotionCréées: 0 }), null, 2) + '\n')
+    sorties.clore()
+    écrireLeRésuméDuJob(`## ${tâche} : non lancée\n\n**Échec** : ${échec}\n`, masques)
+    return 1
+  }
+
   if (!secrets.jetonPortail) sorties.journal('ACTIVATION_SECRET absent : le portail répondra par un refus')
   if (!secrets.compteGoogle || !boîte) sorties.journal(`Gmail indisponible : ${secrets.erreurCompteGoogle ?? 'GOOGLE_COMPTE_SERVICE_JSON ou GMAIL_BOITE_OPERATRICE absent'}`)
 
@@ -358,10 +401,10 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
     relevé,
     espace: sorties.espace,
   }
-  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche' }
+  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
   const maintenant = new Date()
-  const prompt = promptDeLaTâche(tâche, organisation)
+  const prompt = promptDeLaTâche(tâche, organisation, reprendre)
   sorties.écrire('prompt.txt', prompt)
 
   const options: Options = {
@@ -408,14 +451,17 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null): 
 
 // ── Ligne de commande ────────────────────────────────────────────────────────
 
-export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'controle'; organisation: string | null } {
+export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'controle'; organisation: string | null; reprendre: boolean } {
   const [premier, ...reste] = argv
   if (premier !== 'controle' && !(TÂCHES as readonly string[]).includes(premier ?? '')) {
     throw new Error(`usage : pnpm tache <${[...TÂCHES, 'controle'].join('|')}> [--organisation <slug>]`)
   }
   let organisation: string | null = null
+  let reprendre = false
   for (let i = 0; i < reste.length; i++) {
-    if (reste[i] === '--organisation') {
+    if (reste[i] === '--reprendre') {
+      reprendre = true
+    } else if (reste[i] === '--organisation') {
       const valeur = (reste[i + 1] ?? '').trim()
       i++
       if (!valeur) continue
@@ -426,12 +472,14 @@ export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'con
     }
   }
   if (premier === 'controle' && organisation) throw new Error('la tâche « controle » ne prend pas d’organisation')
-  return { tâche: premier as Tâche | 'controle', organisation }
+  if (premier === 'etiquetage' && !organisation) throw new Error('la tâche « etiquetage » exige --organisation <slug>')
+  if (reprendre && premier !== 'etiquetage') throw new Error('--reprendre ne vaut que pour la tâche « etiquetage »')
+  return { tâche: premier as Tâche | 'controle', organisation, reprendre }
 }
 
 async function main(): Promise<void> {
-  const { tâche, organisation } = lireLaCommande(process.argv.slice(2))
-  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation)
+  const { tâche, organisation, reprendre } = lireLaCommande(process.argv.slice(2))
+  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation, reprendre)
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

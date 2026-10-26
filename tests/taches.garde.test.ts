@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cheminDuPortail, décisionPour, urlDeLirePage, type ContexteDeGarde } from '@/scripts/taches/garde'
+import { cheminDuPortail, décisionPour, dossierDesRéponsesPersistées, urlDeLirePage, type ContexteDeGarde } from '@/scripts/taches/garde'
 
 const LIRE_PAGE = '/depot/scripts/lire-page.mjs'
 const PORTAIL = 'https://www.signauxfaibles.io'
@@ -33,6 +33,19 @@ describe('garde des tâches : ce qui passe', () => {
     for (const outil of ['notion-fetch', 'notion-search', 'notion-query-data-sources', 'notion-create-pages', 'notion-update-page', 'notion-create-view']) {
       expect(permis(tâche, `mcp__notion__${outil}`), outil).toBe(true)
     }
+  })
+
+  it('admet les noms du serveur ouvert par un jeton MCP, sans le préfixe notion- (25 octobre 2026)', () => {
+    for (const outil of ['fetch', 'search', 'query-data-sources', 'create-pages', 'update-page', 'create-view', 'get-async-task']) {
+      expect(permis(tâche, `mcp__notion__${outil}`), outil).toBe(true)
+    }
+    for (const outil of ['ai-search', 'move-pages', 'duplicate-page', 'update-data-source', 'create-database', 'update-view', 'create-comment', 'convert-page-to-skill', 'query-multiple-data-sources']) {
+      expect(permis(tâche, `mcp__notion__${outil}`), outil).toBe(false)
+    }
+    expect(permis(tâche, 'mcp__notion__update-page', { allow_deleting_content: true })).toBe(false)
+    expect(permis(lecture, 'mcp__notion__fetch')).toBe(true)
+    expect(permis(lecture, 'mcp__notion__query-data-sources')).toBe(true)
+    expect(permis(lecture, 'mcp__notion__create-pages')).toBe(false)
   })
 
   it('laisse passer les outils Gmail, Portail et Veille du dépôt, qui tiennent leur propre règle', () => {
@@ -128,5 +141,33 @@ describe('cheminDuPortail', () => {
     expect(url('GET', '//exemple.fr/api/veille/etat')).toBeNull()
     expect(url('DELETE', '/api/veille/lecteurs')).toBeNull()
     expect(url('GET', '/api/veille/lint/autre')).toBeNull()
+  })
+})
+
+describe('réponses longues rangées par le CLI (25 octobre 2026)', () => {
+  const espace = '/home/runner/work/sf/sorties-taches/controle-2026-10-25T05-51-39-020Z/espace'
+  const projet = dossierDesRéponsesPersistées(espace, '/home/runner/.claude')
+  const avec: ContexteDeGarde = { ...tâche, espace, réponsesPersistées: projet }
+  const enLecture: ContexteDeGarde = { ...avec, mode: 'lecture' }
+  const fichier = `${projet}/1d5729e5-2aa2-48d7-8eb8-25589c92dce8/tool-results/toolu_01Qmv9AR2KURYUenEJfe6tbg.json`
+
+  it('dérive le dossier de projet comme le CLI', () => {
+    expect(projet).toBe('/home/runner/.claude/projects/-home-runner-work-sf-sorties-taches-controle-2026-10-25T05-51-39-020Z-espace')
+  })
+
+  it('laisse relire une réponse persistée, avec Read ou Grep, même en mode lecture', () => {
+    expect(permis(avec, 'Read', { file_path: fichier })).toBe(true)
+    expect(permis(enLecture, 'Read', { file_path: fichier })).toBe(true)
+    expect(permis(enLecture, 'Grep', { pattern: 'Prompt', path: fichier })).toBe(true)
+  })
+
+  it('ne laisse rien d’autre de la configuration de Claude Code, ni d’autre session', () => {
+    expect(permis(enLecture, 'Read', { file_path: `${projet}/1d5729e5/transcript.jsonl` })).toBe(false)
+    expect(permis(enLecture, 'Read', { file_path: '/home/runner/.claude/projects/-autre-espace/x/tool-results/a.json' })).toBe(false)
+    expect(permis(enLecture, 'Read', { file_path: '/home/runner/.claude/settings.json' })).toBe(false)
+    expect(permis(enLecture, 'Read', { file_path: `${projet}/x/tool-results/../../../../.credentials.json` })).toBe(false)
+    expect(permis(enLecture, 'Write', { file_path: fichier })).toBe(false)
+    expect(permis(enLecture, 'Grep', { pattern: 'x' })).toBe(false)
+    expect(permis({ ...enLecture, réponsesPersistées: undefined }, 'Read', { file_path: fichier })).toBe(false)
   })
 })

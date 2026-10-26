@@ -11,11 +11,16 @@
  *      `GMAIL_BOITE_OPERATRICE`, puis une lecture que seule cette autorisation
  *      permet (`gmail.compose` : un brouillon listé ; `gmail.metadata` : un
  *      message envoyé listé). `gmail.send` : le jeton seul, sans envoi.
- *   4. Notion : une courte session d'agent sur Sonnet, dont la garde ne permet
- *      que les outils de lecture du serveur hébergé. Les outils exposés par le
- *      serveur sont lus dans le message d'ouverture de la session ; l'agent lit
- *      la page « Pointeurs », la page de la tâche Lettres et interroge la vue
- *      « Veilles actives », et rend un compte, sans recopier de contenu.
+ *   4. Notion, en deux temps. D'abord la sonde du serveur MCP hébergé
+ *      (`notion-mcp.ts`) : une requête `initialize` avec le jeton, dont le
+ *      refus est lu dans la réponse de Notion elle-même, code, message et
+ *      `request_id`, avec le remède qui va avec. Puis, si le serveur a ouvert,
+ *      une courte session d'agent sur Sonnet, dont la garde ne permet que les
+ *      outils de lecture du serveur hébergé. Les outils exposés par le serveur
+ *      sont lus dans le message d'ouverture de la session ; l'agent lit la page
+ *      « Pointeurs », la page de la tâche Lettres et interroge la vue « Veilles
+ *      actives », et rend un compte, sans recopier de contenu. Un jeton refusé
+ *      par la sonde ne lance pas la session : elle ne pourrait rien lire.
  *
  * Le résultat va dans le résumé du job, sans aucun secret.
  */
@@ -29,12 +34,14 @@ import {
   lireLesSecrets,
   optionsDeGarde,
   ouvrirLesSorties,
+  réponsesPersistéesDe,
   serveurNotion,
   valeursSecrètes,
   variable,
 } from './executer'
-import { OUTILS_NOTION_LECTURE, SERVEURS } from './garde'
+import { nomDOutilNotion, OUTILS_NOTION_ÉCRITURE, OUTILS_NOTION_LECTURE, SERVEURS } from './garde'
 import { lireLaMesure } from './mesure'
+import { décrireLaSonde, sonderLeServeurNotion } from './notion-mcp'
 import { appelerLePortail, type ConfigurationDesOutils } from './outils'
 
 const PAGE_POINTEURS = '3d6fe829ce7181fd8c0cf634d4f8c6c2'
@@ -99,9 +106,11 @@ async function contrôlerLePortail(configuration: ConfigurationDesOutils): Promi
 
 const PROMPT_NOTION = `Tu vérifies, en lecture seule, l'accès à Notion d'une tâche planifiée. Tu ne modifies rien et tu ne recopies aucun contenu de page.
 
-1. Lis la page ${PAGE_POINTEURS} (notion-fetch). Relève son titre.
-2. Lis la page ${PAGE_LETTRES} (notion-fetch). Relève son titre, et si elle contient une section « Prompt de la tâche ».
-3. Interroge la vue ${VUE_VEILLES_ACTIVES} (notion-query-data-sources, en mode vue). Relève seulement le nombre de lignes rendues.
+1. Lis la page ${PAGE_POINTEURS} (outil fetch du serveur notion). Relève son titre.
+2. Lis la page ${PAGE_LETTRES} (outil fetch). Relève son titre, et si elle contient une section « Prompt de la tâche ».
+3. Interroge la vue ${VUE_VEILLES_ACTIVES} (outil query-data-sources, en mode vue). Relève seulement le nombre de lignes rendues.
+
+Si une réponse est trop longue et rangée dans un fichier, lis ce fichier avec Read ou cherches-y avec Grep : c'est permis pour ce fichier seulement.
 
 Réponds par un seul bloc JSON, sans rien d'autre :
 {"pointeurs":{"ok":true|false,"titre":"…"},"lettres":{"ok":true|false,"titre":"…","prompt":true|false},"vue":{"ok":true|false,"lignes":n},"erreurs":["message d'erreur exact de chaque outil en échec"]}`
@@ -149,15 +158,26 @@ export async function contrôler(): Promise<number> {
   lignes.push(await contrôlerLePortail(configuration))
   lignes.push(...(await contrôlerGmail(secrets.compteGoogle, boîte, sorties.journal)))
 
+  let serveurOuvert = false
+  if (secrets.jetonNotion) {
+    const sonde = await sonderLeServeurNotion(secrets.jetonNotion)
+    serveurOuvert = sonde.ok
+    sorties.journal(`serveur Notion MCP : ${décrireLaSonde(sonde)}`)
+    lignes.push({ contrôle: 'Notion : jeton MCP accepté par le serveur', ok: sonde.ok, détail: décrireLaSonde(sonde) })
+  }
+
   let coût = 0
-  if (secrets.cléApi && secrets.jetonNotion) {
+  if (secrets.cléApi && secrets.jetonNotion && !serveurOuvert) {
+    lignes.push({ contrôle: 'Notion : session de lecture', ok: false, détail: 'non lancée : le serveur refuse le jeton (voir la ligne précédente)' })
+  } else if (secrets.cléApi && secrets.jetonNotion) {
     const options: Options = {
       cwd: sorties.espace,
       model: 'claude-sonnet-5-5',
       effort: 'low',
-      tools: ['ToolSearch'],
+      // Read et Grep : seulement pour relire une réponse longue rangée par le CLI (garde).
+      tools: ['ToolSearch', 'Read', 'Grep'],
       mcpServers: { [SERVEURS.notion]: serveurNotion(secrets.jetonNotion) },
-      ...optionsDeGarde({ espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'lecture' }, sorties.journal),
+      ...optionsDeGarde({ espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'lecture', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }, sorties.journal),
       maxTurns: 20,
       maxBudgetUsd: 2,
       env: environnementDeLaSession(secrets.cléApi),
@@ -171,8 +191,11 @@ export async function contrôler(): Promise<number> {
       lignes.push({ contrôle: 'Notion : connexion au serveur hébergé', ok: serveur?.status === 'connected', détail: serveur ? serveur.status : 'serveur absent de la session' })
       const outils = (issue.init?.outils ?? []).filter((o) => o.startsWith(`mcp__${SERVEURS.notion}__`)).map((o) => o.slice(`mcp__${SERVEURS.notion}__`.length))
       lignes.push({ contrôle: 'Notion : outils exposés', ok: outils.length > 0, détail: outils.length ? `${outils.length} : ${outils.sort().join(', ')}` : 'aucun' })
-      for (const attendu of [...OUTILS_NOTION_LECTURE, 'notion-create-pages', 'notion-update-page', 'notion-create-view']) {
-        lignes.push({ contrôle: `Notion : outil ${attendu}`, ok: outils.includes(attendu), détail: outils.includes(attendu) ? 'exposé' : 'absent' })
+      // Le serveur nomme ses outils `fetch` avec un jeton MCP, `notion-fetch` en
+      // OAuth : on compare sans le préfixe, comme la garde.
+      const exposés = new Set(outils.map(nomDOutilNotion))
+      for (const attendu of [...OUTILS_NOTION_LECTURE, ...OUTILS_NOTION_ÉCRITURE.filter((o) => o !== 'get-async-task')]) {
+        lignes.push({ contrôle: `Notion : outil ${attendu}`, ok: exposés.has(attendu), détail: exposés.has(attendu) ? 'exposé' : 'absent' })
       }
       const réponse = lireLaRéponseNotion(issue.résultat?.result ?? '')
       if (!réponse) {
@@ -181,7 +204,7 @@ export async function contrôler(): Promise<number> {
         lignes.push({ contrôle: 'Notion : page « Pointeurs »', ok: réponse.pointeurs?.ok === true, détail: réponse.pointeurs?.titre ?? 'non lue' })
         lignes.push({ contrôle: 'Notion : page de la tâche Lettres', ok: réponse.lettres?.ok === true && réponse.lettres.prompt === true, détail: `${réponse.lettres?.titre ?? 'non lue'}${réponse.lettres?.prompt ? ', prompt présent' : ', prompt non trouvé'}` })
         lignes.push({ contrôle: 'Notion : vue « Veilles actives »', ok: réponse.vue?.ok === true, détail: réponse.vue?.ok ? `${réponse.vue.lignes ?? '?'} ligne(s)` : 'non interrogée' })
-        for (const e of réponse.erreurs ?? []) lignes.push({ contrôle: 'Notion : erreur rapportée', ok: false, détail: e.slice(0, 300) })
+        for (const e of réponse.erreurs ?? []) lignes.push({ contrôle: 'Notion : erreur rapportée', ok: false, détail: e.slice(0, 600) })
       }
       sorties.écrire(
         'mesure.json',

@@ -251,6 +251,12 @@ fréquente, le statut Brouillon, avant l'identifiant), `contrat-rompu` (la
 dernière lettre publiée passée au validateur ; seules les ruptures de portée
 `portail` comptent).
 
+Depuis le 26 octobre 2026 (outils stratégiques, lot 4), `étiquettes-manquantes`,
+par organisation du pilote : les éditions publiées depuis la première étiquetée
+qui n'ont pas d'étiquettes. Avant la première, rien n'est dû. Une lettre dont
+tous les axes sont RAS n'a aucun fait à étiqueter et y figure à tort ; le
+message le dit.
+
 ## Variables d'environnement
 
 `CRON_SECRET` (nouveau, pour Vercel) et `RELECTEUR_EMAIL` (nouveau, facultatif ;
@@ -426,8 +432,8 @@ l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
   sur son propre prix Stripe (`STRIPE_PRIX_EARLY_ADOPTER`). 200 `offre-posée`
   avec `offre` et `état` ;
 - `{ "slug", "action": "parutions", "parutions": 1..8 }` règle le nombre de
-  parutions complètes de l'essai (trois par défaut ; quatre pour un essai à
-  J+28). 200 `parutions-réglées` ; 409 `parutions-invalides` ;
+  parutions complètes de l'essai (deux par défaut depuis le 24 octobre 2026,
+  trois auparavant ; quatre pour un essai à J+28). 200 `parutions-réglées` ; 409 `parutions-invalides` ;
 - `{ "slug", "action": "parcours", "prochaineLettre": "AAAA-MM-JJ", "restantes": n }`
   fait entrer une organisation dans le parcours à une date choisie : J0 est le
   lundi de la semaine de la prochaine lettre, reculé de `parutions − restantes`
@@ -539,6 +545,139 @@ quand le prospect le demande sur « recevoir mon lien ».
 Sans `LEMLIST_API_KEY`, rien ne part : la prospection est tenue dans Postgres
 et `enAttente` compte ce qui attend. Le portail n'ajoute jamais un contact à
 une campagne et ne lance rien : c'est le rôle de la tâche de prospection.
+
+## Prescripteurs (24 octobre 2026)
+
+La prospection automatisée est réservée aux clients finaux. Un prescripteur
+(expert-comptable, cabinet de conseil, chambre, cluster, fédération, réseau de
+l'ESS) recommande des clients et n'entre jamais dans une séquence ; ses
+recommandations non plus. Le canal est décrit dans `docs/prescripteurs.md`.
+
+### `POST /api/veille/prescripteurs` — déclarer un prescripteur
+
+```
+{ "slug": "cabinet-durand", "code": "durand", "type": "conseil" }
+```
+
+L'organisation doit déjà être ouverte dans le portail (son propre espace).
+`type` : `conseil`, `expertise_comptable`, `juridique`, `chambre_consulaire`,
+`developpement_economique`, `cluster_federation`, `ess_financeur`, `autre`.
+Le code (3 à 40 caractères, minuscules, chiffres et tirets) est celui du lien
+de recommandation, `/demo?de=<code>`. 201 `créé` ; 200 `déjà-prescripteur`
+(rejeu) ; 404 `organisation-inconnue` ; 409 `code-pris` ou `en-prospection`
+(organisation entrée par prospection : arrêter sa séquence d'abord). La route
+ne pose pas l'accès offert : `PATCH /api/veille/organisations`
+`{ "action": "offre", "offre": "gratuite" }` le fait, parce qu'un client qui
+paie peut aussi devenir prescripteur.
+
+### `GET /api/veille/prescripteurs?exclusions=1` — ce que la prospection ne contacte jamais
+
+```
+{ "état": "lu", "nombre": 2, "exclusions": [
+  { "slug": "cabinet-durand", "nom": "Cabinet Durand", "registreNotion": "…", "rôle": "prescripteur" },
+  { "slug": "client", "nom": "Client", "registreNotion": "…", "rôle": "recommandée" } ] }
+```
+
+La tâche de prospection la lit **avant** de constituer son lot, et écarte toute
+ligne du registre qui y figure (par `registreNotion`, à défaut par le nom).
+
+### Organisation recommandée : `prescripteur` sur `POST /api/veille/organisations`
+
+La demande de démo porte le code du prescripteur (ligne « Recommandée par le
+prescripteur » du courrier) ; l'onboarding le passe en `"prescripteur": "<code>"`.
+Le premier prescripteur garde l'organisation, son essai compte quatre
+parutions tant que J0 n'est pas posé, et elle sort de la prospection.
+Exclusif de `"origine": "prospection"` (400). 404 `prescripteur-inconnu`
+(code inconnu ou inactif) ; 409 `déjà-prospectée` (l'organisation est entrée
+par prospection : elle n'est pas attribuée), `recommandée-par-elle-même`, et
+`hors-prospection` quand `"origine": "prospection"` vise un prescripteur ou
+une organisation recommandée.
+
+## Outils stratégiques : les faits étiquetés (26 octobre 2026)
+
+**Entrer dans le pilote, ou en sortir** : `PATCH /api/veille/organisations`
+`{ "slug": "infralliance", "action": "outils", "actif": true }`. 200
+`pilote-réglé` avec `actif`, 404 `inconnue`. Les lignes d'une organisation
+sortie du pilote restent ; elle les retrouve si elle y revient.
+
+**Étape 4ter de la tâche des lettres** (page « Tâche — Lettres de veille »,
+depuis le 26 octobre 2026) : après le lint conforme, un `GET` sur la date de
+l'édition sert de porte du pilote ; toute réponse autre que `lu` fait passer
+l'étape sans rien construire. **Étiquetage après coup** des éditions déjà
+publiées : `pnpm tache etiquetage --organisation <slug>` (workflow « Tâches
+planifiées », tâche `etiquetage`), qui n'applique que cette étape, sans rien
+écrire dans Notion.
+
+Plan : `docs/plan-outils-strategiques.md` (lot 3). La route est réservée aux
+organisations du pilote (`organisations.outils_strategiques`) : ailleurs, elle
+répond `hors-pilote` en 200, sans aucune lecture Notion, et la tâche passe
+l'étape. **Les étiquettes ne bloquent jamais l'envoi d'une lettre** : un échec
+se consigne au compte rendu, et la lettre part.
+
+### `POST /api/veille/faits` : poster les étiquettes d'une édition
+
+```
+{ "slug": "infralliance", "page": "<page_id de l'édition>", "etiquettes": [
+  { "section": "axe", "axe": 4, "rang": 1,
+    "titre": "Telehouse a annoncé le 20 octobre 2026 un nouveau module de 3 MW …",
+    "date": "2026-10-20", "source": "https://www.telehouse.fr/actualites/…",
+    "pestel": "economique", "rupture": true, "impact": "FORT", "nouveaute": "nouveau" },
+  { "section": "axe", "axe": 1, "rang": 3, "titre": "CISPE a publié …", "date": "2026-10-20",
+    "source": "https://www.cispe.cloud/…", "porter": "rivalite", "entite": "CISPE",
+    "ansoff": "penetration", "rupture": false, "impact": "MOYEN", "nouveaute": "nouveau" } ] }
+```
+
+Une entrée par fait d'axe non RAS et de « L'actualité des acteurs »
+(`section: "acteurs"`, sans `axe`). Un fait commence à sa phrase-titre en gras ;
+`rang` compte les faits dans leur axe à partir de 1, et `titre` recopie la
+phrase-titre telle qu'écrite (elle est vérifiée puis jetée : Postgres n'en garde
+que l'empreinte). Exactement un de `pestel` (`politique`, `economique`,
+`socioculturel`, `technologique`, `ecologique`, `legal`) ou `porter`
+(`rivalite`, `nouveaux_entrants`, `substituts`, `pouvoir_clients`,
+`pouvoir_fournisseurs`) ; `ansoff` (`penetration`, `developpement_produit`,
+`developpement_marche`, `diversification`) seulement sous `rivalite` ou
+`nouveaux_entrants` avec une `entite` ; `impact` `FORT` ou `MOYEN`, jamais
+au-dessus du niveau de l'axe ; `nouveaute` `nouveau` ou `contexte` ; `source`
+doit être une URL citée dans le fait ; `date` au plus tard le jour de l'édition.
+
+Ordre des contrôles : organisation et pilote (Postgres), édition (lecture
+cachée), relation `Organisation` de l'édition rapportée au registre de
+l'organisation (règle 2), corps de la lettre (lecture cachée), porte
+(`contrôlerLesÉtiquettes`), écriture. La route **n'expire aucun tag** : elle se
+place après le lint (étape 4bis), qui vient de le faire.
+
+| Réponse | Statut | Quoi faire |
+|---|---|---|
+| `accepté` (`faits`, `insérées`, `archivées`) | 200 | rien ; un nouveau lot de la même édition remplace celui-ci |
+| `refusé` (`refus`, `message`) | 422 | corriger chaque point de `message` et renvoyer le lot **complet** ; deux reprises au plus |
+| `hors-pilote` | 200 | passer l'étape |
+| `organisation-inconnue`, `édition-introuvable` | 404 | vérifier le slug et l'identifiant de page |
+| `organisation-différente`, `organisations-multiples` | 409 | anomalie de la relation `Organisation` de l'édition : ne pas réessayer, la signaler |
+| `édition-sans-date` | 422 | renseigner « Date d'édition », puis renvoyer |
+| `invalide` (`raison` nomme le champ) | 400 | corriger la forme |
+
+Codes de refus de la porte : `section-inconnue`, `doublon`, `fait-introuvable`,
+`axe-ras`, `titre-différent`, `étiquette-inconnue`, `cadre-ambigu`,
+`ansoff-manquant`, `ansoff-hors-concurrent`, `entité-hors-grille` (une fois la
+grille postée), `longueur`, `impact-supérieur-à-l-axe`, `date-invalide`,
+`date-future`, `source-absente`, `lot-incomplet`. Un seul refus rejette le lot
+entier.
+
+### `GET /api/veille/faits?slug=<slug>&debut=AAAA-MM-JJ&fin=AAAA-MM-JJ` : les faits d'une fenêtre
+
+```
+{ "état": "lu", "organisation": "infralliance", "fenêtre": { "début": "2026-10-05", "fin": "2026-11-01" },
+  "nombre": 11, "titresIntrouvables": 0, "faits": [
+  { "id": "<uuid>", "édition": "<page_id>", "dateÉdition": "2026-10-21", "famille": "ecosysteme",
+    "section": "axe", "axe": 4, "rang": 1, "titre": "Telehouse a annoncé …", "date": "2026-10-20",
+    "source": "https://…", "pestel": "economique", "porter": null, "ansoff": null, "entite": null,
+    "rupture": true, "impact": "FORT", "nouveaute": "nouveau" } ] }
+```
+
+Les faits des éditions parues dans la fenêtre, bornes comprises, cent jours au
+plus. La phrase-titre est relue dans la lettre, une lecture cachée de corps par
+édition ; elle vaut `null` si la lettre a changé depuis l'étiquetage ou ne se lit
+plus, et `titresIntrouvables` les compte. L'`id` est celui que la synthèse cite.
 
 ## La file de travaux (palier 2, 21 octobre 2026)
 

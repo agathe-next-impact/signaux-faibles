@@ -58,6 +58,21 @@ Organisation visée : $ARGUMENTS
    Si « ▶ Générer les référentiels (A) » n'est pas cochée, coche-la : lancer
    cette commande est l'ordre, la case en est la trace.
 
+   **Garde d'exécuteur** (25 octobre 2026, règle « PARTAGE DES ONBOARDINGS » de la
+   page) : cette commande est l'exécuteur **Cowork**. Elle ne vaut que pour une
+   ligne d'Origine « Demande » ; une ligne « Prospection » passe sans garde.
+   - « Exécuteur » = API : ne fais rien. Dis que la ligne se lance par l'API
+     (GitHub, workflow « Tâches planifiées (API Claude) », tâche `balayage`,
+     organisation = le slug ou le nom) et arrête-toi.
+   - « Exécuteur » = Cowork : poursuis.
+   - « Exécuteur » vide : la lancer ici est le choix de Cowork, sous quota.
+     Compte les lignes d'Origine « Demande », « Exécuteur » = Cowork, dont
+     « Exécuteur fixé le » tombe dans la semaine ISO en cours (vue « Créneaux
+     Cowork de la semaine », `view://404fe829-ce71-8181-9c61-000cc70e4977`).
+     Moins de deux : pose « Exécuteur » = Cowork et « Exécuteur fixé le » = la
+     date du jour, puis poursuis. Deux ou plus : n'écris rien, dis que le quota
+     de la semaine est atteint et donne la commande API, arrête-toi.
+
 4. **Exécute le §3** sur cette ligne, de la garde 3.0 au 3.8, sans en sauter.
    La garde 3.0 et la recherche d'un dispositif existant passent avant toute
    création. La ligne « Accès » du 3.7bis est créée **inactive**, avec
@@ -79,7 +94,13 @@ Organisation visée : $ARGUMENTS
    une famille générique que le profil déclenche, avec ses sources, son critère
    FORT et ses requêtes ; au-dessus de six, fusionne celles qui partagent leurs
    sources. Le référentiel écosystème de Suneido, livré à trois familles, a donné
-   une première lettre à trois axes.
+   une première lettre à trois axes. Ce plafond compte les familles
+   **hebdomadaires** ; les deux familles **mensuelles** de l'écosystème
+   (technologies et substituts, influence et parties prenantes) s'y ajoutent, et
+   le concurrentiel porte toujours « nouveaux entrants » et « capital et santé
+   financière », collectées par les registres publics (départements et texte
+   d'activité, colonne SIREN du §2). Aucun §4 : il est retiré depuis le
+   26 octobre 2026 (veille stratégique, scénario C).
 
 5. **Consomme la case.** En fin de run, réussi ou non, décoche « ▶ Générer les
    référentiels (A) » et écris le résultat dans « Dernier lancement manuel ».

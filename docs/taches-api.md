@@ -22,8 +22,20 @@ qu'une phrase : « Limite-toi à l'organisation <slug>. »
 | `lettres` | Opus 5.5 | 60 $ | `0 4 * * 1-5` |
 | `premiere-lettre` | Opus 5.5 | 40 $ | à la main |
 | `balayage` | Opus 5.5 | 30 $ | à la main |
-| `revue` | Opus 5.5 | 10 $ | `0 16 * * *` (week-end compris) |
-| `reconciliation` | Sonnet 5.5 | 5 $ | `0 17 * * 1-5` |
+| `revue` | Opus 5.5 | 10 $ | `0 16 * * *` (week-end compris), **active depuis le 25 octobre 2026** |
+| `reconciliation` | Sonnet 5.5 | 5 $ | `0 17 * * 1-5`, **active depuis le 25 octobre 2026** |
+| `etiquetage` | Sonnet 5.5 | 10 $ | à la main, `--organisation` obligatoire (26 octobre 2026) |
+
+`etiquetage` est la seule tâche sans tâche planifiée d'origine : elle applique
+après coup l'étape « 4ter ÉTIQUETTES » de la page des lettres aux éditions déjà
+publiées d'une organisation du pilote des outils stratégiques
+(`docs/plan-outils-strategiques.md`, lot 4). Elle ne collecte rien, n'écrit
+aucune lettre et ne modifie aucune page Notion ; le portail tient la porte.
+Elle saute les éditions déjà étiquetées, sauf avec `--reprendre` (entrée
+« reprendre » du workflow), qui les réétiquette après une révision des règles de
+classement de l'étape 4ter : un nouveau lot remplace l'ancien. Une édition dont
+aucun fait ne cite d'URL n'est pas étiquetable et est passée sans appel. Sans
+édition publiée, elle étiquette les brouillons, sans en changer le statut.
 
 Effort `high` partout. La lecture des sources est confiée au sous-agent
 `lecteur`, sur Haiku 5.5 : l'agent principal ne reçoit que des extraits recopiés
@@ -50,9 +62,12 @@ refusé et journalisé) :
   base ou une vue, créer et modifier des pages, créer une vue liée ; supprimer,
   déplacer, dupliquer ou changer un schéma est refusé. Le jeton n'existe que
   sur les plans Business et Enterprise : un propriétaire de l'espace le crée
-  dans le portail développeur de Notion (« New MCP token »). L'espace est sur
-  Business avec Notion AI depuis le 23 octobre ; un retour au plan gratuit
-  couperait les tâches (`docs/etat-des-api.md` §2.5).
+  dans le portail développeur de Notion (« New MCP token »). **Ce n'est pas le
+  secret d'intégration interne du portail** (`NOTION_TOKEN`, `ntn_…`) : celui-ci
+  est reconnu par Notion mais refusé par le serveur MCP (`403
+  restricted_resource`), voir « Quand le serveur Notion refuse le jeton ».
+  L'espace est sur Business avec Notion AI depuis le 23 octobre ; un retour au
+  plan gratuit couperait les tâches (`docs/etat-des-api.md` §2.5).
 - **Gmail** (`scripts/taches/outils.ts`, boîte `GMAIL_BOITE_OPERATRICE`) :
   `create_draft` et `list_drafts` (portée `gmail.compose`), `list_sent_messages`
   (en-têtes des messages envoyés, portée `gmail.metadata`, sans recherche `q`) et
@@ -72,6 +87,15 @@ refusé et journalisé) :
 - **Collecte en code** : `lire_sources` (30 URL au plus, quatre minutes au plus,
   un fichier par page dans `sources/<lot>/`, l'index en lignes de grille) et
   `synthese_de_collecte` (les synthèses par lettre d'un dossier de collecte).
+- **Registres publics** (26 octobre 2026, `scripts/collecte/registres.ts`) :
+  `annonces_bodacc` (annonces commerciales du BODACC depuis une date, par SIREN
+  du corpus ou par département et texte d'activité) et `fiches_entreprises`
+  (fiche de 1 à 40 entités dans l'API Recherche d'entreprises : état, effectif,
+  comptes, dirigeants). Ce sont les sources des familles « Capital et santé
+  financière » et « Nouveaux entrants » du scénario C : le modèle lit des lignes
+  courtes au lieu d'ouvrir quarante pages. Les deux API sont publiques et sans
+  clé ; l'environnement de cette session ne les atteint pas, les runners GitHub
+  Actions si. Le collecteur a les deux outils.
 
 Ce qui ne marche pas comme sous l'abonnement, et que l'agent dit dans son compte
 rendu : le repli n°1 des pages (calcul du calendrier par `git clone` et `node`)
@@ -91,11 +115,87 @@ n'est arrivé dans la boîte depuis 30 à 60 jours).
    présentes, `GET /api/veille/etat?notifier=0`, délégation Gmail (un jeton
    demandé pour `gmail.compose`, `gmail.metadata` et `gmail.send` au nom de la
    boîte, puis une lecture pour les deux premières, sans rien écrire ni
-   envoyer), et une courte session Sonnet qui liste les outils du serveur Notion,
-   lit la page « Pointeurs » et celle de la tâche Lettres, et interroge la vue
-   « Veilles actives ». Le résultat est dans le résumé du job.
+   envoyer), la **sonde du serveur Notion MCP** (une requête `initialize` avec
+   le jeton, sans modèle ni frais, `scripts/taches/notion-mcp.ts`), puis, si le
+   serveur a ouvert, une courte session Sonnet qui liste les outils du serveur
+   Notion, lit la page « Pointeurs » et celle de la tâche Lettres, et interroge
+   la vue « Veilles actives ». Le résultat est dans le résumé du job.
 
 En local : `pnpm tache controle`, avec les mêmes variables dans l'environnement.
+
+Toute tâche fait la même sonde avant d'ouvrir sa session : un jeton refusé rend
+le job rouge tout de suite, sans rien facturer, avec le refus de Notion dans le
+résumé.
+
+### Quand le serveur Notion refuse le jeton
+
+Les six premières exécutions du workflow (23 au 25 octobre 2026) ont échoué
+ainsi : le code envoyait bien le secret en `Authorization: Bearer`, mais le
+serveur hébergé répondait `403 restricted_resource`, « This token cannot access
+Notion MCP. ». Le défaut était dans la nature du secret, pas dans le code. La
+sonde lit la réponse de Notion et dit laquelle des deux situations se présente :
+
+| Réponse de Notion | Ce que c'est | Ce qu'il faut faire |
+|---|---|---|
+| `401 unauthorized`, `token_invalid` (même réponse qu'avec un jeton inventé) | La valeur du secret n'est pas un jeton Notion : coquille, troncature au collage, jeton révoqué | Recopier le jeton depuis le portail développeur de Notion dans le secret `NOTION_MCP_TOKEN` |
+| `403 restricted_resource`, « This token cannot access Notion MCP. » | Notion reconnaît le jeton, mais ce n'est pas un jeton MCP : c'est ce que rend un secret d'intégration interne (`ntn_…`, celui du portail) | Un **propriétaire de l'espace** crée un jeton « New MCP token » dans le portail développeur (plan Business ou Enterprise), et le pose dans le secret ; le secret d'intégration du portail n'est jamais réutilisé ici |
+
+**Les noms des outils changent avec l'authentification** (constaté le 25 octobre
+2026, à la première session ouverte par un jeton MCP). En OAuth, le serveur
+expose `notion-fetch`, `notion-create-pages` ; avec un jeton MCP, `fetch`,
+`create-pages`, sans préfixe. La garde (`nomDOutilNotion`, `garde.ts`) et le
+contrôle comparent les noms sans ce préfixe, et les consignes du harnais disent
+à l'agent qu'une page qui écrit `notion-fetch` désigne `fetch`. `ai-search`
+(recherche IA) reste hors de la liste permise.
+
+**Les pages longues restent lisibles.** La page de la tâche Lettres (64 571
+caractères) et la vue « Veilles actives » (67 126) ont buté deux fois au
+contrôle du 25 octobre. D'abord sur le plafond de jetons des réponses MCP : la
+session reçoit `MAX_MCP_OUTPUT_TOKENS=80000` (`PLAFOND_SORTIE_MCP`). Puis, au-delà
+d'une cinquantaine de kilo-octets, le CLI range la réponse dans
+`~/.claude/projects/<dossier de travail>/<session>/tool-results/` et ne rend qu'un
+aperçu et le chemin, alors que la garde ne laissait lire que le dossier de
+travail. La garde laisse désormais relire, avec Read et Grep seulement, les
+fichiers `tool-results/` du dossier de projet de **cette** session
+(`dossierDesRéponsesPersistées`), et rien d'autre de la configuration de Claude
+Code ; le contrôle reçoit Read et Grep pour cela.
+
+Dans les deux cas, relancer `controle` après avoir changé le secret : la ligne
+« Notion : jeton MCP accepté par le serveur » doit passer à `ok` avant tout essai
+réel. Le `request_id` de la réponse est dans le résumé, pour le support Notion.
+
+## Partager les onboardings avec Cowork (25 octobre 2026)
+
+Décision de l'opératrice : **deux onboardings de demandes par semaine au plus sur
+Cowork** (tâches à la demande « Onboarding : référentiels, répercussion et
+activation » et « Onboarding : première lettre », sur l'abonnement), **le reste sur
+l'API** (tâches `balayage` et `premiere-lettre` de ce workflow). Les deux exécuteurs
+lisent la même page, et la page ne laisse chacun traiter que ses lignes.
+
+- **Attribution, à la main.** Propriété « Exécuteur » du registre (Cowork ou API),
+  posée avant ▶ A ; « Exécuteur fixé le » date le choix de Cowork. Vide vaut API.
+  La vue « Créneaux Cowork de la semaine » montre les créneaux pris.
+- **Règle.** Paragraphe « PARTAGE DES ONBOARDINGS » en tête du « Prompt —
+  Balayage » de « Tâche — Onboarding d'une organisation », repris à l'étape 0 du
+  « Prompt — Première lettre » : une ligne qui n'est pas pour l'exécuteur n'est ni
+  modifiée ni décochée, et sa case ▶ reste pour l'autre. Au-delà de deux lignes
+  Cowork datées de la semaine ISO, Cowork traite les deux plus anciennes et
+  signale les autres.
+- **Comment chacun se reconnaît.** Le harnais écrit « EXÉCUTEUR : API » dans les
+  consignes de toute session API (`consignesDuHarnais`, test dans
+  `tests/taches.outils.test.ts`) ; sans cette mention, la session est Cowork.
+- **Commandes Cowork.** `/onboarding-referentiels` et `/onboarding-premiere-lettre`
+  refusent une ligne « API », poursuivent une ligne « Cowork », et posent
+  « Cowork » sur une ligne vide si un créneau reste (sinon elles s'arrêtent et
+  donnent la commande API). `/onboarding-demande` n'écrit « Exécuteur » que si la
+  demande le dit, et donne la commande suivante selon l'exécuteur.
+- **Prospects : hors règle et hors quota.** Une ligne d'Origine « Prospection » garde
+  son circuit, la tâche Cowork « Prospection · lot du lundi » ; l'API ne la traite
+  jamais.
+- **Lancer un onboarding sur l'API** : Run workflow, tâche `balayage` (puis
+  `premiere-lettre`), organisation = le slug ou, avant le §3, le nom. Mesuré le
+  25 octobre sur Mastora : référentiels 4,82 $, répercussion 1,51 $, première
+  lettre 13,70 $, soit 20,03 $ avec un passage bloqué de 0,97 $.
 
 ## Lire ce qu'une exécution a coûté
 
@@ -120,6 +220,17 @@ Ordre : réconciliation, revue, lettres, puis balayage et première lettre. Le
 même jour, l'opératrice désactive la tâche planifiée côté Claude et décommente
 la récurrence correspondante dans `taches.yml`. Les deux ne tournent jamais
 ensemble : une lettre produite deux fois partirait deux fois en relecture.
+
+| Tâche | Basculée le | Essai réel | Tâche planifiée côté Claude |
+|---|---|---|---|
+| `reconciliation` | 25 octobre 2026 | [exécution 14](https://github.com/agathe-next-impact/signaux-faibles/actions/runs/40167707335) : succès, 16 tours, 0,33 $, aucune écriture Notion, une notification à l'opératrice | « Réconciliation des envois » (`trig_01BXfAjwQEdmitFkuiUkv6BB`, 19 h 07 à Paris) désactivée |
+| `revue` | 25 octobre 2026 | [exécution 15](https://github.com/agathe-next-impact/signaux-faibles/actions/runs/40170531343) : succès, 8 tours, 0,34 $, porte seule (aucune revue due le 26 octobre), aucune écriture ; première vraie revue le 1er novembre (Hermitage, Suneido) | « Revue mensuelle des référentiels » (`trig_01J6j4oBrxa7LsSXY89Qnqu9`, 18 h 06 à Paris) désactivée |
+
+La réconciliation tourne à 17 h UTC, soit 18 h à Paris en hiver et 19 h en été,
+un peu avant l'ancienne heure (19 h 07 à Paris). La revue tourne à 16 h UTC, soit
+17 h à Paris en hiver et 18 h en été (ancienne heure : 18 h 06) ; sa porte ne
+retient que les organisations dont la première parution du mois tombe le
+lendemain.
 
 ## Revenir en arrière
 

@@ -4,7 +4,8 @@ import { ESSENTIEL_CARACTÈRES_MAX, ESSENTIEL_LIGNES_MAX, estTitreDeLEssentiel }
 /**
  * La lettre tronquée de la fin d'essai : « L'essentiel », et rien d'autre.
  *
- * L'offre (17 octobre 2026) prévoit qu'à J+21, sans abonnement, chaque lettre
+ * L'offre (17 octobre 2026) prévoit qu'après l'essai (J+14 depuis le
+ * 24 octobre 2026, avec deux parutions complètes), sans abonnement, chaque lettre
  * ne montre que sa rubrique « L'essentiel ». Cette rubrique existe déjà dans
  * toutes les lettres, bornée par le contrat de forme (huit lignes de
  * 140 caractères) et contrôlée par le validateur : la troncature ne demande
