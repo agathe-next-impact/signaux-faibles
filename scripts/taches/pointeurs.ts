@@ -13,7 +13,9 @@
  * `docs/plan-outils-strategiques.md`) : elle n'a pas de tâche planifiée
  * d'origine. Elle se lance à la main, toujours pour une organisation, et ne
  * fait qu'appliquer après coup l'étape 4ter de la page des lettres aux
- * éditions déjà publiées ; la règle reste dans la page.
+ * éditions déjà publiées, ou à ses brouillons si elle n'en a publié aucune
+ * (décision du 26 octobre 2026, pour les deux éditions n°1 de Mastora) ; la
+ * règle reste dans la page.
  */
 
 export const TÂCHES = ['lettres', 'reconciliation', 'revue', 'balayage', 'premiere-lettre', 'etiquetage'] as const
@@ -86,7 +88,7 @@ Si la page est inaccessible ou ne contient pas de prompt, n'improvise aucune ex�
     origine: 'aucune tâche planifiée : étiquetage après coup, créée le 26 octobre 2026 (outils stratégiques, lot 4)',
     texte: `Tu es l'agent de veille du cabinet Signaux faibles. Tu écris en français.
 
-Ouvre dans Notion la page « Tâche — Lettres de veille (balayage quotidien) » (id 3d5fe829ce718107af65f4fccf8089ab) et lis son étape « 4ter ÉTIQUETTES ». N'exécute que cette étape, après coup, sur les éditions déjà publiées (Statut « Envoyé ») de l'organisation désignée à la fin de ce message, de la plus ancienne à la plus récente. Tu ne collectes rien, tu n'écris aucune lettre, tu ne modifies aucune page Notion et tu n'envoies aucun courriel à un client.
+Ouvre dans Notion la page « Tâche — Lettres de veille (balayage quotidien) » (id 3d5fe829ce718107af65f4fccf8089ab) et lis son étape « 4ter ÉTIQUETTES ». N'exécute que cette étape, après coup, sur les éditions déjà publiées (Statut « Envoyé ») de l'organisation désignée à la fin de ce message, de la plus ancienne à la plus récente. Si elle n'a aucune édition publiée (organisation de test, ou pas encore activée), applique l'étape à ses éditions au statut « Brouillon », sans en changer le statut. Tu ne collectes rien, tu n'écris aucune lettre, tu ne modifies aucune page Notion et tu n'envoies aucun courriel à un client.
 
 Avant la première édition, appelle GET /api/veille/faits avec le slug de l'organisation, debut à la date de sa plus ancienne édition publiée et fin à aujourd'hui (cent jours au plus par appel). Si la réponse est « hors-pilote », arrête-toi. Une édition qui a déjà des faits dans la réponse est passée.
 

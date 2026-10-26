@@ -148,6 +148,9 @@ describe('masquer et pointeurs', () => {
     expect(texte).toContain('N\'exécute que cette étape')
     expect(texte).toContain('tu ne modifies aucune page Notion')
     expect(texte).toContain('« hors-pilote », arrête-toi')
+    // Les brouillons seulement à défaut d'édition publiée, et jamais en changeant leur statut.
+    expect(texte).toContain('Si elle n\'a aucune édition publiée')
+    expect(texte).toContain('sans en changer le statut')
   })
 })
 
