@@ -1,6 +1,6 @@
 # Plan de mise en œuvre : outils stratégiques (étiquettes, tableau stratégique, synthèses)
 
-*Établi le 26 octobre 2026, après le scénario C de la réorientation vers la veille stratégique. Plan seulement : rien n'est codé, rien n'est modifié dans Notion ni dans Postgres. Les coûts non mesurés sont marqués « estimé », avec leur base.*
+*Établi le 26 octobre 2026, après le scénario C de la réorientation vers la veille stratégique. Les coûts non mesurés sont marqués « estimé », avec leur base. Questions tranchées par l'opératrice le 26 octobre 2026 : voir le §8 ; le lot 0 est fait le même jour.*
 
 ## 1. Résumé
 
@@ -11,8 +11,8 @@
 5. **Chaque mois et chaque trimestre** : une section « Synthèse stratégique » ajoutée à la page de la revue mensuelle, qui lit les faits étiquetés du mois écoulé ; le trimestriel est une sous-section active en janvier, avril, juillet et octobre. Pas de sixième tâche.
 6. **Les chiffres sont calculés par le portail lui-même** (indice de cycle de vie, benchmark) au moment de recevoir la synthèse ; le modèle n'écrit que l'interprétation.
 7. **La grille vit dans le référentiel** (une section courte, non numérotée, après le §2), et le portail en tient une copie versionnée par empreinte, re-postée par la revue avant chaque synthèse.
-8. **Rien au portail pendant le pilote** : la synthèse est relue par l'opératrice dans le courriel « [Relecture] » de la revue. Après le pilote : écrans « Acteurs » (carte, Mendelow) et « Recommandations » (SWOT, TOWS), sans écran nouveau.
-9. **Pilote sur huit semaines**, du 2 novembre au 27 décembre 2026 : Mastora, puis un client volontaire. Le coût principal du pilote est la production des lettres de Mastora (estimé 70 à 100 $), pas les outils.
+8. **Rien au portail pendant le pilote** : la synthèse est relue par l'opératrice dans le courriel « [Relecture] » de la revue. Après le pilote : « Acteurs » (carte, Mendelow), « Recommandations » (SWOT, TOWS) et une **vue PESTEL dédiée** (décision du 26/10/2026), dont la forme se tranche au lot 11.
+9. **Pilote sur huit semaines**, du 2 novembre au 27 décembre 2026 : Mastora et Infralliance d'abord **étiquetées après coup** sur leurs lettres déjà écrites (aucune lettre produite pour le pilote), puis Infralliance étiquetée chaque mercredi dans sa tâche des lettres.
 10. **Premier lot** : le domaine et les portes, testés sur une lettre réelle récente étiquetée à la main.
 
 ## 2. Écarts constatés entre les sources et la demande
@@ -159,7 +159,7 @@ Et un drapeau : `organisations.outils_strategiques` (boolean, défaut faux). Les
 | Cloisonnement | Filtre par relation à écrire à chaque requête | `organisation_id` sur chaque ligne, unicité et contraintes en base |
 | Unicité, transactions | Absentes de l'API Notion (cause des incidents de septembre, `docs/decision-portail-moteur.md`) | En base |
 
-Ce qui ferait changer d'avis : une décision de lire et commenter les synthèses dans Notion plutôt que par courriel ou au portail. La règle « Postgres ne contient jamais le texte d'un référentiel » est tenue : les faits ne gardent qu'une empreinte ; les énoncés de synthèse sont une analyse nouvelle, ni corps de lettre ni texte de référentiel ; la grille ne recopie que des libellés de 40 caractères au plus. Ces deux interprétations demandent l'accord de l'opératrice (§8, questions 1 et 2).
+Ce qui ferait changer d'avis : une décision de lire et commenter les synthèses dans Notion plutôt que par courriel ou au portail. La règle « Postgres ne contient jamais le texte d'un référentiel » est tenue : les faits ne gardent qu'une empreinte ; les énoncés de synthèse sont une analyse nouvelle, ni corps de lettre ni texte de référentiel ; la grille ne recopie que des libellés de 40 caractères au plus. Ces deux interprétations ont reçu l'accord de l'opératrice le 26/10/2026 (§8, décisions 1 et 2).
 
 ### 3.3 Les portes en code
 
@@ -205,9 +205,9 @@ Après le pilote, parmi les sept écrans :
 |---|---|---|
 | Acteurs (`/[slug]/acteurs`) | Carte des groupes stratégiques et Mendelow | Il répond à « qui bouge » ; il ne lit aucun corps de note, les positions non plus |
 | Recommandations | SWOT et TOWS, l'option candidate en tête | La TOWS nourrit la recommandation de la lettre suivante |
-| Les axes | Filtre par lettre PESTEL, trous signalés | Facultatif, troisième temps |
+| Vue PESTEL dédiée (décision du 26/10/2026) | Les six lettres PESTEL, les familles qui les couvrent, les trous, et les faits étiquetés du trimestre | Forme à trancher au lot 11 : soit un onglet dans la page « Les axes » (même adresse, aucune route nouvelle), soit un écran `/[slug]/pestel`, huitième écran, à inscrire dans `CLAUDE.md`. Jamais `/[slug]/axes/pestel` : ce segment masquerait l'axe d'un client nommé « PESTEL », exactement la leçon des segments variables écrite dans `CLAUDE.md` |
 
-Les deux écrans appellent déjà `exigerLectureComplète` ; `tests/architecture.test.ts` (bloc « chaque écran de l'espace obéit au droit de lecture », ligne 798) couvre la règle.
+Les écrans existants appellent déjà `exigerLectureComplète` (une vue PESTEL l'appellera aussi) ; `tests/architecture.test.ts` (bloc « chaque écran de l'espace obéit au droit de lecture », ligne 798) couvre la règle.
 
 ## 4. Architecture
 
@@ -253,11 +253,11 @@ flowchart LR
 
 Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page Notion amendée, le texte d'origine est recopié dans le journal de la page, comme le 26/10/2026, pour revenir en arrière.
 
-### Lot 0. Remettre la revue au niveau du scénario C
+### Lot 0. Remettre la revue au niveau du scénario C (fait le 26/10/2026)
 
 - **Notion** : page de la revue, table de répartition (« · §4 · » retiré), contrôle 3 (« des §1 et §4 » devient « du §1 »), ajout au contrôle 4 : « une famille mensuelle ne se juge que sur les premières parutions du mois ».
 - **Tests** : aucun (pas de code).
-- **Fin** : la page ne cite plus le §4 ; journal renseigné.
+- **Fin** : la page ne cite plus le §4 ; note de révision datée en tête de page, textes d'origine recopiés. Fait le 26/10/2026 ; une phrase de plus au contrôle 3 dit quoi vérifier pour les deux familles des registres publics, qui n'ont pas d'URL.
 - **Hors du lot** : toute synthèse.
 
 ### Lot 1. Le domaine et les portes, testés sur une lettre réelle
@@ -281,12 +281,13 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Fin** : un lot réel posté sur l'aperçu Vercel est accepté.
 - **Hors du lot** : la page des lettres.
 
-### Lot 4. L'étape hebdomadaire, et le pilote sur Mastora
+### Lot 4. L'étiquetage après coup, puis l'étape hebdomadaire
 
 - **Notion** : page des lettres, étape « 4ter ÉTIQUETTES » après 4bis : construire le lot (une entrée par fait d'axe non RAS et de la rubrique des acteurs : section, axe, rang, phrase-titre telle qu'écrite, date, URL, PESTEL ou Porter, Ansoff si concurrent, entité, rupture, impact, nouveauté), `POST /api/veille/faits`, deux reprises au plus, `hors-pilote` : passer ; l'échec ne bloque pas l'étape 5 ni l'envoi. Étape 1bis inchangée.
-- **Code** : `organisations.outils_strategiques` posé à vrai pour Mastora (route PATCH existante de `/api/veille/organisations`, étendue) ; contrôle du soir : éditions du pilote sans étiquettes.
+- **Étiquetage après coup** (décision du 26/10/2026, aucune lettre produite pour le pilote) : une passe lancée à la main relit des éditions déjà écrites et poste leurs étiquettes par la même route. Mastora : ses deux éditions n°1. Infralliance : ses éditions depuis la n°1 (septembre et octobre), ce qui éprouve la segmentation sur les deux formes. La passe tourne sur l'API avec la tâche des lettres limitée à l'organisation et une consigne d'étiquetage seul, ou dans une session de travail ; elle n'écrit rien dans Notion.
+- **Code** : `organisations.outils_strategiques` posé à vrai pour Mastora et Infralliance (route PATCH existante de `/api/veille/organisations`, étendue) ; contrôle du soir : éditions du pilote sans étiquettes, à partir de la première étiquetée chaque semaine.
 - **Tests** : la route PATCH accepte le drapeau ; le contrôle du soir compte les éditions non étiquetées.
-- **Fin** : deux lettres de Mastora étiquetées et acceptées.
+- **Fin** : les éditions passées des deux organisations étiquetées et acceptées, puis la première lettre d'Infralliance étiquetée dans sa tâche du mercredi.
 - **Hors du lot** : grille, synthèse.
 
 ### Lot 5. La grille
@@ -325,10 +326,10 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Fin** : `mesure.json` d'une lettre et d'une revue de Mastora porte le coût de l'étape.
 - **Remarque** : seule l'exécution sur l'API est mesurable ; une lettre produite sur Cowork ne l'est pas.
 
-### Lot 10. Le client volontaire
+### Lot 10. Infralliance en régime courant
 
-- **Code** : drapeau posé ; **Notion** : rien de plus (les pages servent tous les exécuteurs).
-- **Fin** : quatre lettres étiquetées et une synthèse mensuelle relue.
+- **Code** : rien de plus que le drapeau du lot 4 ; **Notion** : rien de plus (la page des lettres sert tous les exécuteurs, Cowork compris).
+- **Fin** : quatre lettres d'Infralliance étiquetées dans leur tâche, et une synthèse mensuelle relue en 15 minutes au plus.
 
 ### Lot 11 (après décision). L'affichage
 
@@ -346,20 +347,20 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 
 ## 6. Pilote
 
-**Organisations** : Mastora (organisation de test, parution le mardi, référentiels v1.3), puis un client volontaire (recommandé : Next Impact, parution le jeudi, organisation de l'opératrice).
+**Organisations** (décision du 26/10/2026) : Mastora (organisation de test, référentiels v1.3), étiquetée après coup seulement, et Infralliance (client, parution le mercredi à 6 h 30, référentiels v1.7), étiquetée après coup puis chaque semaine.
 
-**Prérequis Mastora** : ses lettres ne tournent pas (« Veille automatique » décochée). Le pilote suppose de les produire chaque mardi sur l'API (`pnpm tache lettres --organisation mastora`). Coût **estimé 70 à 100 $** pour sept parutions, base : lettre régulière estimée 5 à 7 $ (non mesurée), deux lettres par parution. Alternative moins chère, à trancher (§8, question 5) : étiqueter a posteriori des lettres déjà publiées d'un client, sans en produire de nouvelles.
+**Aucune lettre produite pour le pilote** : Mastora garde « Veille automatique » décochée ; ses deux éditions n°1 servent d'étiquetage après coup. Le coût du pilote se réduit à l'étiquetage et aux synthèses (estimé ci-dessous). Infralliance continue de paraître comme aujourd'hui ; seule l'étape 4ter s'ajoute.
 
 | Semaine | Dates | Ce qui se passe |
 |---|---|---|
-| S45 | 2 au 8 nov. | Lot 0, lot 1 ; étiquetage à la main de la fixture relu par l'opératrice |
+| S45 | 2 au 8 nov. | Lot 1 ; étiquetage à la main de la fixture relu par l'opératrice |
 | S46 | 9 au 15 nov. | Lots 2 et 3 ; aperçu Vercel |
-| S47 | 16 au 22 nov. | Lot 4 : première lettre de Mastora étiquetée (mardi 17) ; lot 5 : grille de Mastora |
-| S48 | 23 au 29 nov. | Deuxième lettre étiquetée (mardi 24) ; lot 9 |
-| S49 | 30 nov. au 6 déc. | Lot 6 : revue de Mastora lundi 30 novembre (première parution de décembre le mardi 1er), synthèse de novembre ; lot 10 : drapeau du client volontaire, sa revue le mercredi 2 décembre si c'est Next Impact |
-| S50 | 7 au 13 déc. | Lots 7 et 8 : trimestriel de Mastora lancé à la main (le vrai trimestre tombe en janvier) |
-| S51 | 14 au 20 déc. | Relecture chronométrée des deux synthèses ; mesures consolidées |
-| S52 | 21 au 27 déc. | Décision : lots 11 et 12, ou arrêt |
+| S47 | 16 au 22 nov. | Lot 4 : étiquetage après coup des éditions passées de Mastora et d'Infralliance ; lot 5 : grilles des deux organisations |
+| S48 | 23 au 29 nov. | Lot 4, suite : étape 4ter active pour Infralliance, première lettre étiquetée dans sa tâche le mercredi 25 novembre ; lot 9 |
+| S49 | 30 nov. au 6 déc. | Lot 6 : revue d'Infralliance la veille de sa première parution de décembre (mercredi 2), synthèse de novembre ; synthèse de Mastora lancée à la main sur ses éditions étiquetées |
+| S50 | 7 au 13 déc. | Lots 7 et 8 : trimestriel d'Infralliance lancé à la main (le vrai trimestre tombe en janvier) ; lot 10 |
+| S51 | 14 au 20 déc. | Relecture chronométrée des synthèses ; mesures consolidées |
+| S52 | 21 au 27 déc. | Décision : lots 11 et 12, ou arrêt ; entretien de 15 minutes avec Infralliance si la synthèse lui est montrée |
 
 **Mesures** : `mesure.json` de chaque exécution sur l'API (lot 9) ; temps de relecture noté par l'opératrice ; refus de porte comptés par code.
 
@@ -369,9 +370,9 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 |---|---|
 | Éléments sourcés | 100 % (garanti par la porte ; la relecture vérifie que le fait cité soutient l'énoncé) |
 | Énoncés génériques à la relecture | 0 |
-| Temps de relecture | 15 minutes au plus par organisation et par mois (à confirmer, §8, question 7) |
+| Temps de relecture | 15 minutes au plus par organisation et par mois (décision du 26/10/2026) |
 | Surcoût mensuel par organisation | 5 $ au plus, comparé aux 5 à 7 $ du scénario C ; **estimé** aujourd'hui entre 1,50 et 5 $ : étiquetage 0,05 à 0,20 $ par lettre (base : deux à trois tours de plus sur des exécutions de plusieurs centaines de tours, la collecte Heritech en comptait 368) et synthèse 1 à 3 $ par mois (base : rédaction Opus de la première lettre Mastora, 6,57 $ mesurés pour deux lettres complètes, une synthèse produisant nettement moins de texte) |
-| Usage par le client | Pendant le pilote, rien n'est affiché : entretien de quinze minutes avec le client volontaire en S52 sur la synthèse relue |
+| Usage par le client | Pendant le pilote, rien n'est affiché : la synthèse relue d'Infralliance peut lui être présentée par l'opératrice en S52, avec un entretien de quinze minutes |
 
 ## 7. Risques et parades
 
@@ -389,35 +390,42 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 | **Durée des routes** (calculs BODACC au moment du POST) | Budget de temps borné, valeurs `n.d.` si une API publique ne répond pas, jamais d'échec de la synthèse pour un chiffre |
 | **Plafond des dix points de validation** | Les points de grille passent après le scoring ; la carte ne demande qu'un point (choix entre options nommées) |
 
-## 8. Questions ouvertes pour l'opératrice
+## 8. Décisions de l'opératrice (26 octobre 2026)
 
-1. Les énoncés de synthèse (240 caractères au plus) sont-ils stockés dans Postgres (recommandé) ou dans une page Notion « Tableau stratégique » par organisation ?
-2. La grille peut-elle recopier dans Postgres des libellés de 40 caractères au plus (axes, crans, parties prenantes), les critères complets restant dans Notion : oui (recommandé) ou non ?
-3. La grille va-t-elle dans une section non numérotée après le §2 (recommandé) ou réattribue-t-elle le §4, vacant depuis le 26/10 ?
-4. Quel client volontaire : Next Impact (recommandé), Infralliance ou un autre ?
-5. Pour Mastora : produire ses lettres chaque mardi sur l'API pendant le pilote (estimé 70 à 100 $), oui ou non ? Si non : étiquetage a posteriori de lettres déjà publiées.
-6. L'étiquetage est-il une étape de la tâche des lettres (recommandé) ou une passe séparée sur Sonnet ?
-7. Seuil de temps de relecture : 15 minutes (recommandé) ou 30 minutes par organisation et par mois ?
-8. Le trimestriel est-il une section de la revue (recommandé) ou une sixième tâche ?
-9. Après le pilote, quels écrans : Acteurs et Recommandations (recommandé), avec ou sans le filtre PESTEL sur Les axes ?
-10. Les points de validation de la grille entrent-ils dans le plafond de dix par organisation (recommandé) ou à part ?
-11. Le lot 0 (revue au niveau du scénario C) peut-il être fait tout de suite, indépendamment du reste : oui (recommandé) ou non ?
+| N° | Question | Décision |
+|---|---|---|
+| 1 | Où stocker les énoncés de synthèse ? | **Postgres** |
+| 2 | La grille peut-elle recopier dans Postgres des libellés courts ? | **Oui** ; les critères complets restent dans Notion. À inscrire dans `CLAUDE.md` et `docs/schema-donnees.md` au lot 2, comme exception bornée à la règle « pas de texte de référentiel » |
+| 3 | Où va la grille dans le référentiel ? | **Section sans numéro après le §2** ; le §4 reste vacant |
+| 4 | Quel client pour le pilote ? | **Infralliance** |
+| 5 | Produire des lettres de Mastora pour le pilote ? | **Non : étiquetage après coup** des éditions déjà écrites |
+| 6 | Étiquetage : étape de la lettre ou passe séparée ? | **Étape de la lettre** (4ter) |
+| 7 | Seuil de temps de relecture | **15 minutes** par organisation et par mois |
+| 8 | Trimestriel | **Section de la revue** |
+| 9 | Affichage après le pilote | **Acteurs, Recommandations, et une vue PESTEL dédiée** (forme au lot 11, §3.6) |
+| 10 | Points de validation de la grille dans le plafond de dix ? | **Oui** |
+| 11 | Lot 0 tout de suite ? | **Oui, fait le 26/10/2026** |
+
+Questions qui restent, à trancher au moment du lot concerné :
+
+- Lot 4 : la passe d'étiquetage après coup tourne-t-elle sur l'API (mesurée dans `mesure.json`) ou dans une session de travail (non mesurée, sans coût d'API) ?
+- Lot 11 : la vue PESTEL est-elle un onglet de « Les axes » (aucune route nouvelle) ou un huitième écran `/[slug]/pestel` ?
 
 ## 9. Les lots dans l'ordre, et la première action
 
-0. Revue au niveau du scénario C (Notion)
+0. Revue au niveau du scénario C (Notion), fait le 26/10/2026
 1. Domaine et portes, testés sur une lettre réelle étiquetée à la main
 2. Base (migration 0013)
 3. Route des faits
-4. Étape hebdomadaire et pilote Mastora
+4. Étiquetage après coup (Mastora, Infralliance), puis étape hebdomadaire
 5. Grille
 6. Synthèse mensuelle
 7. Calculs en code
 8. Trimestriel
 9. Mesure de l'étape
-10. Client volontaire
+10. Infralliance en régime courant
 11. Affichage (après décision)
 12. Onboarding (après décision)
 13. Moteur en code et matrice GE (plus tard)
 
-**Première action** : obtenir les réponses aux questions 1 à 3, qui fixent le modèle, puis ouvrir le lot 1 en tirant de Notion une lettre publiée après le 19/10/2026 pour en faire la fixture, et l'étiqueter à la main pour relecture par l'opératrice.
+**Première action** : ouvrir le lot 1 en tirant de Notion une lettre d'Infralliance publiée après le 19/10/2026 (édition n°6 du 21/10) pour en faire la fixture, et l'étiqueter à la main pour relecture par l'opératrice.
