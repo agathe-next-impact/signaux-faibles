@@ -2,6 +2,7 @@
  * Une tâche planifiée du dispositif, exécutée sur l'API Claude.
  *
  *   pnpm tache <lettres|reconciliation|revue|balayage|premiere-lettre> [--organisation <slug>]
+ *   pnpm tache etiquetage --organisation <slug>
  *   pnpm tache controle
  *
  * Le prompt est le pointeur de la tâche en service (`pointeurs.ts`) : il dit
@@ -50,6 +51,9 @@ export const PARAMÈTRES: Readonly<Record<Tâche, { readonly modèle: string; re
   balayage: { modèle: 'claude-opus-5-5', plafondUsd: 30 },
   revue: { modèle: 'claude-opus-5-5', plafondUsd: 10 },
   reconciliation: { modèle: 'claude-sonnet-5-5', plafondUsd: 5 },
+  // Classer des faits déjà écrits ne demande ni recherche ni rédaction : le
+  // modèle de la réconciliation suffit (plan des outils stratégiques, §3.4).
+  etiquetage: { modèle: 'claude-sonnet-5-5', plafondUsd: 10 },
 }
 const EFFORT = 'high'
 const MODÈLE_LECTEUR = 'claude-haiku-5-5'
@@ -463,6 +467,7 @@ export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'con
     }
   }
   if (premier === 'controle' && organisation) throw new Error('la tâche « controle » ne prend pas d’organisation')
+  if (premier === 'etiquetage' && !organisation) throw new Error('la tâche « etiquetage » exige --organisation <slug>')
   return { tâche: premier as Tâche | 'controle', organisation }
 }
 

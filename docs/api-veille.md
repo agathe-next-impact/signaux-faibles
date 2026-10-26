@@ -251,6 +251,12 @@ fréquente, le statut Brouillon, avant l'identifiant), `contrat-rompu` (la
 dernière lettre publiée passée au validateur ; seules les ruptures de portée
 `portail` comptent).
 
+Depuis le 26 octobre 2026 (outils stratégiques, lot 4), `étiquettes-manquantes`,
+par organisation du pilote : les éditions publiées depuis la première étiquetée
+qui n'ont pas d'étiquettes. Avant la première, rien n'est dû. Une lettre dont
+tous les axes sont RAS n'a aucun fait à étiqueter et y figure à tort ; le
+message le dit.
+
 ## Variables d'environnement
 
 `CRON_SECRET` (nouveau, pour Vercel) et `RELECTEUR_EMAIL` (nouveau, facultatif ;
@@ -588,6 +594,19 @@ par prospection : elle n'est pas attribuée), `recommandée-par-elle-même`, et
 une organisation recommandée.
 
 ## Outils stratégiques : les faits étiquetés (26 octobre 2026)
+
+**Entrer dans le pilote, ou en sortir** : `PATCH /api/veille/organisations`
+`{ "slug": "infralliance", "action": "outils", "actif": true }`. 200
+`pilote-réglé` avec `actif`, 404 `inconnue`. Les lignes d'une organisation
+sortie du pilote restent ; elle les retrouve si elle y revient.
+
+**Étape 4ter de la tâche des lettres** (page « Tâche — Lettres de veille »,
+depuis le 26 octobre 2026) : après le lint conforme, un `GET` sur la date de
+l'édition sert de porte du pilote ; toute réponse autre que `lu` fait passer
+l'étape sans rien construire. **Étiquetage après coup** des éditions déjà
+publiées : `pnpm tache etiquetage --organisation <slug>` (workflow « Tâches
+planifiées », tâche `etiquetage`), qui n'applique que cette étape, sans rien
+écrire dans Notion.
 
 Plan : `docs/plan-outils-strategiques.md` (lot 3). La route est réservée aux
 organisations du pilote (`organisations.outils_strategiques`) : ailleurs, elle

@@ -140,6 +140,15 @@ describe('masquer et pointeurs', () => {
     expect(promptDeLaTâche('lettres', null)).toBe(POINTEURS.lettres.texte)
     expect(promptDeLaTâche('lettres', 'konica')).toBe(`${POINTEURS.lettres.texte}\n\nLimite-toi à l'organisation konica.`)
   })
+
+  it('le pointeur d’étiquetage n’applique que l’étape 4ter, aux éditions publiées, sans rien écrire dans Notion', () => {
+    const texte = POINTEURS.etiquetage.texte
+    expect(texte).toContain('3d5fe829ce718107af65f4fccf8089ab')
+    expect(texte).toContain('« 4ter ÉTIQUETTES »')
+    expect(texte).toContain('N\'exécute que cette étape')
+    expect(texte).toContain('tu ne modifies aucune page Notion')
+    expect(texte).toContain('« hors-pilote », arrête-toi')
+  })
 })
 
 describe('Gmail : deposer_courriel, le HTML ne passe pas par le modèle', () => {

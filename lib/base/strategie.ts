@@ -215,6 +215,41 @@ export async function faitsConnus(
   })
 }
 
+/** Ce que le contrôle du soir sait de l'étiquetage d'une organisation du pilote. */
+export type ÉtiquetageDuPilote = {
+  readonly slug: string
+  readonly registreNotion: string | null
+  /** Les éditions qui portent des étiquettes vivantes, 32 hexadécimaux. */
+  readonly éditions: ReadonlySet<string>
+  /** La date d'édition de la plus ancienne étiquetée ; nulle tant qu'aucune ne l'est. */
+  readonly première: string | null
+}
+
+/** Les organisations du pilote, et les éditions qu'elles ont déjà fait étiqueter. */
+export async function étatDeLÉtiquetage(db: Base = base()): Promise<ÉtiquetageDuPilote[]> {
+  return protéger('lecture de l’état de l’étiquetage', async () => {
+    const pilote = await db
+      .select({ id: organisations.id, slug: organisations.slug, registreNotion: organisations.registreNotion })
+      .from(organisations)
+      .where(and(eq(organisations.outilsStratégiques, true), isNull(organisations.archivéeLe)))
+      .orderBy(asc(organisations.slug))
+    if (pilote.length === 0) return []
+    const lignes = await db
+      .selectDistinct({ organisationId: faitsÉtiquetés.organisationId, édition: faitsÉtiquetés.éditionNotion, date: faitsÉtiquetés.dateÉdition })
+      .from(faitsÉtiquetés)
+      .where(and(inArray(faitsÉtiquetés.organisationId, pilote.map((o) => o.id)), isNull(faitsÉtiquetés.archivéeLe)))
+    return pilote.map((o) => {
+      const siennes = lignes.filter((l) => l.organisationId === o.id)
+      return {
+        slug: o.slug,
+        registreNotion: o.registreNotion,
+        éditions: new Set(siennes.map((l) => l.édition)),
+        première: siennes.map((l) => l.date).sort()[0] ?? null,
+      }
+    })
+  })
+}
+
 // ── Grille ───────────────────────────────────────────────────────────────────
 
 export type GrilleEnregistrée = {

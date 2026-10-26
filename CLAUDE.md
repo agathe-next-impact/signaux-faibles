@@ -135,7 +135,9 @@ Les lire avant toute session.
 - Vitest, Playwright, ESLint en direct (`next lint` n'existe plus)
 - **Tâches planifiées sur l'API Claude** (23 octobre 2026, `docs/taches-api.md`) :
   les cinq tâches du dispositif (lettres, réconciliation, revue, balayage,
-  première lettre) tournent par GitHub Actions (`.github/workflows/taches.yml`,
+  première lettre), plus `etiquetage` (26 octobre 2026, à la main, une
+  organisation du pilote des outils stratégiques : l'étape 4ter après coup,
+  rien d'écrit dans Notion), tournent par GitHub Actions (`.github/workflows/taches.yml`,
   `pnpm tache <tâche>`), sur la clé API des évaluations, et non plus sur
   l'abonnement. Le prompt reste le pointeur vers la page Notion, qui fait foi
   (`scripts/taches/pointeurs.ts`, texte des tâches en service recopié mot pour

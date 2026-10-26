@@ -4,6 +4,8 @@ import {
   lireLaGrille,
   organisationPourLesOutils,
   remplacerLesÉtiquettes,
+  réglerLesOutilsStratégiques,
+  étatDeLÉtiquetage,
 } from '@/lib/base/strategie'
 import { construireDocument } from '@/lib/domaine/document'
 import {
@@ -14,9 +16,10 @@ import {
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
 import { sansAccent } from '@/lib/domaine/texte'
-import { lireBlocsDePage } from '@/lib/notion/editions'
+import { lireBlocsDePage, listerÉditionsPubliées } from '@/lib/notion/editions'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
 import { lireÉditionDeTravail } from '@/lib/notion/travail'
+import type { Défaut } from '@/lib/portail/etat'
 import { identifiantAvecTirets } from '@/lib/portail/garde-veille'
 
 /**
@@ -59,6 +62,19 @@ export type RésultatDesÉtiquettes =
         | 'organisations-multiples'
         | 'édition-sans-date'
     }
+
+/**
+ * Fait entrer une organisation dans le pilote, ou l'en fait sortir
+ * (`PATCH /api/veille/organisations`, action `outils`). Ses lignes restent :
+ * une organisation sortie du pilote garde ses étiquettes et ses synthèses, et
+ * les retrouve si elle y revient.
+ */
+export async function réglerLePilote(
+  entrée: { readonly slug: string; readonly actif: boolean },
+  db?: Base,
+): Promise<'réglé' | 'organisation-inconnue'> {
+  return réglerLesOutilsStratégiques(entrée, db)
+}
 
 /** `Écosystème` devient `ecosysteme` : la clé interne, sans accent, comme dans le domaine. */
 function familleNormalisée(famille: string | null): string | null {
@@ -208,4 +224,39 @@ export async function lireLesFaits(
     }
   })
   return { sorte: 'lu', faits, titresIntrouvables }
+}
+
+/**
+ * Le contrôle du soir des étiquettes (lot 4) : pour chaque organisation du
+ * pilote, les éditions publiées depuis la première étiquetée qui n'ont pas
+ * d'étiquettes. Avant la première, rien n'est dû : le pilote n'a pas commencé
+ * pour elle. Les éditions publiées sont celles que la route du soir a déjà lues
+ * (`lettresParRegistre`, par registre sans tirets) ; à défaut, elles sont lues
+ * ici, par la même fonction cachée et la clé de cloisonnement de
+ * l'organisation (règles 1 et 2).
+ *
+ * Une lettre dont tous les axes sont RAS n'a aucun fait à étiqueter, et son lot
+ * vide ne laisse pas de trace : elle apparaîtrait ici. Le message le dit.
+ */
+export async function contrôlerLÉtiquetage(
+  lettresParRegistre: ReadonlyMap<string, readonly { readonly pageId: string; readonly dateÉdition: string }[]>,
+  db?: Base,
+): Promise<Défaut[]> {
+  const défauts: Défaut[] = []
+  for (const o of await étatDeLÉtiquetage(db)) {
+    if (!o.registreNotion || !o.première) continue
+    const lettres = lettresParRegistre.get(o.registreNotion) ?? (await listerÉditionsPubliées(o.registreNotion))
+    const manquantes = lettres.filter((l) => l.dateÉdition >= o.première! && !o.éditions.has(normaliserIdentifiant(l.pageId)))
+    if (manquantes.length === 0) continue
+    const dates = manquantes.map((l) => l.dateÉdition).sort()
+    défauts.push({
+      slug: o.slug,
+      code: 'étiquettes-manquantes',
+      message:
+        `${manquantes.length === 1 ? 'une édition publiée n’a pas d’étiquettes' : `${manquantes.length} éditions publiées n’ont pas d’étiquettes`} ` +
+        `(du ${dates[0]} au ${dates.at(-1)}) : relancer l’étape 4ter, ou « pnpm tache etiquetage --organisation ${o.slug} ». ` +
+        'Une lettre dont tous les axes sont RAS n’a rien à étiqueter et figure ici à tort.',
+    })
+  }
+  return défauts
 }

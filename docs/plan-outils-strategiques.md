@@ -289,6 +289,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Tests** : la route PATCH accepte le drapeau ; le contrôle du soir compte les éditions non étiquetées.
 - **Fin** : les éditions passées des deux organisations étiquetées et acceptées, puis la première lettre d'Infralliance étiquetée dans sa tâche du mercredi.
 - **Hors du lot** : grille, synthèse.
+- **Fait le 26/10/2026** : action `outils` de la route PATCH, défaut `étiquettes-manquantes` du contrôle du soir, étape 4ter dans la page des lettres (porte du pilote par `GET /api/veille/faits`, journal de la page complété), tâche `etiquetage` du harnais pour la passe après coup (choix : l'API, sur Sonnet 5.5, plafond 10 $). Restent, après déploiement : poser le drapeau de Mastora et d'Infralliance, lancer la passe sur chacune, puis constater l'étiquetage de la lettre d'Infralliance du mercredi.
 
 ### Lot 5. La grille
 

@@ -12,11 +12,11 @@ import { BLOCS_OCTOBRE, DATE_OCTOBRE, PAGE_OCTOBRE } from './fixtures/lettre-oct
  * l'ordre : le pilote avant Notion, la règle 2 avant la porte, la porte avant
  * l'écriture.
  */
-const notion = vi.hoisted(() => ({ lireÉditionDeTravail: vi.fn(), lireBlocsDePage: vi.fn() }))
+const notion = vi.hoisted(() => ({ lireÉditionDeTravail: vi.fn(), lireBlocsDePage: vi.fn(), listerÉditionsPubliées: vi.fn() }))
 vi.mock('@/lib/notion/travail', () => ({ lireÉditionDeTravail: notion.lireÉditionDeTravail }))
-vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePage }))
+vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePage, listerÉditionsPubliées: notion.listerÉditionsPubliées }))
 
-const { lireLesFaits, recevoirLesÉtiquettes } = await import('@/lib/portail/strategie')
+const { contrôlerLÉtiquetage, lireLesFaits, recevoirLesÉtiquettes, réglerLePilote } = await import('@/lib/portail/strategie')
 const { organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
 const REGISTRE = '1f2fe829ce71802a9c3bd1f4e8a7b6c5'
@@ -160,6 +160,32 @@ describe('recevoirLesÉtiquettes et lireLesFaits', () => {
       notion.lireBlocsDePage.mockRejectedValue(new Error('Notion indisponible'))
       const enPanne = await lireLesFaits({ slug: 'infralliance', début: DATE_OCTOBRE, fin: DATE_OCTOBRE }, db)
       expect(enPanne.sorte === 'lu' && enPanne.titresIntrouvables).toBe(11)
+    })
+
+    it('le contrôle du soir signale les éditions publiées depuis la première étiquetée, et elles seules', async () => {
+      const lettre = (pageId: string, dateÉdition: string) => ({ pageId: avecTirets(pageId), dateÉdition })
+      const AVANT = 'aaaabbbbccccddddeeeeffff00000001'
+      const APRÈS = 'aaaabbbbccccddddeeeeffff00000002'
+      const publiées = [lettre(APRÈS, '2026-10-28'), lettre(PAGE_OCTOBRE, DATE_OCTOBRE), lettre(AVANT, '2026-10-14')]
+
+      // Avant toute étiquette, rien n'est dû.
+      expect(await contrôlerLÉtiquetage(new Map([[REGISTRE, publiées]]), db)).toEqual([])
+
+      await recevoir()
+      const défauts = await contrôlerLÉtiquetage(new Map([[REGISTRE, publiées]]), db)
+      expect(défauts).toHaveLength(1)
+      expect(défauts[0]).toMatchObject({ slug: 'infralliance', code: 'étiquettes-manquantes' })
+      expect(défauts[0]!.message).toMatch(/^une édition publiée n’a pas d’étiquettes \(du 2026-10-28 au 2026-10-28\)/)
+      expect(défauts[0]!.message).toContain('pnpm tache etiquetage --organisation infralliance')
+
+      // Sans la liste de la route, les éditions sont lues par la clé de cloisonnement de l'organisation.
+      notion.listerÉditionsPubliées.mockResolvedValue([lettre(PAGE_OCTOBRE, DATE_OCTOBRE)])
+      expect(await contrôlerLÉtiquetage(new Map(), db)).toEqual([])
+      expect(notion.listerÉditionsPubliées).toHaveBeenCalledWith(REGISTRE)
+
+      // Une organisation sortie du pilote n'est plus contrôlée.
+      expect(await réglerLePilote({ slug: 'infralliance', actif: false }, db)).toBe('réglé')
+      expect(await contrôlerLÉtiquetage(new Map([[REGISTRE, publiées]]), db)).toEqual([])
     })
   })
 })
