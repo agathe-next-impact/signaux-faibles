@@ -201,9 +201,15 @@ function nombreDeMots(texte: string): number {
  */
 export const FAITS_MIN_ÉDITION_N1 = 6
 
-/** Les rubriques de faits hors des axes : signaux et actualité des acteurs. */
+/**
+ * Les rubriques de faits hors des axes : signaux et actualité des acteurs.
+ * « Signaux de rupture » (26 octobre 2026) n'en est pas une : elle ne fait que
+ * reprendre, une ligne chacun, des faits déjà rapportés plus haut, et les
+ * compter deux fois ferait passer une édition n°1 trop maigre.
+ */
 function estRubriqueDeFaits(titre: string): boolean {
   const t = sansAccent(titre)
+  if (t.startsWith('signaux de rupture')) return false
   return (t.startsWith('signaux') || t.includes('acteurs')) && !estTitreDeCadrage(titre)
 }
 

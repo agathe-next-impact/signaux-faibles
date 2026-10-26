@@ -20,7 +20,21 @@ elle remplace la règle « pas de base de données » de cette page. Toute
 lecture ou écriture Postgres passe par `lib/base/`, jamais depuis un
 composant ni une route ; `tests/architecture.test.ts` le vérifie. Postgres
 ne contient jamais le corps d'une lettre ni le texte d'un référentiel, il en
-contient les identifiants Notion.
+contient les identifiants Notion. **Une exception bornée, accordée par
+l'opératrice le 26 octobre 2026** pour les outils stratégiques
+(`docs/plan-outils-strategiques.md`, §8, décisions 1 et 2 ; migration 0013) :
+`grilles` recopie les **libellés courts** de la grille stratégique du
+référentiel (axes et crans des groupes stratégiques, 40 caractères au plus,
+noms d'entités et de parties prenantes ; les critères complets restent dans
+Notion), et `elements_synthese` porte les **énoncés de synthèse** (240
+caractères au plus, 400 pour un scénario), analyse nouvelle et non texte de
+lettre ou de référentiel. Rien d'autre : un fait étiqueté (`faits_etiquetes`)
+ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
+`lib/base/strategie.ts`, lui-même appelé par la seule orchestration
+`lib/portail/strategie.ts`, qui passe la porte de `lib/domaine/strategie.ts`
+avant d'écrire ; `tests/architecture.test.ts` tient la frontière, et le pilote
+est borné par `organisations.outils_strategiques` (faux par défaut, réponse
+`hors-pilote`).
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et
@@ -121,7 +135,9 @@ Les lire avant toute session.
 - Vitest, Playwright, ESLint en direct (`next lint` n'existe plus)
 - **Tâches planifiées sur l'API Claude** (23 octobre 2026, `docs/taches-api.md`) :
   les cinq tâches du dispositif (lettres, réconciliation, revue, balayage,
-  première lettre) tournent par GitHub Actions (`.github/workflows/taches.yml`,
+  première lettre), plus `etiquetage` (26 octobre 2026, à la main, une
+  organisation du pilote des outils stratégiques : l'étape 4ter après coup,
+  rien d'écrit dans Notion), tournent par GitHub Actions (`.github/workflows/taches.yml`,
   `pnpm tache <tâche>`), sur la clé API des évaluations, et non plus sur
   l'abonnement. Le prompt reste le pointeur vers la page Notion, qui fait foi
   (`scripts/taches/pointeurs.ts`, texte des tâches en service recopié mot pour

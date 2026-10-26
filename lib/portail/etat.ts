@@ -29,6 +29,7 @@ export type CodeDeDéfaut =
   | 'migrations-en-attente'
   | 'courrier-parcours-echec'
   | 'courrier-parcours-incertain'
+  | 'étiquettes-manquantes'
 
 export type Défaut = {
   readonly slug: string

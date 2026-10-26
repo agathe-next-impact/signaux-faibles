@@ -28,8 +28,9 @@ on:
           - revue
           - balayage
           - premiere-lettre
+          - etiquetage
       organisation:
-        description: Slug d'une seule organisation (facultatif, sans effet sur « controle »)
+        description: Slug d'une seule organisation (facultatif, sans effet sur « controle », obligatoire pour « etiquetage »)
         required: false
         type: string
         default: ''

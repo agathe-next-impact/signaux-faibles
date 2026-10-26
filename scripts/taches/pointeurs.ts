@@ -8,9 +8,15 @@
  * et c'est la page qui fait foi. Une règle se modifie dans la page, jamais ici.
  * Si une tâche planifiée est retouchée dans l'interface, ce fichier se recopie
  * à l'identique ; il ne se réécrit pas.
+ *
+ * Seule exception, `etiquetage` (26 octobre 2026, lot 4 de
+ * `docs/plan-outils-strategiques.md`) : elle n'a pas de tâche planifiée
+ * d'origine. Elle se lance à la main, toujours pour une organisation, et ne
+ * fait qu'appliquer après coup l'étape 4ter de la page des lettres aux
+ * éditions déjà publiées ; la règle reste dans la page.
  */
 
-export const TÂCHES = ['lettres', 'reconciliation', 'revue', 'balayage', 'premiere-lettre'] as const
+export const TÂCHES = ['lettres', 'reconciliation', 'revue', 'balayage', 'premiere-lettre', 'etiquetage'] as const
 export type Tâche = (typeof TÂCHES)[number]
 
 export type Pointeur = {
@@ -75,6 +81,18 @@ Cette page est la seule source de vérité du dispositif. N'exécute aucune autr
 Les lettres partent en brouillons Gmail adressés au client, jamais envoyés par toi. Aucun jeton à manipuler : l'environnement ajoute l'en-tête d'autorisation aux requêtes vers www.signauxfaibles.io. N'écris jamais de jeton dans une commande. Respecte l'ordre des appels au portail : /api/veille/organisations, puis cocher Actif, puis /api/veille/importer-acces, puis /api/acces/ouvrir.
 
 Si la page est inaccessible ou ne contient pas de prompt, n'improvise aucune exécution de remplacement : envoie un email à agathe@signauxfaibles.io, objet « [Veille] Prompt inaccessible — onboarding (première lettre) », disant ce que tu as tenté et ce que tu as vu, puis arrête-toi.`,
+  },
+  etiquetage: {
+    origine: 'aucune tâche planifiée : étiquetage après coup, créée le 26 octobre 2026 (outils stratégiques, lot 4)',
+    texte: `Tu es l'agent de veille du cabinet Signaux faibles. Tu écris en français.
+
+Ouvre dans Notion la page « Tâche — Lettres de veille (balayage quotidien) » (id 3d5fe829ce718107af65f4fccf8089ab) et lis son étape « 4ter ÉTIQUETTES ». N'exécute que cette étape, après coup, sur les éditions déjà publiées (Statut « Envoyé ») de l'organisation désignée à la fin de ce message, de la plus ancienne à la plus récente. Tu ne collectes rien, tu n'écris aucune lettre, tu ne modifies aucune page Notion et tu n'envoies aucun courriel à un client.
+
+Avant la première édition, appelle GET /api/veille/faits avec le slug de l'organisation, debut à la date de sa plus ancienne édition publiée et fin à aujourd'hui (cent jours au plus par appel). Si la réponse est « hors-pilote », arrête-toi. Une édition qui a déjà des faits dans la réponse est passée.
+
+Cette page est la seule source de vérité de l'étape. N'exécute aucune autre étape de la page : si ce message et la page divergent, c'est la page qui fait foi.
+
+Si la page est inaccessible ou ne contient pas d'étape « 4ter ÉTIQUETTES », n'improvise aucune exécution de remplacement : envoie un email à agathe@signauxfaibles.io, objet « [Veille] Prompt inaccessible — étiquetage », disant ce que tu as tenté et ce que tu as vu, puis arrête-toi.`,
   },
 }
 

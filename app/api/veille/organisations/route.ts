@@ -11,6 +11,7 @@ import {
 } from '@/lib/base/organisations'
 import { codeDePrescripteurValide } from '@/lib/domaine/prescripteurs'
 import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
+import { réglerLePilote } from '@/lib/portail/strategie'
 
 /**
  * Ouvre une nouvelle organisation en essai (18 octobre 2026).
@@ -52,6 +53,13 @@ import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/ga
  *   { "slug": "acme", "action": "offre", "offre": "standard" | "early_adopter" | "gratuite" }
  *   { "slug": "acme", "action": "parutions", "parutions": 3 }
  *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
+ *   { "slug": "acme", "action": "outils", "actif": true | false }
+ *
+ * `outils` (26 octobre 2026, `docs/plan-outils-strategiques.md`, lot 4) fait
+ * entrer l'organisation dans le pilote des outils stratégiques, ou l'en fait
+ * sortir : `pilote-réglé` (200) ou `inconnue` (404). Ce n'est pas un réglage
+ * du parcours, et il passe par l'orchestration des outils, seule à toucher
+ * leurs tables.
  *
  * Les deux réglages de l'opératrice sur un parcours d'essai (`réglerLeParcours`) :
  * décaler J0, jamais au-delà d'aujourd'hui, ou faire partir les courriers de fin
@@ -66,6 +74,8 @@ const demande = z.object({
   /** Le code du prescripteur qui recommande l'organisation ; exclusif de la prospection. */
   prescripteur: z.string().trim().refine(codeDePrescripteurValide).optional(),
 })
+
+const pilote = z.object({ slug: z.string().trim().min(1), action: z.literal('outils'), actif: z.boolean() })
 
 const réglage = z.discriminatedUnion('action', [
   z.object({
@@ -151,7 +161,23 @@ export async function PATCH(requête: NextRequest): Promise<NextResponse> {
   const indisponible = baseIndisponible()
   if (indisponible) return indisponible
 
-  const lue = réglage.safeParse(await requête.json().catch(() => null))
+  const corps: unknown = await requête.json().catch(() => null)
+  const outils = pilote.safeParse(corps)
+  if (outils.success) {
+    const { slug, actif } = outils.data
+    try {
+      const résultat = await réglerLePilote({ slug, actif })
+      console.info(`[veille/organisations] ${slug} : outils stratégiques ${actif ? 'ouverts' : 'fermés'}, ${résultat}.`)
+      return résultat === 'réglé'
+        ? NextResponse.json({ état: 'pilote-réglé', actif })
+        : NextResponse.json({ état: 'inconnue' }, { status: 404 })
+    } catch (erreur) {
+      console.error(`[veille/organisations] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return NextResponse.json({ état: 'échec' }, { status: 502 })
+    }
+  }
+
+  const lue = réglage.safeParse(corps)
   if (!lue.success) return NextResponse.json({ état: 'invalide' }, { status: 400 })
 
   const demande = lue.data

@@ -58,6 +58,12 @@ describe('ligne de commande', () => {
     expect(lireLaCommande(['revue', '--organisation', ''])).toEqual({ tâche: 'revue', organisation: null })
   })
 
+  it('etiquetage ne se lance que pour une organisation', () => {
+    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance' })
+    expect(() => lireLaCommande(['etiquetage'])).toThrow(/exige --organisation/)
+    expect(() => lireLaCommande(['etiquetage', '--organisation', ''])).toThrow(/exige --organisation/)
+  })
+
   it('refuse une tâche inconnue, un slug douteux ou un argument de trop', () => {
     expect(() => lireLaCommande(['envoyer'])).toThrow()
     expect(() => lireLaCommande(['lettres', '--organisation', 'a b'])).toThrow()

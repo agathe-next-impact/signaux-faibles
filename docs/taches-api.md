@@ -24,6 +24,13 @@ qu'une phrase : « Limite-toi à l'organisation <slug>. »
 | `balayage` | Opus 5.5 | 30 $ | à la main |
 | `revue` | Opus 5.5 | 10 $ | `0 16 * * *` (week-end compris), **active depuis le 25 octobre 2026** |
 | `reconciliation` | Sonnet 5.5 | 5 $ | `0 17 * * 1-5`, **active depuis le 25 octobre 2026** |
+| `etiquetage` | Sonnet 5.5 | 10 $ | à la main, `--organisation` obligatoire (26 octobre 2026) |
+
+`etiquetage` est la seule tâche sans tâche planifiée d'origine : elle applique
+après coup l'étape « 4ter ÉTIQUETTES » de la page des lettres aux éditions déjà
+publiées d'une organisation du pilote des outils stratégiques
+(`docs/plan-outils-strategiques.md`, lot 4). Elle ne collecte rien, n'écrit
+aucune lettre et ne modifie aucune page Notion ; le portail tient la porte.
 
 Effort `high` partout. La lecture des sources est confiée au sous-agent
 `lecteur`, sur Haiku 5.5 : l'agent principal ne reçoit que des extraits recopiés

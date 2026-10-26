@@ -7,6 +7,7 @@ import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { lignesDAccèsPourContrôle } from '@/lib/notion/acces'
 import { listerÉditionsPubliées, lireBlocsDePage } from '@/lib/notion/editions'
+import { normaliserIdentifiant } from '@/lib/notion/proprietes'
 import {
   composerCourrierDÉtat,
   contrôlerLesOpérateurs,
@@ -18,6 +19,7 @@ import {
 } from '@/lib/portail/etat'
 import { envoyerCourrier } from '@/lib/portail/courriers'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
+import { contrôlerLÉtiquetage } from '@/lib/portail/strategie'
 import { CONTRAT_DE_FORME_DEPUIS, contrôlerLaLettre, type Rapport } from '@/lib/portail/lint'
 
 
@@ -56,6 +58,7 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
   try {
     const { parSlug, sansSlug, opérateurs } = regrouperParSlug(await lignesDAccèsPourContrôle())
     const espaces: EspaceContrôlé[] = []
+    const lettresParRegistre = new Map<string, Awaited<ReturnType<typeof listerÉditionsPubliées>>>()
 
     for (const [slug, lignes] of parSlug) {
       // L'identifiant contrôlé est celui que les lignes portent — s'il diverge,
@@ -63,6 +66,7 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       // savoir au moins ce que ce lecteur-là voit.
       const organisationId = lignes.map((l) => l.organisationId).find((id) => id.length > 0)
       const lettres = organisationId ? await listerÉditionsPubliées(organisationId) : []
+      if (organisationId) lettresParRegistre.set(normaliserIdentifiant(organisationId), lettres)
 
       let rapport: Rapport | null = null
       const dernière = lettres[0]
@@ -151,10 +155,21 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       }
     }
 
+    // Les éditions du pilote des outils stratégiques sans étiquettes (lot 4) :
+    // une étape 4ter passée en silence se verrait sinon à la revue du mois.
+    const défautsDÉtiquetage: Défaut[] = []
+    if (sonde?.joignable) {
+      try {
+        défautsDÉtiquetage.push(...(await contrôlerLÉtiquetage(lettresParRegistre)))
+      } catch (erreur) {
+        console.warn(`[veille/etat] étiquetage illisible : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      }
+    }
+
     const état: ÉtatDuDispositif = {
       date: aujourdHuiÀParis(),
       espaces,
-      défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeMigrations, ...défautsDeCourriers],
+      défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeMigrations, ...défautsDeCourriers, ...défautsDÉtiquetage],
       lignesSansSlug: sansSlug,
       opérateursActifs: opérateurs.filter((l) => l.actif).length,
     }

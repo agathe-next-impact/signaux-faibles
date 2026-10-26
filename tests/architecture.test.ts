@@ -137,9 +137,11 @@ describe('toute lecture Payload vit dans une fonction cachée, et getPayload res
     expect(importeurs('@/lib/documents/payload')).toEqual(['lib/documents/index.ts'])
     // La file (`lib/portail/file.ts`) relit la page Notion qu'un exécuteur a
     // postée sur `/api/veille/resultat` : c'est le chemin Notion du dispositif,
-    // pas un écran, et il disparaît avec Notion.
+    // pas un écran, et il disparaît avec Notion. L'orchestration des outils
+    // stratégiques relit, de même, les lettres étiquetées pour les routes
+    // `/api/veille/faits` (26 octobre 2026).
     const notion = importeurs('@/lib/notion/editions').filter((chemin) => !chemin.startsWith('app/api/veille/'))
-    expect(notion).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts', 'lib/portail/file.ts'])
+    expect(notion).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts', 'lib/portail/file.ts', 'lib/portail/strategie.ts'])
     // Et la façade est bien employée là où les écrans lisent.
     expect(importeurs('@/lib/documents')).toContain('lib/portail/semaine.ts')
     expect(importeurs('@/lib/documents')).toContain('components/note.tsx')
@@ -251,6 +253,33 @@ describe('Postgres ne se lit que par lib/base, l’appartenance que par la faça
       .filter(({ source }) => /from ['"](?:drizzle-orm|@neondatabase\/serverless|@electric-sql\/pglite)/.test(source))
       .map(({ chemin }) => chemin)
     expect(fautifs).toEqual([])
+  })
+
+  /**
+   * Les outils stratégiques (26 octobre 2026, `docs/plan-outils-strategiques.md`) :
+   * ce qui entre en base a passé la porte de `lib/domaine/strategie.ts`, et seule
+   * l'orchestration `lib/portail/strategie.ts` la fait passer avant d'écrire. Une
+   * route, un script ou une tâche qui importerait `lib/base/strategie.ts`
+   * écrirait des étiquettes ou une synthèse que personne n'a contrôlées.
+   */
+  it('lib/base/strategie.ts n’est appelé que par lib/portail/strategie.ts', () => {
+    const importateurs: string[] = []
+    const parcourir = (dossier: string) => {
+      if (!existsSync(dossier)) return
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (!/\.tsx?$/.test(entrée.name)) continue
+        if (/from ['"](?:@\/lib\/base\/strategie|(?:\.\.?\/)+(?:lib\/)?base\/strategie)['"]/.test(readFileSync(chemin, 'utf8'))) {
+          importateurs.push(relatif(chemin))
+        }
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) parcourir(join(process.cwd(), racine))
+    expect(importateurs.filter((chemin) => chemin !== 'lib/portail/strategie.ts')).toEqual([])
   })
 
   it('les lectures Postgres d’appartenance ne sont appelées que par la façade', () => {
@@ -418,13 +447,40 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     return trouvés.sort()
   }
 
-  it('lireÉditionDeTravail n’est appelée que par le validateur, la mise en forme du courriel et la file', () => {
+  it('lireÉditionDeTravail n’est appelée que par le validateur, la mise en forme du courriel, la file et les étiquettes', () => {
     expect(appelants('lireÉditionDeTravail')).toEqual([
       'app/api/veille/courriel/route.ts',
       'app/api/veille/lint/route.ts',
       'lib/notion/travail.ts',
       'lib/portail/file.ts',
+      'lib/portail/strategie.ts',
     ])
+  })
+
+  /**
+   * Les étiquettes (outils stratégiques, lot 3) : le pilote est vérifié dans
+   * Postgres avant toute lecture Notion, la règle 2 avant la lecture du corps,
+   * la porte avant l'écriture. Et ni l'orchestration ni la route n'expirent de
+   * tag : le lint vient de le faire, et un sixième pouvoir d'invalidation
+   * n'apporterait rien.
+   */
+  it('les étiquettes : pilote, règle 2, porte, puis écriture, sans invalidation', () => {
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
+    const recevoir = source.slice(source.indexOf('export async function recevoirLesÉtiquettes'), source.indexOf('export type FaitPourLaRevue'))
+    const position = (motif: string) => {
+      const i = recevoir.indexOf(motif)
+      expect(i, motif).toBeGreaterThan(0)
+      return i
+    }
+    expect(position("sorte: 'hors-pilote'")).toBeLessThan(position('lireÉditionDeTravail('))
+    expect(position("sorte: 'organisation-différente'")).toBeLessThan(position('lireBlocsDePage('))
+    expect(position('contrôlerLesÉtiquettes(')).toBeLessThan(position('remplacerLesÉtiquettes('))
+    expect(position('if (contrôle.refus.length > 0)')).toBeLessThan(position('remplacerLesÉtiquettes('))
+    const lire = source.slice(source.indexOf('export async function lireLesFaits'))
+    expect(lire.indexOf("sorte: 'hors-pilote'")).toBeGreaterThan(0)
+    expect(lire.indexOf("sorte: 'hors-pilote'")).toBeLessThan(lire.indexOf('lireBlocsDePage('))
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'faits', 'route.ts'), 'utf8')
+    for (const texte of [source, route]) expect(texte).not.toMatch(/revalidateTag\(|updateTag\(/)
   })
 
   /**

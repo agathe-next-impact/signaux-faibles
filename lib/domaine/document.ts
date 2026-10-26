@@ -469,6 +469,88 @@ export function faitsDe(blocs: readonly Bloc[]): Bloc[] {
   return blocs.filter(estUnFait)
 }
 
+/** Un fait de la lettre : sa phrase-titre et les blocs qui le portent, dans l'ordre. */
+export type FaitSegmenté = {
+  /** À partir de 1, dans l'ordre de la section. */
+  readonly rang: number
+  readonly titre: string
+  readonly blocs: readonly Bloc[]
+}
+
+function texteDeBloc(bloc: Bloc): string {
+  switch (bloc.type) {
+    case 'paragraphe':
+    case 'titre':
+    case 'citation':
+    case 'encadré':
+      return bloc.segments.map((s) => s.texte).join('')
+    case 'liste':
+      return bloc.éléments.map((é) => é.map((s) => s.texte).join('')).join(' ')
+    default:
+      return ''
+  }
+}
+
+/** Un bloc qui peut porter un fait : paragraphe, puce ou citation, hors encadré, non vide. */
+function porteUnFait(bloc: Bloc): boolean {
+  return (bloc.type === 'paragraphe' || bloc.type === 'liste' || bloc.type === 'citation') && texteDeBloc(bloc).trim().length > 0
+}
+
+/**
+ * La phrase-titre d'un paragraphe, ou `null`. C'est la forme du §6 du prompt de
+ * génération depuis le 19 octobre 2026 : « une phrase-titre en gras, qui dit le
+ * fait », suivie, dans le même paragraphe ou les suivants, du fait lui-même,
+ * de « Ce que cela change pour vous » et de la source.
+ *
+ * Une phrase-titre est le gras qui OUVRE un paragraphe et qui forme une phrase :
+ * vingt-cinq caractères au moins, ponctuation finale. Ne le sont pas : un
+ * paragraphe qui finit en gras (« … Impact moyen. »), et les intertitres du
+ * gabarit qui s'ouvrent en gras sans dire de fait (« Ce que cela change pour
+ * vous », « Source », « Pourquoi cette semaine »).
+ */
+export function phraseTitreDe(bloc: Bloc): string | null {
+  if (bloc.type !== 'paragraphe') return null
+  const pleins = bloc.segments.filter((s) => s.texte.trim().length > 0)
+  if (pleins.length === 0 || !pleins[0]!.gras) return null
+  let titre = ''
+  for (const s of bloc.segments) {
+    if (s.texte.trim().length === 0) {
+      titre += s.texte
+      continue
+    }
+    if (!s.gras) break
+    titre += s.texte
+  }
+  titre = titre.trim()
+  if (titre.length < 25 || !/[.!?»]$/.test(titre)) return null
+  if (/^(ce que cela change|sources?\b|pourquoi cette semaine|c'est fait quand|impact)/i.test(titre.replaceAll('’', "'"))) return null
+  return titre
+}
+
+/**
+ * Les faits d'une section (les blocs d'un axe, ou l'introduction d'une rubrique),
+ * pour les désigner par leur rang sans recopier leur texte.
+ *
+ * Deux formes coexistent dans l'archive. Depuis le 19 octobre 2026, un fait
+ * commence à sa phrase-titre en gras et court jusqu'à la suivante ; ce qui
+ * précède la première phrase-titre n'est d'aucun fait. Avant, et dans la lettre
+ * unique du moteur, chaque paragraphe ou puce est un fait, son texte tenant
+ * lieu de titre. Les encadrés ne sont jamais des faits (`estUnFait`).
+ */
+export function segmenterLesFaits(blocs: readonly Bloc[]): FaitSegmenté[] {
+  const candidats = faitsDe(blocs).filter(porteUnFait)
+  if (!candidats.some((b) => phraseTitreDe(b) !== null)) {
+    return candidats.map((bloc, i) => ({ rang: i + 1, titre: texteDeBloc(bloc).trim(), blocs: [bloc] }))
+  }
+  const faits: { titre: string; blocs: Bloc[] }[] = []
+  for (const bloc of faitsDe(blocs)) {
+    const titre = phraseTitreDe(bloc)
+    if (titre !== null) faits.push({ titre, blocs: [bloc] })
+    else if (faits.length > 0) faits.at(-1)!.blocs.push(bloc)
+  }
+  return faits.map((f, i) => ({ rang: i + 1, titre: f.titre, blocs: f.blocs }))
+}
+
 /**
  * Les éléments importants d'un axe, pour une case de grille.
  *

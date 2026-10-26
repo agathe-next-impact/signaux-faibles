@@ -264,7 +264,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 
 - **Fichiers** : `lib/domaine/strategie.ts` (nouveau), `lib/domaine/document.ts` (`segmenterLesFaits`), `lib/portail/lint.ts` (exclusion de « Signaux de rupture »), `tests/fixtures/lettre-octobre.ts` (nouvelle fixture, tirée d'une lettre publiée après le 19/10/2026, avec phrases-titres en gras), `tests/fixtures/etiquettes-octobre.ts` (étiquettes posées à la main par l'opératrice ou par moi, relues par elle), `tests/strategie.portes.test.ts`.
 - **Tests** : la segmentation trouve le bon nombre de faits sur les deux formes (fixtures de septembre et d'octobre) ; le lot à la main passe la porte ; chaque code de refus a un cas qui le déclenche ; la grille et la synthèse ont leurs cas limites (case insuffisante, mouvement sans fait, déclaratif hors F et W).
-- **Fin** : `pnpm test`, `pnpm lint`, `pnpm typecheck` passent ; l'opératrice a relu l'étiquetage de la fixture.
+- **Fin** : `pnpm test`, `pnpm lint`, `pnpm typecheck` passent ; l'opératrice a relu l'étiquetage de la fixture. Fait le 26/10/2026 : les onze étiquettes de la lettre d'octobre d'Infralliance sont validées telles quelles.
 - **Hors du lot** : base, routes, Notion.
 
 ### Lot 2. La base
@@ -289,6 +289,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Tests** : la route PATCH accepte le drapeau ; le contrôle du soir compte les éditions non étiquetées.
 - **Fin** : les éditions passées des deux organisations étiquetées et acceptées, puis la première lettre d'Infralliance étiquetée dans sa tâche du mercredi.
 - **Hors du lot** : grille, synthèse.
+- **Fait le 26/10/2026** : action `outils` de la route PATCH, défaut `étiquettes-manquantes` du contrôle du soir, étape 4ter dans la page des lettres (porte du pilote par `GET /api/veille/faits`, journal de la page complété), tâche `etiquetage` du harnais pour la passe après coup (choix : l'API, sur Sonnet 5.5, plafond 10 $). Restent, après déploiement : poser le drapeau de Mastora et d'Infralliance, lancer la passe sur chacune, puis constater l'étiquetage de la lettre d'Infralliance du mercredi.
 
 ### Lot 5. La grille
 

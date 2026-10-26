@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const organisations = vi.hoisted(() => ({ ouvrirEnEssai: vi.fn(), réglerLeParcours: vi.fn() }))
 const client = vi.hoisted(() => ({ baseConfigurée: vi.fn() }))
+const strategie = vi.hoisted(() => ({ réglerLePilote: vi.fn() }))
 vi.mock('@/lib/base/organisations', () => organisations)
+vi.mock('@/lib/portail/strategie', () => strategie)
 vi.mock('@/lib/base/client', () => client)
 
 const { PATCH, POST } = await import('@/app/api/veille/organisations/route')
@@ -156,6 +158,26 @@ describe('PATCH /api/veille/organisations', () => {
     }
     expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(1, 'acme', { sorte: 'prolonger', semaines: 2 })
     expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(2, 'acme', { sorte: 'relecture', requise: true })
+  })
+
+  it('outils : fait entrer une organisation dans le pilote, ou l’en fait sortir', async () => {
+    strategie.réglerLePilote.mockResolvedValueOnce('réglé')
+    const ouverte = await régler({ slug: 'infralliance', action: 'outils', actif: true })
+    expect(ouverte.status).toBe(200)
+    expect(await ouverte.json()).toEqual({ état: 'pilote-réglé', actif: true })
+    expect(strategie.réglerLePilote).toHaveBeenCalledWith({ slug: 'infralliance', actif: true })
+
+    strategie.réglerLePilote.mockResolvedValueOnce('organisation-inconnue')
+    expect((await régler({ slug: 'inconnue', action: 'outils', actif: false })).status).toBe(404)
+    expect((await régler({ slug: 'infralliance', action: 'outils', actif: 'oui' })).status).toBe(400)
+    expect((await régler({ slug: 'infralliance', action: 'outils', actif: true }, 'mauvais')).status).toBe(401)
+    expect(strategie.réglerLePilote).toHaveBeenCalledTimes(2)
+    expect(organisations.réglerLeParcours).not.toHaveBeenCalled()
+
+    strategie.réglerLePilote.mockRejectedValueOnce(new Error('08006'))
+    const panne = await régler({ slug: 'infralliance', action: 'outils', actif: true })
+    expect(panne.status).toBe(502)
+    expect(await panne.json()).toEqual({ état: 'échec' })
   })
 
   it('une erreur de base rend 502 sans détail', async () => {
