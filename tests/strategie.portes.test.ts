@@ -347,7 +347,7 @@ describe('la porte de la synthèse', () => {
 
 describe('la lecture des étiquettes pour l’espace client', () => {
   const fait = (f: Partial<Parameters<typeof lectureDesÉtiquettes>[0][number]>) => ({
-    pestel: null, porter: null, ansoff: null, entite: null, rupture: false, date: '2026-10-20', titre: 'Un fait.', ...f,
+    pestel: null, porter: null, ansoff: null, entite: null, rupture: false, date: '2026-10-20', source: null, titre: 'Un fait.', ...f,
   })
 
   it('garde les six dimensions et les cinq forces dans l’ordre du cadre, zéro compris', () => {
@@ -379,6 +379,24 @@ describe('la lecture des étiquettes pour l’espace client', () => {
       fait({ pestel: 'legal' }),
     ])
     expect(l.ruptures.map((r) => r.titre)).toEqual(['Récente.', 'Ancienne.'])
+  })
+
+  it('ne montre qu’une fois un événement que plusieurs lettres reprennent', () => {
+    const budget = 'https://www.assemblee-nationale.fr/dyn/PAP%202027%20-%20Coh%C3%A9sion.pdf'
+    const l = lectureDesÉtiquettes([
+      fait({ rupture: true, date: '2026-10-01', source: budget, titre: 'Le document budgétaire, lu en entier pour la première fois.' }),
+      fait({ rupture: true, date: '2026-10-01', source: 'http://assemblee-nationale.fr/dyn/PAP 2027 - Cohésion.pdf/', titre: 'Le document budgétaire, lu en entier.' }),
+      fait({ rupture: true, date: '2026-07-13', source: null, titre: 'Fin du GIP.' }),
+      fait({ rupture: true, date: '2026-07-13', source: null, titre: 'Fin du GIP.' }),
+      fait({ rupture: true, date: '2026-07-13', source: null, titre: 'Trois mois après la fermeture du GIP.' }),
+      fait({ rupture: true, date: '2026-09-30', source: budget, titre: 'Le même document, une autre date.' }),
+    ])
+    expect(l.ruptures.map((r) => r.titre)).toEqual([
+      'Le document budgétaire, lu en entier pour la première fois.',
+      'Le même document, une autre date.',
+      'Fin du GIP.',
+      'Trois mois après la fermeture du GIP.',
+    ])
   })
 })
 

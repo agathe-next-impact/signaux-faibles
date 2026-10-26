@@ -290,6 +290,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Fin** : les éditions passées des deux organisations étiquetées et acceptées, puis la première lettre d'Infralliance étiquetée dans sa tâche du mercredi.
 - **Hors du lot** : grille, synthèse.
 - **Fait le 26/10/2026** : action `outils` de la route PATCH, défaut `étiquettes-manquantes` du contrôle du soir, étape 4ter dans la page des lettres (porte du pilote par `GET /api/veille/faits`, journal de la page complété), tâche `etiquetage` du harnais pour la passe après coup (choix : l'API, sur Sonnet 5.5, plafond 10 $). Restent, après déploiement : poser le drapeau de Mastora et d'Infralliance, lancer la passe sur chacune, puis constater l'étiquetage de la lettre d'Infralliance du mercredi. Passe du 26/10/2026 : Infralliance, 7 éditions sur 12 acceptées (57 faits, 1,74 $) ; les écosystèmes des 30/09, 07/10 et 14/10 refusés par un défaut de comparaison des URL (`%2F` rendu par l'API Notion), corrigé ; accord avec le lot validé du 21/10 : 6 cadres sur 11, 11 impacts sur 11, aucune rupture ni force de Porter, d'où un calibrage de l'étape 4ter à valider. Décisions de l'opératrice du même jour : les deux lettres du 08/09, sans source citée dans leurs faits, restent sans étiquettes ; Mastora, qui n'a aucune édition publiée, est étiquetée sur ses deux brouillons n°1 (consigne de la tâche `etiquetage` étendue aux brouillons d'une organisation sans édition publiée).
+- **L'Hermitage étiqueté le 26/10/2026** (exécution 40308438865) : 156 faits sur 19 éditions, du 29/07 au 26/10, et 7 ruptures pour trois événements seulement (fin du GIP France Tiers-Lieux classée dans trois lettres, doctrine de l'État du 30/04 dans deux lettres d'août et de septembre, projet annuel de performances de la mission Cohésion des territoires dans les deux lettres du 19/10). Deux corrections : `lectureDesÉtiquettes` ne montre plus qu'une rupture par événement (même source, même date) ; la règle c de l'étape 4ter exclut un fait daté avant la période couverte par la lettre et un événement déjà classé rupture dans une lettre précédente (relance avec `--reprendre` sur les trois organisations du pilote).
 
 ### Lot 5. La grille
 
@@ -338,6 +339,11 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Tests** : architecture (droit de lecture, aucune donnée d'un autre client), Playwright avec un compte par client (règle 7).
 - **Hors du lot** : écran nouveau.
 - **Avancé le 26/10/2026, à la demande de l'opératrice, pour L'Hermitage** : une section « Lecture stratégique » sur la vue d'ensemble (comptes PESTEL et Porter, entités, mouvements d'Ansoff, ruptures des trois dernières lettres), visible seulement pour une organisation du pilote et mentionnée « outil en test ». L'Hermitage entre dans le pilote pour cela. Les écrans Acteurs et Recommandations et la vue PESTEL restent au lot 11.
+- **Maquettes validées par l'opératrice le 26/10/2026** (canevas privé : https://claude.ai/artifact/EV97ULJ9gZAL5K1DMvohbk, sur Tolmen Mécanique, l'organisation fictive de `/exemple`). Elles font foi pour la hiérarchie des écrans du lot, comme `docs/maquette-edition.html` pour la page d'édition :
+  - **Les axes, onglet PESTEL** : deux onglets, « Par axe » et « PESTEL », à la même adresse. Six cases (catégorie et répartition par mois empilées en surtitre, compte, axes qui suivent la dimension empilés sous « Suivie par », mention « une seule famille »), un encadré des trous de couverture, puis la table des faits du trimestre filtrée par dimension et par rupture.
+  - **Acteurs** : la carte des groupes stratégiques (deux axes de la grille, crans avec leur critère, votre position en encre, un mouvement montré avec sa position précédente en pointillé et le fait daté), puis la matrice de Mendelow en trois crans sur trois, puis le suivi des dossiers actuel.
+  - **Recommandations** : l'option candidate en tête avec les éléments qu'elle croise, la TOWS (deux options par case, codes de croisement), la SWOT (forces et faiblesses déclarées marquées, opportunités et menaces datées par leur lettre), puis les actions des lettres.
+  - **Lecture du trimestre** (lot 7) : sous « Recommandations », les cinq forces en trois crans avec leur tendance (« non suivi », jamais « faible ») et trois scénarios portant chacun deux à quatre indicateurs datables, sans probabilité.
 
 ### Lot 12 (après décision). L'onboarding
 
@@ -411,7 +417,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 Questions qui restent, à trancher au moment du lot concerné :
 
 - Lot 4 : la passe d'étiquetage après coup tourne-t-elle sur l'API (mesurée dans `mesure.json`) ou dans une session de travail (non mesurée, sans coût d'API) ?
-- Lot 11 : la vue PESTEL est-elle un onglet de « Les axes » (aucune route nouvelle) ou un huitième écran `/[slug]/pestel` ?
+- ~~Lot 11 : la vue PESTEL est-elle un onglet de « Les axes » (aucune route nouvelle) ou un huitième écran `/[slug]/pestel` ?~~ **Tranché le 26/10/2026 : un onglet de « Les axes »**, par la validation des maquettes (lot 11) ; aucune route nouvelle, `CLAUDE.md` inchangé sur les sept écrans. La lecture du trimestre se range sous « Recommandations ».
 
 ## 9. Les lots dans l'ordre, et la première action
 

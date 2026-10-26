@@ -640,7 +640,8 @@ stratégiques (26 octobre 2026, à la demande de l'opératrice pour L'Hermitage)
 lettres que l'écran lit déjà (`récentes`) : les six dimensions PESTEL et les
 cinq forces de Porter dans l'ordre du cadre, zéro compris, les trois entités les
 plus citées par force, les mouvements d'Ansoff, et les ruptures avec leur
-phrase-titre relue dans ces mêmes documents par empreinte. Des comptes, jamais
+phrase-titre relue dans ces mêmes documents par empreinte, une par événement
+(même source, même date : une lettre qui reparle d'un événement le rétiquette). Des comptes, jamais
 une analyse ; mention « outil en test ». `lectureStratégiqueDeLEspace`
 (`lib/portail/strategie.ts`) ne lit **aucun corps Notion de plus**, n'ouvre pas
 Postgres en mode `notion`, est bornée à 400 ms et rend `null` dans tout doute,

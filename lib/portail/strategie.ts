@@ -311,6 +311,7 @@ export async function lectureStratégiqueDeLEspace(
           entite: l.entité,
           rupture: l.rupture,
           date: l.dateFait,
+          source: l.sourceUrl,
           titre: titres.get(`${l.éditionNotion}:${l.empreinteTitre}`) ?? null,
         })),
       )

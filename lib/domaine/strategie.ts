@@ -410,6 +410,7 @@ export type FaitÀLire = {
   readonly entite: string | null
   readonly rupture: boolean
   readonly date: string
+  readonly source: string | null
   readonly titre: string | null
 }
 
@@ -420,12 +421,22 @@ export type LectureDesÉtiquettes = {
   /** Les cinq forces, dans l'ordre du cadre, avec les entités nommées les plus citées. */
   readonly forces: readonly { readonly clé: ForcePorter; readonly libellé: string; readonly faits: number; readonly entités: readonly string[] }[]
   readonly mouvements: readonly { readonly libellé: string; readonly faits: number }[]
-  /** Les ruptures dont la phrase-titre a été relue, de la plus récente à la plus ancienne. */
+  /** Les ruptures dont la phrase-titre a été relue, une par événement, de la plus récente à la plus ancienne. */
   readonly ruptures: readonly { readonly titre: string; readonly date: string }[]
 }
 
 /** Trois entités par force : au-delà, la case devient une liste que l'écran des acteurs tient déjà. */
 const ENTITÉS_PAR_FORCE = 3
+
+/**
+ * Un événement, pour les ruptures : la même source à la même date. Une lettre
+ * qui reparle d'un événement le rétiquette, et l'écosystème comme la
+ * concurrence de la même semaine peuvent citer le même document : L'Hermitage
+ * portait le 26 octobre 2026 sept ruptures pour trois événements, dont deux
+ * phrases sur le même projet de loi de finances, côte à côte. Sans source, la
+ * phrase-titre tient lieu de source.
+ */
+const événementDe = (f: FaitÀLire & { titre: string }) => `${f.date}:${f.source ? normaliserUrl(f.source) : f.titre}`
 
 /**
  * Ce que les étiquettes d'un ensemble de faits donnent à lire : la répartition
@@ -453,6 +464,7 @@ export function lectureDesÉtiquettes(faits: readonly FaitÀLire[]): LectureDes�
     ruptures: faits
       .filter((f): f is FaitÀLire & { titre: string } => f.rupture && f.titre !== null)
       .sort((a, b) => b.date.localeCompare(a.date))
+      .filter((f, i, liste) => liste.findIndex((g) => événementDe(g) === événementDe(f)) === i)
       .map((f) => ({ titre: f.titre, date: f.date })),
   }
 }
