@@ -188,13 +188,24 @@ function urlsDesBlocs(blocs: readonly Bloc[]): string[] {
   return [...urls]
 }
 
-/** Une URL comparée sans son schéma, son « www. », sa barre finale ni ses encodages de parenthèses. */
+/**
+ * Une URL comparée sans son schéma, son « www. », sa barre finale ni ses
+ * encodages. `decodeURIComponent` et non `decodeURI` : l'API Notion rend
+ * `reference=2026%2F0138(COD)` là où la lettre et la tâche écrivent
+ * `2026/0138%28COD%29` ou `2026/0138(COD)`, et `decodeURI` ne décode jamais
+ * `%2F` (constaté le 26 octobre 2026 sur trois lettres d'Infralliance). La forme
+ * décodée ne sert qu'à comparer, jamais à ouvrir.
+ */
 export function normaliserUrl(url: string): string {
   let u = url.trim()
   try {
-    u = decodeURI(u)
+    u = decodeURIComponent(u)
   } catch {
-    // une URL mal encodée se compare telle quelle
+    try {
+      u = decodeURI(u)
+    } catch {
+      // une URL mal encodée se compare telle quelle
+    }
   }
   return u
     .replace(/^<|>$/g, '')

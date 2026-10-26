@@ -148,6 +148,15 @@ describe('masquer et pointeurs', () => {
     expect(texte).toContain('N\'exécute que cette étape')
     expect(texte).toContain('tu ne modifies aucune page Notion')
     expect(texte).toContain('« hors-pilote », arrête-toi')
+    // Les brouillons seulement à défaut d'édition publiée, et jamais en changeant leur statut.
+    expect(texte).toContain('Si elle n\'a aucune édition publiée')
+    expect(texte).toContain('sans en changer le statut')
+    expect(texte).toContain('aucun fait ne cite d\'URL n\'est pas étiquetable')
+    // La reprise n'ajoute qu'une phrase, et seulement à l'étiquetage.
+    expect(promptDeLaTâche('etiquetage', 'infralliance', true)).toBe(
+      `${texte}\n\nLimite-toi à l'organisation infralliance.\n\nReprends aussi les éditions qui ont déjà des faits : un nouveau lot remplace l'ancien.`,
+    )
+    expect(promptDeLaTâche('lettres', 'konica', true)).toBe(promptDeLaTâche('lettres', 'konica'))
   })
 })
 

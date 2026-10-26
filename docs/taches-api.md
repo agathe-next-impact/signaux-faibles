@@ -31,6 +31,11 @@ après coup l'étape « 4ter ÉTIQUETTES » de la page des lettres aux éditions
 publiées d'une organisation du pilote des outils stratégiques
 (`docs/plan-outils-strategiques.md`, lot 4). Elle ne collecte rien, n'écrit
 aucune lettre et ne modifie aucune page Notion ; le portail tient la porte.
+Elle saute les éditions déjà étiquetées, sauf avec `--reprendre` (entrée
+« reprendre » du workflow), qui les réétiquette après une révision des règles de
+classement de l'étape 4ter : un nouveau lot remplace l'ancien. Une édition dont
+aucun fait ne cite d'URL n'est pas étiquetable et est passée sans appel. Sans
+édition publiée, elle étiquette les brouillons, sans en changer le statut.
 
 Effort `high` partout. La lecture des sources est confiée au sous-agent
 `lecteur`, sur Haiku 5.5 : l'agent principal ne reçoit que des extraits recopiés

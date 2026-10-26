@@ -53,15 +53,17 @@ describe('lireLaMesure', () => {
 
 describe('ligne de commande', () => {
   it('admet les cinq tâches et le contrôle, et un slug propre', () => {
-    expect(lireLaCommande(['lettres', '--organisation', 'next-impact'])).toEqual({ tâche: 'lettres', organisation: 'next-impact' })
-    expect(lireLaCommande(['controle'])).toEqual({ tâche: 'controle', organisation: null })
-    expect(lireLaCommande(['revue', '--organisation', ''])).toEqual({ tâche: 'revue', organisation: null })
+    expect(lireLaCommande(['lettres', '--organisation', 'next-impact'])).toEqual({ tâche: 'lettres', organisation: 'next-impact', reprendre: false })
+    expect(lireLaCommande(['controle'])).toEqual({ tâche: 'controle', organisation: null, reprendre: false })
+    expect(lireLaCommande(['revue', '--organisation', ''])).toEqual({ tâche: 'revue', organisation: null, reprendre: false })
   })
 
   it('etiquetage ne se lance que pour une organisation', () => {
-    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance' })
+    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: false })
     expect(() => lireLaCommande(['etiquetage'])).toThrow(/exige --organisation/)
     expect(() => lireLaCommande(['etiquetage', '--organisation', ''])).toThrow(/exige --organisation/)
+    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance', '--reprendre'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: true })
+    expect(() => lireLaCommande(['lettres', '--reprendre'])).toThrow(/ne vaut que pour la tâche « etiquetage »/)
   })
 
   it('refuse une tâche inconnue, un slug douteux ou un argument de trop', () => {
