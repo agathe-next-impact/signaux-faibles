@@ -132,7 +132,8 @@ Les lire avant toute session.
   interne du portail, que le serveur reconnaît mais refuse en `403
   restricted_resource` ; les six premières exécutions du workflow ont échoué
   là, 23 au 25 octobre 2026, et `scripts/taches/notion-mcp.ts` sonde le serveur
-  avant toute session pour nommer ce refus) ; Gmail et le portail par les
+  avant toute session pour nommer ce refus) ; Gmail, le portail et les registres publics (BODACC, Recherche d'entreprises :
+  `annonces_bodacc`, `fiches_entreprises`, 26 octobre 2026) par les
   outils du dépôt (`scripts/taches/outils.ts`), qui n'envoient jamais à un
   client et gardent `ACTIVATION_SECRET` hors du contexte du modèle ; tout le
   reste refusé par `scripts/taches/garde.ts`. Chaque exécution écrit son coût

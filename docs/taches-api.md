@@ -75,6 +75,15 @@ refusé et journalisé) :
 - **Collecte en code** : `lire_sources` (30 URL au plus, quatre minutes au plus,
   un fichier par page dans `sources/<lot>/`, l'index en lignes de grille) et
   `synthese_de_collecte` (les synthèses par lettre d'un dossier de collecte).
+- **Registres publics** (26 octobre 2026, `scripts/collecte/registres.ts`) :
+  `annonces_bodacc` (annonces commerciales du BODACC depuis une date, par SIREN
+  du corpus ou par département et texte d'activité) et `fiches_entreprises`
+  (fiche de 1 à 40 entités dans l'API Recherche d'entreprises : état, effectif,
+  comptes, dirigeants). Ce sont les sources des familles « Capital et santé
+  financière » et « Nouveaux entrants » du scénario C : le modèle lit des lignes
+  courtes au lieu d'ouvrir quarante pages. Les deux API sont publiques et sans
+  clé ; l'environnement de cette session ne les atteint pas, les runners GitHub
+  Actions si. Le collecteur a les deux outils.
 
 Ce qui ne marche pas comme sous l'abonnement, et que l'agent dit dans son compte
 rendu : le repli n°1 des pages (calcul du calendrier par `git clone` et `node`)

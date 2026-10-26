@@ -177,6 +177,9 @@ describe('sous-agents et consignes du harnais', () => {
     expect(définitionDuLecteur().model).toBe('claude-haiku-5-5')
     const outils = définitionDuCollecteur().tools ?? []
     expect(outils).toContain('mcp__Veille__lire_sources')
+    // Capital et santé financière, nouveaux entrants : par les registres publics, en code (26 octobre 2026).
+    expect(outils).toContain('mcp__Veille__annonces_bodacc')
+    expect(outils).toContain('mcp__Veille__fiches_entreprises')
     expect(outils.some((o) => /notion-(create|update)|Gmail/.test(o))).toBe(false)
   })
 
@@ -188,5 +191,7 @@ describe('sous-agents et consignes du harnais', () => {
     expect(consignes).toContain('plus de quatre minutes')
     // La page d'onboarding reconnaît l'exécuteur API à cette mention exacte (25 octobre 2026).
     expect(consignes).toContain('EXÉCUTEUR : API')
+    expect(consignes).toContain('mcp__Veille__annonces_bodacc')
+    expect(consignes).toContain('mcp__Veille__fiches_entreprises')
   })
 })
