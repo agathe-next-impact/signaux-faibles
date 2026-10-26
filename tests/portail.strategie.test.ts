@@ -16,7 +16,8 @@ const notion = vi.hoisted(() => ({ lireÉditionDeTravail: vi.fn(), lireBlocsDePa
 vi.mock('@/lib/notion/travail', () => ({ lireÉditionDeTravail: notion.lireÉditionDeTravail }))
 vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePage, listerÉditionsPubliées: notion.listerÉditionsPubliées }))
 
-const { contrôlerLÉtiquetage, lireLesFaits, recevoirLesÉtiquettes, réglerLePilote } = await import('@/lib/portail/strategie')
+const { contrôlerLÉtiquetage, lectureStratégiqueDeLEspace, lireLesFaits, recevoirLesÉtiquettes, réglerLePilote } = await import('@/lib/portail/strategie')
+const { construireDocument } = await import('@/lib/domaine/document')
 const { organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
 const REGISTRE = '1f2fe829ce71802a9c3bd1f4e8a7b6c5'
@@ -186,6 +187,54 @@ describe('recevoirLesÉtiquettes et lireLesFaits', () => {
       // Une organisation sortie du pilote n'est plus contrôlée.
       expect(await réglerLePilote({ slug: 'infralliance', actif: false }, db)).toBe('réglé')
       expect(await contrôlerLÉtiquetage(new Map([[REGISTRE, publiées]]), db)).toEqual([])
+    })
+
+    describe('la lecture stratégique de la vue d’ensemble', () => {
+      const lettres = () => [{ pageId: avecTirets(PAGE_OCTOBRE), document: construireDocument(BLOCS_OCTOBRE) }]
+      beforeEach(() => {
+        vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+        vi.stubEnv('SOURCE_ACCES', 'double')
+      })
+      afterEach(() => vi.unstubAllEnvs())
+
+      it('agrège les étiquettes des lettres lues, ruptures relues par leur empreinte, sans lire Notion', async () => {
+        await recevoir()
+        notion.lireBlocsDePage.mockClear()
+        notion.lireÉditionDeTravail.mockClear()
+        const lecture = await lectureStratégiqueDeLEspace({ registre: avecTirets(REGISTRE), lettres: lettres() }, db)
+        expect(notion.lireBlocsDePage).not.toHaveBeenCalled()
+        expect(notion.lireÉditionDeTravail).not.toHaveBeenCalled()
+        expect(lecture?.total).toBe(11)
+        expect(lecture?.pestel.map((d) => `${d.libellé} ${d.faits}`)).toEqual([
+          'Politique 2',
+          'Économique 2',
+          'Socioculturel 0',
+          'Technologique 1',
+          'Écologique 0',
+          'Légal 4',
+        ])
+        expect(lecture?.forces.find((f) => f.clé === 'rivalite')).toMatchObject({ faits: 1, entités: ['CISPE'] })
+        expect(lecture?.forces.find((f) => f.clé === 'pouvoir_clients')).toMatchObject({ faits: 1, entités: ['Cigref'] })
+        expect(lecture?.mouvements).toEqual([{ libellé: 'pénétration', faits: 1 }])
+        expect(lecture?.ruptures).toHaveLength(1)
+        expect(lecture?.ruptures[0]).toMatchObject({ date: '2026-10-20' })
+        expect(lecture?.ruptures[0]?.titre).toMatch(/^Telehouse a annoncé le 20 octobre 2026/)
+      })
+
+      it('ne montre rien hors du pilote, sans faits, en mode notion, sans base, ni pour une autre organisation', async () => {
+        expect(await lectureStratégiqueDeLEspace({ registre: REGISTRE, lettres: lettres() }, db)).toBeNull()
+        await recevoir()
+        expect(await lectureStratégiqueDeLEspace({ registre: AUTRE_REGISTRE, lettres: lettres() }, db)).toBeNull()
+        expect(await lectureStratégiqueDeLEspace({ registre: REGISTRE, lettres: [] }, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'notion')
+        expect(await lectureStratégiqueDeLEspace({ registre: REGISTRE, lettres: lettres() }, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'double')
+        vi.stubEnv('DATABASE_URL', '')
+        expect(await lectureStratégiqueDeLEspace({ registre: REGISTRE, lettres: lettres() }, db)).toBeNull()
+        vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+        await réglerLePilote({ slug: 'infralliance', actif: false }, db)
+        expect(await lectureStratégiqueDeLEspace({ registre: REGISTRE, lettres: lettres() }, db)).toBeNull()
+      })
     })
   })
 })

@@ -1,17 +1,21 @@
-import type { Base } from '@/lib/base/client'
+import { sourceAccès } from '@/lib/auth/source-acces'
+import { baseConfigurée, type Base } from '@/lib/base/client'
 import {
   faitsDeLaFenêtre,
+  faitsDesÉditions,
   lireLaGrille,
   organisationPourLesOutils,
   remplacerLesÉtiquettes,
   réglerLesOutilsStratégiques,
   étatDeLÉtiquetage,
 } from '@/lib/base/strategie'
-import { construireDocument } from '@/lib/domaine/document'
+import { construireDocument, type Document } from '@/lib/domaine/document'
 import {
   contrôlerLesÉtiquettes,
   faitsDeLaLettre,
+  lectureDesÉtiquettes,
   messageDeRefus,
+  type LectureDesÉtiquettes,
   type Refus,
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
@@ -259,4 +263,70 @@ export async function contrôlerLÉtiquetage(
     })
   }
   return défauts
+}
+
+/** Au-delà, la section n'est pas montrée : une page ne doit pas attendre la base. */
+export const DÉLAI_DE_LECTURE_STRATÉGIQUE_MS = 400
+
+/**
+ * La lecture stratégique d'un espace, pour la vue d'ensemble (26 octobre 2026) :
+ * les étiquettes des lettres que l'écran vient de lire, agrégées. **Seulement
+ * pour une organisation du pilote** ; ailleurs, et dans tout doute (base absente,
+ * `SOURCE_ACCES=notion`, base lente ou en panne), rien : la section n'apparaît
+ * pas, et l'écran reste celui d'avant.
+ *
+ * Aucune lecture Notion : les phrases-titres des ruptures sont relues dans les
+ * documents que l'écran a déjà en main, par leur empreinte. Les éditions sont
+ * celles que l'écran a lues pour la clé de cloisonnement de la session
+ * (règle 2), et la base ne rend que les faits de cette organisation.
+ */
+export async function lectureStratégiqueDeLEspace(
+  entrée: {
+    readonly registre: string
+    readonly lettres: readonly { readonly pageId: string; readonly document: Document }[]
+  },
+  db?: Base,
+): Promise<LectureDesÉtiquettes | null> {
+  if (!baseConfigurée() || sourceAccès() === 'notion' || entrée.lettres.length === 0) return null
+  let minuterie: ReturnType<typeof setTimeout> | undefined
+  const délai = new Promise<null>((résoudre) => {
+    minuterie = setTimeout(() => résoudre(null), DÉLAI_DE_LECTURE_STRATÉGIQUE_MS)
+  })
+  try {
+    const lecture = (async () => {
+      const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+      if (!organisation?.outilsStratégiques) return null
+      const éditions = entrée.lettres.map((l) => normaliserIdentifiant(l.pageId))
+      const lignes = await faitsDesÉditions({ organisationId: organisation.id, éditions }, db)
+      if (lignes.length === 0) return null
+      const titres = new Map<string, string>()
+      for (const l of entrée.lettres) {
+        for (const f of faitsDeLaLettre(l.document)) titres.set(`${normaliserIdentifiant(l.pageId)}:${f.empreinte}`, f.titre)
+      }
+      return lectureDesÉtiquettes(
+        lignes.map((l) => ({
+          pestel: l.pestel,
+          porter: l.forcePorter,
+          ansoff: l.ansoff,
+          entite: l.entité,
+          rupture: l.rupture,
+          date: l.dateFait,
+          titre: titres.get(`${l.éditionNotion}:${l.empreinteTitre}`) ?? null,
+        })),
+      )
+    })()
+    // Une lecture qui finit après le délai ne doit pas lever sans personne pour l'écouter.
+    lecture.catch(() => undefined)
+    const résultat = await Promise.race([lecture.then((r) => ({ r })), délai])
+    if (résultat === null) {
+      console.warn(`[stratégie] lecture de l’espace en plus de ${DÉLAI_DE_LECTURE_STRATÉGIQUE_MS} ms, section non montrée.`)
+      return null
+    }
+    return résultat.r
+  } catch (erreur) {
+    console.warn(`[stratégie] lecture de l’espace impossible : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return null
+  } finally {
+    clearTimeout(minuterie)
+  }
 }

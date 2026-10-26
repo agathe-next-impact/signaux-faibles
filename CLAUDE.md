@@ -634,6 +634,22 @@ semaine) · **Périmètre** (`/[slug]/perimetre`, décidé le 10 septembre 2026
 sous le nom « Cadrage », renommé le 14 septembre en accueillant les acteurs
 suivis). Pas d'autre écran sans discussion.
 
+**Une troisième section de la vue d'ensemble, pour le seul pilote des outils
+stratégiques (26 octobre 2026, à la demande de l'opératrice pour L'Hermitage) :
+« Lecture stratégique ».** Elle compte les étiquettes des trois dernières
+lettres que l'écran lit déjà (`récentes`) : les six dimensions PESTEL et les
+cinq forces de Porter dans l'ordre du cadre, zéro compris, les trois entités les
+plus citées par force, les mouvements d'Ansoff, et les ruptures avec leur
+phrase-titre relue dans ces mêmes documents par empreinte. Des comptes, jamais
+une analyse ; mention « outil en test ». `lectureStratégiqueDeLEspace`
+(`lib/portail/strategie.ts`) ne lit **aucun corps Notion de plus**, n'ouvre pas
+Postgres en mode `notion`, est bornée à 400 ms et rend `null` dans tout doute,
+hors du pilote (`organisations.outils_strategiques`) ou sans fait : la section
+n'existe alors pas, et l'écran reste celui d'avant. Agrégation pure dans
+`lectureDesÉtiquettes` (`lib/domaine/strategie.ts`), rendu dans
+`components/lecture-strategique.tsx` ; la vue d'ensemble est son seul appelant
+(`tests/architecture.test.ts`).
+
 **Deux écrans d'abonnement, hors des sept (19 octobre 2026).** `/[slug]/abonnement`
 (« Mon abonnement ») n'est pas un écran de veille : il ne lit aucune édition,
 seulement Postgres (`lib/base/situation.ts`, par la clé de cloisonnement), et

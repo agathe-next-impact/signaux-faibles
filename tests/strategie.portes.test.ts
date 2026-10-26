@@ -9,6 +9,7 @@ import {
   empreinteDeTitre,
   faitsDeLaLettre,
   forcesNonSuivies,
+  lectureDesÉtiquettes,
   messageDeRefus,
   normaliserUrl,
   trousDuPestel,
@@ -343,3 +344,41 @@ describe('la porte de la synthèse', () => {
     expect(codes(contrôlerLaSynthèse({ ...trimestre, scénarios: [scénario(1)] }, contexte).refus)).toContain('scénarios-hors-bornes')
   })
 })
+
+describe('la lecture des étiquettes pour l’espace client', () => {
+  const fait = (f: Partial<Parameters<typeof lectureDesÉtiquettes>[0][number]>) => ({
+    pestel: null, porter: null, ansoff: null, entite: null, rupture: false, date: '2026-10-20', titre: 'Un fait.', ...f,
+  })
+
+  it('garde les six dimensions et les cinq forces dans l’ordre du cadre, zéro compris', () => {
+    const l = lectureDesÉtiquettes([fait({ pestel: 'legal' }), fait({ pestel: 'legal' }), fait({ porter: 'substituts' })])
+    expect(l.total).toBe(3)
+    expect(l.pestel.map((d) => d.clé)).toEqual(['politique', 'economique', 'socioculturel', 'technologique', 'ecologique', 'legal'])
+    expect(l.pestel.find((d) => d.clé === 'legal')?.faits).toBe(2)
+    expect(l.pestel.find((d) => d.clé === 'politique')?.faits).toBe(0)
+    expect(l.forces.map((f) => f.libellé)).toEqual(['Rivalité entre acteurs', 'Nouveaux entrants', 'Substituts', 'Pouvoir des clients', 'Pouvoir des fournisseurs'])
+  })
+
+  it('nomme les trois entités les plus citées par force, et compte les mouvements', () => {
+    const l = lectureDesÉtiquettes([
+      ...['CISPE', 'CISPE', 'InfraNum', 'Hexatrust', 'EuroStack'].map((entite) => fait({ porter: 'rivalite', entite, ansoff: 'penetration' })),
+      fait({ porter: 'rivalite', entite: 'InfraNum', ansoff: 'developpement_produit' }),
+    ])
+    expect(l.forces[0]).toMatchObject({ faits: 6, entités: ['CISPE', 'InfraNum', 'EuroStack'] })
+    expect(l.mouvements).toEqual([
+      { libellé: 'pénétration', faits: 5 },
+      { libellé: 'développement de produit', faits: 1 },
+    ])
+  })
+
+  it('ne montre que les ruptures relues, de la plus récente à la plus ancienne', () => {
+    const l = lectureDesÉtiquettes([
+      fait({ pestel: 'economique', rupture: true, date: '2026-10-14', titre: 'Ancienne.' }),
+      fait({ pestel: 'economique', rupture: true, date: '2026-10-20', titre: 'Récente.' }),
+      fait({ pestel: 'economique', rupture: true, titre: null }),
+      fait({ pestel: 'legal' }),
+    ])
+    expect(l.ruptures.map((r) => r.titre)).toEqual(['Récente.', 'Ancienne.'])
+  })
+})
+

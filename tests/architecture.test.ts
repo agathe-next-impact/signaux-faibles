@@ -464,6 +464,19 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
    * tag : le lint vient de le faire, et un sixième pouvoir d'invalidation
    * n'apporterait rien.
    */
+  /**
+   * La section « Lecture stratégique » de la vue d'ensemble (26 octobre 2026) :
+   * un seul écran l'appelle, et elle ne lit aucun corps Notion de plus que ceux
+   * que l'écran lui passe.
+   */
+  it('la lecture stratégique n’a qu’un écran appelant, et ne lit pas Notion', () => {
+    expect(appelants('lectureStratégiqueDeLEspace')).toEqual(['app/(portail)/[slug]/page.tsx', 'lib/portail/strategie.ts'])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
+    const fonction = source.slice(source.indexOf('export async function lectureStratégiqueDeLEspace'))
+    expect(fonction).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
+    expect(fonction.indexOf("sourceAccès() === 'notion'")).toBeGreaterThan(0)
+  })
+
   it('les étiquettes : pilote, règle 2, porte, puis écriture, sans invalidation', () => {
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
     const recevoir = source.slice(source.indexOf('export async function recevoirLesÉtiquettes'), source.indexOf('export type FaitPourLaRevue'))

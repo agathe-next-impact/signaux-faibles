@@ -3,6 +3,7 @@ import { FinDEssai } from '@/components/fin-d-essai'
 import { LigneDEssai, OffreDEssai, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
+import { LectureStratégique } from '@/components/lecture-strategique'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
 import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
@@ -16,6 +17,7 @@ import {
   semainesPubliées,
 } from '@/lib/portail/semaine'
 import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat'
+import { lectureStratégiqueDeLEspace } from '@/lib/portail/strategie'
 
 /**
  * Vue d'ensemble : ce que la semaine dit, en un écran.
@@ -109,6 +111,14 @@ export default async function VueDEnsemble({
     ),
   )
   const dormants = synthèse.dossiers.length - acteurs.length
+
+  // Les outils stratégiques (pilote du 26 octobre 2026) : les étiquettes des
+  // lettres que l'écran vient de lire, sans lecture Notion de plus. Hors du
+  // pilote, ou dans le moindre doute sur la base, la section n'existe pas.
+  const stratégie = await lectureStratégiqueDeLEspace({
+    registre: accès.organisationId,
+    lettres: récentes.map((note) => ({ pageId: note.lettre.édition.pageId, document: note.document })),
+  })
 
   // Le portail ne devine pas un format qu'il ne reconnaît pas — mais il ne doit
   // pas se taire non plus. Deux lettres complètes et publiées peuvent donner un
@@ -282,6 +292,8 @@ export default async function VueDEnsemble({
           </Grille>
         )}
       </section>
+
+      {stratégie ? <LectureStratégique lecture={stratégie} lettres={récentes.length} /> : null}
 
       {essai ? (
         <OffreDEssai slug={accès.slug} parution={essai.parution} parutions={essai.parutions} offre={offre ?? 'standard'} />
