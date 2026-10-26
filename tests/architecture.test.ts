@@ -253,6 +253,33 @@ describe('Postgres ne se lit que par lib/base, l’appartenance que par la faça
     expect(fautifs).toEqual([])
   })
 
+  /**
+   * Les outils stratégiques (26 octobre 2026, `docs/plan-outils-strategiques.md`) :
+   * ce qui entre en base a passé la porte de `lib/domaine/strategie.ts`, et seule
+   * l'orchestration `lib/portail/strategie.ts` la fait passer avant d'écrire. Une
+   * route, un script ou une tâche qui importerait `lib/base/strategie.ts`
+   * écrirait des étiquettes ou une synthèse que personne n'a contrôlées.
+   */
+  it('lib/base/strategie.ts n’est appelé que par lib/portail/strategie.ts', () => {
+    const importateurs: string[] = []
+    const parcourir = (dossier: string) => {
+      if (!existsSync(dossier)) return
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          continue
+        }
+        if (!/\.tsx?$/.test(entrée.name)) continue
+        if (/from ['"](?:@\/lib\/base\/strategie|(?:\.\.?\/)+(?:lib\/)?base\/strategie)['"]/.test(readFileSync(chemin, 'utf8'))) {
+          importateurs.push(relatif(chemin))
+        }
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) parcourir(join(process.cwd(), racine))
+    expect(importateurs.filter((chemin) => chemin !== 'lib/portail/strategie.ts')).toEqual([])
+  })
+
   it('les lectures Postgres d’appartenance ne sont appelées que par la façade', () => {
     for (const fonction of ['lireLecteurParIdentifiant', 'lireLecteurActifParEmail']) {
       const appelants = sources()
