@@ -94,7 +94,13 @@ Organisation visée : $ARGUMENTS
    une famille générique que le profil déclenche, avec ses sources, son critère
    FORT et ses requêtes ; au-dessus de six, fusionne celles qui partagent leurs
    sources. Le référentiel écosystème de Suneido, livré à trois familles, a donné
-   une première lettre à trois axes.
+   une première lettre à trois axes. Ce plafond compte les familles
+   **hebdomadaires** ; les deux familles **mensuelles** de l'écosystème
+   (technologies et substituts, influence et parties prenantes) s'y ajoutent, et
+   le concurrentiel porte toujours « nouveaux entrants » et « capital et santé
+   financière », collectées par les registres publics (départements et texte
+   d'activité, colonne SIREN du §2). Aucun §4 : il est retiré depuis le
+   26 octobre 2026 (veille stratégique, scénario C).
 
 5. **Consomme la case.** En fin de run, réussi ou non, décoche « ▶ Générer les
    référentiels (A) » et écris le résultat dans « Dernier lancement manuel ».

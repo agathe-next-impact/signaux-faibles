@@ -297,6 +297,7 @@ export function consignesDuHarnais(maintenant: Date, portail: string): string {
     `· Courriels client : mcp__${SERVEURS.gmail}__deposer_courriel(demande, to). Il fait la mise en forme par POST /api/veille/courriel (la demande telle que la page l’écrit) ET dépose le brouillon : quand une page te dit de passer « html » et « texte » de la réponse dans create_draft, fais-le par cet outil, qui ne te rend pas le HTML. N’utilise create_draft avec htmlBody que si deposer_courriel échoue.`,
     `· Identifiant d’accès : mcp__${SERVEURS.veille}__tirer_identifiant.`,
     `· Sources en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls) lit jusqu’à 30 URL en quatre minutes, écrit chaque page dans sources/<lot>/ et rend l’index du lot, une ligne de grille par source. mcp__${SERVEURS.veille}__synthese_de_collecte(dossier) condense les grilles et les faits d’un dossier de collecte en une synthèse par lettre.`,
+    `· Registres publics : mcp__${SERVEURS.veille}__annonces_bodacc(depuis, sirens | departements, familles, texte) et mcp__${SERVEURS.veille}__fiches_entreprises(sirens). Les familles « Capital et santé financière » et « Nouveaux entrants » se collectent par ces deux outils, pas en ouvrant les pages du BODACC ou de l’annuaire une à une.`,
     `· Navigateur : node ${LIRE_PAGE} <url> [caractères], seule commande Bash permise. Toute autre commande est refusée : si une page prescrit une commande Bash en repli, constate le refus et passe au repli suivant.`,
     '· Les documents de projet claude.ai (project_read, project_write) n’existent pas dans cet environnement : dis-le là où une page les demande.',
     '',
@@ -332,6 +333,7 @@ export const PROMPT_DU_COLLECTEUR = [
   `2. Ouvre d’abord toutes les sources nommées du lot en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls), 30 URL au plus par appel. Ses lignes OUVERTE et NON OUVERTE vont telles quelles dans ta grille ; relance dans un second appel les lignes À RELANCER. Lis avec Read les seuls fichiers dont tu as besoin.`,
   `3. Lance chaque requête type, une par une (WebSearch), et requête chaque entité du corpus une par une. N’ouvre un résultat (WebFetch, ou node ${LIRE_PAGE} <url> s’il refuse les robots) que s’il peut porter un fait.`,
   '4. Requestionne chaque dossier ouvert à sa source primaire (registre public pour une procédure collective).',
+  `4 bis. Familles « Capital et santé financière » et « Nouveaux entrants » : mcp__${SERVEURS.veille}__annonces_bodacc (les SIREN du corpus, ou les départements et le texte d’activité que le référentiel donne) et mcp__${SERVEURS.veille}__fiches_entreprises (les SIREN du corpus), une fois chacun. Chaque annonce ou changement de fiche dans la fenêtre est un fait, sourcé par son lien ; une requête sans résultat est une ligne de grille REQUÊTÉE, avec la date.`,
   '5. Fenêtre : celle qu’on te donne. Une famille sans fait daté dans la fenêtre est élargie à 30 jours, puis 90 ; un fait antérieur entre comme « élément de contexte, non nouveau », daté, et l’élargissement est noté.',
   '',
   'RÈGLES. Une page non ouverte n’est jamais un RAS : NON OUVERTE et la raison. Un fait n’entre que si sa source a été ouverte pendant ce run, extrait recopié mot pour mot. Un RAS porte la date de la dernière publication trouvée. Tu n’écris jamais dans Notion ni dans Gmail.',
@@ -348,7 +350,7 @@ export function définitionDuCollecteur(): AgentDefinition {
     description: 'Collecte un lot de familles d’un référentiel et écrit sa grille et ses faits sourcés dans le dossier de travail.',
     prompt: PROMPT_DU_COLLECTEUR,
     // Les deux noms de la lecture Notion : `fetch` avec un jeton MCP, `notion-fetch` en OAuth.
-    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__fetch`, `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`],
+    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__fetch`, `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`, `mcp__${SERVEURS.veille}__annonces_bodacc`, `mcp__${SERVEURS.veille}__fiches_entreprises`],
     model: MODÈLE_COLLECTEUR,
   }
 }
