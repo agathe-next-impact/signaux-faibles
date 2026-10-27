@@ -5,6 +5,22 @@
  * finirait par afficher un ancien prix.
  */
 export const PRIX_MENSUEL_HT = 149
+/**
+ * Les deux prix publics sont un **tarif early adopter**, ouvert à toute inscription
+ * jusqu'à cette date incluse (décision de l'opératrice du 27 octobre 2026). Les
+ * pages vitrines l'annoncent avec cette date, écrite ici et nulle part ailleurs.
+ * Ne pas confondre avec l'offre `early_adopter` à `PRIX_EARLY_ADOPTER_HT`, réservée
+ * par l'opératrice à une organisation nommée et jamais affichée.
+ */
+export const FIN_DU_TARIF_EARLY_ADOPTER = '2026-12-31'
+
+/** La date de fin du tarif early adopter, à la française : « 31 décembre 2026 ». */
+export function finDuTarifEarlyAdopter(): string {
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }).format(
+    new Date(`${FIN_DU_TARIF_EARLY_ADOPTER}T12:00:00Z`),
+  )
+}
+
 /** Dix mois payés : « deux mois offerts », la règle tenue depuis l'offre du 17 octobre. */
 export const PRIX_ANNUEL_HT = 1490
 /** Tarif réservé par l'opératrice à une organisation nommée (`offre = early_adopter`), mensuel seul. */

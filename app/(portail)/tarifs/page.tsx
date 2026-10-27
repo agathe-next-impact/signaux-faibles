@@ -5,6 +5,7 @@ import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVi
 import {
   ADRESSE_D_ABONNEMENT,
   enEuros,
+  finDuTarifEarlyAdopter,
   LECTEURS_ACTIFS_MAX,
   PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
@@ -17,7 +18,7 @@ import { prixParLecteur } from '@/lib/vitrine/marche'
 
 export const metadata: Metadata = {
   title: 'Tarifs — signauxfaibles',
-  description: `${enEuros(PRIX_MENSUEL_HT)} € HT par mois ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an, par organisation. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
+  description: `Tarif early adopter jusqu’au ${finDuTarifEarlyAdopter()} : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an, par organisation. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
   robots: { index: true, follow: true },
 }
 
@@ -38,9 +39,16 @@ export default function Tarifs() {
       />
 
       <section className="flex flex-col gap-4">
+        <Panneau ton="rose">
+          <p className="label-mono text-ardoise">Tarif early adopter</p>
+          <p className="mt-2 text-encre">
+            Ces prix sont réservés aux organisations qui s’inscrivent avant le{' '}
+            {finDuTarifEarlyAdopter()}.
+          </p>
+        </Panneau>
         <Grille colonnes={2} étiquette="Les deux formules">
           <Case>
-            <p className="label-mono text-ardoise">Mensuel</p>
+            <p className="label-mono text-ardoise">Mensuel · early adopter</p>
             <p className="font-titre text-h1 font-bold text-encre">
               {enEuros(PRIX_MENSUEL_HT)} € <span className="text-h3 font-semibold">HT par mois</span>
             </p>
@@ -48,7 +56,7 @@ export default function Tarifs() {
             <p className="text-ardoise">Sans engagement, résiliable à tout moment.</p>
           </Case>
           <Case accent>
-            <p className="label-mono text-ardoise">Annuel · deux mois offerts</p>
+            <p className="label-mono text-ardoise">Annuel · early adopter · deux mois offerts</p>
             <p className="font-titre text-h1 font-bold text-encre">
               {enEuros(PRIX_ANNUEL_HT)} € <span className="text-h3 font-semibold">HT par an</span>
             </p>

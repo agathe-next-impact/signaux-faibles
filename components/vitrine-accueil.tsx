@@ -3,7 +3,7 @@ import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { CarteDuMarché, GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
-import { enEuros, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { enEuros, finDuTarifEarlyAdopter, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
 import { COÛT_HORAIRE_ILLUSTRATIF, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
@@ -37,7 +37,8 @@ export function AccueilVitrine() {
           <LienFlèche href="/offre">Découvrir l’offre</LienFlèche>
         </div>
         <p className="text-label text-ardoise">
-          Essai de {PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire ni engagement.
+          Essai de {PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire ni engagement. Tarif
+          early adopter pour toute inscription avant le {finDuTarifEarlyAdopter()}.
         </p>
       </OuvertureVitrine>
 
@@ -141,7 +142,10 @@ export function AccueilVitrine() {
         <CarteDuMarché />
       </SectionVitrine>
 
-      <SectionVitrine surtitre="Tarif" titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, par organisation`}>
+      <SectionVitrine
+        surtitre={`Tarif early adopter · jusqu’au ${finDuTarifEarlyAdopter()}`}
+        titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, par organisation`}
+      >
         <p className="max-w-3xl text-ardoise">
           Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs : soit{' '}
           {enEuros(prixParLecteur())} € HT par lecteur et par mois. Sans engagement en formule

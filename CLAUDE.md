@@ -703,7 +703,10 @@ ni Notion ni Postgres ; elles présentent la **lettre unique** du programme du
 22 octobre et l'offre du 17 octobre. Aucun chiffre n'y est écrit en dur : prix,
 TVA et équivalent mensuel viennent de `lib/domaine/offre.ts`, les seuils de la
 lettre de `LETTRE_UNIQUE` et `ESSENTIEL_LIGNES_MAX`, l'essai de
-`PARUTIONS_D_ESSAI` ; le tarif early adopter n'y figure pas. Ce sont les seules
+`PARUTIONS_D_ESSAI` ; le tarif early adopter à 29 € n'y figure pas. Les prix
+publics y sont annoncés comme **tarif early adopter**, pour toute inscription
+jusqu'au `FIN_DU_TARIF_EARLY_ADOPTER` (31 décembre 2026, décision du 27 octobre
+2026), date écrite dans `lib/domaine/offre.ts` seulement. Ce sont les seules
 pages indexables (`robots: index`). Le proxy les ouvre à l'adresse exacte, et
 elles masquent un slug identique, qu'aucune organisation ne doit porter. Un seul
 bouton primaire par page, « Demander une démo », vers `/demo` ; « Se connecter »,
