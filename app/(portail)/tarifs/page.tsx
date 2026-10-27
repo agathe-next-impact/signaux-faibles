@@ -58,6 +58,9 @@ export default function Tarifs() {
             </p>
             <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_MENSUEL_HT))} € TTC</p>
             <p className="text-ardoise">Sans engagement, résiliable à tout moment.</p>
+            <p className="label-mono mt-auto pt-1 text-ardoise">
+              Après le {finDuTarifEarlyAdopter()} : {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois
+            </p>
           </Case>
           <Case accent>
             <p className="label-mono text-ardoise">Annuel · early adopter · deux mois offerts</p>
@@ -67,6 +70,9 @@ export default function Tarifs() {
             <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_ANNUEL_HT))} € TTC</p>
             <p className="text-ardoise">
               Soit {enEuros(équivalentMensuelDeLAnnuel())} € HT par mois.
+            </p>
+            <p className="label-mono mt-auto pt-1 text-ardoise">
+              Après le {finDuTarifEarlyAdopter()} : {enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par an
             </p>
           </Case>
         </Grille>

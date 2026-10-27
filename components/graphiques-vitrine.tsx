@@ -1,4 +1,4 @@
-import { enEuros, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { enEuros, finDuTarifEarlyAdopter, PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import {
   AXES_DE_LA_CARTE,
   COÛT_HORAIRE_ILLUSTRATIF,
@@ -117,7 +117,7 @@ export function GraphiqueRepèresDeMarché() {
         ))}
         <LigneDeMarché
           libellé="signauxfaibles"
-          livre="Une lettre écrite pour votre organisation, chaque semaine"
+          livre={`Tarif early adopter jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT`}
           min={nous.min}
           max={nous.max}
           nous

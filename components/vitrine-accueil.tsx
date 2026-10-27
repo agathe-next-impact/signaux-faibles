@@ -150,13 +150,14 @@ export function AccueilVitrine() {
 
       <SectionVitrine
         surtitre={`Tarif early adopter · jusqu’au ${finDuTarifEarlyAdopter()}`}
-        titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, par organisation`}
+        titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, au lieu de ${enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} €`}
       >
         <p className="max-w-3xl text-ardoise">
           Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs : soit{' '}
-          {enEuros(prixParLecteur())} € HT par lecteur et par mois. Sans engagement en formule
-          mensuelle, deux mois offerts en formule annuelle. Après le {finDuTarifEarlyAdopter()},
-          l’abonnement passera à {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois.
+          {enEuros(prixParLecteur())} € HT par lecteur et par mois. Tarif early
+          adopter pour toute inscription avant le {finDuTarifEarlyAdopter()} ; ensuite,
+          l’abonnement passe à {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois. Sans
+          engagement en formule mensuelle, deux mois offerts en formule annuelle.
         </p>
         <LienFlèche href="/tarifs">Voir les tarifs</LienFlèche>
       </SectionVitrine>
