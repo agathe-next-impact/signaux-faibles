@@ -520,6 +520,39 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   })
 
   /**
+   * La synthèse (lot 6) : le pilote et la grille avant la porte, la porte avant
+   * l'écriture ; une synthèse refusée n'est écrite nulle part. La route ne lit
+   * ni n'écrit la base elle-même, et n'expire aucun tag : elle ne touche pas
+   * Notion.
+   */
+  it('la synthèse : jeton, pilote, grille, porte, puis écriture, sans invalidation', () => {
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
+    const recevoir = source.slice(source.indexOf('export async function recevoirLaSynthèse'), source.indexOf('export type LectureDeLaSynthèse'))
+    const position = (motif: string) => {
+      const i = recevoir.indexOf(motif)
+      expect(i, motif).toBeGreaterThan(0)
+      return i
+    }
+    expect(position("sorte: 'hors-pilote'")).toBeLessThan(position('contrôlerLaSynthèse('))
+    expect(position("sorte: 'grille-absente'")).toBeLessThan(position('contrôlerLaSynthèse('))
+    expect(position('contrôlerLaSynthèse(')).toBeLessThan(position('enregistrerLaSynthèse('))
+    expect(position('if (contrôle.refus.length > 0)')).toBeLessThan(position('enregistrerLaSynthèse('))
+    const lire = source.slice(source.indexOf('export async function lireLaSynthèseDuPilote'))
+    expect(lire.indexOf("sorte: 'hors-pilote'")).toBeGreaterThan(0)
+    expect(lire.indexOf("sorte: 'hors-pilote'")).toBeLessThan(lire.indexOf('lireLaSynthèse('))
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'syntheses', 'route.ts'), 'utf8')
+    for (const [méthode, appel] of [
+      ['POST', 'recevoirLaSynthèse('],
+      ['GET', 'lireLaSynthèseDuPilote('],
+    ] as const) {
+      const corps = route.slice(route.indexOf(`export async function ${méthode}(`))
+      expect(corps.indexOf('refuserSiNonAutorisé(requête'), méthode).toBeGreaterThan(0)
+      expect(corps.indexOf('refuserSiNonAutorisé(requête'), méthode).toBeLessThan(corps.indexOf(appel))
+    }
+    expect(route).not.toMatch(/revalidateTag\(|updateTag\(|@\/lib\/base\/strategie/)
+  })
+
+  /**
    * Tout courriel client sort du gabarit de la charte (20 octobre 2026). Un
    * appelant hors de `lib/email/` ou des courriers de parcours composerait un
    * courriel ailleurs, et finirait par réinventer une couleur ou un bouton.

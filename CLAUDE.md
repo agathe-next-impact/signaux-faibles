@@ -42,7 +42,10 @@ Infralliance, L'Hermitage (`hermitage`), Heritech et Konica Minolta France
 avec ce que chacune fait dans le pilote, est au §6 du plan. La grille (lot 5,
 27 octobre 2026) se poste, se lit et se valide par `/api/veille/grille`
 (`docs/api-veille.md`) ; une fois postée, la porte des étiquettes refuse une
-entité qui n'y figure pas.
+entité qui n'y figure pas. La synthèse mensuelle (lot 6, 27 octobre 2026) se poste et se
+lit par `/api/veille/syntheses`, depuis la section « SYNTHÈSE STRATÉGIQUE » de
+la revue mensuelle ; elle n'est relue que par l'opératrice, dans le courriel
+« [Relecture] », et rien n'en est montré au client pendant le pilote.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et

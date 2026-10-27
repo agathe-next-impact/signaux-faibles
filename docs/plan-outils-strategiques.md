@@ -312,7 +312,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 
   Le corpus des tiers-lieux de L'Hermitage (49 lieux) a été ramené au plafond de 40, décision de l'opératrice : sortis les huit fablabs de la famille C autres que Make ICI, et La Coursive Boutaric (liquidation clôturée, point de validation du 21/09/2026 répondu oui). Konica a cinq offres (matrice GE possible au lot 13), Heritech quatre, L'Hermitage trois. Les cinq organisations du pilote ont désormais une grille validée.
 
-Restent : la section « Grille stratégique » du prompt de génération des référentiels, et le re-post par la revue (lot 6).
+**Partie Notion faite le 27/10/2026** : section « GRILLE STRATÉGIQUE » ajoutée au prompt de génération des référentiels (phase 3, sans numéro, après le §2, dix lignes, hors budget de mots ; phase 5, livrable B : les axes de la carte et le rattachement des familles entrent dans le plafond de dix points, après le scoring), note de révision datée en tête de page ; re-post de la grille au pas S.1 de la section « SYNTHÈSE STRATÉGIQUE » de la revue (lot 6). Le lot 5 est clos.
 
 ### Lot 6. La synthèse mensuelle
 
@@ -321,6 +321,7 @@ Restent : la section « Grille stratégique » du prompt de génération des ré
 - **Tests** : route (fenêtre, filiation, mouvement sans fait refusé, candidate unique) ; architecture : `elements_synthese` et `positions` n'ont qu'un écrivain.
 - **Fin** : synthèse de Mastora pour novembre acceptée et relue.
 - **Hors du lot** : trimestriel, calculs.
+- **Code et Notion faits le 27/10/2026** (enchaîné sur le lot 5 à la demande de l'opératrice) : `app/api/veille/syntheses/route.ts` (`POST` poster une période, `GET` la lire avec son rendu texte, ses éléments SWOT par identifiant et ses crans) ; orchestration `recevoirLaSynthèse` et `lireLaSynthèseDuPilote` dans `lib/portail/strategie.ts` (pilote, grille, faits cités et synthèse précédente, porte, puis écriture ; une synthèse refusée n'est écrite nulle part) ; rendu `rendreLaSynthèse` dans `lib/domaine/strategie.ts` ; tests de la route (jeton, forme, fenêtre réelle d'au plus cent jours, accord du mode et de la période, statuts), de l'orchestration sur base en mémoire (hors pilote, grille absente, candidate unique, grille périmée, remplacement d'une période, filiation exigée et lue dans la lecture du mois précédent, mouvement de cran sans fait refusé puis justifié) et d'architecture (ordre des contrôles, route gardée, aucun tag expiré ; le seul écrivain de `elements_synthese` et `positions` reste tenu par la garde de `lib/base/strategie.ts`) ; contrat dans `docs/api-veille.md`. Notion : section « SYNTHÈSE STRATÉGIQUE » de la revue, pas S.0 à S.6 (porte du pilote par la grille, re-post de la grille, période et fenêtre de première parution à première parution, lectures des faits et du mois précédent, production et post, deux reprises, rendu recopié tel quel dans « [Relecture] »), rien dans le point client (3.2), une ligne en 3.3 et en 3.4. Reste la fin du lot : la synthèse de Mastora pour novembre acceptée et relue, et la première revue réelle d'Infralliance (S49).
 
 ### Lot 7. Les calculs en code
 
