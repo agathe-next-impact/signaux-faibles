@@ -640,7 +640,8 @@ stratégiques (26 octobre 2026, à la demande de l'opératrice pour L'Hermitage)
 lettres que l'écran lit déjà (`récentes`) : les six dimensions PESTEL et les
 cinq forces de Porter dans l'ordre du cadre, zéro compris, les trois entités les
 plus citées par force, les mouvements d'Ansoff, et les ruptures avec leur
-phrase-titre relue dans ces mêmes documents par empreinte. Des comptes, jamais
+phrase-titre relue dans ces mêmes documents par empreinte, une par événement
+(même source, même date : une lettre qui reparle d'un événement le rétiquette). Des comptes, jamais
 une analyse ; mention « outil en test ». `lectureStratégiqueDeLEspace`
 (`lib/portail/strategie.ts`) ne lit **aucun corps Notion de plus**, n'ouvre pas
 Postgres en mode `notion`, est bornée à 400 ms et rend `null` dans tout doute,
@@ -719,6 +720,19 @@ calculé comme la vue d'ensemble (`synthétiser`, `fusionnerLesAxes`,
 `acteursEnVue`) et la lettre rendue par `RenduDocument`, sur `markdownVersBlocs`
 (`components/demonstration.tsx`) ; les cases ne mènent nulle part. Le test passe
 chaque lettre au lint de la lettre unique.
+**Valeur, marché et lecture stratégique dans la vitrine (27 octobre 2026)** :
+trois graphiques en HTML, à la charte (`components/graphiques-vitrine.tsx`) : le
+temps de veille interne valorisé à 50 € de l'heure, **hypothèse affichée comme
+telle**, face au prix (accueil) ; les fourchettes de prix publics par **famille
+d'offres, jamais par concurrent nommé**, sources et date du relevé dépliables
+(tarifs) ; la carte des groupes stratégiques du marché de la veille, l'outil de
+l'écran « Acteurs » appliqué à nous-mêmes (accueil). Données dans
+`lib/vitrine/marche.ts` seulement, nos prix toujours lus dans `lib/domaine/offre.ts` ;
+rien de nos coûts ni de nos marges sur une page publique. « L'offre » présente la
+lecture stratégique « en test » et ce qui nous distingue ; « Exemples » rend la
+`LectureStratégique` de chaque organisation fictive (`lectureDeDémonstration`,
+sur la grille de la démonstration et les faits relevés par `faitsDeLaLettre`).
+`tests/vitrine.marche.test.ts` tient chaque phrase chiffrée contre ses données.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi

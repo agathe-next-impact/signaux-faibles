@@ -1,3 +1,5 @@
+import type { Ansoff, ForcePorter, Pestel } from '@/lib/domaine/strategie'
+
 /**
  * Les trois démonstrations de la vitrine (`/exemple`, 24 octobre 2026).
  *
@@ -34,9 +36,54 @@ export type Démonstration = {
   readonly actionDeLaSemaine: string
   readonly dossiers: string
   readonly markdown: string
+  /**
+   * La grille stratégique de l'organisation, comme celle d'un référentiel :
+   * le cadre de chaque axe (une dimension PESTEL ou une force de Porter), les
+   * entités nommées, et les faits qui changent sa position. C'est ce qui donne
+   * la « Lecture stratégique » du tableau de bord (`lectureDeDémonstration`).
+   */
+  readonly grille: GrilleDeDémonstration
+}
+
+export type CadreDAxe = { readonly pestel: Pestel } | { readonly porter: ForcePorter }
+
+export type GrilleDeDémonstration = {
+  readonly axes: Readonly<Record<number, CadreDAxe>>
+  /** Les entités que la lecture nomme sous une force, avec leur mouvement d'Ansoff. */
+  readonly entités: readonly { readonly nom: string; readonly ansoff?: Ansoff }[]
+  /** Les ruptures : l'axe, et un mot de la phrase-titre du fait. */
+  readonly ruptures: readonly { readonly axe: number; readonly contient: string }[]
 }
 
 const CONSEIL: Démonstration = {
+  grille: {
+    axes: {
+      1: { porter: 'pouvoir_clients' },
+      2: { porter: 'rivalite' },
+      3: { pestel: 'economique' },
+      4: { pestel: 'legal' },
+      5: { pestel: 'technologique' },
+      6: { porter: 'pouvoir_clients' },
+      7: { pestel: 'socioculturel' },
+      8: { pestel: 'politique' },
+      9: { pestel: 'ecologique' },
+      10: { pestel: 'technologique' },
+      11: { pestel: 'socioculturel' },
+      12: { porter: 'pouvoir_fournisseurs' },
+    },
+    entités: [
+      { nom: 'Cap Territoires', ansoff: 'developpement_marche' },
+      { nom: 'Orbis Public', ansoff: 'penetration' },
+      { nom: 'Préfigure', ansoff: 'developpement_marche' },
+      { nom: 'Valrive' },
+      { nom: 'Saint-Aubert' },
+      { nom: 'Ardaine' },
+    ],
+    ruptures: [
+      { axe: 2, contient: 'Cap Territoires' },
+      { axe: 2, contient: 'Préfigure' },
+    ],
+  },
   clé: 'conseil',
   onglet: 'Cabinet de conseil',
   organisation: 'Lisière Conseil',
@@ -163,6 +210,35 @@ Atelier Civique reste silencieux depuis deux semaines. Sa réponse conditionne v
 }
 
 const PME: Démonstration = {
+  grille: {
+    axes: {
+      1: { porter: 'pouvoir_clients' },
+      2: { porter: 'rivalite' },
+      3: { porter: 'pouvoir_fournisseurs' },
+      4: { pestel: 'politique' },
+      5: { porter: 'pouvoir_clients' },
+      6: { pestel: 'legal' },
+      7: { pestel: 'socioculturel' },
+      8: { pestel: 'ecologique' },
+      9: { pestel: 'economique' },
+      10: { pestel: 'technologique' },
+      11: { pestel: 'politique' },
+      12: { pestel: 'economique' },
+    },
+    entités: [
+      { nom: 'Précimeca', ansoff: 'developpement_marche' },
+      { nom: 'Usinage Delmas', ansoff: 'penetration' },
+      { nom: 'Usimat', ansoff: 'penetration' },
+      { nom: 'Aérolys' },
+      { nom: 'Hélivale' },
+      { nom: 'Ferrovia Systèmes' },
+    ],
+    ruptures: [
+      { axe: 1, contient: 'cadences' },
+      { axe: 2, contient: 'redressement' },
+      { axe: 8, contient: 'bilan carbone' },
+    ],
+  },
   clé: 'pme',
   onglet: 'PME industrielle',
   organisation: 'Tolmen Mécanique',
@@ -291,6 +367,27 @@ La certification EN 9100 sera auditée en janvier. Les nouvelles règles de tra�
 }
 
 const ESS: Démonstration = {
+  grille: {
+    axes: {
+      1: { pestel: 'politique' },
+      2: { pestel: 'economique' },
+      3: { pestel: 'economique' },
+      4: { porter: 'pouvoir_clients' },
+      5: { pestel: 'politique' },
+      6: { porter: 'rivalite' },
+      7: { pestel: 'economique' },
+      8: { pestel: 'socioculturel' },
+      9: { pestel: 'legal' },
+      10: { pestel: 'socioculturel' },
+      11: { pestel: 'economique' },
+      12: { pestel: 'politique' },
+    },
+    entités: [
+      { nom: 'Le Fil vert', ansoff: 'penetration' },
+      { nom: 'Valrive' },
+    ],
+    ruptures: [{ axe: 6, contient: 'Fil vert' }],
+  },
   clé: 'ess',
   onglet: 'Entreprise de l’ESS',
   organisation: 'Atelier Passerelle',

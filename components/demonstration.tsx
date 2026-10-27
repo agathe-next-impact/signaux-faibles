@@ -1,4 +1,5 @@
 import { CaseAxe } from '@/components/case-axe'
+import { LectureStratégique } from '@/components/lecture-strategique'
 import { Case, Grille, Panneau, Tuile } from '@/components/coquille'
 import { RenduDocument } from '@/components/document'
 import { construireDocument, fusionnerLesAxes } from '@/lib/domaine/document'
@@ -8,6 +9,7 @@ import { markdownVersBlocs } from '@/lib/domaine/markdown'
 import { acteursEnVue } from '@/lib/domaine/mentions'
 import { synthétiser } from '@/lib/domaine/synthese'
 import type { Démonstration } from '@/lib/vitrine/demonstrations'
+import { lectureDeDémonstration } from '@/lib/vitrine/lecture-demonstration'
 
 /**
  * Le tableau de bord et la lettre d'une organisation fictive, pour la vitrine.
@@ -82,6 +84,8 @@ export function TableauDeBordDeDémonstration({ démonstration }: { démonstrati
           ))}
         </Grille>
       </section>
+
+      <LectureStratégique lecture={lectureDeDémonstration(démonstration, document)} lettres={1} niveauDeTitre={3} />
     </div>
   )
 }

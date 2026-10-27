@@ -28,15 +28,25 @@ function Ligne({ libellé, faits }: { libellé: string; faits: number }) {
   )
 }
 
-export function LectureStratégique({ lecture, lettres }: { lecture: LectureDesÉtiquettes; lettres: number }) {
+export function LectureStratégique({
+  lecture,
+  lettres,
+  niveauDeTitre = 2,
+}: {
+  lecture: LectureDesÉtiquettes
+  lettres: number
+  /** 3 dans un tableau de bord de démonstration, dont le titre de niveau 2 est le nom de l'organisation. */
+  niveauDeTitre?: 2 | 3
+}) {
+  const Titre = niveauDeTitre === 3 ? 'h3' : 'h2'
   return (
     <section className="mt-10 flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="font-titre text-h2 font-bold text-encre">Lecture stratégique</h2>
+        <Titre className="font-titre text-h2 font-bold text-encre">Lecture stratégique</Titre>
         <p className="label-mono text-ardoise">outil en test</p>
       </div>
       <p className="text-ardoise">
-        Les {lecture.total} faits de vos {lettres} dernières lettres, classés un à un : ce qui
+        Les {lecture.total} faits {lettres > 1 ? `de vos ${lettres} dernières lettres` : 'de votre dernière lettre'}, classés un à un : ce qui
         bouge dans votre environnement, qui bouge dans votre concurrence, et ce qui pourrait
         changer votre position.
       </p>
