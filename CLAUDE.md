@@ -39,7 +39,10 @@ Infralliance, L'Hermitage (`hermitage`), Heritech et Konica Minolta France
 (`konica-minolta-france`) ; le drapeau se pose par `PATCH
 /api/veille/organisations` (`action: outils`), puis `pnpm tache etiquetage
 --organisation <slug>` étiquette les lettres déjà publiées. La liste à jour,
-avec ce que chacune fait dans le pilote, est au §6 du plan.
+avec ce que chacune fait dans le pilote, est au §6 du plan. La grille (lot 5,
+27 octobre 2026) se poste, se lit et se valide par `/api/veille/grille`
+(`docs/api-veille.md`) ; une fois postée, la porte des étiquettes refuse une
+entité qui n'y figure pas.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et

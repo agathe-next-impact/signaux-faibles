@@ -681,6 +681,84 @@ plus. La phrase-titre est relue dans la lettre, une lecture cachée de corps par
 édition ; elle vaut `null` si la lettre a changé depuis l'étiquetage ou ne se lit
 plus, et `titresIntrouvables` les compte. L'`id` est celui que la synthèse cite.
 
+## Outils stratégiques : la grille (27 octobre 2026)
+
+La grille d'une organisation du pilote : les deux axes de la carte des groupes
+stratégiques, la correspondance de chaque famille du référentiel vers une
+lettre PESTEL ou une force de Porter, les entités suivies et les parties
+prenantes. Elle est rédigée dans le référentiel (section « Grille
+stratégique », non numérotée, après le §2), où restent les critères complets
+des crans ; le portail n'en garde que les libellés courts (exception bornée de
+`CLAUDE.md`, décision 2 du plan) et l'identifiant de la page. Plan :
+`docs/plan-outils-strategiques.md`, lot 5. Hors du pilote, les trois méthodes
+répondent `hors-pilote` en 200.
+
+**Une fois une grille postée, la porte des étiquettes refuse une entité qui
+n'y figure pas** (`entité-hors-grille`) : la grille doit nommer toutes les
+entités que les lettres suivent, sans quoi l'étape 4ter échouera.
+
+### `POST /api/veille/grille` : poster la grille
+
+```
+{ "slug": "infralliance", "referentiel": "<page_id du référentiel>", "grille": {
+  "axes": [
+    { "cle": "couches", "libelle": "Couches couvertes", "crans": ["usage seul", "cloud", "cloud et datacenter", "trois couches"] },
+    { "cle": "production", "libelle": "Production publique", "crans": ["aucune", "occasionnelle", "régulière"] } ],
+  "familles": [
+    { "numero": 1, "veille": "ecosysteme", "pestel": "legal", "cadence": "hebdomadaire" },
+    { "numero": 1, "veille": "concurrentiel", "porter": "rivalite", "cadence": "hebdomadaire" } ],
+  "entites": [ { "nom": "Cigref", "veille": "concurrentiel", "siren": "310785985" } ],
+  "partiesPrenantes": [ { "nom": "DGE" }, … ],
+  "offres": null } }
+```
+
+Exactement deux axes, clé en minuscules (`[a-z][a-z0-9_]*`), 3 à 5 crans ;
+libellés de 40 caractères au plus, sans « faible » ni « fort » (réservés à
+l'impact) ; chaque famille (`veille` `ecosysteme` ou `concurrentiel`) avec un
+seul de `pestel` ou `porter` et une `cadence` (`hebdomadaire`, `mensuelle`) ;
+40 entités au plus par veille, `siren` à neuf chiffres ou `null` ; 8 à 15
+parties prenantes, 80 caractères au plus ; `offres` seulement si la fiche porte
+plusieurs offres (matrice GE, lot 13).
+
+Ordre des contrôles : organisation et pilote (Postgres), porte
+(`contrôlerLaGrille`), écriture. Le référentiel n'est pas lu.
+
+| Réponse | Statut | Quoi faire |
+|---|---|---|
+| `créée` (`version`, `empreinte`, `trousDuPestel`, `forcesNonSuivies`) | 201 | créer les points de validation des axes de cette version |
+| `inchangée` (mêmes champs) | 200 | rien : même empreinte que la dernière version, aucune version créée (l'ordre des familles, entités et parties prenantes ne compte pas) |
+| `refusée` (`refus`, `message`) | 422 | corriger chaque point de `message` et renvoyer la grille **complète** ; deux reprises au plus |
+| `hors-pilote` | 200 | passer l'étape |
+| `organisation-inconnue` | 404 | vérifier le slug |
+| `invalide` (`raison` nomme le champ) | 400 | corriger la forme |
+
+Codes de refus de la porte : `axes-hors-bornes`, `clé-invalide`,
+`libellé-hors-bornes`, `vocabulaire-interdit`, `crans-hors-bornes`,
+`veille-inconnue`, `doublon`, `famille-sans-cadre`, `étiquette-inconnue`,
+`cadence-inconnue`, `familles-absentes`, `entités-hors-plafond`, `longueur`,
+`siren-invalide`, `parties-prenantes-hors-bornes`.
+
+Une nouvelle version n'hérite pas de la validation de la précédente : ses axes
+ont pu changer. La revue re-poste la grille au début de sa section « Synthèse
+stratégique » ; si l'empreinte est la même, rien ne change.
+
+### `GET /api/veille/grille?slug=<slug>` : la dernière version
+
+`{ "état": "lue", "organisation", "version", "empreinte", "referentiel",
+"validéeLe", "grille": { … mêmes noms que le POST … }, "trousDuPestel",
+"forcesNonSuivies" }`. `trousDuPestel` liste les lettres PESTEL qu'aucune
+famille ne couvre, `forcesNonSuivies` les forces qu'aucune ne porte (« non
+suivi » dans la lecture des cinq forces). `aucune` (200) tant qu'aucune grille
+n'est postée.
+
+### `PATCH /api/veille/grille` : valider la dernière version
+
+`{ "slug": "infralliance", "version": 2 }`, une fois répondus les points de
+validation de ses axes. 200 `validée` ou `déjà-validée` ; 409
+`version-dépassée` (une version plus récente a été postée : ses axes sont ceux
+que la synthèse lira) ; 404 `aucune` ou `organisation-inconnue` ; 200
+`hors-pilote`.
+
 ## La file de travaux (palier 2, 21 octobre 2026)
 
 Le palier 2 de la décision du 15 octobre (`docs/decision-portail-moteur.md`,

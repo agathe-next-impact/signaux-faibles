@@ -496,6 +496,29 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     for (const texte of [source, route]) expect(texte).not.toMatch(/revalidateTag\(|updateTag\(/)
   })
 
+  it('la grille : jeton, pilote, porte, puis écriture, sans invalidation', () => {
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
+    const recevoir = source.slice(source.indexOf('export async function recevoirLaGrille'), source.indexOf('export type LectureDeLaGrille'))
+    const position = (motif: string) => {
+      const i = recevoir.indexOf(motif)
+      expect(i, motif).toBeGreaterThan(0)
+      return i
+    }
+    expect(position("sorte: 'hors-pilote'")).toBeLessThan(position('contrôlerLaGrille('))
+    expect(position('if (refus.length > 0)')).toBeLessThan(position('posterLaGrille('))
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'grille', 'route.ts'), 'utf8')
+    for (const [méthode, appel] of [
+      ['POST', 'recevoirLaGrille('],
+      ['GET', 'lireLaGrilleDuPilote('],
+      ['PATCH', 'validerLaVersion('],
+    ] as const) {
+      const corps = route.slice(route.indexOf(`export async function ${méthode}(`))
+      expect(corps.indexOf('refuserSiNonAutorisé(requête'), méthode).toBeGreaterThan(0)
+      expect(corps.indexOf('refuserSiNonAutorisé(requête'), méthode).toBeLessThan(corps.indexOf(appel))
+    }
+    expect(route).not.toMatch(/revalidateTag\(|updateTag\(|@\/lib\/base\/strategie/)
+  })
+
   /**
    * Tout courriel client sort du gabarit de la charte (20 octobre 2026). Un
    * appelant hors de `lib/email/` ou des courriers de parcours composerait un
