@@ -16,7 +16,8 @@ const notion = vi.hoisted(() => ({ lireÉditionDeTravail: vi.fn(), lireBlocsDePa
 vi.mock('@/lib/notion/travail', () => ({ lireÉditionDeTravail: notion.lireÉditionDeTravail }))
 vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePage, listerÉditionsPubliées: notion.listerÉditionsPubliées }))
 
-const { contrôlerLÉtiquetage, lectureStratégiqueDeLEspace, lireLesFaits, recevoirLesÉtiquettes, réglerLePilote } = await import('@/lib/portail/strategie')
+const { contrôlerLÉtiquetage, lectureStratégiqueDeLEspace, lireLaGrilleDuPilote, lireLesFaits, recevoirLaGrille, recevoirLesÉtiquettes, réglerLePilote, validerLaVersion } =
+  await import('@/lib/portail/strategie')
 const { construireDocument } = await import('@/lib/domaine/document')
 const { organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
@@ -235,6 +236,99 @@ describe('recevoirLesÉtiquettes et lireLesFaits', () => {
         await réglerLePilote({ slug: 'infralliance', actif: false }, db)
         expect(await lectureStratégiqueDeLEspace({ registre: REGISTRE, lettres: lettres() }, db)).toBeNull()
       })
+    })
+  })
+})
+
+/**
+ * La grille (lot 5) : vraie base en mémoire et vraie porte. Le pilote avant la
+ * porte, la porte avant l'écriture, une version par grille réellement nouvelle,
+ * et la validation réservée à la dernière version.
+ */
+describe('recevoirLaGrille, lireLaGrilleDuPilote et validerLaVersion', () => {
+  let db: Base
+  let fermer: () => Promise<void>
+  const RÉFÉRENTIEL = '3d2fe829-ce71-801e-ae49-fa7fc4a0e76c'
+  const GRILLE = {
+    axesGroupes: [
+      { clé: 'couches', libellé: 'Couches couvertes', crans: ['usage seul', 'cloud', 'cloud et datacenter', 'trois couches'] },
+      { clé: 'production', libellé: 'Production publique', crans: ['aucune', 'occasionnelle', 'régulière'] },
+    ],
+    familles: [
+      { numéro: 1, veille: 'ecosysteme', pestel: 'legal', cadence: 'hebdomadaire' },
+      { numéro: 2, veille: 'ecosysteme', pestel: 'economique', cadence: 'mensuelle' },
+      { numéro: 1, veille: 'concurrentiel', porter: 'rivalite', cadence: 'hebdomadaire' },
+    ],
+    entités: [
+      { nom: 'CISPE', veille: 'concurrentiel', siren: null },
+      { nom: 'Cigref', veille: 'concurrentiel', siren: '310785985' },
+    ],
+    partiesPrenantes: ['DGE', 'Commission européenne', 'Assemblée nationale', 'Sénat', 'ANSSI', 'RTE', 'Cnam', 'France-IX'].map((nom) => ({ nom })),
+  } as const
+  const poster = (grille: Parameters<typeof recevoirLaGrille>[0]['grille'] = GRILLE, slug = 'infralliance') =>
+    recevoirLaGrille({ slug, référentiel: RÉFÉRENTIEL, grille }, db)
+
+  beforeEach(async () => {
+    vi.resetAllMocks()
+    ;({ db, fermer } = await baseEnMémoire())
+    await ouvrirEnEssai({ slug: 'infralliance', nom: 'Infralliance', registreNotion: REGISTRE }, db)
+  })
+  afterEach(async () => {
+    await fermer()
+  })
+
+  it('hors du pilote ou pour une organisation inconnue, ne contrôle ni n’écrit rien', async () => {
+    expect(await poster()).toEqual({ sorte: 'hors-pilote' })
+    expect(await poster(GRILLE, 'inconnue')).toEqual({ sorte: 'organisation-inconnue' })
+    expect(await lireLaGrilleDuPilote({ slug: 'infralliance' }, db)).toEqual({ sorte: 'hors-pilote' })
+    expect(await validerLaVersion({ slug: 'infralliance', version: 1 }, db)).toBe('hors-pilote')
+    await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+    expect(await lireLaGrilleDuPilote({ slug: 'infralliance' }, db)).toEqual({ sorte: 'aucune' })
+  })
+
+  describe('dans le pilote', () => {
+    beforeEach(async () => {
+      await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+    })
+
+    it('refuse une grille hors contrat sans rien écrire, avec le message de reprise', async () => {
+      const r = await poster({ ...GRILLE, axesGroupes: [{ ...GRILLE.axesGroupes[0], crans: ['seul', 'deux'] }, GRILLE.axesGroupes[1]] })
+      expect(r.sorte).toBe('refusée')
+      if (r.sorte !== 'refusée') return
+      expect(r.refus.map((x) => x.code)).toEqual(['crans-hors-bornes'])
+      expect(r.message).toContain('[crans-hors-bornes]')
+      expect(await lireLaGrilleDuPilote({ slug: 'infralliance' }, db)).toEqual({ sorte: 'aucune' })
+    })
+
+    it('crée la version 1, ne crée rien pour la même grille re-postée, puis la version 2 quand elle change', async () => {
+      const première = await poster()
+      expect(première).toMatchObject({ sorte: 'créée', version: 1, trousDuPestel: ['politique', 'socioculturel', 'technologique', 'ecologique'] })
+      if (première.sorte !== 'créée') return
+      expect(première.forcesNonSuivies).toEqual(['nouveaux_entrants', 'substituts', 'pouvoir_clients', 'pouvoir_fournisseurs'])
+      expect(première.empreinte).toMatch(/^[0-9a-f]{8}$/)
+
+      const réordonnée = { ...GRILLE, familles: [...GRILLE.familles].reverse(), entités: [...GRILLE.entités].reverse() }
+      expect(await poster(réordonnée)).toMatchObject({ sorte: 'inchangée', version: 1, empreinte: première.empreinte })
+
+      const élargie = { ...GRILLE, entités: [...GRILLE.entités, { nom: 'Hexatrust', veille: 'concurrentiel' as const, siren: '810490052' }] }
+      expect(await poster(élargie)).toMatchObject({ sorte: 'créée', version: 2 })
+
+      const lue = await lireLaGrilleDuPilote({ slug: 'infralliance' }, db)
+      expect(lue).toMatchObject({ sorte: 'lue', version: 2, référentielNotion: '3d2fe829ce71801eae49fa7fc4a0e76c', validéeLe: null })
+      if (lue.sorte !== 'lue') return
+      expect(lue.grille.entités.map((e) => e.nom)).toEqual(['CISPE', 'Cigref', 'Hexatrust'])
+      expect(lue.trousDuPestel).toEqual(première.trousDuPestel)
+    })
+
+    it('ne valide que la dernière version, une fois', async () => {
+      expect(await validerLaVersion({ slug: 'infralliance', version: 1 }, db)).toBe('aucune')
+      await poster()
+      await poster({ ...GRILLE, partiesPrenantes: [...GRILLE.partiesPrenantes, { nom: 'Arcep' }] })
+      expect(await validerLaVersion({ slug: 'infralliance', version: 1 }, db)).toBe('version-dépassée')
+      expect(await validerLaVersion({ slug: 'infralliance', version: 2 }, db)).toBe('validée')
+      expect(await validerLaVersion({ slug: 'infralliance', version: 2 }, db)).toBe('déjà-validée')
+      const lue = await lireLaGrilleDuPilote({ slug: 'infralliance' }, db)
+      expect(lue.sorte === 'lue' && lue.validéeLe).toBeInstanceOf(Date)
     })
   })
 })

@@ -5,17 +5,27 @@ import {
   faitsDesÉditions,
   lireLaGrille,
   organisationPourLesOutils,
+  posterLaGrille,
   remplacerLesÉtiquettes,
   réglerLesOutilsStratégiques,
+  validerLaGrille,
   étatDeLÉtiquetage,
+  type GrilleEnregistrée,
 } from '@/lib/base/strategie'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import {
+  contrôlerLaGrille,
   contrôlerLesÉtiquettes,
+  empreinteDeLaGrille,
   faitsDeLaLettre,
+  forcesNonSuivies,
   lectureDesÉtiquettes,
   messageDeRefus,
+  trousDuPestel,
+  type ForcePorter,
+  type Grille,
   type LectureDesÉtiquettes,
+  type Pestel,
   type Refus,
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
@@ -78,6 +88,85 @@ export async function réglerLePilote(
   db?: Base,
 ): Promise<'réglé' | 'organisation-inconnue'> {
   return réglerLesOutilsStratégiques(entrée, db)
+}
+
+// ── La grille (lot 5) ────────────────────────────────────────────────────────
+
+/** Ce que la grille laisse sans couverture : de quoi lire un PESTEL ou des cinq forces sans inventer de trou. */
+type TrousDeLaGrille = { readonly trousDuPestel: readonly Pestel[]; readonly forcesNonSuivies: readonly ForcePorter[] }
+
+export type RésultatDeLaGrille =
+  | ({ readonly sorte: 'créée' | 'inchangée'; readonly version: number; readonly empreinte: string } & TrousDeLaGrille)
+  | { readonly sorte: 'refusée'; readonly refus: readonly Refus[]; readonly message: string }
+  | { readonly sorte: 'organisation-inconnue' | 'hors-pilote' }
+
+/**
+ * Reçoit la grille d'une organisation du pilote, rédigée dans son référentiel
+ * (section « Grille stratégique ») et postée par la revue ou par la tâche qui
+ * tient le référentiel. Le pilote est vérifié avant la porte, la porte avant
+ * l'écriture ; le référentiel n'est pas lu (le portail n'y a pas accès), seul
+ * son identifiant est gardé. La même grille re-postée ne crée pas de version.
+ *
+ * Une fois une grille postée, la porte des étiquettes refuse une entité qui
+ * n'y figure pas (`entité-hors-grille`) : la grille doit nommer toutes celles
+ * que les lettres suivent.
+ */
+export async function recevoirLaGrille(
+  entrée: { readonly slug: string; readonly référentiel: string; readonly grille: Grille },
+  db?: Base,
+): Promise<RésultatDeLaGrille> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+
+  const refus = contrôlerLaGrille(entrée.grille)
+  if (refus.length > 0) return { sorte: 'refusée', refus, message: messageDeRefus(refus) }
+
+  const écrit = await posterLaGrille(
+    { organisationId: organisation.id, référentielNotion: normaliserIdentifiant(entrée.référentiel), grille: entrée.grille },
+    db,
+  )
+  if (écrit.sorte === 'hors-pilote') return { sorte: 'hors-pilote' }
+  return {
+    sorte: écrit.sorte,
+    version: écrit.version,
+    empreinte: empreinteDeLaGrille(entrée.grille),
+    trousDuPestel: trousDuPestel(entrée.grille),
+    forcesNonSuivies: forcesNonSuivies(entrée.grille),
+  }
+}
+
+export type LectureDeLaGrille =
+  | ({ readonly sorte: 'lue' } & GrilleEnregistrée & TrousDeLaGrille)
+  | { readonly sorte: 'aucune' | 'organisation-inconnue' | 'hors-pilote' }
+
+/** La dernière version de la grille, telle que la revue la relit avant une synthèse. */
+export async function lireLaGrilleDuPilote(entrée: { readonly slug: string }, db?: Base): Promise<LectureDeLaGrille> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const lue = await lireLaGrille(organisation.id, db)
+  if (!lue) return { sorte: 'aucune' }
+  return { sorte: 'lue', ...lue, trousDuPestel: trousDuPestel(lue.grille), forcesNonSuivies: forcesNonSuivies(lue.grille) }
+}
+
+/**
+ * Pose la validation de la dernière version, une fois répondus les points de
+ * validation de ses axes. Une version dépassée ne se valide pas : ses axes ne
+ * sont plus ceux que la synthèse lira.
+ */
+export async function validerLaVersion(
+  entrée: { readonly slug: string; readonly version: number },
+  db?: Base,
+): Promise<'validée' | 'déjà-validée' | 'version-dépassée' | 'aucune' | 'organisation-inconnue' | 'hors-pilote'> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return 'organisation-inconnue'
+  if (!organisation.outilsStratégiques) return 'hors-pilote'
+  const dernière = await lireLaGrille(organisation.id, db)
+  if (!dernière) return 'aucune'
+  if (dernière.version !== entrée.version) return 'version-dépassée'
+  const résultat = await validerLaGrille({ organisationId: organisation.id, version: entrée.version }, db)
+  return résultat === 'inconnue' ? 'aucune' : résultat
 }
 
 /** `Écosystème` devient `ecosysteme` : la clé interne, sans accent, comme dans le domaine. */

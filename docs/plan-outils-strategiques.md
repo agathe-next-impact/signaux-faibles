@@ -300,6 +300,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Tests** : route (versions, empreinte identique sans nouvelle version, refus) ; architecture : route gardée.
 - **Fin** : grille de Mastora postée, version 1, points de validation des axes créés.
 - **Hors du lot** : synthèse.
+- **Code fait le 27/10/2026** (avancé à la demande de l'opératrice) : `app/api/veille/grille/route.ts` (`POST` poster, `GET` lire la dernière version avec les trous du PESTEL et les forces non suivies, `PATCH` valider la dernière version, `version-dépassée` sinon), orchestration `recevoirLaGrille`, `lireLaGrilleDuPilote` et `validerLaVersion` dans `lib/portail/strategie.ts` (pilote avant porte, porte avant écriture) ; tests de la route, de l'orchestration sur base en mémoire et d'architecture ; contrat dans `docs/api-veille.md`. Restent la partie Notion (section « Grille stratégique » du prompt de génération et des référentiels du pilote, points de validation des axes, re-post par la revue) et la fin du lot : la grille de Mastora postée en version 1. Attention : une grille postée active `entité-hors-grille` sur les étiquettes de l'organisation ; elle doit donc nommer toutes les entités que ses lettres suivent, ce qui n'est pas le cas des étiquettes déjà posées pour Heritech (Baludik, Piste et Trésor, Salon international du patrimoine culturel, hors corpus).
 
 ### Lot 6. La synthèse mensuelle
 
