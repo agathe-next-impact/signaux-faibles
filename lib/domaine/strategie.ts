@@ -891,7 +891,9 @@ const LIBELLÉS_CRANS: Readonly<Record<string, readonly string[]>> = {
  */
 export function rendreLaSynthèse(s: SynthèseÀRendre): string {
   const lignes: string[] = []
-  const faitsDe = (ids: readonly string[]) => {
+  // Un fait cité par les deux axes d'un même sujet ne se compte qu'une fois.
+  const faitsDe = (cités: readonly string[]) => {
+    const ids = [...new Set(cités)]
     if (ids.length === 0) return ''
     const dates = ids.map((id) => {
       const f = s.faits.get(id)
@@ -934,7 +936,10 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
     }
   }
 
-  const tows = s.éléments.filter((é) => é.outil === 'tows').sort((a, b) => a.clé.localeCompare(b.clé) || a.rang - b.rang)
+  // L'option candidate en tête, comme sur l'écran « Recommandations » prévu après le pilote.
+  const tows = s.éléments
+    .filter((é) => é.outil === 'tows')
+    .sort((a, b) => Number(b.candidateRecommandation) - Number(a.candidateRecommandation) || a.clé.localeCompare(b.clé) || a.rang - b.rang)
   if (tows.length > 0) {
     lignes.push('', 'TOWS')
     for (const é of tows) {
