@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Case, Grille, Panneau } from '@/components/coquille'
+import { GraphiqueRepèresDeMarché } from '@/components/graphiques-vitrine'
 import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
 import {
   ADRESSE_D_ABONNEMENT,
@@ -12,6 +13,7 @@ import {
   équivalentMensuelDeLAnnuel,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
+import { prixParLecteur } from '@/lib/vitrine/marche'
 
 export const metadata: Metadata = {
   title: 'Tarifs — signauxfaibles',
@@ -65,6 +67,19 @@ export default function Tarifs() {
           .
         </p>
       </section>
+
+      <SectionVitrine
+        surtitre="Où se place ce prix"
+        titre="Le prix d’un outil, le travail d’un analyste"
+        chapeau={`Au prix des outils d’alerte haut de gamme, et loin sous les plateformes de veille. Avec ${LECTEURS_ACTIFS_MAX} lecteurs, il revient à ${enEuros(prixParLecteur())} € HT par lecteur et par mois, moins qu’une lettre professionnelle vendue par utilisateur.`}
+      >
+        <GraphiqueRepèresDeMarché />
+        <p className="max-w-3xl text-encre">
+          La différence de nature compte plus que le prix : un outil vous livre des alertes à trier,
+          une plateforme un logiciel à exploiter. Nous vous livrons l’analyse écrite, hiérarchisée par
+          impact, prête à être lue.
+        </p>
+      </SectionVitrine>
 
       <SectionVitrine surtitre="Inclus" titre="Ce que couvre l’abonnement">
         <ListeCarrée

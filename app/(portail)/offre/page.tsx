@@ -115,6 +115,53 @@ export default function Offre() {
       </SectionVitrine>
 
       <SectionVitrine
+        surtitre="Ce qui nous distingue"
+        titre="Chaque promesse est tenue par le produit"
+        chapeau="Rien de ce qui suit n’est un engagement de principe : chaque point se vérifie dans une lettre ou dans l’espace, en démonstration."
+      >
+        <Grille colonnes={3} étiquette="Ce qui nous distingue">
+          {[
+            {
+              titre: 'Une veille propre à votre organisation',
+              garantie: 'Un périmètre établi pour vous : vos axes, vos sources nommées, vos acteurs.',
+              face: 'une newsletter sectorielle, la même pour tous',
+            },
+            {
+              titre: 'Des faits vérifiables',
+              garantie: 'Chaque fait porte sa date et le lien de sa source ; la lettre est contrôlée avant l’envoi.',
+              face: 'un résumé sans source',
+            },
+            {
+              titre: 'Une hiérarchie claire',
+              garantie: 'Trois niveaux d’impact par axe ; un axe sans nouveauté dit ce qui a été vérifié.',
+              face: 'une alerte par mot-clé, sans tri',
+            },
+            {
+              titre: 'Une lecture courte',
+              garantie: `${ESSENTIEL_LIGNES_MAX} lignes pour l’essentiel, ${LETTRE_UNIQUE.motsMax.toLocaleString('fr-FR')} mots au plus pour la lettre entière.`,
+              face: 'un flux d’articles à lire',
+            },
+            {
+              titre: 'Un suivi dans la durée',
+              garantie: 'Les dossiers ouverts suivis d’une lettre à l’autre, avec leurs semaines sans mouvement.',
+              face: 'une alerte ponctuelle, sans mémoire',
+            },
+            {
+              titre: 'Une archive confidentielle',
+              garantie: 'Un espace par organisation, cloisonné ; un lien personnel par lecteur, révocable.',
+              face: 'des courriels perdus dans une boîte',
+            },
+          ].map((argument) => (
+            <Case key={argument.titre}>
+              <h3 className="font-titre text-h3 font-semibold text-encre">{argument.titre}</h3>
+              <p className="text-ardoise">{argument.garantie}</p>
+              <p className="label-mono mt-auto pt-1 text-ardoise">Face à {argument.face}</p>
+            </Case>
+          ))}
+        </Grille>
+      </SectionVitrine>
+
+      <SectionVitrine
         surtitre="L’espace"
         titre="Ce que vous retrouvez en ligne"
         chapeau="Un espace réservé à votre organisation, accessible par un lien personnel, sans mot de passe. Il s’installe aussi comme une application sur ordinateur et téléphone."
@@ -145,6 +192,52 @@ export default function Offre() {
             <p className="text-ardoise">Ce que la veille surveille pour vous : axes, sources et acteurs suivis.</p>
           </Case>
         </Grille>
+      </SectionVitrine>
+
+      <SectionVitrine
+        surtitre="Lecture stratégique · en test"
+        titre="Les outils de l’analyse stratégique, appliqués à vos faits"
+        chapeau="Chaque fait de vos lettres est classé dans les cadres que l’on enseigne en stratégie. Le tableau de bord en tire des comptes, jamais une opinion : ce qui bouge dans votre environnement, qui bouge dans votre concurrence, et ce qui pourrait changer votre position."
+      >
+        <Grille colonnes={2} étiquette="Les outils de la lecture stratégique">
+          <Case>
+            <p className="label-mono text-ardoise">Environnement</p>
+            <h3 className="font-titre text-h3 font-semibold text-encre">PESTEL</h3>
+            <p className="text-ardoise">
+              Politique, économique, social, technologique, environnemental, légal : les six
+              dimensions, y compris celles où rien ne bouge. Un trou se voit.
+            </p>
+          </Case>
+          <Case>
+            <p className="label-mono text-ardoise">Concurrence</p>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Les cinq forces</h3>
+            <p className="text-ardoise">
+              Rivalité, nouveaux entrants, substituts, pouvoir des clients et des fournisseurs, avec
+              les acteurs les plus cités sous chaque force.
+            </p>
+          </Case>
+          <Case>
+            <p className="label-mono text-ardoise">Mouvements</p>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Ce que font vos concurrents</h3>
+            <p className="text-ardoise">
+              Gagner des parts sur leur marché, lancer une offre, viser un nouveau public : chaque
+              geste nommé est rangé dans la matrice d’Ansoff.
+            </p>
+          </Case>
+          <Case accent>
+            <p className="label-mono text-ardoise">Ruptures</p>
+            <h3 className="font-titre text-h3 font-semibold text-encre">Ce qui change votre position</h3>
+            <p className="text-encre">
+              Les rares faits qui modifient la situation que la veille surveille pour vous. Une
+              lettre en compte zéro, un ou deux ; un événement n’est compté qu’une fois.
+            </p>
+          </Case>
+        </Grille>
+        <p className="max-w-3xl text-ardoise">
+          En test auprès de nos premiers clients. D’autres outils sont en préparation : la carte des
+          groupes stratégiques, la matrice des parties prenantes et la SWOT.
+        </p>
+        <LienFlèche href="/exemple">Voir une lecture stratégique en exemple</LienFlèche>
       </SectionVitrine>
 
       <SectionVitrine
