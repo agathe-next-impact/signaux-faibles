@@ -710,7 +710,9 @@ lettre de `LETTRE_UNIQUE` et `ESSENTIEL_LIGNES_MAX`, l'essai de
 publics y sont annoncés comme **tarif early adopter**, pour toute inscription
 jusqu'au `FIN_DU_TARIF_EARLY_ADOPTER` (31 décembre 2026, décision du 27 octobre
 2026), puis `PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT` (290 € HT par mois, 2 900 € HT
-par an) pour les inscriptions suivantes, montants et date écrits dans
+par an) pour les inscriptions suivantes, avec un **prix garanti** aux inscrits
+avant cette date tant que leur abonnement n'est pas interrompu (ne jamais migrer
+un abonné early adopter vers un autre prix), montants et date écrits dans
 `lib/domaine/offre.ts` seulement ; le prix facturé reste celui des prix Stripe,
 à créer et poser le 1er janvier 2027. Ce sont les seules
 pages indexables (`robots: index`). Le proxy les ouvre à l'adresse exacte, et

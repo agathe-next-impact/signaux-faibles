@@ -156,8 +156,9 @@ export function AccueilVitrine() {
           Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs : soit{' '}
           {enEuros(prixParLecteur())} € HT par lecteur et par mois. Tarif early
           adopter pour toute inscription avant le {finDuTarifEarlyAdopter()} ; ensuite,
-          l’abonnement passe à {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois. Sans
-          engagement en formule mensuelle, deux mois offerts en formule annuelle.
+          l’abonnement passe à {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois. Prix
+          garanti tant que votre abonnement n’est pas interrompu. Sans engagement en formule
+          mensuelle, deux mois offerts en formule annuelle.
         </p>
         <LienFlèche href="/tarifs">Voir les tarifs</LienFlèche>
       </SectionVitrine>

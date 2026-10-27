@@ -12,6 +12,13 @@ export const PRIX_MENSUEL_HT = 149
  * Ne pas confondre avec le **tarif fondateur** (`offre = fondateur`,
  * `PRIX_FONDATEUR_HT`), réservé par l'opératrice à une organisation nommée et
  * jamais affiché.
+ *
+ * Le prix early adopter est **garanti** à qui s'inscrit avant cette date, tant
+ * que son abonnement n'est pas interrompu (décision du 27 octobre 2026), et les
+ * pages vitrines l'annoncent. C'est aussi la mécanique de Stripe : un abonnement
+ * en cours garde son prix ; une souscription nouvelle, après une résiliation,
+ * prend le prix du moment. Migrer un abonné early adopter vers un autre prix
+ * romprait cet engagement public.
  */
 export const FIN_DU_TARIF_EARLY_ADOPTER = '2026-12-31'
 /**

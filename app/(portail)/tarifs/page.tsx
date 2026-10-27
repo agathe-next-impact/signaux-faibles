@@ -49,6 +49,10 @@ export default function Tarifs() {
             {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois, ou{' '}
             {enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par an.
           </p>
+          <p className="mt-2 text-encre">
+            <strong className="font-medium">Prix garanti</strong> : une organisation inscrite avant le{' '}
+            {finDuTarifEarlyAdopter()} garde son prix tant que son abonnement n’est pas interrompu.
+          </p>
         </Panneau>
         <Grille colonnes={2} étiquette="Les deux formules">
           <Case>
@@ -154,6 +158,13 @@ export default function Tarifs() {
           <Question titre="Faut-il un mot de passe ?">
             Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en
             saisissant son adresse sur la page de connexion.
+          </Question>
+          <Question titre={`Mon prix augmentera-t-il après le ${finDuTarifEarlyAdopter()} ?`}>
+            Non, si vous vous abonnez avant cette date : le tarif early adopter vous est garanti tant
+            que votre abonnement n’est pas interrompu, en formule mensuelle comme annuelle. Une
+            nouvelle souscription après une résiliation se fait au prix en vigueur, soit{' '}
+            {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois pour une souscription faite après le{' '}
+            {finDuTarifEarlyAdopter()}.
           </Question>
           <Question titre="Que se passe-t-il si je résilie ?">
             La résiliation se fait depuis « Mon abonnement ». Vos lettres restent lisibles jusqu’à
