@@ -63,10 +63,10 @@ describe('composerCourrierDeParcours', () => {
     })
   }
 
-  it('écrit le nombre de parutions réglé, et le tarif early adopter quand c’est l’offre', () => {
+  it('écrit le nombre de parutions réglé, et le tarif fondateur quand c’est l’offre', () => {
     const quatre = composerCourrierDeParcours({ ...base, sorte: 'essai_derniere_parution', parutions: 4 }).texte
     expect(quatre).toContain('quatre parutions complètes')
-    const early = composerCourrierDeParcours({ ...base, sorte: 'essai_tronquee', offre: 'early_adopter' }).texte
+    const early = composerCourrierDeParcours({ ...base, sorte: 'essai_tronquee', offre: 'fondateur' }).texte
     expect(early).toContain('29 € HT par mois')
     expect(early).not.toContain('1 490 € HT par an')
   })

@@ -20,13 +20,13 @@ import Stripe from 'stripe'
  * passage en réel ne doit demander aucun commit.
  */
 
-/** `early_adopter` : la formule mensuelle réservée, à son propre prix Stripe ; admise seulement pour une organisation dont l'offre le dit. */
-export type Formule = 'mensuelle' | 'annuelle' | 'early_adopter'
+/** `fondateur` : la formule mensuelle réservée, à son propre prix Stripe ; admise seulement pour une organisation dont l'offre le dit. */
+export type Formule = 'mensuelle' | 'annuelle' | 'fondateur'
 
 export type ConfigurationStripe = {
   readonly cléSecrète: string
-  /** `early_adopter` est nul tant que `STRIPE_PRIX_EARLY_ADOPTER` n'est pas posée : la formule est alors indisponible, le reste non. */
-  readonly prix: { readonly mensuelle: string; readonly annuelle: string; readonly early_adopter: string | null }
+  /** `fondateur` est nul tant que `STRIPE_PRIX_FONDATEUR` n'est pas posée : la formule est alors indisponible, le reste non. */
+  readonly prix: { readonly mensuelle: string; readonly annuelle: string; readonly fondateur: string | null }
   /** Taux de TVA fixe (`txr_…`), appliqué à l'abonnement. Absent : aucune taxe ajoutée par le portail. */
   readonly tauxDeTva: string | null
   readonly portailUrl: string
@@ -47,7 +47,8 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   const cléSecrète = vide(source['STRIPE_CLE_SECRETE'])
   const mensuel = vide(source['STRIPE_PRIX_MENSUEL'])
   const annuel = vide(source['STRIPE_PRIX_ANNUEL'])
-  const earlyAdopter = vide(source['STRIPE_PRIX_EARLY_ADOPTER'])
+  // L'ancien nom reste lu tant que la variable n'est pas renommée chez l'hébergeur.
+  const fondateur = vide(source['STRIPE_PRIX_FONDATEUR']) ?? vide(source['STRIPE_PRIX_EARLY_ADOPTER'])
   const taux = vide(source['STRIPE_TAUX_TVA'])
   const portailUrl = vide(source['PORTAIL_URL'])
 
@@ -56,7 +57,7 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   if (!cléSecrète || !/^(sk|rk)_(test|live)_/.test(cléSecrète)) manques.push('STRIPE_CLE_SECRETE')
   if (!mensuel || !mensuel.startsWith('price_')) manques.push('STRIPE_PRIX_MENSUEL')
   if (!annuel || !annuel.startsWith('price_')) manques.push('STRIPE_PRIX_ANNUEL')
-  if (earlyAdopter && !earlyAdopter.startsWith('price_')) manques.push('STRIPE_PRIX_EARLY_ADOPTER')
+  if (fondateur && !fondateur.startsWith('price_')) manques.push('STRIPE_PRIX_FONDATEUR')
   if (taux && !taux.startsWith('txr_')) manques.push('STRIPE_TAUX_TVA')
   if (!portailUrl) manques.push('PORTAIL_URL')
   if (manques.length > 0) {
@@ -66,7 +67,7 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
 
   return {
     cléSecrète: cléSecrète!,
-    prix: { mensuelle: mensuel!, annuelle: annuel!, early_adopter: earlyAdopter },
+    prix: { mensuelle: mensuel!, annuelle: annuel!, fondateur },
     tauxDeTva: taux,
     portailUrl: portailUrl!.replace(/\/+$/, ''),
   }
@@ -81,7 +82,7 @@ export function cléAccordéeAuMode(cléSecrète: string, modeRéel: boolean): b
   return cléSecrète.includes('_live_') === modeRéel
 }
 
-/** Le prix Stripe d'une formule ; lève si la formule early adopter n'a pas de prix posé. */
+/** Le prix Stripe d'une formule ; lève si la formule fondateur n'a pas de prix posé. */
 export function prixDe(configuration: ConfigurationStripe, formule: Formule): string {
   const prix = configuration.prix[formule]
   if (!prix) throw new Error(`formule ${formule} sans prix Stripe configuré`)

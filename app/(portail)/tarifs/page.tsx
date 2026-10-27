@@ -5,7 +5,10 @@ import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVi
 import {
   ADRESSE_D_ABONNEMENT,
   enEuros,
+  finDuTarifEarlyAdopter,
   LECTEURS_ACTIFS_MAX,
+  PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT,
+  PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT,
   PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
   prixTTC,
@@ -17,14 +20,14 @@ import { prixParLecteur } from '@/lib/vitrine/marche'
 
 export const metadata: Metadata = {
   title: 'Tarifs — signauxfaibles',
-  description: `${enEuros(PRIX_MENSUEL_HT)} € HT par mois ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an, par organisation. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
+  description: `Tarif early adopter jusqu’au ${finDuTarifEarlyAdopter()} : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois au lieu de ${enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} €, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an, par organisation. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
   robots: { index: true, follow: true },
 }
 
 /**
  * « Tarifs » (23 octobre 2026) : les deux formules de l'offre du 17 octobre et
  * le déroulé de l'essai. Les montants viennent tous de `lib/domaine/offre.ts` ;
- * le tarif early adopter n'est pas public, il est réservé par l'opératrice à
+ * le tarif fondateur n'est pas public, il est réservé par l'opératrice à
  * une organisation nommée.
  */
 export default function Tarifs() {
@@ -38,23 +41,42 @@ export default function Tarifs() {
       />
 
       <section className="flex flex-col gap-4">
+        <Panneau ton="rose">
+          <p className="label-mono text-ardoise">Tarif early adopter</p>
+          <p className="mt-2 text-encre">
+            Ces prix sont réservés aux organisations qui s’inscrivent avant le{' '}
+            {finDuTarifEarlyAdopter()}. Pour les inscriptions suivantes, l’abonnement sera de{' '}
+            {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois, ou{' '}
+            {enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par an.
+          </p>
+          <p className="mt-2 text-encre">
+            <strong className="font-medium">Prix garanti</strong> : une organisation inscrite avant le{' '}
+            {finDuTarifEarlyAdopter()} garde son prix tant que son abonnement n’est pas interrompu.
+          </p>
+        </Panneau>
         <Grille colonnes={2} étiquette="Les deux formules">
           <Case>
-            <p className="label-mono text-ardoise">Mensuel</p>
+            <p className="label-mono text-ardoise">Mensuel · early adopter</p>
             <p className="font-titre text-h1 font-bold text-encre">
               {enEuros(PRIX_MENSUEL_HT)} € <span className="text-h3 font-semibold">HT par mois</span>
             </p>
             <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_MENSUEL_HT))} € TTC</p>
             <p className="text-ardoise">Sans engagement, résiliable à tout moment.</p>
+            <p className="label-mono mt-auto pt-1 text-ardoise">
+              Après le {finDuTarifEarlyAdopter()} : {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois
+            </p>
           </Case>
           <Case accent>
-            <p className="label-mono text-ardoise">Annuel · deux mois offerts</p>
+            <p className="label-mono text-ardoise">Annuel · early adopter · deux mois offerts</p>
             <p className="font-titre text-h1 font-bold text-encre">
               {enEuros(PRIX_ANNUEL_HT)} € <span className="text-h3 font-semibold">HT par an</span>
             </p>
             <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_ANNUEL_HT))} € TTC</p>
             <p className="text-ardoise">
               Soit {enEuros(équivalentMensuelDeLAnnuel())} € HT par mois.
+            </p>
+            <p className="label-mono mt-auto pt-1 text-ardoise">
+              Après le {finDuTarifEarlyAdopter()} : {enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par an
             </p>
           </Case>
         </Grille>
@@ -136,6 +158,13 @@ export default function Tarifs() {
           <Question titre="Faut-il un mot de passe ?">
             Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en
             saisissant son adresse sur la page de connexion.
+          </Question>
+          <Question titre={`Mon prix augmentera-t-il après le ${finDuTarifEarlyAdopter()} ?`}>
+            Non, si vous vous abonnez avant cette date : le tarif early adopter vous est garanti tant
+            que votre abonnement n’est pas interrompu, en formule mensuelle comme annuelle. Une
+            nouvelle souscription après une résiliation se fait au prix en vigueur, soit{' '}
+            {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois pour une souscription faite après le{' '}
+            {finDuTarifEarlyAdopter()}.
           </Question>
           <Question titre="Que se passe-t-il si je résilie ?">
             La résiliation se fait depuis « Mon abonnement ». Vos lettres restent lisibles jusqu’à

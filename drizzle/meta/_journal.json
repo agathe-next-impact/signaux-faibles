@@ -99,6 +99,13 @@
       "when": 1792990631645,
       "tag": "0013_outils_strategiques",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793079678820,
+      "tag": "0014_offre_fondateur",
+      "breakpoints": true
     }
   ]
 }

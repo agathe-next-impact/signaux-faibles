@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { enEuros, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT, prixTTC, équivalentMensuelDeLAnnuel } from '@/lib/domaine/offre'
+import {
+  enEuros,
+  FIN_DU_TARIF_EARLY_ADOPTER,
+  finDuTarifEarlyAdopter,
+  PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT,
+  PRIX_FONDATEUR_HT,
+  PRIX_ANNUEL_HT,
+  PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT,
+  PRIX_MENSUEL_HT,
+  prixTTC,
+  équivalentMensuelDeLAnnuel,
+} from '@/lib/domaine/offre'
 
 /**
  * Les montants des pages vitrines viennent de `lib/domaine/offre.ts`. Ce test
@@ -24,5 +35,19 @@ describe('les montants de l’offre', () => {
   it('ramène l’annuel au mois, au centime', () => {
     expect(équivalentMensuelDeLAnnuel()).toBe(124.17)
     expect(enEuros(équivalentMensuelDeLAnnuel())).toBe('124,17')
+  })
+
+  it('annonce le tarif early adopter jusqu’au 31 décembre 2026, en toutes lettres', () => {
+    expect(FIN_DU_TARIF_EARLY_ADOPTER).toBe('2026-12-31')
+    expect(finDuTarifEarlyAdopter()).toBe('31 décembre 2026')
+  })
+
+  it('annonce 290 € HT par mois et 2 900 € HT par an après le tarif early adopter', () => {
+    expect(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT).toBe(290)
+    expect(sansEspaceFine(enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT))).toBe('2 900')
+  })
+
+  it('garde le tarif fondateur à 29 € HT, distinct des prix publics', () => {
+    expect(PRIX_FONDATEUR_HT).toBe(29)
   })
 })

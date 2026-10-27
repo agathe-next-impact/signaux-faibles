@@ -171,7 +171,7 @@ export async function organisationsEnEssai(db: Base = base()): Promise<
     readonly relectureRequise: boolean
     readonly emailRelecture: string | null
     readonly registreNotion: string | null
-    readonly offre: 'standard' | 'early_adopter' | 'gratuite'
+    readonly offre: 'standard' | 'fondateur' | 'gratuite'
     readonly parutionsDEssai: number
     readonly abonnement: { readonly état: string } | null
     readonly lecteurs: Array<{ readonly id: string; readonly nom: string; readonly email: string }>
@@ -228,7 +228,7 @@ export type DestinatairesDOrganisation = {
   readonly slug: string
   readonly nom: string
   readonly registreNotion: string | null
-  readonly offre: 'standard' | 'early_adopter' | 'gratuite'
+  readonly offre: 'standard' | 'fondateur' | 'gratuite'
   readonly lecteurs: Array<{ readonly id: string; readonly nom: string; readonly email: string }>
 }
 

@@ -54,7 +54,7 @@ export async function prolongerLEssai(données: FormData): Promise<void> {
 export async function poserLOffre(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const offre = données.get('offre')
-  if (offre !== 'standard' && offre !== 'early_adopter' && offre !== 'gratuite') notFound()
+  if (offre !== 'standard' && offre !== 'fondateur' && offre !== 'gratuite') notFound()
   await appliquer(slug, `offre ${offre}`, { sorte: 'offre', offre })
 }
 

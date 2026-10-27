@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
-import { enEuros, PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT, équivalentMensuelDeLAnnuel } from '@/lib/domaine/offre'
+import { enEuros, PRIX_ANNUEL_HT, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT, équivalentMensuelDeLAnnuel } from '@/lib/domaine/offre'
 import type { Offre } from '@/lib/domaine/parcours'
 
 /**
@@ -32,16 +32,16 @@ export function LienMonAbonnement({ slug }: { slug: string }) {
  */
 export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; offre?: Offre }) {
   const équivalent = enEuros(équivalentMensuelDeLAnnuel())
-  // L'early adopter (19 octobre 2026) ne voit que sa formule : afficher le prix standard
+  // Le tarif fondateur (19 octobre 2026) ne voit que sa formule : afficher le prix standard
   // à qui paiera 29 € serait faux. L'action serveur revérifie l'offre.
-  if (offre === 'early_adopter') {
+  if (offre === 'fondateur') {
     return (
       <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
         <Formule
           slug={slug}
-          formule="early_adopter"
-          intitulé="Early adopter"
-          prix={`${enEuros(PRIX_EARLY_ADOPTER_HT)} € HT par mois`}
+          formule="fondateur"
+          intitulé="Tarif fondateur"
+          prix={`${enEuros(PRIX_FONDATEUR_HT)} € HT par mois`}
           détail="Tarif réservé à votre organisation. Sans engagement, résiliable à tout moment."
         />
       </div>
@@ -76,7 +76,7 @@ function Formule({
   détail,
 }: {
   slug: string
-  formule: 'mensuelle' | 'annuelle' | 'early_adopter'
+  formule: 'mensuelle' | 'annuelle' | 'fondateur'
   intitulé: string
   prix: string
   détail: string
