@@ -1,4 +1,4 @@
-import { ADRESSE_D_ABONNEMENT, enEuros, PRIX_ANNUEL_HT, PRIX_EARLY_ADOPTER_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { ADRESSE_D_ABONNEMENT, enEuros, PRIX_ANNUEL_HT, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { dateLongueDeParis, type Offre, type Étape } from '@/lib/domaine/parcours'
 import { composerCourriel, corpsDeParagraphes, dateDuJour, racineDuPortail, type Courriel } from '@/lib/email/gabarit'
 
@@ -74,8 +74,8 @@ export function parutionsEnLettres(parutions: number): string {
 
 /** Le prix écrit dans le courrier, selon l'offre posée sur l'organisation. */
 export function prixDeLOffre(offre: Offre): string {
-  return offre === 'early_adopter'
-    ? `${enEuros(PRIX_EARLY_ADOPTER_HT)} € HT par mois, tarif early adopter`
+  return offre === 'fondateur'
+    ? `${enEuros(PRIX_FONDATEUR_HT)} € HT par mois, tarif fondateur`
     : `${enEuros(PRIX_MENSUEL_HT)} € HT par mois, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an`
 }
 
@@ -270,7 +270,7 @@ function formuleEnClair(formule: 'mensuelle' | 'annuelle' | null): string {
  * Les quatre courriers de l'abonnement (23 octobre 2026), à la charte, déposés
  * en brouillon. Aucun ne parle de prix, sauf le renouvellement annuel : le
  * montant facturé est celui de Stripe, et un prix recopié ici pourrait le
- * contredire (early adopter, taxe, remise).
+ * contredire (tarif fondateur, taxe, remise).
  */
 export function composerCourrierDAbonnement(entrée: {
   readonly sorte: SorteDAbonnement

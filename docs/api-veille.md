@@ -425,11 +425,13 @@ client dont l'onboarding ou la souscription prend du retard, sans écrire en bas
 Trois réglages de plus le 19 octobre 2026, sur la même route, que le tableau de
 l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
 
-- `{ "slug", "action": "offre", "offre": "standard" | "early_adopter" | "gratuite" }`
+- `{ "slug", "action": "offre", "offre": "standard" | "fondateur" | "gratuite" }`
   pose l'offre. `gratuite` est l'accès offert : jamais de fin d'essai, étape
   « accès offert », et une organisation en essai passe `abonnee`.
-  `early_adopter` ne propose et n'admet que la formule à 29 € HT par mois,
-  sur son propre prix Stripe (`STRIPE_PRIX_EARLY_ADOPTER`). 200 `offre-posée`
+  `fondateur` (le tarif fondateur, nommé `early_adopter` jusqu'au 27 octobre
+  2026, valeur encore acceptée) ne propose et n'admet que la formule à 29 € HT
+  par mois, sur son propre prix Stripe (`STRIPE_PRIX_FONDATEUR`, à défaut
+  `STRIPE_PRIX_EARLY_ADOPTER`). 200 `offre-posée`
   avec `offre` et `état` ;
 - `{ "slug", "action": "parutions", "parutions": 1..8 }` règle le nombre de
   parutions complètes de l'essai (deux par défaut depuis le 24 octobre 2026,

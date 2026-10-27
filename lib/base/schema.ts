@@ -50,13 +50,14 @@ export const étatOrganisation = pgEnum('état_organisation', [
 /**
  * L'offre d'une organisation (19 octobre 2026) : ce qu'elle paie, ou non.
  *   · `standard` : les formules de l'offre, 149 € ou 1 490 € HT depuis le 23 octobre 2026 (89 € ou 890 € avant) ;
- *   · `early_adopter` : la seule formule à 29 € HT par mois, réservée par
- *     l'opératrice à une organisation nommée ;
+ *   · `fondateur` : le tarif fondateur, la seule formule à 29 € HT par mois,
+ *     réservée par l'opératrice à une organisation nommée (`early_adopter`
+ *     jusqu'à la migration 0014, 27 octobre 2026) ;
  *   · `gratuite` : accès offert, aucune ligne Stripe, jamais de fin d'essai.
  * Avant elle, « abonnée sans ligne Stripe » confondait l'accès offert et
  * l'abonnement facturé par virement.
  */
-export const offreOrganisation = pgEnum('offre_organisation', ['standard', 'early_adopter', 'gratuite'])
+export const offreOrganisation = pgEnum('offre_organisation', ['standard', 'fondateur', 'gratuite'])
 
 /** Une par client, prospect ou organisation de test. */
 export const organisations = pgTable(

@@ -196,7 +196,7 @@ export async function lireFacturation(
 ): Promise<{
   readonly organisationId: string
   /** L'offre posée : la formule admise en dépend. */
-  readonly offre: 'standard' | 'early_adopter' | 'gratuite'
+  readonly offre: 'standard' | 'fondateur' | 'gratuite'
   readonly abonnement: { readonly clientStripe: string; readonly état: string; readonly ouvert: boolean } | null
 } | null> {
   if (!/^[0-9a-f]{32}$/.test(registreNotion)) return null

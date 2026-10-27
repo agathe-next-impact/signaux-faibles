@@ -49,8 +49,8 @@ export const PARUTIONS_D_ESSAI_RECOMMANDÉE = 4
 
 export type ÉtatOrganisation = 'demande' | 'generation' | 'essai' | 'abonnee' | 'suspendue' | 'ecartee' | 'test'
 
-/** L'offre posée par l'opératrice (19 octobre 2026) : standard, early adopter, ou accès offert. */
-export type Offre = 'standard' | 'early_adopter' | 'gratuite'
+/** L'offre posée par l'opératrice (19 octobre 2026) : standard, tarif fondateur, ou accès offert. */
+export type Offre = 'standard' | 'fondateur' | 'gratuite'
 
 export type Étape =
   /** Une parution complète de l'essai ; `parution` va de 1 à `parutions`, le nombre réglé pour l'organisation. */

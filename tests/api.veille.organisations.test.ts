@@ -160,6 +160,16 @@ describe('PATCH /api/veille/organisations', () => {
     expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(2, 'acme', { sorte: 'relecture', requise: true })
   })
 
+  it('offre : pose le tarif fondateur, et lit encore son ancien nom « early_adopter »', async () => {
+    organisations.réglerLeParcours.mockResolvedValue({ sorte: 'offre-posée', offre: 'fondateur', état: 'abonnee' })
+    for (const offre of ['fondateur', 'early_adopter']) {
+      expect((await régler({ slug: 'acme', action: 'offre', offre })).status).toBe(200)
+    }
+    expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(1, 'acme', { sorte: 'offre', offre: 'fondateur' })
+    expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(2, 'acme', { sorte: 'offre', offre: 'fondateur' })
+    expect((await régler({ slug: 'acme', action: 'offre', offre: 'premium' })).status).toBe(400)
+  })
+
   it('outils : fait entrer une organisation dans le pilote, ou l’en fait sortir', async () => {
     strategie.réglerLePilote.mockResolvedValueOnce('réglé')
     const ouverte = await régler({ slug: 'infralliance', action: 'outils', actif: true })

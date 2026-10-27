@@ -229,7 +229,7 @@ async function néeDeLImportPendantLOnboarding(
  */
 /**
  * Trois réglages de plus le 19 octobre 2026, par le même écrivain :
- *   · `offre` pose l'offre (standard, early adopter, accès offert). Un accès
+ *   · `offre` pose l'offre (standard, tarif fondateur, accès offert). Un accès
  *     offert sur une organisation en essai la passe `abonnee` : rien ne doit
  *     plus se fermer pour elle ;
  *   · `parutions` règle le nombre de parutions complètes de l'essai (un essai à

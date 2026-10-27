@@ -3,7 +3,13 @@ import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { CarteDuMarché, GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
-import { enEuros, finDuTarifEarlyAdopter, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import {
+  enEuros,
+  finDuTarifEarlyAdopter,
+  LECTEURS_ACTIFS_MAX,
+  PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT,
+  PRIX_MENSUEL_HT,
+} from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
 import { COÛT_HORAIRE_ILLUSTRATIF, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
@@ -149,7 +155,8 @@ export function AccueilVitrine() {
         <p className="max-w-3xl text-ardoise">
           Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs : soit{' '}
           {enEuros(prixParLecteur())} € HT par lecteur et par mois. Sans engagement en formule
-          mensuelle, deux mois offerts en formule annuelle.
+          mensuelle, deux mois offerts en formule annuelle. Après le {finDuTarifEarlyAdopter()},
+          l’abonnement passera à {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois.
         </p>
         <LienFlèche href="/tarifs">Voir les tarifs</LienFlèche>
       </SectionVitrine>

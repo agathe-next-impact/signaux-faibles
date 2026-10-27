@@ -171,7 +171,7 @@ function Ligne({
           <input type="hidden" name="slug" value={ligne.slug} />
           <select name="offre" defaultValue={ligne.offre} className={champ} aria-label="Offre">
             <option value="standard">standard</option>
-            <option value="early_adopter">early adopter</option>
+            <option value="fondateur">tarif fondateur</option>
             <option value="gratuite">accès offert</option>
           </select>
           <button type="submit" className={bouton}>

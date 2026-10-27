@@ -50,7 +50,8 @@ import { réglerLePilote } from '@/lib/portail/strategie'
  *   PATCH /api/veille/organisations
  *   { "slug": "acme", "action": "prolonger", "semaines": 1 | 2 | 3 }
  *   { "slug": "acme", "action": "relecture", "requise": true | false }
- *   { "slug": "acme", "action": "offre", "offre": "standard" | "early_adopter" | "gratuite" }
+ *   { "slug": "acme", "action": "offre", "offre": "standard" | "fondateur" | "gratuite" }
+ *   (« early_adopter », l'ancien nom du tarif fondateur, reste accepté et vaut « fondateur »)
  *   { "slug": "acme", "action": "parutions", "parutions": 3 }
  *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
  *   { "slug": "acme", "action": "outils", "actif": true | false }
@@ -87,7 +88,9 @@ const réglage = z.discriminatedUnion('action', [
   z.object({
     slug: z.string().trim().min(1),
     action: z.literal('offre'),
-    offre: z.enum(['standard', 'early_adopter', 'gratuite']),
+    offre: z
+      .enum(['standard', 'fondateur', 'early_adopter', 'gratuite'])
+      .transform((offre) => (offre === 'early_adopter' ? 'fondateur' : offre)),
   }),
   z.object({ slug: z.string().trim().min(1), action: z.literal('parutions'), parutions: z.number().int().min(1).max(8) }),
   z.object({

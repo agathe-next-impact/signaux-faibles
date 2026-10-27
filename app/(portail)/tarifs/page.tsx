@@ -7,6 +7,8 @@ import {
   enEuros,
   finDuTarifEarlyAdopter,
   LECTEURS_ACTIFS_MAX,
+  PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT,
+  PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT,
   PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
   prixTTC,
@@ -18,14 +20,14 @@ import { prixParLecteur } from '@/lib/vitrine/marche'
 
 export const metadata: Metadata = {
   title: 'Tarifs — signauxfaibles',
-  description: `Tarif early adopter jusqu’au ${finDuTarifEarlyAdopter()} : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an, par organisation. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
+  description: `Tarif early adopter jusqu’au ${finDuTarifEarlyAdopter()} : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois au lieu de ${enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} €, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an, par organisation. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
   robots: { index: true, follow: true },
 }
 
 /**
  * « Tarifs » (23 octobre 2026) : les deux formules de l'offre du 17 octobre et
  * le déroulé de l'essai. Les montants viennent tous de `lib/domaine/offre.ts` ;
- * le tarif early adopter n'est pas public, il est réservé par l'opératrice à
+ * le tarif fondateur n'est pas public, il est réservé par l'opératrice à
  * une organisation nommée.
  */
 export default function Tarifs() {
@@ -43,7 +45,9 @@ export default function Tarifs() {
           <p className="label-mono text-ardoise">Tarif early adopter</p>
           <p className="mt-2 text-encre">
             Ces prix sont réservés aux organisations qui s’inscrivent avant le{' '}
-            {finDuTarifEarlyAdopter()}.
+            {finDuTarifEarlyAdopter()}. Pour les inscriptions suivantes, l’abonnement sera de{' '}
+            {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois, ou{' '}
+            {enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par an.
           </p>
         </Panneau>
         <Grille colonnes={2} étiquette="Les deux formules">
