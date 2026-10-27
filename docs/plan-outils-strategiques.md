@@ -12,7 +12,7 @@
 6. **Les chiffres sont calculés par le portail lui-même** (indice de cycle de vie, benchmark) au moment de recevoir la synthèse ; le modèle n'écrit que l'interprétation.
 7. **La grille vit dans le référentiel** (une section courte, non numérotée, après le §2), et le portail en tient une copie versionnée par empreinte, re-postée par la revue avant chaque synthèse.
 8. **Rien au portail pendant le pilote** : la synthèse est relue par l'opératrice dans le courriel « [Relecture] » de la revue. Après le pilote : « Acteurs » (carte, Mendelow), « Recommandations » (SWOT, TOWS) et une **vue PESTEL dédiée** (décision du 26/10/2026), dont la forme se tranche au lot 11.
-9. **Pilote sur huit semaines**, du 2 novembre au 27 décembre 2026 : Mastora et Infralliance d'abord **étiquetées après coup** sur leurs lettres déjà écrites (aucune lettre produite pour le pilote), puis Infralliance étiquetée chaque mercredi dans sa tâche des lettres.
+9. **Pilote sur huit semaines**, du 2 novembre au 27 décembre 2026 : Mastora et Infralliance d'abord **étiquetées après coup** sur leurs lettres déjà écrites (aucune lettre produite pour le pilote), puis Infralliance étiquetée chaque mercredi dans sa tâche des lettres. Le pilote s'est élargi depuis à L'Hermitage (26/10/2026), Heritech et Konica Minolta France (27/10/2026), étiquetées après coup puis dans chaque lettre (§6).
 10. **Premier lot** : le domaine et les portes, testés sur une lettre réelle récente étiquetée à la main.
 
 ## 2. Écarts constatés entre les sources et la demande
@@ -291,6 +291,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Hors du lot** : grille, synthèse.
 - **Fait le 26/10/2026** : action `outils` de la route PATCH, défaut `étiquettes-manquantes` du contrôle du soir, étape 4ter dans la page des lettres (porte du pilote par `GET /api/veille/faits`, journal de la page complété), tâche `etiquetage` du harnais pour la passe après coup (choix : l'API, sur Sonnet 5.5, plafond 10 $). Restent, après déploiement : poser le drapeau de Mastora et d'Infralliance, lancer la passe sur chacune, puis constater l'étiquetage de la lettre d'Infralliance du mercredi. Passe du 26/10/2026 : Infralliance, 7 éditions sur 12 acceptées (57 faits, 1,74 $) ; les écosystèmes des 30/09, 07/10 et 14/10 refusés par un défaut de comparaison des URL (`%2F` rendu par l'API Notion), corrigé ; accord avec le lot validé du 21/10 : 6 cadres sur 11, 11 impacts sur 11, aucune rupture ni force de Porter, d'où un calibrage de l'étape 4ter à valider. Décisions de l'opératrice du même jour : les deux lettres du 08/09, sans source citée dans leurs faits, restent sans étiquettes ; Mastora, qui n'a aucune édition publiée, est étiquetée sur ses deux brouillons n°1 (consigne de la tâche `etiquetage` étendue aux brouillons d'une organisation sans édition publiée).
 - **L'Hermitage étiqueté le 26/10/2026** (exécution 40308438865) : 156 faits sur 19 éditions, du 29/07 au 26/10, et 7 ruptures pour trois événements seulement (fin du GIP France Tiers-Lieux classée dans trois lettres, doctrine de l'État du 30/04 dans deux lettres d'août et de septembre, projet annuel de performances de la mission Cohésion des territoires dans les deux lettres du 19/10). Deux corrections : `lectureDesÉtiquettes` ne montre plus qu'une rupture par événement (même source, même date) ; la règle c de l'étape 4ter exclut un fait daté avant la période couverte par la lettre et un événement déjà classé rupture dans une lettre précédente (relance avec `--reprendre` sur les trois organisations du pilote).
+- **Heritech et Konica Minolta France entrées le 27/10/2026** (décision 13) : drapeau posé, étiquetage après coup lancé (Heritech : exécution 40465990144, 37 faits sur 3 éditions, 0,78 $, aucune rupture ; Konica : 93 faits sur ses 12 éditions, 3,13 $ en deux passages, aucune rupture ; 4 éditions dont des faits ne citaient pas d'URL dans leur propre bloc ont été corrigées dans Notion avant le second passage). Le tableau du §6 tient la liste des organisations du pilote.
 
 ### Lot 5. La grille
 
@@ -355,7 +356,17 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 
 ## 6. Pilote
 
-**Organisations** (décision du 26/10/2026) : Mastora (organisation de test, référentiels v1.3), étiquetée après coup seulement, et Infralliance (client, parution le mercredi à 6 h 30, référentiels v1.7), étiquetée après coup puis chaque semaine.
+**Organisations** : cinq, toutes portant `organisations.outils_strategiques` à vrai (vérifié le 27/10/2026 par `GET /api/veille/faits`, qui répond `hors-pilote` pour les cinq autres espaces).
+
+| Organisation | Slug | Entrée | Rôle | Étiquetage après coup |
+|---|---|---|---|---|
+| Mastora | `mastora` | 26/10/2026, décision 4 | Organisation de test, référentiels v1.3, aucune lettre produite | Ses deux brouillons n°1 : 19 faits |
+| Infralliance | `infralliance` | 26/10/2026, décision 4 | Client du pilote, parution le mercredi à 6 h 30, référentiels v1.7 ; synthèse mensuelle et trimestrielle | 10 éditions sur 12 (les deux du 08/09, sans source citée, restent sans étiquettes) : 91 faits |
+| L'Hermitage | `hermitage` | 26/10/2026, décision 12 | Section « Lecture stratégique » de la vue d'ensemble (lot 11 avancé) | 19 éditions, du 29/07 au 26/10 : 156 faits (exécution 40308438865) |
+| Heritech | `heritech` | 27/10/2026, décision 13 | Section « Lecture stratégique » de la vue d'ensemble | 3 éditions sur 4 : 37 faits, 0,78 $ (exécution 40465990144) ; le concurrentiel n°2 du 27/10, tout en RAS, n'a aucun fait étiquetable |
+| Konica Minolta France | `konica-minolta-france` | 27/10/2026, décision 13 | Section « Lecture stratégique » de la vue d'ensemble | 12 éditions sur 12 : 93 faits, aucune rupture. Premier passage : 8 éditions, 56 faits, 2,34 $ (exécution 40466848673) ; les 4 autres refusées ou passées pour `source-absente`, des faits sans URL dans leur propre bloc (Écosystème et Concurrentiel n°1 du 12/09, Concurrentiel n°3 du 30/09, Écosystème n°5 du 14/10). Pages corrigées le 27/10/2026 (liens seulement, repris d'une source déjà citée par la lettre ; note dans « Livraison »), puis second passage : 37 faits, 0,79 $ (exécution 40469515637), chaque lot accepté au premier envoi |
+
+Pour les cinq, l'étape 4ter étiquette chaque nouvelle lettre, et le contrôle du soir signale `étiquettes-manquantes`. Seule Infralliance reçoit la synthèse mensuelle pendant le pilote (lot 6) ; les critères de décision ci-dessous se mesurent sur elle. Heritech et Konica n'ont pas de grille (lot 5) : la porte ne contrôle pas les entités (`entité-hors-grille` ne joue pas). Les critères FAIBLE du référentiel de Konica (§2) restent sans effet sur les étiquettes. Le contrôle du soir du 27/10/2026 signale `étiquettes-manquantes` pour Heritech (le concurrentiel n°2 du 27/10, tout en RAS, à tort, comme son message le prévoit) et pour Konica (les éditions du 30/09 et du 14/10, postérieures à sa première étiquetée) ; celui de Konica a disparu après le second passage.
 
 **Aucune lettre produite pour le pilote** : Mastora garde « Veille automatique » décochée ; ses deux éditions n°1 servent d'étiquetage après coup. Le coût du pilote se réduit à l'étiquetage et aux synthèses (estimé ci-dessous). Infralliance continue de paraître comme aujourd'hui ; seule l'étape 4ter s'ajoute.
 
@@ -405,7 +416,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 | 1 | Où stocker les énoncés de synthèse ? | **Postgres** |
 | 2 | La grille peut-elle recopier dans Postgres des libellés courts ? | **Oui** ; les critères complets restent dans Notion. À inscrire dans `CLAUDE.md` et `docs/schema-donnees.md` au lot 2, comme exception bornée à la règle « pas de texte de référentiel » |
 | 3 | Où va la grille dans le référentiel ? | **Section sans numéro après le §2** ; le §4 reste vacant |
-| 4 | Quel client pour le pilote ? | **Infralliance** |
+| 4 | Quel client pour le pilote ? | **Infralliance** (élargi depuis : décisions 12 et 13) |
 | 5 | Produire des lettres de Mastora pour le pilote ? | **Non : étiquetage après coup** des éditions déjà écrites |
 | 6 | Étiquetage : étape de la lettre ou passe séparée ? | **Étape de la lettre** (4ter) |
 | 7 | Seuil de temps de relecture | **15 minutes** par organisation et par mois |
@@ -413,6 +424,8 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 | 9 | Affichage après le pilote | **Acteurs, Recommandations, et une vue PESTEL dédiée** (forme au lot 11, §3.6) |
 | 10 | Points de validation de la grille dans le plafond de dix ? | **Oui** |
 | 11 | Lot 0 tout de suite ? | **Oui, fait le 26/10/2026** |
+| 12 | L'Hermitage dans le pilote ? | **Oui (26/10/2026)**, pour la section « Lecture stratégique » de la vue d'ensemble ; étiquetage après coup puis dans chaque lettre |
+| 13 | Heritech et Konica Minolta France dans le pilote ? | **Oui (27/10/2026)**, mêmes conditions que L'Hermitage ; drapeau posé par `PATCH /api/veille/organisations` (`action: outils`) et étiquetage après coup lancé le même jour |
 
 Questions qui restent, à trancher au moment du lot concerné :
 

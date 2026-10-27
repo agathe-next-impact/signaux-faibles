@@ -34,7 +34,12 @@ ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
 `lib/portail/strategie.ts`, qui passe la porte de `lib/domaine/strategie.ts`
 avant d'écrire ; `tests/architecture.test.ts` tient la frontière, et le pilote
 est borné par `organisations.outils_strategiques` (faux par défaut, réponse
-`hors-pilote`).
+`hors-pilote`). **Organisations du pilote au 27 octobre 2026** : Mastora,
+Infralliance, L'Hermitage (`hermitage`), Heritech et Konica Minolta France
+(`konica-minolta-france`) ; le drapeau se pose par `PATCH
+/api/veille/organisations` (`action: outils`), puis `pnpm tache etiquetage
+--organisation <slug>` étiquette les lettres déjà publiées. La liste à jour,
+avec ce que chacune fait dans le pilote, est au §6 du plan.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et
@@ -638,8 +643,9 @@ sous le nom « Cadrage », renommé le 14 septembre en accueillant les acteurs
 suivis). Pas d'autre écran sans discussion.
 
 **Une troisième section de la vue d'ensemble, pour le seul pilote des outils
-stratégiques (26 octobre 2026, à la demande de l'opératrice pour L'Hermitage) :
-« Lecture stratégique ».** Elle compte les étiquettes des trois dernières
+stratégiques (26 octobre 2026, à la demande de l'opératrice pour L'Hermitage,
+étendue le 27 octobre à Heritech et Konica Minolta France) : « Lecture
+stratégique ».** Elle compte les étiquettes des trois dernières
 lettres que l'écran lit déjà (`récentes`) : les six dimensions PESTEL et les
 cinq forces de Porter dans l'ordre du cadre, zéro compris, les trois entités les
 plus citées par force, les mouvements d'Ansoff, et les ruptures avec leur
