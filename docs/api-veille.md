@@ -759,6 +759,83 @@ validation de ses axes. 200 `validée` ou `déjà-validée` ; 409
 que la synthèse lira) ; 404 `aucune` ou `organisation-inconnue` ; 200
 `hors-pilote`.
 
+## Outils stratégiques : la synthèse mensuelle (27 octobre 2026)
+
+La synthèse d'une période, bâtie sur les faits étiquetés de la fenêtre et sur la
+grille en vigueur : PESTEL, SWOT, TOWS, positions sur la carte des groupes
+stratégiques et sur la matrice de Mendelow. Postée par la revue mensuelle
+(page « Tâche — Revue mensuelle des référentiels », section « SYNTHÈSE
+STRATÉGIQUE », entre l'étape 2 et l'étape 3), relue par l'opératrice dans le
+courriel « [Relecture] » ; **rien n'est montré au client pendant le pilote**.
+Postgres garde les énoncés (240 caractères au plus, exception bornée de
+`CLAUDE.md`) et les crans, jamais un texte de lettre. Plan :
+`docs/plan-outils-strategiques.md`, lot 6. Le trimestriel (cinq forces,
+scénarios, indice et benchmark) est typé et contrôlé, mais n'est pas encore
+produit (lots 7 et 8).
+
+### `POST /api/veille/syntheses` : poster la synthèse d'une période
+
+```
+{ "slug": "infralliance", "periode": "2026-11", "fenetre": { "debut": "2026-11-04", "fin": "2026-12-01" },
+  "synthese": { "mode": "mensuel", "grilleVersion": 1,
+    "pestel": [{ "lettre": "legal", "enonce": "…", "faits": ["<id>"] }, { "lettre": "socioculturel", "enonce": null, "faits": [] }, …],
+    "swot": [{ "id": "T1", "case": "menaces", "enonce": "…", "etat": "renforce", "origine": "faits",
+               "hypothese": false, "filiation": "<id de l'élément du mois précédent>", "faits": ["<id>"] },
+             { "id": "S1", "case": "forces", "enonce": "…", "etat": "nouveau", "origine": "declaratif",
+               "hypothese": true, "faits": [], "referenceFiche": "fiche v2.2, §3" }, …],
+    "casesInsuffisantes": ["opportunites"],
+    "tows": [{ "type": "ST", "enonce": "…", "elements": ["S1", "T1"], "candidate": true }, …],
+    "positions": [{ "outil": "groupes", "sujet": "CISPE", "axe": "couches", "cran": 3, "faits": ["<id>"] },
+                  { "outil": "mendelow", "sujet": "DGE", "axe": "pouvoir", "cran": 3, "faits": ["<id>"] }, …] } }
+```
+
+`periode` : `AAAA-MM`, ou `AAAA-Tn` avec le mode `trimestriel` et lui seul. La
+fenêtre va de première parution à première parution, cent jours au plus, dates
+du calendrier. Les faits se citent par l'`id` que rend `GET /api/veille/faits`.
+Les six lettres PESTEL, toujours ; un trou du PESTEL (aucune famille ne le
+couvre) porte `enonce: null` et aucun fait. Trois à cinq éléments par case
+SWOT, ou moins pour une case déclarée dans `casesInsuffisantes`. Un élément
+`renforce`, `inchange` ou `affaibli` désigne par `filiation` l'élément de la
+période précédente de même granularité qu'il prolonge, dans la même case ; un
+élément déclaratif n'est qu'une force ou une faiblesse, marquée hypothèse, avec
+la section de la fiche. Deux à quatre options TOWS, chacune croisant un élément
+interne et un externe, **une seule candidate**. Une position cite au moins un
+fait ; un cran qui bouge cite un fait de la fenêtre, qui nomme l'entité pour la
+carte des groupes. Crans de Mendelow : 1 `bas`, 2 `intermediaire`, 3 `eleve`.
+
+Ordre des contrôles : organisation et pilote, grille (`grille-absente` sinon),
+faits cités et synthèse précédente, porte (`contrôlerLaSynthèse`), écriture.
+La route ne lit pas Notion et **n'expire aucun tag**.
+
+| Réponse | Statut | Quoi faire |
+|---|---|---|
+| `enregistrée` (`éléments`, `positions`, `archivés`, `avertissements`) | 201 | relire les avertissements ; une synthèse de la même période postée plus tard remplace celle-ci |
+| `refusée` (`refus`, `message`, `avertissements`) | 422 | corriger chaque point de `message` et renvoyer la synthèse **complète** ; deux reprises au plus |
+| `hors-pilote` | 200 | passer la section |
+| `grille-absente`, `grille-périmée` | 409 | poster la grille, ou relire sa version |
+| `organisation-inconnue` | 404 | vérifier le slug |
+| `invalide` (`raison`) | 400 | corriger la forme, la fenêtre ou l'accord du mode et de la période |
+
+Codes de refus de la porte : `pestel-incomplet`, `trou-avec-faits`,
+`sans-fait`, `fait-inconnu`, `fait-hors-fenêtre`, `case-hors-bornes`,
+`état-inconnu`, `état-incohérent`, `filiation-inconnue`,
+`filiation-incohérente`, `déclaratif-hors-forces-faiblesses`,
+`hypothèse-non-marquée`, `sans-référence`, `tows-hors-bornes`,
+`tows-sans-croisement`, `candidate-unique`, `élément-inconnu`,
+`position-hors-grille`, `cran-hors-bornes`, `mouvement-sans-fait`,
+`hors-période`, `grille-périmée`, `vocabulaire-interdit`, `longueur`,
+`doublon`, `étiquette-inconnue`. En avertissement seulement : `spécificité`
+(ni nom de la grille, ni chiffre, ni date).
+
+### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période
+
+`{ "état": "lue", "organisation", "période", "fenêtre", "grilleVersion",
+"éléments", "positions", "texte", "swot", "crans" }`. `texte` est la synthèse
+rendue pour le courriel « [Relecture] », à recopier telle quelle ; `swot` donne
+les éléments par leur `id` (que la `filiation` du mois suivant désigne) et
+`crans` les positions posées. `aucune` (200) si rien n'est enregistré pour la
+période.
+
 ## La file de travaux (palier 2, 21 octobre 2026)
 
 Le palier 2 de la décision du 15 octobre (`docs/decision-portail-moteur.md`,

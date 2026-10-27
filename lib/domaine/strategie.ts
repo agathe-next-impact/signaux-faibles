@@ -823,3 +823,177 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
   }
   return { refus, avertissements }
 }
+
+// ── Rendu de la synthèse, pour la relecture ──────────────────────────────────
+
+/** Un élément de synthèse tel que la base le rend, réduit à ce que le rendu lit. */
+export type ÉlémentÀRendre = {
+  readonly id: string
+  readonly outil: string
+  readonly clé: string
+  readonly rang: number
+  readonly énoncé: string | null
+  readonly état: string | null
+  readonly origine: string
+  readonly hypothèse: boolean
+  readonly faits: readonly string[]
+  readonly références: unknown
+  readonly candidateRecommandation: boolean
+}
+
+export type PositionÀRendre = {
+  readonly outil: string
+  readonly sujet: string
+  readonly axe: string
+  readonly cran: number | null
+  readonly nonSuivi: boolean
+  readonly tendance: string | null
+  readonly faits: readonly string[]
+}
+
+export type SynthèseÀRendre = {
+  readonly organisation: string
+  readonly période: string
+  readonly fenêtre: { readonly début: string; readonly fin: string }
+  readonly grilleVersion: number
+  readonly grille: Grille
+  readonly éléments: readonly ÉlémentÀRendre[]
+  readonly positions: readonly PositionÀRendre[]
+  /** Les faits cités, pour les dater dans le rendu. */
+  readonly faits: ReadonlyMap<string, FaitConnu>
+}
+
+const LIBELLÉS_CASES: Readonly<Record<CaseSwot, string>> = {
+  forces: 'Forces',
+  faiblesses: 'Faiblesses',
+  opportunites: 'Opportunités',
+  menaces: 'Menaces',
+}
+
+const LIBELLÉS_ÉTATS: Readonly<Record<ÉtatDÉlément, string>> = {
+  nouveau: 'nouveau',
+  renforce: 'renforcé',
+  inchange: 'inchangé',
+  affaibli: 'affaibli',
+}
+
+const LIBELLÉS_CRANS: Readonly<Record<string, readonly string[]>> = {
+  pouvoir: ['bas', 'intermédiaire', 'élevé'],
+  interet: ['bas', 'intermédiaire', 'élevé'],
+  intensite: ['contenue', 'marquée', 'intense'],
+}
+
+/**
+ * La synthèse d'une période en texte brut, pour le courriel « [Relecture] » de
+ * la revue (étape 3.3) : l'opératrice la relit avant que quoi que ce soit ne
+ * soit montré à un client. Chaque élément porte ses faits datés ; un trou du
+ * PESTEL est dit comme trou, jamais comme absence de nouvelles.
+ */
+export function rendreLaSynthèse(s: SynthèseÀRendre): string {
+  const lignes: string[] = []
+  const faitsDe = (ids: readonly string[]) => {
+    if (ids.length === 0) return ''
+    const dates = ids.map((id) => {
+      const f = s.faits.get(id)
+      return f ? `${f.date}${f.entite ? `, ${f.entite}` : ''}` : 'fait inconnu'
+    })
+    return ` [${ids.length} fait${ids.length > 1 ? 's' : ''} : ${dates.join(' ; ')}]`
+  }
+
+  lignes.push(`Synthèse stratégique, ${s.organisation}, période ${s.période}`)
+  lignes.push(`Fenêtre du ${s.fenêtre.début} au ${s.fenêtre.fin}, grille v${s.grilleVersion}. Proposée : rien n'est montré au client.`)
+
+  const pestel = s.éléments.filter((é) => é.outil === 'pestel')
+  if (pestel.length > 0) {
+    const trous = new Set(trousDuPestel(s.grille))
+    lignes.push('', 'PESTEL')
+    for (const lettre of PESTEL) {
+      const é = pestel.find((x) => x.clé === `pestel:${lettre}`)
+      const libellé = LIBELLÉS_PESTEL[lettre]
+      if (trous.has(lettre)) lignes.push(`- ${libellé} : trou, aucune famille ne couvre cette dimension`)
+      else if (!é || é.énoncé === null) lignes.push(`- ${libellé} : aucun fait dans la fenêtre`)
+      else lignes.push(`- ${libellé} : ${é.énoncé}${faitsDe(é.faits)}`)
+    }
+  }
+
+  const swot = s.éléments.filter((é) => é.outil === 'swot')
+  const repères = new Map<string, string>()
+  if (swot.length > 0) {
+    lignes.push('', 'SWOT')
+    for (const c of CASES_SWOT) {
+      const éléments = swot.filter((é) => é.clé === c).sort((a, b) => a.rang - b.rang)
+      lignes.push(`${LIBELLÉS_CASES[c]}${éléments.length < BORNES.élémentsParCaseMin ? ' (case insuffisante dans la fenêtre)' : ''}`)
+      for (const é of éléments) {
+        const repère = `${LIBELLÉS_CASES[c]} ${é.rang}`
+        repères.set(é.id, repère)
+        const état = é.état && dans(ÉTATS_D_ÉLÉMENT, é.état) ? LIBELLÉS_ÉTATS[é.état] : 'état inconnu'
+        const fiche = (é.références as { fiche?: string } | null)?.fiche
+        const déclaratif = é.origine === 'declaratif' ? ` (déclaratif, hypothèse à valider${fiche ? `, ${fiche}` : ''})` : ''
+        lignes.push(`- ${repère}, ${état} : ${é.énoncé ?? ''}${déclaratif}${faitsDe(é.faits)}`)
+      }
+    }
+  }
+
+  const tows = s.éléments.filter((é) => é.outil === 'tows').sort((a, b) => a.clé.localeCompare(b.clé) || a.rang - b.rang)
+  if (tows.length > 0) {
+    lignes.push('', 'TOWS')
+    for (const é of tows) {
+      const croisés = ((é.références as { éléments?: string[] } | null)?.éléments ?? []).map((id) => repères.get(id) ?? 'élément inconnu')
+      lignes.push(`- ${é.clé}${é.candidateRecommandation ? ', candidate à la recommandation' : ''} : ${é.énoncé ?? ''} (croise ${croisés.join(', ')})`)
+    }
+  }
+
+  const axes = new Map(s.grille.axesGroupes.map((a) => [a.clé, a]))
+  const groupes = s.positions.filter((p) => p.outil === 'groupes')
+  if (groupes.length > 0) {
+    lignes.push('', 'Carte des groupes stratégiques')
+    for (const sujet of [...new Set(groupes.map((p) => p.sujet))]) {
+      const crans = groupes
+        .filter((p) => p.sujet === sujet)
+        .map((p) => {
+          const axe = axes.get(p.axe)
+          return `${axe?.libellé ?? p.axe} : ${p.cran !== null ? (axe?.crans[p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'}`
+        })
+      lignes.push(`- ${sujet} : ${crans.join(' ; ')}${faitsDe(groupes.filter((p) => p.sujet === sujet).flatMap((p) => p.faits))}`)
+    }
+  }
+
+  const mendelow = s.positions.filter((p) => p.outil === 'mendelow')
+  if (mendelow.length > 0) {
+    lignes.push('', 'Parties prenantes (pouvoir et intérêt)')
+    for (const sujet of [...new Set(mendelow.map((p) => p.sujet))]) {
+      const valeur = (axe: string) => {
+        const p = mendelow.find((x) => x.sujet === sujet && x.axe === axe)
+        return p?.cran ? (LIBELLÉS_CRANS[axe]?.[p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'
+      }
+      lignes.push(`- ${sujet} : pouvoir ${valeur('pouvoir')}, intérêt ${valeur('interet')}${faitsDe(mendelow.filter((p) => p.sujet === sujet).flatMap((p) => p.faits))}`)
+    }
+  }
+
+  const forces = s.positions.filter((p) => p.outil === 'forces')
+  if (forces.length > 0) {
+    lignes.push('', 'Cinq forces')
+    for (const force of FORCES_PORTER) {
+      const p = forces.find((x) => x.sujet === force)
+      if (!p) continue
+      const libellé = LIBELLÉS_PORTER[force]
+      if (p.nonSuivi) lignes.push(`- ${libellé} : non suivi, aucune famille ne la porte`)
+      else lignes.push(`- ${libellé} : ${p.cran ? (LIBELLÉS_CRANS.intensite![p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'}, tendance ${p.tendance ?? 'n.d.'}${faitsDe(p.faits)}`)
+    }
+  }
+
+  const scénarios = s.éléments.filter((é) => é.outil === 'scenario').sort((a, b) => a.clé.localeCompare(b.clé))
+  if (scénarios.length > 0) {
+    lignes.push('', 'Scénarios')
+    for (const é of scénarios) {
+      const r = (é.références ?? {}) as { titre?: string; indicateurs?: { famille: number; signal: string }[] }
+      lignes.push(`- ${r.titre ?? é.clé} : ${é.énoncé ?? ''}${faitsDe(é.faits)}`)
+      for (const ind of r.indicateurs ?? []) lignes.push(`  · indicateur, famille ${ind.famille} : ${ind.signal}`)
+    }
+  }
+
+  const interprétations = s.éléments.filter((é) => é.outil === 'indice_cycle' || é.outil === 'benchmark')
+  for (const é of interprétations) lignes.push('', é.outil === 'indice_cycle' ? 'Indice de cycle de vie' : 'Benchmark', `- ${é.énoncé ?? ''}`)
+
+  return lignes.join('\n')
+}

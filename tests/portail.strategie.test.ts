@@ -16,8 +16,18 @@ const notion = vi.hoisted(() => ({ lireÉditionDeTravail: vi.fn(), lireBlocsDePa
 vi.mock('@/lib/notion/travail', () => ({ lireÉditionDeTravail: notion.lireÉditionDeTravail }))
 vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePage, listerÉditionsPubliées: notion.listerÉditionsPubliées }))
 
-const { contrôlerLÉtiquetage, lectureStratégiqueDeLEspace, lireLaGrilleDuPilote, lireLesFaits, recevoirLaGrille, recevoirLesÉtiquettes, réglerLePilote, validerLaVersion } =
-  await import('@/lib/portail/strategie')
+const {
+  contrôlerLÉtiquetage,
+  lectureStratégiqueDeLEspace,
+  lireLaGrilleDuPilote,
+  lireLaSynthèseDuPilote,
+  lireLesFaits,
+  recevoirLaGrille,
+  recevoirLaSynthèse,
+  recevoirLesÉtiquettes,
+  réglerLePilote,
+  validerLaVersion,
+} = await import('@/lib/portail/strategie')
 const { construireDocument } = await import('@/lib/domaine/document')
 const { organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
@@ -329,6 +339,156 @@ describe('recevoirLaGrille, lireLaGrilleDuPilote et validerLaVersion', () => {
       expect(await validerLaVersion({ slug: 'infralliance', version: 2 }, db)).toBe('déjà-validée')
       const lue = await lireLaGrilleDuPilote({ slug: 'infralliance' }, db)
       expect(lue.sorte === 'lue' && lue.validéeLe).toBeInstanceOf(Date)
+    })
+  })
+})
+
+/**
+ * La synthèse (lot 6) : vraie base en mémoire, vraie porte, étiquettes de la
+ * lettre d'octobre d'Infralliance. Le pilote et la grille avant la porte, la
+ * porte avant l'écriture ; la filiation et le mouvement d'un cran se lisent
+ * dans la synthèse précédente de même granularité.
+ */
+describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
+  let db: Base
+  let fermer: () => Promise<void>
+  let faits: { id: string; pestel: string | null; porter: string | null; entite: string | null }[]
+  const GRILLE = {
+    axesGroupes: [
+      { clé: 'couches', libellé: 'Couches couvertes', crans: ['usage seul', 'cloud', 'cloud et datacenter', 'trois couches'] },
+      { clé: 'production', libellé: 'Production publique', crans: ['aucune', 'occasionnelle', 'régulière'] },
+    ],
+    familles: [
+      { numéro: 1, veille: 'ecosysteme', pestel: 'legal', cadence: 'hebdomadaire' },
+      { numéro: 2, veille: 'ecosysteme', pestel: 'politique', cadence: 'hebdomadaire' },
+      { numéro: 3, veille: 'ecosysteme', pestel: 'economique', cadence: 'hebdomadaire' },
+      { numéro: 4, veille: 'ecosysteme', pestel: 'technologique', cadence: 'mensuelle' },
+      { numéro: 1, veille: 'concurrentiel', porter: 'rivalite', cadence: 'hebdomadaire' },
+      { numéro: 2, veille: 'concurrentiel', porter: 'pouvoir_clients', cadence: 'hebdomadaire' },
+    ],
+    entités: [
+      { nom: 'CISPE', veille: 'concurrentiel', siren: null },
+      { nom: 'Cigref', veille: 'concurrentiel', siren: '310785985' },
+    ],
+    partiesPrenantes: ['DGE', 'Commission européenne', 'Assemblée nationale', 'Sénat', 'ANSSI', 'RTE', 'Cnam', 'France-IX'].map((nom) => ({ nom })),
+  } as const
+  const fait = (critère: (f: (typeof faits)[number]) => boolean) => faits.find(critère)!.id
+  const FENÊTRE = { début: '2026-10-01', fin: '2026-10-21' }
+
+  /** Une synthèse d'octobre acceptable : trous dits, cases déclarées insuffisantes, une seule candidate. */
+  const octobre = (): Parameters<typeof recevoirLaSynthèse>[0]['synthèse'] => ({
+    mode: 'mensuel',
+    grilleVersion: 1,
+    pestel: [
+      { lettre: 'legal', énoncé: 'Trois textes européens avancent au Conseil en octobre 2026.', faits: [fait((f) => f.pestel === 'legal')] },
+      { lettre: 'politique', énoncé: 'La DGE et le Parlement européen bougent le 19 octobre 2026.', faits: [fait((f) => f.pestel === 'politique')] },
+      { lettre: 'economique', énoncé: 'Un module de 3 MW est annoncé le 20 octobre 2026.', faits: [fait((f) => f.pestel === 'economique')] },
+      { lettre: 'technologique', énoncé: null, faits: [] },
+      { lettre: 'socioculturel', énoncé: null, faits: [] },
+      { lettre: 'ecologique', énoncé: null, faits: [] },
+    ],
+    swot: [
+      { id: 'S1', case: 'forces', énoncé: 'La fédération réunit trois couches du numérique.', état: 'nouveau', origine: 'declaratif', hypothèse: true, faits: [], référenceFiche: 'fiche v2.2, §3' },
+      { id: 'O1', case: 'opportunites', énoncé: 'Le CISPE ouvre un front sur 2 000 Md€ le 20 octobre 2026.', état: 'nouveau', origine: 'faits', hypothèse: false, faits: [fait((f) => f.entite === 'CISPE')] },
+      { id: 'T1', case: 'menaces', énoncé: 'Le Cigref parle de dépendances le 15 octobre 2026.', état: 'nouveau', origine: 'faits', hypothèse: false, faits: [fait((f) => f.entite === 'Cigref')] },
+    ],
+    casesInsuffisantes: ['forces', 'faiblesses', 'opportunites', 'menaces'],
+    tows: [
+      { type: 'ST', énoncé: 'Répondre au Cigref par une parole commune des 3 couches.', éléments: ['S1', 'T1'], candidate: true },
+      { type: 'SO', énoncé: 'Porter les 3 couches dans le débat ouvert par le CISPE.', éléments: ['S1', 'O1'], candidate: false },
+    ],
+    positions: [
+      { outil: 'groupes', sujet: 'CISPE', axe: 'couches', cran: 3, faits: [fait((f) => f.entite === 'CISPE')] },
+      { outil: 'mendelow', sujet: 'DGE', axe: 'pouvoir', cran: 3, faits: [fait((f) => f.pestel === 'politique')] },
+      { outil: 'mendelow', sujet: 'DGE', axe: 'interet', cran: 2, faits: [fait((f) => f.pestel === 'politique')] },
+    ],
+  })
+  const recevoir = (synthèse = octobre(), période = '2026-10', fenêtre = FENÊTRE, slug = 'infralliance') =>
+    recevoirLaSynthèse({ slug, période, fenêtre, synthèse }, db)
+
+  beforeEach(async () => {
+    vi.resetAllMocks()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    ;({ db, fermer } = await baseEnMémoire())
+    await ouvrirEnEssai({ slug: 'infralliance', nom: 'Infralliance', registreNotion: REGISTRE }, db)
+    notion.lireÉditionDeTravail.mockResolvedValue(édition())
+    notion.lireBlocsDePage.mockResolvedValue(BLOCS_OCTOBRE)
+  })
+  afterEach(async () => {
+    vi.restoreAllMocks()
+    await fermer()
+  })
+
+  it('hors du pilote, organisation inconnue ou sans grille : rien n’est contrôlé ni écrit', async () => {
+    faits = []
+    expect(await recevoirLaSynthèse({ slug: 'infralliance', période: '2026-10', fenêtre: FENÊTRE, synthèse: { mode: 'mensuel', grilleVersion: 1, pestel: [], swot: [], tows: [], positions: [] } }, db)).toEqual({ sorte: 'hors-pilote' })
+    expect(await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)).toEqual({ sorte: 'hors-pilote' })
+    expect(await lireLaSynthèseDuPilote({ slug: 'inconnue', période: '2026-10' }, db)).toEqual({ sorte: 'organisation-inconnue' })
+    await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+    expect(await recevoirLaSynthèse({ slug: 'infralliance', période: '2026-10', fenêtre: FENÊTRE, synthèse: { mode: 'mensuel', grilleVersion: 1, pestel: [], swot: [], tows: [], positions: [] } }, db)).toEqual({ sorte: 'grille-absente' })
+    expect(await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)).toEqual({ sorte: 'aucune' })
+  })
+
+  describe('dans le pilote, avec une grille et des faits étiquetés', () => {
+    beforeEach(async () => {
+      await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+      expect(await recevoirLesÉtiquettes({ slug: 'infralliance', page: PAGE_OCTOBRE, lot: ÉTIQUETTES_OCTOBRE }, db)).toMatchObject({ sorte: 'accepté' })
+      expect(await recevoirLaGrille({ slug: 'infralliance', référentiel: '3d2fe829ce71801eae49fa7fc4a0e76c', grille: GRILLE }, db)).toMatchObject({ sorte: 'créée' })
+      const lus = await lireLesFaits({ slug: 'infralliance', début: '2026-10-01', fin: '2026-10-31' }, db)
+      faits = lus.sorte === 'lu' ? lus.faits.map((f) => ({ id: f.id, pestel: f.pestel, porter: f.porter, entite: f.entite })) : []
+      expect(faits).toHaveLength(11)
+    })
+
+    it('refuse une synthèse fautive sans rien écrire, avec le message de reprise', async () => {
+      const fautive = { ...octobre(), tows: octobre().tows.map((o) => ({ ...o, candidate: true })) }
+      const r = await recevoir(fautive)
+      expect(r.sorte).toBe('refusée')
+      if (r.sorte !== 'refusée') return
+      expect(r.refus.map((x) => x.code)).toEqual(['candidate-unique'])
+      expect(r.message).toContain('[candidate-unique]')
+      expect(await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)).toEqual({ sorte: 'aucune' })
+      expect(await recevoir({ ...octobre(), grilleVersion: 2 })).toMatchObject({ sorte: 'refusée', refus: [{ code: 'grille-périmée' }] })
+    })
+
+    it('enregistre la synthèse et la rend en texte pour la relecture', async () => {
+      const r = await recevoir()
+      expect(r).toMatchObject({ sorte: 'enregistrée', éléments: 11, positions: 3, archivés: 0 })
+      const lue = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+      expect(lue).toMatchObject({ sorte: 'lue', période: '2026-10', fenêtre: FENÊTRE, grilleVersion: 1, éléments: 11, positions: 3 })
+      if (lue.sorte !== 'lue') return
+      expect(lue.texte).toContain('Synthèse stratégique, infralliance, période 2026-10')
+      expect(lue.texte).toContain('- Socioculturel : trou, aucune famille ne couvre cette dimension')
+      expect(lue.texte).toContain('- Technologique : aucun fait dans la fenêtre')
+      expect(lue.texte).toContain('- Légal : Trois textes européens avancent au Conseil en octobre 2026. [1 fait : 2026-10-')
+      expect(lue.texte).toContain('- Forces 1, nouveau : La fédération réunit trois couches du numérique. (déclaratif, hypothèse à valider, fiche v2.2, §3)')
+      expect(lue.texte).toContain('- ST, candidate à la recommandation : Répondre au Cigref par une parole commune des 3 couches. (croise Forces 1, Menaces 1)')
+      expect(lue.texte).toContain('- CISPE : Couches couvertes : cloud et datacenter [1 fait : 2026-10-20, CISPE]')
+      expect(lue.texte).toContain('- DGE : pouvoir élevé, intérêt intermédiaire')
+      // Une seconde synthèse de la même période remplace la première.
+      expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', archivés: 14 })
+    })
+
+    it('le mois suivant : filiation exigée, mouvement de cran justifié par un fait qui nomme l’entité', async () => {
+      await recevoir()
+      // La revue lit l'identifiant à prolonger dans la lecture du mois précédent, comme `GET /api/veille/syntheses`.
+      const précédente = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+      if (précédente.sorte !== 'lue') throw new Error(précédente.sorte)
+      const t1 = précédente.swot.find((é) => é.case === 'menaces')!
+      expect(t1).toMatchObject({ rang: 1, état: 'nouveau' })
+      expect(précédente.crans).toContainEqual({ outil: 'groupes', sujet: 'CISPE', axe: 'couches', cran: 3 })
+      const novembre = octobre()
+      const swot = novembre.swot.map((é) => (é.id === 'T1' ? { ...é, état: 'renforce' as const } : é))
+      const sansFiliation = await recevoir({ ...novembre, swot }, '2026-11', { début: '2026-10-14', fin: '2026-10-31' })
+      expect(sansFiliation.sorte === 'refusée' && sansFiliation.refus.map((x) => x.code)).toEqual(['filiation-inconnue'])
+
+      const avecFiliation = swot.map((é) => (é.id === 'T1' ? { ...é, filiation: t1.id } : é))
+      const déplacé = (preuve: string) =>
+        novembre.positions.map((p) => (p.outil === 'groupes' ? { ...p, cran: 2, faits: [preuve] } : p))
+      const sansPreuve = await recevoir({ ...novembre, swot: avecFiliation, positions: déplacé(fait((f) => f.entite === 'Cigref')) }, '2026-11', { début: '2026-10-14', fin: '2026-10-31' })
+      expect(sansPreuve.sorte === 'refusée' && sansPreuve.refus.map((x) => x.code)).toEqual(['mouvement-sans-fait'])
+
+      const accepté = await recevoir({ ...novembre, swot: avecFiliation, positions: déplacé(fait((f) => f.entite === 'CISPE')) }, '2026-11', { début: '2026-10-14', fin: '2026-10-31' })
+      expect(accepté).toMatchObject({ sorte: 'enregistrée', éléments: 11, positions: 3 })
     })
   })
 })

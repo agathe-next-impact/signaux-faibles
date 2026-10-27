@@ -1,32 +1,43 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée, type Base } from '@/lib/base/client'
 import {
+  enregistrerLaSynthèse,
+  faitsConnus,
   faitsDeLaFenêtre,
   faitsDesÉditions,
   lireLaGrille,
+  lireLaSynthèse,
   organisationPourLesOutils,
   posterLaGrille,
   remplacerLesÉtiquettes,
   réglerLesOutilsStratégiques,
+  synthèsePrécédente,
   validerLaGrille,
   étatDeLÉtiquetage,
   type GrilleEnregistrée,
+  type PositionÀEnregistrer,
+  type ÉlémentÀEnregistrer,
 } from '@/lib/base/strategie'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import {
   contrôlerLaGrille,
+  contrôlerLaSynthèse,
   contrôlerLesÉtiquettes,
   empreinteDeLaGrille,
   faitsDeLaLettre,
   forcesNonSuivies,
   lectureDesÉtiquettes,
   messageDeRefus,
+  normaliserTitre,
+  rendreLaSynthèse,
   trousDuPestel,
+  type CaseSwot,
   type ForcePorter,
   type Grille,
   type LectureDesÉtiquettes,
   type Pestel,
   type Refus,
+  type SynthèseProposée,
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
 import { sansAccent } from '@/lib/domaine/texte'
@@ -167,6 +178,210 @@ export async function validerLaVersion(
   if (dernière.version !== entrée.version) return 'version-dépassée'
   const résultat = await validerLaGrille({ organisationId: organisation.id, version: entrée.version }, db)
   return résultat === 'inconnue' ? 'aucune' : résultat
+}
+
+// ── La synthèse (lot 6) ──────────────────────────────────────────────────────
+
+export type RésultatDeLaSynthèse =
+  | {
+      readonly sorte: 'enregistrée'
+      readonly éléments: number
+      readonly positions: number
+      readonly archivés: number
+      readonly avertissements: readonly Refus[]
+    }
+  | { readonly sorte: 'refusée'; readonly refus: readonly Refus[]; readonly message: string; readonly avertissements: readonly Refus[] }
+  | {
+      readonly sorte:
+        | 'organisation-inconnue'
+        | 'hors-pilote'
+        | 'grille-absente'
+        | 'grille-périmée'
+        | 'fait-inconnu'
+        | 'filiation-inconnue'
+    }
+  | { readonly sorte: 'référence-inconnue'; readonly référence: string }
+
+/** Les éléments et positions à enregistrer, depuis la synthèse contrôlée par la porte. */
+function àEnregistrer(synthèse: SynthèseProposée): { éléments: ÉlémentÀEnregistrer[]; positions: PositionÀEnregistrer[] } {
+  const éléments: ÉlémentÀEnregistrer[] = []
+  for (const l of synthèse.pestel) {
+    éléments.push({ outil: 'pestel', clé: `pestel:${l.lettre}`, rang: 1, énoncé: l.énoncé, faits: l.faits })
+  }
+  const rangs = new Map<string, number>()
+  const rangSuivant = (clé: string) => {
+    const r = (rangs.get(clé) ?? 0) + 1
+    rangs.set(clé, r)
+    return r
+  }
+  for (const é of synthèse.swot) {
+    éléments.push({
+      outil: 'swot',
+      clé: é.case,
+      rang: rangSuivant(`swot:${é.case}`),
+      énoncé: é.énoncé,
+      état: é.état,
+      origine: é.origine,
+      hypothèse: é.hypothèse,
+      filiation: é.filiation ?? null,
+      faits: é.faits,
+      ...(é.référenceFiche ? { références: { fiche: é.référenceFiche } } : {}),
+      idProvisoire: é.id,
+    })
+  }
+  for (const o of synthèse.tows) {
+    éléments.push({
+      outil: 'tows',
+      clé: o.type,
+      rang: rangSuivant(`tows:${o.type}`),
+      énoncé: o.énoncé,
+      faits: [],
+      croise: o.éléments,
+      candidateRecommandation: o.candidate,
+    })
+  }
+  ;(synthèse.scénarios ?? []).forEach((s, i) => {
+    éléments.push({
+      outil: 'scenario',
+      clé: `scenario-${i + 1}`,
+      rang: 1,
+      énoncé: s.énoncé,
+      faits: s.faits,
+      références: { titre: s.titre, indicateurs: s.indicateurs },
+    })
+  })
+  for (const it of synthèse.interprétations ?? []) {
+    éléments.push({ outil: it.outil, clé: it.outil, rang: 1, énoncé: it.énoncé, faits: [] })
+  }
+  const positions: PositionÀEnregistrer[] = synthèse.positions.map((p) => ({
+    outil: p.outil,
+    sujet: p.sujet,
+    axe: p.axe,
+    cran: p.nonSuivi ? null : p.cran,
+    nonSuivi: p.nonSuivi ?? false,
+    tendance: p.tendance ?? null,
+    faits: p.faits,
+  }))
+  return { éléments, positions }
+}
+
+/**
+ * Reçoit la synthèse d'une période (revue mensuelle, section « Synthèse
+ * stratégique »). Le pilote et la grille sont vérifiés avant la porte ; la
+ * porte reçoit les faits cités tels que la base les connaît, la synthèse
+ * précédente de même granularité (filiations, mouvements de crans) et la
+ * dernière grille ; l'écriture ne vient qu'après, et revérifie dans sa
+ * transaction ce qui a pu changer. Aucune lecture Notion : une synthèse ne
+ * cite que des faits déjà étiquetés.
+ */
+export async function recevoirLaSynthèse(
+  entrée: {
+    readonly slug: string
+    readonly période: string
+    readonly fenêtre: { readonly début: string; readonly fin: string }
+    readonly synthèse: SynthèseProposée
+  },
+  db?: Base,
+): Promise<RésultatDeLaSynthèse> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const grille = await lireLaGrille(organisation.id, db)
+  if (!grille) return { sorte: 'grille-absente' }
+
+  const s = entrée.synthèse
+  const cités = [
+    ...s.pestel.flatMap((l) => l.faits),
+    ...s.swot.flatMap((é) => é.faits),
+    ...s.positions.flatMap((p) => p.faits),
+    ...(s.scénarios ?? []).flatMap((x) => x.faits),
+  ]
+  const [faits, précédente] = await Promise.all([
+    faitsConnus({ organisationId: organisation.id, ids: cités }, db),
+    synthèsePrécédente({ organisationId: organisation.id, période: entrée.période }, db),
+  ])
+  const élémentsPrécédents = new Map<string, CaseSwot>()
+  const positionsPrécédentes = new Map<string, number | null>()
+  for (const é of précédente?.éléments ?? []) if (é.outil === 'swot') élémentsPrécédents.set(é.id, é.clé as CaseSwot)
+  for (const p of précédente?.positions ?? []) positionsPrécédentes.set(`${p.outil}:${normaliserTitre(p.sujet)}:${p.axe}`, p.cran)
+
+  const contrôle = contrôlerLaSynthèse(s, {
+    faits,
+    fenêtre: entrée.fenêtre,
+    grille: grille.grille,
+    grilleVersion: grille.version,
+    élémentsPrécédents,
+    positionsPrécédentes,
+  })
+  if (contrôle.refus.length > 0) {
+    return { sorte: 'refusée', refus: contrôle.refus, message: messageDeRefus(contrôle.refus), avertissements: contrôle.avertissements }
+  }
+
+  const { éléments, positions } = àEnregistrer(s)
+  const écrit = await enregistrerLaSynthèse(
+    { organisationId: organisation.id, période: entrée.période, fenêtre: entrée.fenêtre, grilleVersion: s.grilleVersion, éléments, positions },
+    db,
+  )
+  if (écrit.sorte !== 'enregistrée') return écrit
+  return { ...écrit, avertissements: contrôle.avertissements }
+}
+
+export type LectureDeLaSynthèse =
+  | {
+      readonly sorte: 'lue'
+      readonly période: string
+      readonly fenêtre: { readonly début: string; readonly fin: string }
+      readonly grilleVersion: number
+      readonly éléments: number
+      readonly positions: number
+      readonly texte: string
+      /** Les éléments SWOT par leur identifiant : la `filiation` du mois suivant les désigne ainsi. */
+      readonly swot: readonly { readonly id: string; readonly case: CaseSwot; readonly rang: number; readonly énoncé: string | null; readonly état: string | null }[]
+      /** Les crans posés : le mois suivant ne les bouge qu'avec un fait de sa fenêtre. */
+      readonly crans: readonly { readonly outil: string; readonly sujet: string; readonly axe: string; readonly cran: number | null }[]
+    }
+  | { readonly sorte: 'aucune' | 'organisation-inconnue' | 'hors-pilote' }
+
+/** La synthèse vivante d'une période, rendue en texte pour le courriel « [Relecture] ». */
+export async function lireLaSynthèseDuPilote(
+  entrée: { readonly slug: string; readonly période: string },
+  db?: Base,
+): Promise<LectureDeLaSynthèse> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const lue = await lireLaSynthèse({ organisationId: organisation.id, période: entrée.période }, db)
+  const premier = lue.éléments[0] ?? null
+  if (!premier && lue.positions.length === 0) return { sorte: 'aucune' }
+
+  const grilleVersion = premier?.grilleVersion ?? lue.positions[0]!.grilleVersion
+  const grille = await lireLaGrille(organisation.id, db)
+  const cités = [...lue.éléments.flatMap((é) => é.faits), ...lue.positions.flatMap((p) => p.faits)]
+  const faits = await faitsConnus({ organisationId: organisation.id, ids: cités }, db)
+  const fenêtre = premier ? { début: premier.fenêtreDébut, fin: premier.fenêtreFin } : { début: '', fin: '' }
+  const texte = rendreLaSynthèse({
+    organisation: entrée.slug,
+    période: entrée.période,
+    fenêtre,
+    grilleVersion,
+    grille: grille?.grille ?? { axesGroupes: [], familles: [], entités: [], partiesPrenantes: [] },
+    éléments: lue.éléments,
+    positions: lue.positions,
+    faits,
+  })
+  return {
+    sorte: 'lue',
+    période: entrée.période,
+    fenêtre,
+    grilleVersion,
+    éléments: lue.éléments.length,
+    positions: lue.positions.length,
+    texte,
+    swot: lue.éléments
+      .filter((é) => é.outil === 'swot')
+      .map((é) => ({ id: é.id, case: é.clé as CaseSwot, rang: é.rang, énoncé: é.énoncé, état: é.état })),
+    crans: lue.positions.map((p) => ({ outil: p.outil, sujet: p.sujet, axe: p.axe, cran: p.cran })),
+  }
 }
 
 /** `Écosystème` devient `ecosysteme` : la clé interne, sans accent, comme dans le domaine. */
