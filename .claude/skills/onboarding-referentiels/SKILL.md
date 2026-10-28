@@ -102,6 +102,13 @@ Organisation visée : $ARGUMENTS
    d'activité, colonne SIREN du §2). Aucun §4 : il est retiré depuis le
    26 octobre 2026 (veille stratégique, scénario C).
 
+   **Outils stratégiques** (28 octobre 2026) : seulement si la case « Outils
+   stratégiques » est cochée sur la ligne du registre, le référentiel
+   concurrentiel porte la section « Grille stratégique » (après le §2, pour les
+   deux veilles) et ses deux points de validation entrent dans le plafond de dix,
+   après le scoring. Rien n'est posté au portail à cette étape : l'organisation
+   n'y existe qu'à la première lettre.
+
 5. **Consomme la case.** En fin de run, réussi ou non, décoche « ▶ Générer les
    référentiels (A) » et écris le résultat dans « Dernier lancement manuel ».
 

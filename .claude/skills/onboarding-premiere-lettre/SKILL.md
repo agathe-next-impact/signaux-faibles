@@ -222,6 +222,13 @@ Organisation visée : $ARGUMENTS
    encadrés au moins ou fenêtre élargie dite, lint conforme, brouillon présent une
    seule fois. Une lettre qui manque l'un de ces points n'est pas prête.
 
+5bis. **Outils stratégiques**, seulement si la case « Outils stratégiques » est
+   cochée sur la ligne du registre : après l'entrée dans l'essai (e1) et le lint
+   des deux lettres, les pas s1 à s5 de l'étape 2 du prompt (drapeau, grille,
+   étiquettes des deux lettres, synthèse initiale, texte rendu dans la
+   notification). Aucun de ces pas ne bloque la lettre ; rien n'en va au client
+   avant que l'opératrice ne publie la synthèse.
+
 6. **Consomme la case** en fin de run, lettre produite ou non, et écris le
    résultat dans « Dernier lancement manuel ».
 
