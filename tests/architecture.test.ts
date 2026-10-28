@@ -537,9 +537,16 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(position("sorte: 'grille-absente'")).toBeLessThan(position('contrôlerLaSynthèse('))
     expect(position('contrôlerLaSynthèse(')).toBeLessThan(position('enregistrerLaSynthèse('))
     expect(position('if (contrôle.refus.length > 0)')).toBeLessThan(position('enregistrerLaSynthèse('))
+    // Les registres publics ne sont appelés qu'une fois la porte passée.
+    expect(position('if (contrôle.refus.length > 0)')).toBeLessThan(position('await calculer('))
+    expect(position('await calculer(')).toBeLessThan(position('enregistrerLaSynthèse('))
     const lire = source.slice(source.indexOf('export async function lireLaSynthèseDuPilote'))
     expect(lire.indexOf("sorte: 'hors-pilote'")).toBeGreaterThan(0)
     expect(lire.indexOf("sorte: 'hors-pilote'")).toBeLessThan(lire.indexOf('lireLaSynthèse('))
+    const calculs = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'calculs', 'route.ts'), 'utf8')
+    expect(calculs.indexOf('refuserSiNonAutorisé(requête')).toBeGreaterThan(0)
+    expect(calculs.indexOf('refuserSiNonAutorisé(requête')).toBeLessThan(calculs.indexOf('lireLesCalculs('))
+    expect(calculs).not.toMatch(/revalidateTag\(|updateTag\(|@\/lib\/base\/strategie|@\/lib\/registres/)
     const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'syntheses', 'route.ts'), 'utf8')
     for (const [méthode, appel] of [
       ['POST', 'recevoirLaSynthèse('],

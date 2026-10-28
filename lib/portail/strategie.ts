@@ -19,9 +19,11 @@ import {
   type ÉlémentÀEnregistrer,
 } from '@/lib/base/strategie'
 import { construireDocument, type Document } from '@/lib/domaine/document'
+import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
   contrôlerLaGrille,
   contrôlerLaSynthèse,
+  contrôlerLesParamètresDuCycle,
   contrôlerLesÉtiquettes,
   empreinteDeLaGrille,
   faitsDeLaLettre,
@@ -37,6 +39,7 @@ import {
   type LectureDesÉtiquettes,
   type Pestel,
   type Refus,
+  type ParamètresDuCycle,
   type SynthèseProposée,
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
@@ -266,6 +269,21 @@ function àEnregistrer(synthèse: SynthèseProposée): { éléments: ÉlémentÀ
 }
 
 /**
+ * Pose les chiffres calculés sur les éléments d'interprétation : l'énoncé vient
+ * du modèle, la valeur du portail. Un chiffre sans interprétation est gardé
+ * quand même, sans énoncé, pour la relecture.
+ */
+function avecLesCalculs(éléments: readonly ÉlémentÀEnregistrer[], calculs: Calculs): ÉlémentÀEnregistrer[] {
+  const valeurs = new Map<string, Record<string, unknown>>([['benchmark', { ...calculs.benchmark }]])
+  if (calculs.indice) valeurs.set('indice_cycle', { ...calculs.indice })
+  const posés = éléments.map((é) => (valeurs.has(é.outil) ? { ...é, valeur: valeurs.get(é.outil)! } : é))
+  for (const [outil, valeur] of valeurs) {
+    if (!posés.some((é) => é.outil === outil)) posés.push({ outil: outil as ÉlémentÀEnregistrer['outil'], clé: outil, rang: 1, énoncé: null, faits: [], valeur })
+  }
+  return posés
+}
+
+/**
  * Reçoit la synthèse d'une période (revue mensuelle, section « Synthèse
  * stratégique »). Le pilote et la grille sont vérifiés avant la porte ; la
  * porte reçoit les faits cités tels que la base les connaît, la synthèse
@@ -280,8 +298,11 @@ export async function recevoirLaSynthèse(
     readonly période: string
     readonly fenêtre: { readonly début: string; readonly fin: string }
     readonly synthèse: SynthèseProposée
+    /** Trimestre seulement : les départements et le texte d'activité de l'indice de cycle de vie. */
+    readonly cycle?: ParamètresDuCycle | null
   },
   db?: Base,
+  dépendances: Dépendances = {},
 ): Promise<RésultatDeLaSynthèse> {
   const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
   if (!organisation) return { sorte: 'organisation-inconnue' }
@@ -305,7 +326,7 @@ export async function recevoirLaSynthèse(
   for (const é of précédente?.éléments ?? []) if (é.outil === 'swot') élémentsPrécédents.set(é.id, é.clé as CaseSwot)
   for (const p of précédente?.positions ?? []) positionsPrécédentes.set(`${p.outil}:${normaliserTitre(p.sujet)}:${p.axe}`, p.cran)
 
-  const contrôle = contrôlerLaSynthèse(s, {
+  const porte = contrôlerLaSynthèse(s, {
     faits,
     fenêtre: entrée.fenêtre,
     grille: grille.grille,
@@ -313,11 +334,26 @@ export async function recevoirLaSynthèse(
     élémentsPrécédents,
     positionsPrécédentes,
   })
+  const refusDuCycle: readonly Refus[] = !entrée.cycle
+    ? []
+    : s.mode === 'trimestriel'
+      ? contrôlerLesParamètresDuCycle(entrée.cycle)
+      : [{ code: 'hors-période', message: 'l’indice de cycle de vie se calcule au trimestre', cible: 'cycle' }]
+  const contrôle = { refus: [...porte.refus, ...refusDuCycle], avertissements: porte.avertissements }
   if (contrôle.refus.length > 0) {
     return { sorte: 'refusée', refus: contrôle.refus, message: messageDeRefus(contrôle.refus), avertissements: contrôle.avertissements }
   }
 
-  const { éléments, positions } = àEnregistrer(s)
+  const { éléments: énoncés, positions } = àEnregistrer(s)
+  // Les chiffres du trimestre, calculés après la porte : une synthèse refusée ne
+  // coûte aucun appel aux registres.
+  const éléments =
+    s.mode === 'trimestriel'
+      ? avecLesCalculs(
+          énoncés,
+          await calculer({ grille: grille.grille, organisation: organisation.nom, fin: entrée.fenêtre.fin, cycle: entrée.cycle ?? null }, dépendances),
+        )
+      : énoncés
   const écrit = await enregistrerLaSynthèse(
     { organisationId: organisation.id, période: entrée.période, fenêtre: entrée.fenêtre, grilleVersion: s.grilleVersion, éléments, positions },
     db,
@@ -634,4 +670,32 @@ export async function lectureStratégiqueDeLEspace(
   } finally {
     clearTimeout(minuterie)
   }
+}
+
+export type LectureDesCalculs =
+  | ({ readonly sorte: 'calculé'; readonly grilleVersion: number } & Calculs)
+  | { readonly sorte: 'organisation-inconnue' | 'hors-pilote' | 'grille-absente' }
+  | { readonly sorte: 'refusée'; readonly refus: readonly Refus[] }
+
+/**
+ * Les chiffres du trimestre, pour que la revue en écrive l'interprétation avant
+ * de poster (`GET /api/veille/calculs`). N'écrit rien : la synthèse postée les
+ * recalcule et les garde.
+ */
+export async function lireLesCalculs(
+  entrée: { readonly slug: string; readonly fin: string; readonly cycle: ParamètresDuCycle | null },
+  db?: Base,
+  dépendances: Dépendances = {},
+): Promise<LectureDesCalculs> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  if (entrée.cycle) {
+    const refus = contrôlerLesParamètresDuCycle(entrée.cycle)
+    if (refus.length > 0) return { sorte: 'refusée', refus }
+  }
+  const grille = await lireLaGrille(organisation.id, db)
+  if (!grille) return { sorte: 'grille-absente' }
+  const calculs = await calculer({ grille: grille.grille, organisation: organisation.nom, fin: entrée.fin, cycle: entrée.cycle }, dépendances)
+  return { sorte: 'calculé', grilleVersion: grille.version, ...calculs }
 }

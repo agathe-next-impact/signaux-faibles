@@ -20,6 +20,11 @@ import { lireLaSynthèseDuPilote, recevoirLaSynthèse, type RésultatDeLaSynthè
  *       "positions": [{ "outil", "sujet", "axe", "cran", "nonSuivi", "tendance", "faits" }],
  *       "scenarios": [], "interpretations": [] } }
  *
+ * Au trimestre (`periode` AAAA-Tn, mode `trimestriel`), `cycle` porte les
+ * départements et le texte d'activité de la famille « Nouveaux entrants » : le
+ * portail calcule alors l'indice de cycle de vie et le benchmark, après la
+ * porte, et les garde dans `valeur` à côté des interprétations du modèle.
+ *
  * Les faits sont désignés par leur `id`, tel que `GET /api/veille/faits` le
  * rend. Une synthèse acceptée remplace celle de la même période. Refusée : 422
  * avec la liste des refus et le message de reprise, deux reprises au plus ; une
@@ -40,6 +45,8 @@ const demande = z.object({
   slug: z.string().trim().regex(SLUG),
   periode: z.string().regex(PÉRIODE),
   fenetre: z.object({ debut: z.string().regex(DATE), fin: z.string().regex(DATE) }),
+  /** Trimestre seulement : la famille « Nouveaux entrants » du référentiel, pour l'indice de cycle de vie. */
+  cycle: z.object({ departements: z.array(z.string().trim().max(3)).max(20), texte: texte(120) }).nullish(),
   synthese: z.object({
     mode: z.enum(['initial', 'mensuel', 'trimestriel']),
     grilleVersion: z.number().int().min(1),
@@ -158,7 +165,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
     const chemin = lue.error.issues[0]?.path.join('.') ?? ''
     return NextResponse.json({ état: 'invalide', raison: chemin ? `champ « ${chemin} »` : 'corps illisible' }, { status: 400 })
   }
-  const { slug, periode, fenetre, synthese } = lue.data
+  const { slug, periode, fenetre, synthese, cycle } = lue.data
   if (!fenêtreValide(fenetre.debut, fenetre.fin)) {
     return NextResponse.json({ état: 'invalide', raison: 'fenêtre : debut ≤ fin, cent jours au plus' }, { status: 400 })
   }
@@ -167,7 +174,13 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const résultat = await recevoirLaSynthèse({ slug, période: periode, fenêtre: { début: fenetre.debut, fin: fenetre.fin }, synthèse: versLeDomaine(synthese) })
+    const résultat = await recevoirLaSynthèse({
+      slug,
+      période: periode,
+      fenêtre: { début: fenetre.debut, fin: fenetre.fin },
+      synthèse: versLeDomaine(synthese),
+      cycle: cycle ? { départements: cycle.departements.map((d) => d.toUpperCase()), texte: cycle.texte } : null,
+    })
     console.info(
       `[veille/syntheses] ${slug} ${periode} : ${résultat.sorte}` +
         (résultat.sorte === 'enregistrée' ? ` (${résultat.éléments} éléments, ${résultat.positions} positions)` : '') +

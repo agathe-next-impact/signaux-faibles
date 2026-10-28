@@ -91,6 +91,7 @@ describe('POST /api/veille/syntheses', () => {
       slug: 'infralliance',
       période: '2026-11',
       fenêtre: { début: '2026-10-01', fin: '2026-10-31' },
+      cycle: null,
       synthèse: {
         mode: 'mensuel',
         grilleVersion: 1,
@@ -113,6 +114,15 @@ describe('POST /api/veille/syntheses', () => {
         interprétations: [],
       },
     })
+  })
+
+  it('transmet les paramètres du cycle du trimestre, départements en capitales', async () => {
+    strategie.recevoirLaSynthèse.mockResolvedValue({ sorte: 'enregistrée', éléments: 4, positions: 2, archivés: 0, avertissements: [] })
+    const fenetre = { debut: '2026-10-01', fin: '2026-12-31' }
+    await envoyer({ ...corps, periode: '2026-T4', fenetre, synthese: { ...SYNTHÈSE, mode: 'trimestriel' }, cycle: { departements: ['2a', '75'], texte: 'formation commerciale' } })
+    expect(strategie.recevoirLaSynthèse.mock.calls[0]![0]).toMatchObject({ période: '2026-T4', cycle: { départements: ['2A', '75'], texte: 'formation commerciale' } })
+    await envoyer(corps)
+    expect(strategie.recevoirLaSynthèse.mock.calls[1]![0]).toMatchObject({ cycle: null })
   })
 
   it('rend chaque issue avec son statut', async () => {

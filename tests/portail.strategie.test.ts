@@ -21,6 +21,7 @@ const {
   lectureStratégiqueDeLEspace,
   lireLaGrilleDuPilote,
   lireLaSynthèseDuPilote,
+  lireLesCalculs,
   lireLesFaits,
   recevoirLaGrille,
   recevoirLaSynthèse,
@@ -489,6 +490,84 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
 
       const accepté = await recevoir({ ...novembre, swot: avecFiliation, positions: déplacé(fait((f) => f.entite === 'CISPE')) }, '2026-11', { début: '2026-10-14', fin: '2026-10-31' })
       expect(accepté).toMatchObject({ sorte: 'enregistrée', éléments: 11, positions: 3 })
+    })
+
+    /** Le trimestre : cinq forces (trois non suivies), trois scénarios, l'interprétation des deux calculs. */
+    const trimestre = (): Parameters<typeof recevoirLaSynthèse>[0]['synthèse'] => {
+      const base = octobre()
+      const indicateurs = [
+        { famille: 1, signal: 'Vote du Conseil sur le règlement cloud et IA' },
+        { famille: 2, signal: 'Nomination à la DGE' },
+      ]
+      return {
+        ...base,
+        mode: 'trimestriel',
+        positions: [
+          ...base.positions,
+          { outil: 'forces', sujet: 'rivalite', axe: 'intensite', cran: 3, tendance: 'hausse', faits: [fait((f) => f.entite === 'CISPE')] },
+          { outil: 'forces', sujet: 'pouvoir_clients', axe: 'intensite', cran: 2, tendance: 'stable', faits: [fait((f) => f.entite === 'Cigref')] },
+          { outil: 'forces', sujet: 'nouveaux_entrants', axe: 'intensite', cran: null, nonSuivi: true, faits: [] },
+          { outil: 'forces', sujet: 'substituts', axe: 'intensite', cran: null, nonSuivi: true, faits: [] },
+          { outil: 'forces', sujet: 'pouvoir_fournisseurs', axe: 'intensite', cran: null, nonSuivi: true, faits: [] },
+        ],
+        scénarios: [1, 2, 3].map((n) => ({
+          titre: `Scénario ${n}`,
+          énoncé: `Au trimestre ${n}, le texte européen d’octobre 2026 change la donne pour la fédération.`,
+          indicateurs,
+          faits: [fait((f) => f.pestel === 'legal')],
+        })),
+        interprétations: [
+          { outil: 'indice_cycle', énoncé: 'Un marché qui attire en 2026 : plus d’entrées que de sorties.' },
+          { outil: 'benchmark', énoncé: 'Le Cigref publie ses comptes ; le reste du corpus n’en publie pas.' },
+        ],
+      }
+    }
+    const json = (corps: unknown) => new Response(JSON.stringify(corps), { status: 200, headers: { 'content-type': 'application/json' } })
+    const registres = () =>
+      vi.fn(async (url: string) => {
+        const u = new URL(url)
+        if (u.hostname.startsWith('bodacc')) return json({ total_count: (u.searchParams.get('where') ?? '').includes('collective') ? 3 : 12 })
+        return json({ results: [{ siren: u.searchParams.get('q'), nom_complet: 'CIGREF', etat_administratif: 'A', finances: { '2025': { ca: 5_000_000, resultat_net: 100_000 } } }] })
+      })
+
+    it('le trimestre : les chiffres calculés après la porte, gardés à côté de l’interprétation', async () => {
+      const f = registres()
+      const r = await recevoirLaSynthèse(
+        { slug: 'infralliance', période: '2026-T4', fenêtre: FENÊTRE, synthèse: trimestre(), cycle: { départements: ['75', '92'], texte: 'centre de données' } },
+        db,
+        { f: f as unknown as typeof fetch, attente: async () => {} },
+      )
+      expect(r).toMatchObject({ sorte: 'enregistrée', éléments: 16, positions: 8 })
+      expect(f).toHaveBeenCalledTimes(5)
+      const lue = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-T4' }, db)
+      if (lue.sorte !== 'lue') throw new Error(lue.sorte)
+      expect(lue.texte).toContain('12 entrées (créations et immatriculations), 3 procédures collectives, solde 9, 4 entrées pour une sortie')
+      expect(lue.texte).toContain('- Cigref : active, CA 5')
+      expect(lue.texte).toContain('- Interprétation : Un marché qui attire en 2026')
+      expect(lue.texte).toContain('- Rivalité entre acteurs : intense, tendance hausse')
+      expect(lue.texte).toContain('- Substituts : non suivi')
+    })
+
+    it('une synthèse refusée ne coûte aucun appel aux registres ; l’indice ne se calcule qu’au trimestre', async () => {
+      const f = registres()
+      const dépendances = { f: f as unknown as typeof fetch, attente: async () => {} }
+      const refusée = await recevoirLaSynthèse(
+        { slug: 'infralliance', période: '2026-T4', fenêtre: FENÊTRE, synthèse: trimestre(), cycle: { départements: ['Paris'], texte: 'centre de données' } },
+        db,
+        dépendances,
+      )
+      expect(refusée.sorte === 'refusée' && refusée.refus.map((x) => x.code)).toEqual(['département-invalide'])
+      const mensuelle = await recevoirLaSynthèse({ slug: 'infralliance', période: '2026-10', fenêtre: FENÊTRE, synthèse: octobre(), cycle: { départements: ['75'], texte: 'centre de données' } }, db, dépendances)
+      expect(mensuelle.sorte === 'refusée' && mensuelle.refus.map((x) => x.code)).toEqual(['hors-période'])
+      expect(f).not.toHaveBeenCalled()
+    })
+
+    it('lireLesCalculs rend les chiffres sans rien écrire', async () => {
+      const f = registres()
+      const c = await lireLesCalculs({ slug: 'infralliance', fin: '2026-12-31', cycle: { départements: ['75'], texte: 'centre de données' } }, db, { f: f as unknown as typeof fetch, attente: async () => {} })
+      expect(c).toMatchObject({ sorte: 'calculé', grilleVersion: 1, indice: { entrées: 12, sorties: 3 }, benchmark: { avecComptes: 1 } })
+      expect(await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-T4' }, db)).toEqual({ sorte: 'aucune' })
+      expect(await lireLesCalculs({ slug: 'infralliance', fin: '2026-12-31', cycle: { départements: [], texte: 'x' } }, db)).toMatchObject({ sorte: 'refusée' })
     })
   })
 })

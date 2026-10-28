@@ -26,6 +26,7 @@ import { empreinteDeLaGrille, type FaitConnu, type Grille, type ÉtiquetteValid�
 export type OrganisationDesOutils = {
   readonly id: string
   readonly slug: string
+  readonly nom: string
   readonly registreNotion: string | null
   readonly outilsStratégiques: boolean
 }
@@ -46,6 +47,7 @@ export async function organisationPourLesOutils(
       .select({
         id: organisations.id,
         slug: organisations.slug,
+        nom: organisations.nom,
         registreNotion: organisations.registreNotion,
         outilsStratégiques: organisations.outilsStratégiques,
       })
