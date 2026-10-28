@@ -100,7 +100,8 @@ describe('rendreLaSynthèse, benchmark', () => {
       faits: new Map(),
     })
     expect(texte).toContain('médiane n.d. ;')
-    expect(texte).toContain('- Coopérative Oasis : active, CA 540 167 €, résultat 21 125 € (2025)')
+    const fr = (n: number) => n.toLocaleString('fr-FR')
+    expect(texte).toContain(`- Coopérative Oasis : active, CA ${fr(540167)} €, résultat ${fr(21125)} € (2025)`)
     expect(texte).toContain('- Campus de la Transition : active, CA n.d., résultat n.d., effectif')
     expect(texte).not.toContain('n.d. €')
   })
