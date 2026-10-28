@@ -921,6 +921,8 @@ const LIBELLÉS_CRANS: Readonly<Record<string, readonly string[]>> = {
  * PESTEL est dit comme trou, jamais comme absence de nouvelles.
  */
 const nd = (x: unknown) => (typeof x === 'number' ? x.toLocaleString('fr-FR') : 'n.d.')
+/** Un montant en euros, ou « n.d. » sans unité : « n.d. € » se lisait comme un montant. */
+const euros = (x: unknown) => (typeof x === 'number' ? `${x.toLocaleString('fr-FR')} €` : 'n.d.')
 const pourCent = (x: unknown) => (typeof x === 'number' ? `${x > 0 ? '+' : ''}${x.toLocaleString('fr-FR')} %` : 'n.d.')
 
 function lignesDeLIndice(valeur: unknown): string[] {
@@ -937,10 +939,10 @@ function lignesDuBenchmark(valeur: unknown): string[] {
   const v = (valeur ?? null) as Partial<Benchmark> | null
   if (!v || !v.lignes) return ['- Chiffres : non calculés']
   return [
-    `- ${v.lignes.length} entité(s) avec SIREN, ${nd(v.avecComptes)} avec un chiffre d’affaires publié ; médiane ${nd(v.médianeDuChiffreDAffaires)} € ; rang de l’organisation ${v.rangDeLOrganisation ?? 'n.d.'}`,
+    `- ${v.lignes.length} entité(s) avec SIREN, ${nd(v.avecComptes)} avec un chiffre d’affaires publié ; médiane ${euros(v.médianeDuChiffreDAffaires)} ; rang de l’organisation ${v.rangDeLOrganisation ?? 'n.d.'}`,
     ...v.lignes.map(
       (l) =>
-        `- ${l.nom}${l.organisation ? ' (vous)' : ''} : ${l.fiche === 'n.d.' ? 'fiche n.d.' : `${l.active ? 'active' : 'cessée'}, CA ${nd(l.chiffreDAffaires)} €, résultat ${nd(l.résultatNet)} €${l.année ? ` (${l.année})` : ''}, effectif (code INSEE) ${l.trancheEffectif ?? 'n.d.'}`}`,
+        `- ${l.nom}${l.organisation ? ' (vous)' : ''} : ${l.fiche === 'n.d.' ? 'fiche n.d.' : `${l.active ? 'active' : 'cessée'}, CA ${euros(l.chiffreDAffaires)}, résultat ${euros(l.résultatNet)}${l.année ? ` (${l.année})` : ''}, effectif (code INSEE) ${l.trancheEffectif ?? 'n.d.'}`}`,
     ),
     ...(v.limites ?? []).map((l) => `- Limite : ${l}`),
   ]
