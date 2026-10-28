@@ -23,6 +23,9 @@ const {
   lireLaSynthèseDuPilote,
   lireLesCalculs,
   lireLesFaits,
+  pestelDeLEspace,
+  publierLaSynthèseDuPilote,
+  synthèseDeLEspace,
   recevoirLaGrille,
   recevoirLaSynthèse,
   recevoirLesÉtiquettes,
@@ -560,6 +563,57 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       const mensuelle = await recevoirLaSynthèse({ slug: 'infralliance', période: '2026-10', fenêtre: FENÊTRE, synthèse: octobre(), cycle: { départements: ['75'], texte: 'centre de données' } }, db, dépendances)
       expect(mensuelle.sorte === 'refusée' && mensuelle.refus.map((x) => x.code)).toEqual(['hors-période'])
       expect(f).not.toHaveBeenCalled()
+    })
+
+    it('écrans du client : rien avant la publication, la synthèse publiée seule, rien d’un autre registre', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      try {
+        expect(await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)).toEqual({ sorte: 'aucune' })
+        await recevoir()
+        expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        expect(await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)).toEqual({ sorte: 'publiée', éléments: 11, positions: 3 })
+        const vue = await synthèseDeLEspace({ registre: avecTirets(REGISTRE), numéros: new Map([[PAGE_OCTOBRE, 6]]) }, db)
+        expect(vue?.trimestre).toBeNull()
+        expect(vue?.mois?.période).toBe('2026-10')
+        expect(vue?.mois?.tows.candidate).toMatchObject({ libellé: 'Forces × menaces', croise: ['F1', 'M1'] })
+        expect(vue?.mois?.swot.forces).toEqual([{ code: 'F1', énoncé: 'La fédération réunit trois couches du numérique.', source: 'Déclaratif · votre fiche' }])
+        expect(vue?.mois?.swot.menaces[0]?.source).toMatch(/^Fait du \d{2}\/10 · lettre n° 6$/)
+        // CISPE n'est placé que sur un axe : il n'entre pas sur la carte. DGE l'est sur les deux de Mendelow.
+        expect(vue?.mois?.carte?.placés).toBe(0)
+        expect(vue?.mois?.mendelow.cases.get('3:2')).toEqual([{ sujet: 'DGE', aBougé: false, fait: expect.objectContaining({ date: expect.stringMatching(/^2026-10-/) }) }])
+        expect(await synthèseDeLEspace({ registre: AUTRE_REGISTRE, numéros: new Map() }, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'notion')
+        expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'double')
+        // Une synthèse remplacée après publication repart en proposition : elle n'est plus lue.
+        await recevoir()
+        expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)
+        expect(await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)).toMatchObject({ sorte: 'retirée' })
+        expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
+    it('l’onglet PESTEL : les comptes de la fenêtre, les phrases-titres des lettres déjà lues', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      try {
+        const vue = await pestelDeLEspace({ registre: REGISTRE, fin: '2026-10-31', lettres: [{ pageId: PAGE_OCTOBRE, document: construireDocument(BLOCS_OCTOBRE) }] }, db)
+        expect(vue).not.toBeNull()
+        const avecPestel = faits.filter((f) => f.pestel).length
+        expect(vue!.total).toBe(avecPestel)
+        expect(vue!.faits).toHaveLength(avecPestel)
+        expect(vue!.dimensions.find((d) => d.lettre === 'socioculturel')).toMatchObject({ trou: true })
+        expect(vue!.dimensions.find((d) => d.lettre === 'legal')!.suiviePar).toHaveLength(1)
+        // Sans la lettre lue, les comptes restent, aucune phrase n'est citée.
+        expect((await pestelDeLEspace({ registre: REGISTRE, fin: '2026-10-31', lettres: [] }, db))!.faits).toEqual([])
+        expect(await pestelDeLEspace({ registre: REGISTRE, fin: '2026-06-30', lettres: [] }, db)).toBeNull()
+      } finally {
+        vi.unstubAllEnvs()
+      }
     })
 
     it('lireLesCalculs rend les chiffres sans rien écrire', async () => {

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const strategie = vi.hoisted(() => ({ recevoirLaSynthèse: vi.fn(), lireLaSynthèseDuPilote: vi.fn() }))
+const strategie = vi.hoisted(() => ({ recevoirLaSynthèse: vi.fn(), lireLaSynthèseDuPilote: vi.fn(), publierLaSynthèseDuPilote: vi.fn() }))
 const client = vi.hoisted(() => ({ baseConfigurée: vi.fn() }))
 vi.mock('@/lib/portail/strategie', () => strategie)
 vi.mock('@/lib/base/client', () => client)
@@ -175,3 +175,29 @@ describe('GET /api/veille/syntheses', () => {
     expect((await lire('?slug=inconnue&periode=2026-11')).status).toBe(404)
   })
 })
+
+describe('PATCH /api/veille/syntheses', () => {
+  const publier = (corps: unknown, jeton?: string) => route.PATCH(new NextRequest(URL, { method: 'PATCH', headers: entêtes(jeton), body: JSON.stringify(corps) }))
+
+  it('exige le jeton et un état connu', async () => {
+    expect((await publier({ slug: 'mastora', periode: '2026-10', etat: 'publie' }, 'mauvais')).status).toBe(401)
+    expect((await publier({ slug: 'mastora', periode: '2026-10', etat: 'valide' })).status).toBe(400)
+    expect(strategie.publierLaSynthèseDuPilote).not.toHaveBeenCalled()
+  })
+
+  it('rend chaque issue avec son statut', async () => {
+    const cas: Array<[unknown, number]> = [
+      [{ sorte: 'publiée', éléments: 22, positions: 18 }, 200],
+      [{ sorte: 'retirée', éléments: 22, positions: 18 }, 200],
+      [{ sorte: 'hors-pilote' }, 200],
+      [{ sorte: 'aucune' }, 404],
+      [{ sorte: 'organisation-inconnue' }, 404],
+    ]
+    for (const [résultat, statut] of cas) {
+      strategie.publierLaSynthèseDuPilote.mockResolvedValueOnce(résultat)
+      expect((await publier({ slug: 'mastora', periode: '2026-10', etat: 'publie' })).status, (résultat as { sorte: string }).sorte).toBe(statut)
+    }
+    expect(strategie.publierLaSynthèseDuPilote).toHaveBeenLastCalledWith({ slug: 'mastora', période: '2026-10', état: 'publie' })
+  })
+})
+

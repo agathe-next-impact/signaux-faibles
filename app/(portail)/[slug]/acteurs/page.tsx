@@ -5,6 +5,8 @@ import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import { semainesPubliées } from '@/lib/portail/semaine'
+import { synthèseDeLEspace } from '@/lib/portail/strategie'
+import { SynthèseDesActeurs } from '@/components/strategie-ecrans'
 
 /**
  * Les acteurs suivis : concurrents, administrations, organisations du secteur.
@@ -32,6 +34,11 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
   const suivis = [...suivreLesDossiers(semaines)].sort(
     (a, b) => rangDeFraîcheur(fraîcheurDUnDossier(a)) - rangDeFraîcheur(fraîcheurDUnDossier(b)),
   )
+  // Pilote des outils stratégiques (lot 11) : la carte et Mendelow de la
+  // dernière synthèse publiée par l'opératrice. Aucune lecture Notion de plus ;
+  // hors du pilote ou sans synthèse publiée, l'écran reste celui d'avant.
+  const numéros = new Map(semaines.flatMap((s) => s.éditions).flatMap((é) => (é.numéro !== null ? [[é.pageId, é.numéro] as const] : [])))
+  const synthèse = await synthèseDeLEspace({ registre: accès.organisationId, numéros })
   const enMouvement = suivis.filter(
     (dossier) => fraîcheurDUnDossier(dossier) === 'nouveau',
   ).length
@@ -53,6 +60,13 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
             : 'Aucun n’a bougé cette semaine.'
           : ''}
       </p>
+
+      {synthèse?.mois ? (
+        <>
+          <SynthèseDesActeurs période={synthèse.mois.période} carte={synthèse.mois.carte} mendelow={synthèse.mois.mendelow} />
+          <h2 className="mt-10 font-titre text-h2 font-bold text-encre">Le suivi des dossiers</h2>
+        </>
+      ) : null}
 
       <div className="mt-5">
         <LégendeFraicheur />

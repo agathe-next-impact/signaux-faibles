@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { baseConfigurée } from '@/lib/base/client'
 import type { SynthèseProposée } from '@/lib/domaine/strategie'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
-import { lireLaSynthèseDuPilote, recevoirLaSynthèse, type RésultatDeLaSynthèse } from '@/lib/portail/strategie'
+import { lireLaSynthèseDuPilote, publierLaSynthèseDuPilote, recevoirLaSynthèse, type RésultatDeLaSynthèse } from '@/lib/portail/strategie'
 
 /**
  * La synthèse stratégique d'une période (outils stratégiques, lot 6 de
@@ -33,7 +33,13 @@ import { lireLaSynthèseDuPilote, recevoirLaSynthèse, type RésultatDeLaSynthè
  *   GET /api/veille/syntheses?slug=infralliance&periode=2026-11
  *
  * La synthèse vivante de la période, rendue en texte pour le courriel
- * « [Relecture] » de la revue. Rien n'est montré au client pendant le pilote.
+ * « [Relecture] » de la revue.
+ *
+ *   PATCH /api/veille/syntheses
+ *   { "slug": "mastora", "periode": "2026-10", "etat": "publie" | "retire" | "propose" }
+ *
+ * Le geste de l'opératrice après relecture (lot 11) : seule une synthèse
+ * publiée est lue par les écrans « Acteurs » et « Recommandations » du client.
  */
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -216,3 +222,31 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ état: 'erreur' }, { status: 502 })
   }
 }
+
+const publication = z.object({
+  slug: z.string().trim().regex(SLUG),
+  periode: z.string().regex(PÉRIODE),
+  etat: z.enum(['publie', 'retire', 'propose']),
+})
+
+export async function PATCH(requête: NextRequest): Promise<NextResponse> {
+  const refus = refuserSiNonAutorisé(requête, 'syntheses')
+  if (refus) return refus
+  if (!baseConfigurée()) return NextResponse.json({ état: 'base-non-configurée' }, { status: 503 })
+
+  const lue = publication.safeParse(await requête.json().catch(() => null))
+  if (!lue.success) {
+    const chemin = lue.error.issues[0]?.path.join('.') ?? ''
+    return NextResponse.json({ état: 'invalide', raison: chemin ? `champ « ${chemin} »` : 'corps illisible' }, { status: 400 })
+  }
+  try {
+    const résultat = await publierLaSynthèseDuPilote({ slug: lue.data.slug, période: lue.data.periode, état: lue.data.etat })
+    console.info(`[veille/syntheses] ${lue.data.slug} ${lue.data.periode} : ${résultat.sorte}.`)
+    const statut = résultat.sorte === 'organisation-inconnue' || résultat.sorte === 'aucune' ? 404 : 200
+    return NextResponse.json({ état: résultat.sorte, ...résultat }, { status: statut })
+  } catch (erreur) {
+    console.error(`[veille/syntheses] ${lue.data.slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return NextResponse.json({ état: 'erreur' }, { status: 502 })
+  }
+}
+

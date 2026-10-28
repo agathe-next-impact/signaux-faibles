@@ -477,6 +477,30 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(fonction.indexOf("sourceAccès() === 'notion'")).toBeGreaterThan(0)
   })
 
+  /**
+   * Les outils stratégiques sur les écrans du client (lot 11) : chaque lecture a
+   * son seul écran, ne lit aucun corps Notion de plus que ceux que l'écran lui
+   * passe, et passe par la lecture bornée qui se tait en mode `notion`.
+   */
+  it('les écrans des outils stratégiques : un seul écran par lecture, aucune lecture Notion', () => {
+    expect(appelants('synthèseDeLEspace')).toEqual([
+      'app/(portail)/[slug]/acteurs/page.tsx',
+      'app/(portail)/[slug]/recommandations/page.tsx',
+      'lib/portail/strategie.ts',
+    ])
+    expect(appelants('pestelDeLEspace')).toEqual(['app/(portail)/[slug]/axes/page.tsx', 'lib/portail/strategie.ts'])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
+    const écrans = source.slice(source.indexOf('// ── Écrans du client (lot 11)'))
+    expect(écrans).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
+    expect(écrans.indexOf("sourceAccès() === 'notion'")).toBeGreaterThan(0)
+    for (const nom of ['synthèseDeLEspace', 'pestelDeLEspace']) {
+      const corps = écrans.slice(écrans.indexOf(`export async function ${nom}(`))
+      expect(corps.indexOf("bornée('"), nom).toBeGreaterThan(0)
+    }
+    // Seule une synthèse publiée par l'opératrice est lue par un écran.
+    expect(écrans.slice(écrans.indexOf('export async function synthèseDeLEspace('))).not.toMatch(/lireLaSynthèse\(|synthèsePrécédente\(/)
+  })
+
   it('les étiquettes : pilote, règle 2, porte, puis écriture, sans invalidation', () => {
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
     const recevoir = source.slice(source.indexOf('export async function recevoirLesÉtiquettes'), source.indexOf('export type FaitPourLaRevue'))
