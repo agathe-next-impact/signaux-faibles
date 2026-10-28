@@ -45,7 +45,18 @@ avec ce que chacune fait dans le pilote, est au §6 du plan. La grille (lot 5,
 entité qui n'y figure pas. La synthèse mensuelle (lot 6, 27 octobre 2026) se poste et se
 lit par `/api/veille/syntheses`, depuis la section « SYNTHÈSE STRATÉGIQUE » de
 la revue mensuelle ; elle n'est relue que par l'opératrice, dans le courriel
-« [Relecture] », et rien n'en est montré au client pendant le pilote.
+« [Relecture] ». Depuis le 28 octobre 2026 (lots 7 à 13) : le trimestre
+(`AAAA-Tn`, cinq forces, trois scénarios, indice de cycle de vie et benchmark
+**calculés par le portail** après la porte, `GET /api/veille/calculs`,
+`lib/portail/calculs.ts`, jamais fournis par le modèle) et la matrice GE au
+seul T4 ; **rien n'est montré au client avant que l'opératrice publie la
+période** (`PATCH /api/veille/syntheses`, `etat: publie`). Une période
+publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
+(candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
+axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la
+session, bornées à 400 ms, sans lecture Notion de plus, `null` dans le
+doute) ; vues pures dans `lib/domaine/strategie-vues.ts`, rendu dans
+`components/strategie-ecrans.tsx`.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et

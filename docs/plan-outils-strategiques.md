@@ -331,12 +331,14 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Tests** : `fetch` simulé, budget de temps de la route, comptes confidentiels en `n.d.`.
 - **Fin** : indice et benchmark de Mastora calculés et relus.
 - **Hors du lot** : interprétation.
+- **Code fait le 28/10/2026** : `lib/registres/index.ts` (déplacé de `scripts/collecte/registres.ts`, qui le ré-exporte ; `compterLesAnnonces` borne de fin exclue, `fichesChiffrées`), `lib/portail/calculs.ts` (`calculer`, quatre comptes BODACC en parallèle et les fiches, budget de vingt secondes, `n.d.` au-delà), domaine pur dans `lib/domaine/strategie.ts` (`contrôlerLesParamètresDuCycle`, `périodesDuCycle`, `indiceDeCycle`, `entitésDuBenchmark`, `benchmarkDesFiches`), route de lecture `GET /api/veille/calculs` et paramètre `cycle` du `POST` trimestriel (calcul **après** la porte, chiffres dans `valeur`, aucun appel pour une synthèse refusée). Tests : `tests/strategie.calculs.test.ts`, `tests/api.veille.calculs.test.ts`, orchestration et architecture. Reste la fin du lot (indice et benchmark d'une organisation réelle calculés et relus), prévue sur L'Hermitage.
 
 ### Lot 8. Le trimestriel
 
 - **Notion** : page de la revue, sous-section « TRIMESTRE » (cinq forces, trois scénarios, interprétation de l'indice et du benchmark ; GE en janvier si plusieurs offres).
 - **Code** : extension de la porte (forces, scénarios), déjà typée au lot 1.
 - **Fin** : une revue trimestrielle de Mastora lancée à la main hors calendrier, acceptée et relue.
+- **Fait le 28/10/2026** : la porte tenait déjà forces et scénarios depuis le lot 1 ; le rendu texte porte les cinq forces, les scénarios et les interprétations avec leurs chiffres. Notion : S.7 « TRIMESTRE » dans la section « SYNTHÈSE STRATÉGIQUE » de la revue (chiffres d'abord par `GET /api/veille/calculs`, puis POST `AAAA-Tn` avec `cycle`). Reste la fin du lot, à faire sur L'Hermitage (T3 2026) plutôt que sur Mastora, dont l'archive ne couvre pas un trimestre.
 
 ### Lot 9. La mesure de l'étape
 
@@ -344,6 +346,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 - **Tests** : `tests/taches.mesure.test.ts` étendu.
 - **Fin** : `mesure.json` d'une lettre et d'une revue de Mastora porte le coût de l'étape.
 - **Remarque** : seule l'exécution sur l'API est mesurable ; une lettre produite sur Cowork ne l'est pas.
+- **Code fait le 28/10/2026** : `mesurerLesÉtapes` (`scripts/taches/mesure.ts`) somme l'usage du modèle à partir de la première réponse qui appelle la route de l'étape (`/api/veille/faits` pour l'étiquetage ; `/api/veille/syntheses`, `calculs` ou `grille` pour la synthèse), chaque message compté une fois par son identifiant ; c'est un **majorant**, puisque tout ce qui suit le premier appel est compté. `executer.ts` collecte les réponses ; `mesure.json` porte `étapes` et le résumé une ligne par étape. Reste la fin du lot, sur la prochaine exécution réelle.
 
 ### Lot 10. Infralliance en régime courant
 
@@ -361,14 +364,17 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
   - **Acteurs** : la carte des groupes stratégiques (deux axes de la grille, crans avec leur critère, votre position en encre, un mouvement montré avec sa position précédente en pointillé et le fait daté), puis la matrice de Mendelow en trois crans sur trois, puis le suivi des dossiers actuel.
   - **Recommandations** : l'option candidate en tête avec les éléments qu'elle croise, la TOWS (deux options par case, codes de croisement), la SWOT (forces et faiblesses déclarées marquées, opportunités et menaces datées par leur lettre), puis les actions des lettres.
   - **Lecture du trimestre** (lot 7) : sous « Recommandations », les cinq forces en trois crans avec leur tendance (« non suivi », jamais « faible ») et trois scénarios portant chacun deux à quatre indicateurs datables, sans probabilité.
+- **Code fait le 28/10/2026** : publication par `PATCH /api/veille/syntheses` (`publierLaSynthèse`, une transaction sur éléments et positions) ; seule une période **entièrement publiée** est lue (`dernièreSynthèsePubliée`). Lectures de l'espace dans `lib/portail/strategie.ts` (`synthèseDeLEspace`, `pestelDeLEspace`), par le registre de la session, bornées à 400 ms, muettes en mode `notion`, sans aucune lecture Notion de plus ; vues pures dans `lib/domaine/strategie-vues.ts` (carte, Mendelow, SWOT codée F, Fa, O, M datée par sa lettre, TOWS, forces, scénarios, PESTEL sur 91 jours) ; composants dans `components/strategie-ecrans.tsx` ; onglets « Par axe » et « PESTEL » sur « Les axes ». Tests : vues, orchestration sur base en mémoire, architecture. Restent la comparaison des captures aux maquettes et la recette Playwright avec un compte par client (règle 7), prévues avec le test rétrospectif sur L'Hermitage.
 
 ### Lot 12 (après décision). L'onboarding
 
 - **Notion** : page d'onboarding, étape A (grille) et étape B (synthèse initiale) ; commandes `.claude/skills/onboarding-*`.
+- **Fait le 28/10/2026** : page d'onboarding, paragraphe au §3.6 (grille rédigée avec les référentiels) et étape B, pas s1 à s5 (poster la grille, la valider après les points de validation, étiqueter la première lettre, synthèse `initial`) ; case « Outils stratégiques » ajoutée au registre ; commandes `onboarding-referentiels` et `onboarding-premiere-lettre` (5bis) complétées. Le drapeau en base reste posé par `PATCH /api/veille/organisations` (`action: outils`).
 
 ### Lot 13 (plus tard). Le moteur en code et la matrice GE
 
 - Étiquettes dans `schémaDeLaLettre` à la bascule du moteur ; GE annuelle.
+- **Code fait le 28/10/2026** : `schémaDeLaLettreÉtiquetée` (`lib/moteur/redaction.ts`), à côté du schéma en service, inchangé : chaque fait porte PESTEL ou force, Ansoff, entité, rupture et impact ; `étiquettesDeLaSortie` (`lib/moteur/etiquettes.ts`) lit la place et la phrase-titre dans la lettre assemblée et rend le lot que la porte contrôle, un fait sans place étant un écart nommé. Le branchement dans `produireLaLettre` se fait à la bascule du moteur. Matrice GE : outil de position `ge`, axes `attractivite` et `atouts` en trois crans, seulement pour une période `AAAA-T4` et avec deux offres au moins dans la grille, toutes les offres ou aucune, avertissement `ge-absente` ; rendu texte ; consigne dans S.7 de la revue. Konica Minolta France (cinq offres), Heritech (quatre) et L'Hermitage (trois) y sont éligibles en janvier 2027 ; Mastora (une offre) et Infralliance (aucune) non. L'affichage de la matrice dans l'espace client n'est pas fait.
 
 ## 6. Pilote
 
