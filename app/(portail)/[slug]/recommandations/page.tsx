@@ -1,6 +1,8 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { semainesPubliées } from '@/lib/portail/semaine'
+import { synthèseDeLEspace } from '@/lib/portail/strategie'
+import { LectureDuTrimestre, SynthèseDesRecommandations } from '@/components/strategie-ecrans'
 
 /**
  * Recommandations : l'action de la semaine, et celles des semaines passées.
@@ -25,6 +27,11 @@ export default async function Recommandations({
         .filter((entrée) => entrée.action.length > 0),
     }))
     .filter((entrée) => entrée.actions.length > 0)
+  // Pilote des outils stratégiques (lot 11) : l'option retenue, la TOWS, la SWOT
+  // et la lecture du trimestre, de la dernière synthèse publiée. Hors du pilote
+  // ou sans synthèse publiée, l'écran reste celui d'avant.
+  const numéros = new Map(semaines.flatMap((s) => s.éditions).flatMap((é) => (é.numéro !== null ? [[é.pageId, é.numéro] as const] : [])))
+  const synthèse = await synthèseDeLEspace({ registre: accès.organisationId, numéros })
 
   return (
     <>
@@ -33,6 +40,12 @@ export default async function Recommandations({
         titre="Ce que nous suggérons de faire"
         état={`${avecAction.length} semaine${avecAction.length > 1 ? 's' : ''} avec action`}
       />
+
+      {synthèse?.mois ? <SynthèseDesRecommandations période={synthèse.mois.période} swot={synthèse.mois.swot} tows={synthèse.mois.tows} /> : null}
+      {synthèse?.trimestre ? (
+        <LectureDuTrimestre période={synthèse.trimestre.période} forces={synthèse.trimestre.forces} scénarios={synthèse.trimestre.scénarios} />
+      ) : null}
+      {synthèse ? <h2 className="mt-10 font-titre text-h2 font-bold text-encre">Les actions de vos lettres</h2> : null}
 
       {avecAction.length === 0 ? (
         <p className="mt-8 text-ardoise">

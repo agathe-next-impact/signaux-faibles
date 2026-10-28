@@ -97,7 +97,7 @@ describe('les listes fermées de la base sont celles du domaine', () => {
     expect(origineDÉlément.enumValues).toEqual([...ORIGINES])
     expect(tendanceDeForce.enumValues).toEqual([...TENDANCES])
     // La base porte déjà `ge` (lot 13) ; la porte le refuse tant qu'il n'est pas dans le domaine.
-    expect(outilDePosition.enumValues).toEqual([...OUTILS_DE_POSITION, 'ge'])
+    expect(outilDePosition.enumValues).toEqual([...OUTILS_DE_POSITION])
   })
 })
 
@@ -123,6 +123,7 @@ describe('outils stratégiques en base', () => {
       expect(await organisationPourLesOutils({ registreNotion: registre(1) }, db)).toEqual({
         id: infralliance,
         slug: 'infralliance',
+        nom: 'Infralliance',
         registreNotion: registre(1),
         outilsStratégiques: false,
       })

@@ -769,9 +769,11 @@ STRATÉGIQUE », entre l'étape 2 et l'étape 3), relue par l'opératrice dans l
 courriel « [Relecture] » ; **rien n'est montré au client pendant le pilote**.
 Postgres garde les énoncés (240 caractères au plus, exception bornée de
 `CLAUDE.md`) et les crans, jamais un texte de lettre. Plan :
-`docs/plan-outils-strategiques.md`, lot 6. Le trimestriel (cinq forces,
-scénarios, indice et benchmark) est typé et contrôlé, mais n'est pas encore
-produit (lots 7 et 8).
+`docs/plan-outils-strategiques.md`, lot 6. Depuis le 28 octobre 2026, la même
+route porte le **trimestriel** (lots 7 et 8 : cinq forces, scénarios,
+interprétations de l'indice de cycle de vie et du benchmark, chiffres calculés
+par le portail), la **matrice GE** annuelle (lot 13) et la **publication** vers
+l'espace client (lot 11, `PATCH`).
 
 ### `POST /api/veille/syntheses` : poster la synthèse d'une période
 
@@ -803,6 +805,29 @@ interne et un externe, **une seule candidate**. Une position cite au moins un
 fait ; un cran qui bouge cite un fait de la fenêtre, qui nomme l'entité pour la
 carte des groupes. Crans de Mendelow : 1 `bas`, 2 `intermediaire`, 3 `eleve`.
 
+**Au trimestre** (`periode` `AAAA-Tn`, `mode: "trimestriel"`), la synthèse
+porte en plus : les cinq forces, toutes (`outil: "forces"`, `sujet` parmi
+`rivalite`, `nouveaux_entrants`, `substituts`, `pouvoir_clients`,
+`pouvoir_fournisseurs`, `axe: "intensite"`, crans 1 `contenue`, 2 `marquee`,
+3 `intense`, `tendance` `hausse`, `stable` ou `baisse` ; une force qu'aucune
+famille ne porte est `nonSuivi: true`, cran nul, sans fait ni tendance) ; trois
+`scenarios` `{ titre, enonce (400 caractères au plus), indicateurs: 2 à 4
+{ famille, signal }, faits }` ; deux `interpretations` au plus
+`{ outil: "indice_cycle" | "benchmark", enonce }`. Le corps peut porter
+`"cycle": { "departements": ["06", "34"], "texte": "formation commerciale" }`
+(1 à 12 départements, deux chiffres, 2A, 2B ou 97x ; texte de 3 à 80
+caractères) : le portail calcule alors l'indice de cycle de vie **après** la
+porte, et le benchmark dans tous les cas, en vingt secondes au plus (ce qui ne
+répond pas vaut n.d.) ; les chiffres sont gardés dans `valeur`, à côté des
+interprétations, jamais fournis par le modèle. Une synthèse refusée ne
+déclenche aucun appel aux registres.
+
+**Matrice GE**, une fois l'an : seulement pour une période `AAAA-T4` (revue de
+janvier) et seulement si la grille porte au moins deux `offres`. Pour chaque
+offre de la grille, deux positions `outil: "ge"`, `sujet` = nom exact de
+l'offre, axes `attractivite` et `atouts`, crans 1 `bas`, 2 `intermediaire`,
+3 `eleve` ; toutes les offres ou aucune.
+
 Ordre des contrôles : organisation et pilote, grille (`grille-absente` sinon),
 faits cités et synthèse précédente, porte (`contrôlerLaSynthèse`), écriture.
 La route ne lit pas Notion et **n'expire aucun tag**.
@@ -824,8 +849,13 @@ Codes de refus de la porte : `pestel-incomplet`, `trou-avec-faits`,
 `tows-sans-croisement`, `candidate-unique`, `élément-inconnu`,
 `position-hors-grille`, `cran-hors-bornes`, `mouvement-sans-fait`,
 `hors-période`, `grille-périmée`, `vocabulaire-interdit`, `longueur`,
-`doublon`, `étiquette-inconnue`. En avertissement seulement : `spécificité`
-(ni nom de la grille, ni chiffre, ni date).
+`doublon`, `étiquette-inconnue` ; au trimestre `forces-incomplètes`,
+`tendance-manquante`, `non-suivi-manquant`, `non-suivi-injustifié`,
+`scénarios-hors-bornes`, `indicateurs-hors-bornes`, `famille-inconnue`, et
+pour `cycle` `départements-hors-bornes`, `département-invalide`,
+`texte-hors-bornes` ; pour la matrice GE `ge-incomplète`, `ge-sans-offres`. En
+avertissement seulement : `spécificité` (ni nom de la grille, ni chiffre, ni
+date) et `ge-absente` (revue annuelle, deux offres ou plus, pas de matrice).
 
 ### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période
 
@@ -835,6 +865,34 @@ rendue pour le courriel « [Relecture] », à recopier telle quelle ; `swot` don
 les éléments par leur `id` (que la `filiation` du mois suivant désigne) et
 `crans` les positions posées. `aucune` (200) si rien n'est enregistré pour la
 période.
+
+### `PATCH /api/veille/syntheses` : publier ou retirer une période (lot 11, 28 octobre 2026)
+
+`{ "slug": "mastora", "periode": "2026-11", "etat": "publie" }`, `etat` parmi
+`publie`, `retire` et `propose`. Change l'état de publication de **tous** les
+éléments et positions non archivés de la période, dans une transaction. C'est
+le geste de l'opératrice après relecture : rien ne s'affiche dans l'espace
+client tant qu'une période n'est pas `publie`, et l'écran ne montre que la
+dernière période entièrement publiée (mois sur « Acteurs » et
+« Recommandations », trimestre en dessous). Réponses : `publiée`, `retirée` ou
+`proposée` (200, avec `éléments` et `positions`), `hors-pilote` (200),
+`aucune` et `organisation-inconnue` (404), `invalide` (400). N'expire aucun
+tag : les écrans relisent Postgres à chaque requête, bornés à 400 ms.
+
+### `GET /api/veille/calculs?slug&fin&departements&texte` : les chiffres du trimestre (lot 7, 28 octobre 2026)
+
+Les chiffres que la revue lit **avant** d'écrire ses deux interprétations ;
+n'écrit rien. `fin` en `AAAA-MM-JJ` ; `departements` (séparés par des
+virgules) et `texte` vont ensemble, ou sont omis tous deux (benchmark seul).
+`calculé` (200) rend `indice` (au BODACC, créations et immatriculations contre
+procédures collectives sur les douze mois qui finissent à `fin` et les douze
+précédents : entrées, sorties, solde, ratio, évolutions, limites) et
+`benchmark` (fiches de la Recherche d'entreprises des entités de la grille qui
+portent un SIREN, l'organisation en tête, quinze au plus : chiffre d'affaires,
+résultat, tranche d'effectif, médiane, rang de l'organisation, limites).
+Autres réponses : `hors-pilote` (200), `organisation-inconnue` (404),
+`grille-absente` (409), `refusée` (422, paramètres du cycle), `invalide` (400),
+`erreur` (502).
 
 ## La file de travaux (palier 2, 21 octobre 2026)
 

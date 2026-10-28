@@ -14,59 +14,86 @@ import { z } from 'zod'
 import type { Lecture } from '@/lib/moteur/collecte'
 import type { RésultatDeRecherche } from '@/lib/moteur/recherche'
 import type { RéférentielUnique } from '@/lib/moteur/referentiel'
+import { ANSOFF, FORCES_PORTER, IMPACTS_DE_FAIT, PESTEL } from '@/lib/domaine/strategie'
 import { ESSENTIEL_CARACTÈRES_MAX, ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
 
-export const schémaDeLaLettre = z.object({
-  essentiel: z
-    .array(z.string().max(ESSENTIEL_CARACTÈRES_MAX))
-    .min(3)
-    .max(ESSENTIEL_LIGNES_MAX)
-    .describe(`Trois à ${ESSENTIEL_LIGNES_MAX} lignes de ${ESSENTIEL_CARACTÈRES_MAX} caractères au plus, chacune se lit seule (qui, quoi, quand), reprises telles quelles par le digest`),
-  axes: z
-    .array(
-      z.object({
-        numéro: z.number().int().min(1).describe("Le numéro de l'axe dans le référentiel"),
-        niveau: z.enum(['FORT', 'MOYEN', 'RAS']).describe("Trois niveaux et trois seulement ; le niveau du fait le plus fort de l'axe ; RAS si aucun fait de la période"),
-        faits: z
-          .array(
-            z.object({
-              texte: z
-                .string()
-                .max(LETTRE_UNIQUE.caractèresParFaitMax)
-                .describe(`Une ou deux phrases, ${LETTRE_UNIQUE.caractèresParFaitMax} caractères au plus, sujet verbe complément, la date en toutes lettres dans la phrase (« le 12 septembre »), un seul acteur par phrase, sigles développés`),
-              date: z.string().describe('AAAA-MM-JJ, la date du fait'),
-              url: z.string().describe("L'URL exacte du dossier d'où vient le fait ; jamais une URL absente du dossier"),
-              contexte: z.boolean().describe('vrai si le fait est antérieur à la période et donné comme élément de contexte, non nouveau'),
-            }),
-          )
-          .max(LETTRE_UNIQUE.faitsParAxeMax)
-          .describe(`Zéro à ${LETTRE_UNIQUE.faitsParAxeMax} faits, les plus lourds de conséquence ; vide si RAS`),
-        ras: z
-          .string()
-          .max(LETTRE_UNIQUE.caractèresDuRasMax)
-          .nullable()
-          .describe(`Si RAS : une ou deux phrases, ${LETTRE_UNIQUE.caractèresDuRasMax} caractères au plus, qui nomment ce qui a été vérifié et depuis quand les sources sont muettes ; sinon null`),
-      }),
-    )
-    .min(LETTRE_UNIQUE.axesMin)
-    .max(LETTRE_UNIQUE.axesMax)
-    .describe('Un objet par axe du référentiel, tous les axes, dans leur ordre'),
-  dossiers: z
-    .array(
-      z.object({
-        nom: z.string().max(80).describe('Le nom exact du dossier, inchangé d’une édition à l’autre'),
-        compteur: z.number().int().min(0).describe('Le compteur de la précédente édition, plus un si le dossier a bougé pendant la période, sinon inchangé'),
-        précision: z.string().max(120).describe('Où en est le dossier, en quelques mots ; vide si rien à dire'),
-        suivi: z.string().max(300).describe('Une à deux phrases qui nomment le dossier exactement et disent ce qui a bougé ou ce qu’on attend'),
-      }),
-    )
-    .max(20)
-    .describe('Les dossiers ouverts suivis, ceux du référentiel et de la précédente édition, plus ceux que la période ouvre, moins ceux qu’elle clôt (dits clos dans le suivi)'),
-  actionDeLaSemaine: z.string().max(300).describe('Une phrase : la chose à faire ou à surveiller cette semaine, tirée des faits FORT'),
+const schémaDuFait = z.object({
+  texte: z
+    .string()
+    .max(LETTRE_UNIQUE.caractèresParFaitMax)
+    .describe(`Une ou deux phrases, ${LETTRE_UNIQUE.caractèresParFaitMax} caractères au plus, sujet verbe complément, la date en toutes lettres dans la phrase (« le 12 septembre »), un seul acteur par phrase, sigles développés`),
+  date: z.string().describe('AAAA-MM-JJ, la date du fait'),
+  url: z.string().describe("L'URL exacte du dossier d'où vient le fait ; jamais une URL absente du dossier"),
+  contexte: z.boolean().describe('vrai si le fait est antérieur à la période et donné comme élément de contexte, non nouveau'),
+  })
+
+function schémaAvecLesFaits<F extends z.ZodType>(fait: F) {
+  return z.object({
+    essentiel: z
+      .array(z.string().max(ESSENTIEL_CARACTÈRES_MAX))
+      .min(3)
+      .max(ESSENTIEL_LIGNES_MAX)
+      .describe(`Trois à ${ESSENTIEL_LIGNES_MAX} lignes de ${ESSENTIEL_CARACTÈRES_MAX} caractères au plus, chacune se lit seule (qui, quoi, quand), reprises telles quelles par le digest`),
+    axes: z
+      .array(
+        z.object({
+          numéro: z.number().int().min(1).describe("Le numéro de l'axe dans le référentiel"),
+          niveau: z.enum(['FORT', 'MOYEN', 'RAS']).describe("Trois niveaux et trois seulement ; le niveau du fait le plus fort de l'axe ; RAS si aucun fait de la période"),
+          faits: z
+            .array(fait)
+            .max(LETTRE_UNIQUE.faitsParAxeMax)
+            .describe(`Zéro à ${LETTRE_UNIQUE.faitsParAxeMax} faits, les plus lourds de conséquence ; vide si RAS`),
+          ras: z
+            .string()
+            .max(LETTRE_UNIQUE.caractèresDuRasMax)
+            .nullable()
+            .describe(`Si RAS : une ou deux phrases, ${LETTRE_UNIQUE.caractèresDuRasMax} caractères au plus, qui nomment ce qui a été vérifié et depuis quand les sources sont muettes ; sinon null`),
+        }),
+      )
+      .min(LETTRE_UNIQUE.axesMin)
+      .max(LETTRE_UNIQUE.axesMax)
+      .describe('Un objet par axe du référentiel, tous les axes, dans leur ordre'),
+    dossiers: z
+      .array(
+        z.object({
+          nom: z.string().max(80).describe('Le nom exact du dossier, inchangé d’une édition à l’autre'),
+          compteur: z.number().int().min(0).describe('Le compteur de la précédente édition, plus un si le dossier a bougé pendant la période, sinon inchangé'),
+          précision: z.string().max(120).describe('Où en est le dossier, en quelques mots ; vide si rien à dire'),
+          suivi: z.string().max(300).describe('Une à deux phrases qui nomment le dossier exactement et disent ce qui a bougé ou ce qu’on attend'),
+        }),
+      )
+      .max(20)
+      .describe('Les dossiers ouverts suivis, ceux du référentiel et de la précédente édition, plus ceux que la période ouvre, moins ceux qu’elle clôt (dits clos dans le suivi)'),
+    actionDeLaSemaine: z.string().max(300).describe('Une phrase : la chose à faire ou à surveiller cette semaine, tirée des faits FORT'),
+  })
+}
+
+/**
+ * Les étiquettes d'un fait, demandées dans la même sortie que la lettre quand
+ * l'organisation est du pilote des outils stratégiques (lot 13 du plan du
+ * 26 octobre 2026). Ce sont les mêmes listes fermées que l'étape 4ter ; la
+ * place du fait et sa phrase-titre ne sont pas demandées au modèle, le code les
+ * lit dans la lettre assemblée (`étiquettesDeLaSortie`), et la porte de
+ * `lib/domaine/strategie.ts` contrôle le tout avant d'écrire.
+ */
+export const schémaDÉtiquette = z.object({
+  pestel: z.enum(PESTEL).nullable().describe("La dimension PESTEL d'un fait d'écosystème ; null pour un fait sur un acteur du marché"),
+  porter: z.enum(FORCES_PORTER).nullable().describe("La force de Porter d'un fait sur un acteur du marché ; null pour un fait d'écosystème. L'un des deux, jamais les deux"),
+  ansoff: z.enum(ANSOFF).nullable().describe('Le mouvement du concurrent, pour une force rivalite ou nouveaux_entrants seulement ; sinon null'),
+  entite: z.string().max(120).nullable().describe("L'acteur que le fait nomme, écrit exactement comme dans la grille de l'organisation ; null si aucun"),
+  rupture: z.boolean().describe('vrai si le fait change les règles du jeu du marché, et non un mouvement de plus'),
+  impact: z.enum(IMPACTS_DE_FAIT).describe("Le niveau de ce fait, FORT ou MOYEN, jamais au-dessus du niveau de l'axe"),
 })
 
+const schémaDuFaitÉtiqueté = schémaDuFait.extend({ étiquette: schémaDÉtiquette })
+
+export const schémaDeLaLettre = schémaAvecLesFaits(schémaDuFait)
+export const schémaDeLaLettreÉtiquetée = schémaAvecLesFaits(schémaDuFaitÉtiqueté)
+
 export type SortieRédigée = z.infer<typeof schémaDeLaLettre>
+export type SortieÉtiquetée = z.infer<typeof schémaDeLaLettreÉtiquetée>
+export type ÉtiquetteDuFait = z.infer<typeof schémaDÉtiquette>
 
 export type Sélection = {
   readonly numéro: number

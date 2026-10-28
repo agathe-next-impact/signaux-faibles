@@ -64,13 +64,22 @@ export type Cadence = (typeof CADENCES)[number]
 export const VEILLES = ['ecosysteme', 'concurrentiel'] as const
 export type Veille = (typeof VEILLES)[number]
 
-export const OUTILS_DE_POSITION = ['groupes', 'mendelow', 'forces'] as const
+export const OUTILS_DE_POSITION = ['groupes', 'mendelow', 'forces', 'ge'] as const
 export type OutilDePosition = (typeof OUTILS_DE_POSITION)[number]
 
 /** Mendelow : pouvoir et intérêt en trois crans. Jamais « faible » ni « fort », réservés à l'impact. */
 export const CRANS_MENDELOW = ['bas', 'intermediaire', 'eleve'] as const
 /** Cinq forces : intensité en trois crans, et `non_suivi` quand aucune famille ne porte la force. */
 export const CRANS_DES_FORCES = ['contenue', 'marquee', 'intense'] as const
+/**
+ * Matrice McKinsey/GE (lot 13) : chaque offre de la grille, par l'attractivité
+ * de son marché et les atouts de l'organisation sur ce marché, en trois crans
+ * comme Mendelow. Annuelle : seulement à la revue trimestrielle qui clôt
+ * l'année (période `AAAA-T4`, revue de janvier), et seulement si la grille
+ * porte au moins deux offres ; une offre seule n'a rien à arbitrer.
+ */
+export const AXES_GE = ['attractivite', 'atouts'] as const
+export const OFFRES_GE_MIN = 2
 export const TENDANCES = ['hausse', 'stable', 'baisse'] as const
 export type Tendance = (typeof TENDANCES)[number]
 
@@ -627,7 +636,7 @@ export type SynthèseProposée = {
 }
 
 /** Un fait étiqueté de l'organisation, tel que la base le connaît. */
-export type FaitConnu = { readonly date: string; readonly entite: string | null }
+export type FaitConnu = { readonly date: string; readonly entite: string | null; readonly édition?: string }
 
 export type ContexteDeSynthèse = {
   readonly faits: ReadonlyMap<string, FaitConnu>
@@ -638,6 +647,8 @@ export type ContexteDeSynthèse = {
   readonly élémentsPrécédents: ReadonlyMap<string, CaseSwot>
   /** Les crans de la période précédente, par `outil:sujet:axe`, le sujet passé par `normaliserTitre`. */
   readonly positionsPrécédentes: ReadonlyMap<string, number | null>
+  /** Vrai pour la revue qui clôt l'année (période `AAAA-T4`) : la seule où la matrice GE se pose. */
+  readonly revueAnnuelle?: boolean
 }
 
 export type ContrôleDeSynthèse = {
@@ -753,6 +764,7 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
   const partiesPrenantes = new Set(contexte.grille.partiesPrenantes.map((p) => normaliserTitre(p.nom)))
   const axes = new Map(contexte.grille.axesGroupes.map((a) => [a.clé, a.crans.length]))
   const nonSuivies = new Set(forcesNonSuivies(contexte.grille))
+  const offres = new Set((contexte.grille.offres ?? []).map(normaliserTitre))
   const posées = new Set<string>()
   for (const p of synthèse.positions) {
     const cible = `${p.outil} ${p.sujet} / ${p.axe}`
@@ -772,6 +784,11 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
     } else if (p.outil === 'mendelow') {
       if (!partiesPrenantes.has(normaliserTitre(p.sujet))) refuser('position-hors-grille', 'partie prenante absente de la grille', cible)
       if (p.axe !== 'pouvoir' && p.axe !== 'interet') refuser('position-hors-grille', 'axe « pouvoir » ou « interet »', cible)
+      max = CRANS_MENDELOW.length
+    } else if (p.outil === 'ge') {
+      if (!offres.has(normaliserTitre(p.sujet))) refuser('position-hors-grille', 'offre absente de la grille', cible)
+      if (!dans(AXES_GE, p.axe)) refuser('position-hors-grille', `axe « ${AXES_GE.join(' » ou « ')} »`, cible)
+      if (synthèse.mode !== 'trimestriel' || !contexte.revueAnnuelle) refuser('hors-période', 'la matrice GE se lit une fois l’an, à la revue du quatrième trimestre', cible)
       max = CRANS_MENDELOW.length
     } else {
       if (!dans(FORCES_PORTER, p.sujet)) refuser('position-hors-grille', `force « ${p.sujet} » inconnue`, cible)
@@ -801,6 +818,16 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
   }
   if (synthèse.mode === 'trimestriel') {
     for (const force of FORCES_PORTER) if (!posées.has(`forces:${normaliserTitre(force)}:intensite`)) refuser('forces-incomplètes', `la force « ${force} » manque`)
+  }
+  // GE : toutes les offres sur les deux axes, ou aucune ; absente à la revue annuelle, elle est signalée, pas exigée.
+  const ge = synthèse.positions.filter((p) => p.outil === 'ge')
+  if (ge.length > 0 && offres.size < OFFRES_GE_MIN) refuser('ge-sans-offres', `la matrice GE demande au moins ${OFFRES_GE_MIN} offres dans la grille, elle en porte ${offres.size}`)
+  else if (ge.length > 0) {
+    for (const offre of contexte.grille.offres ?? []) {
+      for (const axe of AXES_GE) if (!posées.has(`ge:${normaliserTitre(offre)}:${axe}`)) refuser('ge-incomplète', `l’offre « ${offre} » manque sur l’axe « ${axe} »`)
+    }
+  } else if (synthèse.mode === 'trimestriel' && contexte.revueAnnuelle && offres.size >= OFFRES_GE_MIN) {
+    avertissements.push({ code: 'ge-absente', message: `revue annuelle et ${offres.size} offres dans la grille : la matrice GE n’est pas posée` })
   }
 
   // Scénarios, au trimestre.
@@ -839,6 +866,8 @@ export type ÉlémentÀRendre = {
   readonly faits: readonly string[]
   readonly références: unknown
   readonly candidateRecommandation: boolean
+  /** Les chiffres calculés par le portail (indice, benchmark), absents ailleurs. */
+  readonly valeur?: unknown
 }
 
 export type PositionÀRendre = {
@@ -880,6 +909,8 @@ const LIBELLÉS_ÉTATS: Readonly<Record<ÉtatDÉlément, string>> = {
 const LIBELLÉS_CRANS: Readonly<Record<string, readonly string[]>> = {
   pouvoir: ['bas', 'intermédiaire', 'élevé'],
   interet: ['bas', 'intermédiaire', 'élevé'],
+  attractivite: ['basse', 'moyenne', 'haute'],
+  atouts: ['limités', 'moyens', 'solides'],
   intensite: ['contenue', 'marquée', 'intense'],
 }
 
@@ -889,6 +920,32 @@ const LIBELLÉS_CRANS: Readonly<Record<string, readonly string[]>> = {
  * soit montré à un client. Chaque élément porte ses faits datés ; un trou du
  * PESTEL est dit comme trou, jamais comme absence de nouvelles.
  */
+const nd = (x: unknown) => (typeof x === 'number' ? x.toLocaleString('fr-FR') : 'n.d.')
+const pourCent = (x: unknown) => (typeof x === 'number' ? `${x > 0 ? '+' : ''}${x.toLocaleString('fr-FR')} %` : 'n.d.')
+
+function lignesDeLIndice(valeur: unknown): string[] {
+  const v = (valeur ?? null) as Partial<IndiceDeCycle> | null
+  if (!v || !v.période) return ['- Chiffres : non calculés (départements et texte d’activité non fournis)']
+  return [
+    `- Du ${v.période.du} au ${v.période.au}, départements ${(v.départements ?? []).join(', ')}, « ${v.texte ?? ''} » : ${nd(v.entrées)} entrées (créations et immatriculations), ${nd(v.sorties)} procédures collectives, solde ${nd(v.solde)}, ${nd(v.ratio)} entrées pour une sortie`,
+    `- Sur un an : entrées ${pourCent(v.évolutionDesEntrées)} (${nd(v.entréesAvant)} l’année précédente), sorties ${pourCent(v.évolutionDesSorties)} (${nd(v.sortiesAvant)})`,
+    ...(v.limites ?? []).map((l) => `- Limite : ${l}`),
+  ]
+}
+
+function lignesDuBenchmark(valeur: unknown): string[] {
+  const v = (valeur ?? null) as Partial<Benchmark> | null
+  if (!v || !v.lignes) return ['- Chiffres : non calculés']
+  return [
+    `- ${v.lignes.length} entité(s) avec SIREN, ${nd(v.avecComptes)} avec un chiffre d’affaires publié ; médiane ${nd(v.médianeDuChiffreDAffaires)} € ; rang de l’organisation ${v.rangDeLOrganisation ?? 'n.d.'}`,
+    ...v.lignes.map(
+      (l) =>
+        `- ${l.nom}${l.organisation ? ' (vous)' : ''} : ${l.fiche === 'n.d.' ? 'fiche n.d.' : `${l.active ? 'active' : 'cessée'}, CA ${nd(l.chiffreDAffaires)} €, résultat ${nd(l.résultatNet)} €${l.année ? ` (${l.année})` : ''}, effectif (code INSEE) ${l.trancheEffectif ?? 'n.d.'}`}`,
+    ),
+    ...(v.limites ?? []).map((l) => `- Limite : ${l}`),
+  ]
+}
+
 export function rendreLaSynthèse(s: SynthèseÀRendre): string {
   const lignes: string[] = []
   // Un fait cité par les deux axes d'un même sujet ne se compte qu'une fois.
@@ -987,6 +1044,18 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
     }
   }
 
+  const ge = s.positions.filter((p) => p.outil === 'ge')
+  if (ge.length > 0) {
+    lignes.push('', 'Matrice GE (attractivité du marché et atouts, par offre)')
+    for (const sujet of [...new Set(ge.map((p) => p.sujet))]) {
+      const valeur = (axe: string) => {
+        const p = ge.find((x) => x.sujet === sujet && x.axe === axe)
+        return p?.cran ? (LIBELLÉS_CRANS[axe]?.[p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'
+      }
+      lignes.push(`- ${sujet} : attractivité ${valeur('attractivite')}, atouts ${valeur('atouts')}${faitsDe(ge.filter((p) => p.sujet === sujet).flatMap((p) => p.faits))}`)
+    }
+  }
+
   const scénarios = s.éléments.filter((é) => é.outil === 'scenario').sort((a, b) => a.clé.localeCompare(b.clé))
   if (scénarios.length > 0) {
     lignes.push('', 'Scénarios')
@@ -998,7 +1067,189 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
   }
 
   const interprétations = s.éléments.filter((é) => é.outil === 'indice_cycle' || é.outil === 'benchmark')
-  for (const é of interprétations) lignes.push('', é.outil === 'indice_cycle' ? 'Indice de cycle de vie' : 'Benchmark', `- ${é.énoncé ?? ''}`)
+  for (const é of interprétations) {
+    lignes.push('', é.outil === 'indice_cycle' ? 'Indice de cycle de vie' : 'Benchmark')
+    lignes.push(...(é.outil === 'indice_cycle' ? lignesDeLIndice(é.valeur) : lignesDuBenchmark(é.valeur)))
+    lignes.push(`- Interprétation : ${é.énoncé ?? 'aucune, le chiffre seul est gardé'}`)
+  }
 
   return lignes.join('\n')
+}
+
+// ── Calculs du trimestre (lot 7) ─────────────────────────────────────────────
+//
+// Les chiffres de l'indice de cycle de vie et du benchmark sont calculés par le
+// portail, jamais fournis par le modèle, qui n'en écrit que l'interprétation.
+// Ce sont des comptes : aucune phase de cycle, aucun seuil n'est décidé ici.
+
+const DÉPARTEMENT_DE_CALCUL = /^(\d{2}|2A|2B|97\d)$/
+
+/** Les paramètres de l'indice, lus par la revue dans la famille « Nouveaux entrants » du référentiel. */
+export type ParamètresDuCycle = { readonly départements: readonly string[]; readonly texte: string }
+
+export function contrôlerLesParamètresDuCycle(p: ParamètresDuCycle): readonly Refus[] {
+  const refus: Refus[] = []
+  if (p.départements.length < 1 || p.départements.length > 12) refus.push({ code: 'départements-hors-bornes', message: '1 à 12 départements' })
+  for (const d of p.départements) if (!DÉPARTEMENT_DE_CALCUL.test(d)) refus.push({ code: 'département-invalide', message: `« ${d} » : deux chiffres, 2A, 2B ou 97x`, cible: d })
+  if (p.texte.trim().length < 3 || p.texte.length > 80) refus.push({ code: 'texte-hors-bornes', message: 'texte d’activité de 3 à 80 caractères' })
+  return refus
+}
+
+/** Le jour qui suit, et le même jour un an plus tôt, en dates du calendrier. */
+function décaler(date: string, jours: number, ans = 0): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCFullYear(d.getUTCFullYear() + ans)
+  d.setUTCDate(d.getUTCDate() + jours)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Les deux périodes de douze mois que compare l'indice : celle qui finit à `fin`, et la précédente. Bornes de fin exclues. */
+export function périodesDuCycle(fin: string): { readonly courante: { readonly du: string; readonly au: string }; readonly précédente: { readonly du: string; readonly au: string } } {
+  const lendemain = décaler(fin, 1)
+  const ilYAUnAn = décaler(lendemain, 0, -1)
+  return { courante: { du: ilYAUnAn, au: lendemain }, précédente: { du: décaler(ilYAUnAn, 0, -1), au: ilYAUnAn } }
+}
+
+export type ComptesDuCycle = {
+  readonly entrées: number | null
+  readonly sorties: number | null
+  readonly entréesAvant: number | null
+  readonly sortiesAvant: number | null
+}
+
+export type IndiceDeCycle = {
+  readonly calculéLe: string
+  readonly période: { readonly du: string; readonly au: string }
+  readonly périodePrécédente: { readonly du: string; readonly au: string }
+  readonly départements: readonly string[]
+  readonly texte: string
+  /** Créations et immatriculations publiées au BODACC. */
+  readonly entrées: number | null
+  /** Procédures collectives publiées au BODACC. */
+  readonly sorties: number | null
+  readonly solde: number | null
+  /** Entrées pour une sortie ; `null` sans sortie ou sans compte. */
+  readonly ratio: number | null
+  readonly entréesAvant: number | null
+  readonly sortiesAvant: number | null
+  /** Variation en pour cent sur un an ; `null` quand la base est nulle ou inconnue. */
+  readonly évolutionDesEntrées: number | null
+  readonly évolutionDesSorties: number | null
+  readonly limites: readonly string[]
+}
+
+const arrondi = (x: number, décimales = 1) => Math.round(x * 10 ** décimales) / 10 ** décimales
+const évolution = (x: number | null, avant: number | null) => (x === null || avant === null || avant === 0 ? null : arrondi(((x - avant) / avant) * 100))
+
+export function indiceDeCycle(p: ParamètresDuCycle, fin: string, comptes: ComptesDuCycle, calculéLe: string): IndiceDeCycle {
+  const { courante, précédente } = périodesDuCycle(fin)
+  const { entrées, sorties, entréesAvant, sortiesAvant } = comptes
+  const limites = [
+    'BODACC : sociétés et commerçants immatriculés seulement ; associations et micro-entrepreneurs non inscrits au registre n’y figurent pas.',
+    `Filtre par texte d’activité (« ${p.texte} ») : une annonce dont l’objet est rédigé autrement n’est pas comptée.`,
+  ]
+  if ([entrées, sorties, entréesAvant, sortiesAvant].some((c) => c === null)) limites.push('Un ou plusieurs comptes n.d. : le BODACC n’a pas répondu dans le temps imparti.')
+  return {
+    calculéLe,
+    période: { du: courante.du, au: décaler(courante.au, -1) },
+    périodePrécédente: { du: précédente.du, au: décaler(précédente.au, -1) },
+    départements: p.départements,
+    texte: p.texte,
+    entrées,
+    sorties,
+    solde: entrées !== null && sorties !== null ? entrées - sorties : null,
+    ratio: entrées !== null && sorties ? arrondi(entrées / sorties, 2) : null,
+    entréesAvant,
+    sortiesAvant,
+    évolutionDesEntrées: évolution(entrées, entréesAvant),
+    évolutionDesSorties: évolution(sorties, sortiesAvant),
+    limites,
+  }
+}
+
+/** Ce que le benchmark lit d'une fiche du registre, `null` quand elle n'a pas répondu. */
+export type ChiffresDUneEntité = {
+  readonly active: boolean
+  readonly trancheEffectif: string | null
+  readonly année: string | null
+  readonly chiffreDAffaires: number | null
+  readonly résultatNet: number | null
+}
+
+export type LigneDeBenchmark = {
+  readonly nom: string
+  readonly siren: string
+  readonly organisation: boolean
+  readonly fiche: 'lue' | 'n.d.'
+  readonly active: boolean | null
+  readonly trancheEffectif: string | null
+  readonly année: string | null
+  readonly chiffreDAffaires: number | null
+  readonly résultatNet: number | null
+}
+
+export type Benchmark = {
+  readonly calculéLe: string
+  readonly lignes: readonly LigneDeBenchmark[]
+  readonly avecComptes: number
+  readonly sansComptes: number
+  readonly médianeDuChiffreDAffaires: number | null
+  /** Rang de l'organisation par chiffre d'affaires parmi les entités qui en publient un (1 = le plus élevé). */
+  readonly rangDeLOrganisation: number | null
+  readonly limites: readonly string[]
+}
+
+function médiane(valeurs: readonly number[]): number | null {
+  if (valeurs.length === 0) return null
+  const triées = [...valeurs].sort((a, b) => a - b)
+  const m = Math.floor(triées.length / 2)
+  return triées.length % 2 ? triées[m]! : Math.round((triées[m - 1]! + triées[m]!) / 2)
+}
+
+/** Les entités de la grille qui portent un SIREN, dans l'ordre de la grille, au plus `plafond`, l'organisation toujours comprise. */
+export function entitésDuBenchmark(grille: Grille, organisation: string, plafond = 15): readonly { readonly nom: string; readonly siren: string }[] {
+  const avecSiren = grille.entités.filter((e): e is EntitéDeGrille & { siren: string } => typeof e.siren === 'string' && /^\d{9}$/.test(e.siren))
+  const elle = normaliserTitre(organisation)
+  const uniques = new Map<string, { nom: string; siren: string }>()
+  for (const e of [...avecSiren.filter((x) => normaliserTitre(x.nom) === elle), ...avecSiren]) if (!uniques.has(e.siren)) uniques.set(e.siren, { nom: e.nom, siren: e.siren })
+  return [...uniques.values()].slice(0, plafond)
+}
+
+export function benchmarkDesFiches(
+  entités: readonly { readonly nom: string; readonly siren: string }[],
+  fiches: ReadonlyMap<string, ChiffresDUneEntité | null>,
+  organisation: string,
+  calculéLe: string,
+): Benchmark {
+  const elle = normaliserTitre(organisation)
+  const lignes: LigneDeBenchmark[] = entités.map((e) => {
+    const f = fiches.get(e.siren) ?? null
+    return {
+      nom: e.nom,
+      siren: e.siren,
+      organisation: normaliserTitre(e.nom) === elle,
+      fiche: f ? 'lue' : 'n.d.',
+      active: f ? f.active : null,
+      trancheEffectif: f?.trancheEffectif ?? null,
+      année: f?.année ?? null,
+      chiffreDAffaires: f?.chiffreDAffaires ?? null,
+      résultatNet: f?.résultatNet ?? null,
+    }
+  })
+  const avecCA = lignes.filter((l) => l.chiffreDAffaires !== null)
+  const triées = [...avecCA].sort((a, b) => b.chiffreDAffaires! - a.chiffreDAffaires!)
+  const rang = triées.findIndex((l) => l.organisation)
+  const limites = ['Comptes publiés au registre seulement : un exercice confidentiel ou non déposé vaut n.d., jamais zéro.']
+  const années = new Set(avecCA.map((l) => l.année))
+  if (années.size > 1) limites.push(`Exercices différents d’une entité à l’autre (${[...années].sort().join(', ')}) : la comparaison est indicative.`)
+  if (lignes.some((l) => l.fiche === 'n.d.')) limites.push('Une ou plusieurs fiches n.d. : le registre n’a pas répondu dans le temps imparti.')
+  return {
+    calculéLe,
+    lignes,
+    avecComptes: avecCA.length,
+    sansComptes: lignes.length - avecCA.length,
+    médianeDuChiffreDAffaires: médiane(avecCA.map((l) => l.chiffreDAffaires!)),
+    rangDeLOrganisation: rang >= 0 ? rang + 1 : null,
+    limites,
+  }
 }

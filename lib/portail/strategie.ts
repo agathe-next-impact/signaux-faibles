@@ -1,6 +1,7 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée, type Base } from '@/lib/base/client'
 import {
+  dernièreSynthèsePubliée,
   enregistrerLaSynthèse,
   faitsConnus,
   faitsDeLaFenêtre,
@@ -9,6 +10,7 @@ import {
   lireLaSynthèse,
   organisationPourLesOutils,
   posterLaGrille,
+  publierLaSynthèse,
   remplacerLesÉtiquettes,
   réglerLesOutilsStratégiques,
   synthèsePrécédente,
@@ -19,9 +21,27 @@ import {
   type ÉlémentÀEnregistrer,
 } from '@/lib/base/strategie'
 import { construireDocument, type Document } from '@/lib/domaine/document'
+import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
+import {
+  vueDeLaCarte,
+  vueDeLaSwot,
+  vueDeLaTows,
+  vueDeMendelow,
+  vueDesForces,
+  vueDesScénarios,
+  vueDuPestel,
+  type ForceLue,
+  type ScénarioLu,
+  type VueDeLaCarte,
+  type VueDeLaSwot,
+  type VueDeLaTows,
+  type VueDeMendelow,
+  type VueDuPestel,
+} from '@/lib/domaine/strategie-vues'
 import {
   contrôlerLaGrille,
   contrôlerLaSynthèse,
+  contrôlerLesParamètresDuCycle,
   contrôlerLesÉtiquettes,
   empreinteDeLaGrille,
   faitsDeLaLettre,
@@ -37,6 +57,7 @@ import {
   type LectureDesÉtiquettes,
   type Pestel,
   type Refus,
+  type ParamètresDuCycle,
   type SynthèseProposée,
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
@@ -266,6 +287,21 @@ function àEnregistrer(synthèse: SynthèseProposée): { éléments: ÉlémentÀ
 }
 
 /**
+ * Pose les chiffres calculés sur les éléments d'interprétation : l'énoncé vient
+ * du modèle, la valeur du portail. Un chiffre sans interprétation est gardé
+ * quand même, sans énoncé, pour la relecture.
+ */
+function avecLesCalculs(éléments: readonly ÉlémentÀEnregistrer[], calculs: Calculs): ÉlémentÀEnregistrer[] {
+  const valeurs = new Map<string, Record<string, unknown>>([['benchmark', { ...calculs.benchmark }]])
+  if (calculs.indice) valeurs.set('indice_cycle', { ...calculs.indice })
+  const posés = éléments.map((é) => (valeurs.has(é.outil) ? { ...é, valeur: valeurs.get(é.outil)! } : é))
+  for (const [outil, valeur] of valeurs) {
+    if (!posés.some((é) => é.outil === outil)) posés.push({ outil: outil as ÉlémentÀEnregistrer['outil'], clé: outil, rang: 1, énoncé: null, faits: [], valeur })
+  }
+  return posés
+}
+
+/**
  * Reçoit la synthèse d'une période (revue mensuelle, section « Synthèse
  * stratégique »). Le pilote et la grille sont vérifiés avant la porte ; la
  * porte reçoit les faits cités tels que la base les connaît, la synthèse
@@ -280,8 +316,11 @@ export async function recevoirLaSynthèse(
     readonly période: string
     readonly fenêtre: { readonly début: string; readonly fin: string }
     readonly synthèse: SynthèseProposée
+    /** Trimestre seulement : les départements et le texte d'activité de l'indice de cycle de vie. */
+    readonly cycle?: ParamètresDuCycle | null
   },
   db?: Base,
+  dépendances: Dépendances = {},
 ): Promise<RésultatDeLaSynthèse> {
   const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
   if (!organisation) return { sorte: 'organisation-inconnue' }
@@ -305,19 +344,35 @@ export async function recevoirLaSynthèse(
   for (const é of précédente?.éléments ?? []) if (é.outil === 'swot') élémentsPrécédents.set(é.id, é.clé as CaseSwot)
   for (const p of précédente?.positions ?? []) positionsPrécédentes.set(`${p.outil}:${normaliserTitre(p.sujet)}:${p.axe}`, p.cran)
 
-  const contrôle = contrôlerLaSynthèse(s, {
+  const porte = contrôlerLaSynthèse(s, {
     faits,
     fenêtre: entrée.fenêtre,
     grille: grille.grille,
     grilleVersion: grille.version,
     élémentsPrécédents,
     positionsPrécédentes,
+    revueAnnuelle: /-T4$/.test(entrée.période),
   })
+  const refusDuCycle: readonly Refus[] = !entrée.cycle
+    ? []
+    : s.mode === 'trimestriel'
+      ? contrôlerLesParamètresDuCycle(entrée.cycle)
+      : [{ code: 'hors-période', message: 'l’indice de cycle de vie se calcule au trimestre', cible: 'cycle' }]
+  const contrôle = { refus: [...porte.refus, ...refusDuCycle], avertissements: porte.avertissements }
   if (contrôle.refus.length > 0) {
     return { sorte: 'refusée', refus: contrôle.refus, message: messageDeRefus(contrôle.refus), avertissements: contrôle.avertissements }
   }
 
-  const { éléments, positions } = àEnregistrer(s)
+  const { éléments: énoncés, positions } = àEnregistrer(s)
+  // Les chiffres du trimestre, calculés après la porte : une synthèse refusée ne
+  // coûte aucun appel aux registres.
+  const éléments =
+    s.mode === 'trimestriel'
+      ? avecLesCalculs(
+          énoncés,
+          await calculer({ grille: grille.grille, organisation: organisation.nom, fin: entrée.fenêtre.fin, cycle: entrée.cycle ?? null }, dépendances),
+        )
+      : énoncés
   const écrit = await enregistrerLaSynthèse(
     { organisationId: organisation.id, période: entrée.période, fenêtre: entrée.fenêtre, grilleVersion: s.grilleVersion, éléments, positions },
     db,
@@ -634,4 +689,186 @@ export async function lectureStratégiqueDeLEspace(
   } finally {
     clearTimeout(minuterie)
   }
+}
+
+export type LectureDesCalculs =
+  | ({ readonly sorte: 'calculé'; readonly grilleVersion: number } & Calculs)
+  | { readonly sorte: 'organisation-inconnue' | 'hors-pilote' | 'grille-absente' }
+  | { readonly sorte: 'refusée'; readonly refus: readonly Refus[] }
+
+/**
+ * Les chiffres du trimestre, pour que la revue en écrive l'interprétation avant
+ * de poster (`GET /api/veille/calculs`). N'écrit rien : la synthèse postée les
+ * recalcule et les garde.
+ */
+export async function lireLesCalculs(
+  entrée: { readonly slug: string; readonly fin: string; readonly cycle: ParamètresDuCycle | null },
+  db?: Base,
+  dépendances: Dépendances = {},
+): Promise<LectureDesCalculs> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  if (entrée.cycle) {
+    const refus = contrôlerLesParamètresDuCycle(entrée.cycle)
+    if (refus.length > 0) return { sorte: 'refusée', refus }
+  }
+  const grille = await lireLaGrille(organisation.id, db)
+  if (!grille) return { sorte: 'grille-absente' }
+  const calculs = await calculer({ grille: grille.grille, organisation: organisation.nom, fin: entrée.fin, cycle: entrée.cycle }, dépendances)
+  return { sorte: 'calculé', grilleVersion: grille.version, ...calculs }
+}
+
+// ── Écrans du client (lot 11) ────────────────────────────────────────────────
+
+export type RésultatDeLaPublication =
+  | { readonly sorte: 'publiée' | 'retirée' | 'proposée'; readonly éléments: number; readonly positions: number }
+  | { readonly sorte: 'organisation-inconnue' | 'hors-pilote' | 'aucune' }
+
+/**
+ * Le geste de l'opératrice après relecture : publier la synthèse d'une période,
+ * la retirer, ou la remettre en proposition. Les écrans du client ne lisent que
+ * ce qui est publié.
+ */
+export async function publierLaSynthèseDuPilote(
+  entrée: { readonly slug: string; readonly période: string; readonly état: 'publie' | 'retire' | 'propose' },
+  db?: Base,
+): Promise<RésultatDeLaPublication> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const r = await publierLaSynthèse({ organisationId: organisation.id, période: entrée.période, état: entrée.état }, db)
+  if (r.éléments + r.positions === 0) return { sorte: 'aucune' }
+  return { sorte: entrée.état === 'publie' ? 'publiée' : entrée.état === 'retire' ? 'retirée' : 'proposée', ...r }
+}
+
+/** Une lecture bornée dans le temps : `null` au-delà du délai, ou sur toute erreur, sans faire tomber l'écran. */
+async function bornée<T>(nom: string, lecture: () => Promise<T | null>): Promise<T | null> {
+  if (!baseConfigurée() || sourceAccès() === 'notion') return null
+  let minuterie: ReturnType<typeof setTimeout> | undefined
+  const délai = new Promise<null>((résoudre) => {
+    minuterie = setTimeout(() => résoudre(null), DÉLAI_DE_LECTURE_STRATÉGIQUE_MS)
+  })
+  try {
+    const promesse = lecture()
+    promesse.catch(() => undefined)
+    const r = await Promise.race([promesse.then((x) => ({ x })), délai])
+    if (r === null) {
+      console.warn(`[stratégie] ${nom} en plus de ${DÉLAI_DE_LECTURE_STRATÉGIQUE_MS} ms, section non montrée.`)
+      return null
+    }
+    return r.x
+  } catch (erreur) {
+    console.warn(`[stratégie] ${nom} impossible : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return null
+  } finally {
+    clearTimeout(minuterie)
+  }
+}
+
+export type SynthèseDeLEspace = {
+  readonly mois: {
+    readonly période: string
+    readonly carte: VueDeLaCarte | null
+    readonly mendelow: VueDeMendelow
+    readonly swot: VueDeLaSwot
+    readonly tows: VueDeLaTows
+  } | null
+  readonly trimestre: { readonly période: string; readonly forces: readonly ForceLue[]; readonly scénarios: readonly ScénarioLu[] } | null
+}
+
+/**
+ * La dernière synthèse **publiée** de l'organisation de la session, mise en
+ * vues pour « Acteurs » et « Recommandations » (lot 11). La clé est le registre
+ * de la session, comme pour la lecture stratégique de la vue d'ensemble : la base
+ * ne rend que les lignes de cette organisation. Hors du pilote, sans synthèse
+ * publiée, ou dans le doute : `null`, et l'écran reste celui d'avant. Aucune
+ * lecture Notion ; `numéros` vient de la liste des éditions que l'écran a déjà.
+ */
+export async function synthèseDeLEspace(
+  entrée: { readonly registre: string; readonly numéros: ReadonlyMap<string, number> },
+  db?: Base,
+): Promise<SynthèseDeLEspace | null> {
+  return bornée('lecture de la synthèse publiée', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques) return null
+    const [mois, trimestre, grille] = await Promise.all([
+      dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois' }, db),
+      dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db),
+      lireLaGrille(organisation.id, db),
+    ])
+    if (!mois && !trimestre) return null
+    const précédente = mois ? await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois', avant: mois.période }, db) : null
+    const cités = [...(mois?.éléments ?? []), ...(mois?.positions ?? [])].flatMap((x) => x.faits)
+    const connus = await faitsConnus({ organisationId: organisation.id, ids: cités }, db)
+    const faits = new Map([...connus].map(([id, f]) => [id, { date: f.date, édition: f.édition ?? '' }]))
+    const numéros = new Map([...entrée.numéros].map(([page, n]) => [normaliserIdentifiant(page), n]))
+    const vueDuMois = mois
+      ? (() => {
+          const { swot, codes } = vueDeLaSwot(mois.éléments, faits, numéros)
+          return {
+            période: mois.période,
+            carte: grille ? vueDeLaCarte(grille.grille, mois.positions, précédente?.positions ?? [], organisation.nom, faits) : null,
+            mendelow: vueDeMendelow(mois.positions, précédente?.positions ?? [], faits),
+            swot,
+            tows: vueDeLaTows(mois.éléments, codes),
+          }
+        })()
+      : null
+    return {
+      mois: vueDuMois,
+      trimestre: trimestre ? { période: trimestre.période, forces: vueDesForces(trimestre.positions), scénarios: vueDesScénarios(trimestre.éléments) } : null,
+    }
+  })
+}
+
+/** Treize semaines : la fenêtre de l'onglet PESTEL, qui finit à la dernière lettre publiée. */
+export const FENÊTRE_DU_PESTEL_JOURS = 91
+
+/**
+ * L'onglet PESTEL de « Les axes » (lot 11) : les faits étiquetés des treize
+ * dernières semaines, comptés par dimension et par mois, et cités quand l'écran
+ * a déjà lu leur lettre (`lettres`, les documents de la semaine et de la
+ * précédente). Hors du pilote, sans grille ou sans fait : `null`.
+ */
+export async function pestelDeLEspace(
+  entrée: { readonly registre: string; readonly fin: string; readonly lettres: readonly { readonly pageId: string; readonly document: Document }[] },
+  db?: Base,
+): Promise<VueDuPestel | null> {
+  return bornée('lecture de l’onglet PESTEL', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques) return null
+    const fin = entrée.fin
+    const d = new Date(`${fin}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - (FENÊTRE_DU_PESTEL_JOURS - 1))
+    const début = d.toISOString().slice(0, 10)
+    const [lignes, grille] = await Promise.all([faitsDeLaFenêtre({ organisationId: organisation.id, début, fin }, db), lireLaGrille(organisation.id, db)])
+    if (!grille || lignes.length === 0) return null
+    const titres = new Map<string, string>()
+    const noms = new Map<string, string>()
+    const familleDeLÉdition = new Map(lignes.map((l) => [l.éditionNotion, l.familleÉdition]))
+    for (const l of entrée.lettres) {
+      const page = normaliserIdentifiant(l.pageId)
+      for (const f of faitsDeLaLettre(l.document)) titres.set(`${page}:${f.empreinte}`, f.titre)
+      const famille = sansAccent(familleDeLÉdition.get(page) ?? '').toLowerCase()
+      const veille = famille.startsWith('eco') ? 'ecosysteme' : famille.startsWith('conc') ? 'concurrentiel' : null
+      if (!veille) continue
+      for (const r of l.document.rubriques) for (const axe of r.axes) if (axe.numéro !== null) noms.set(`${veille}:${axe.numéro}`, axe.titre)
+    }
+    return vueDuPestel(
+      lignes.map((l) => ({
+        pestel: l.pestel,
+        rupture: l.rupture,
+        dateÉdition: l.dateÉdition,
+        dateFait: l.dateFait,
+        édition: l.éditionNotion,
+        famille: l.familleÉdition,
+        axe: l.numéroAxe,
+        titre: titres.get(`${l.éditionNotion}:${l.empreinteTitre}`) ?? null,
+      })),
+      grille.grille,
+      noms,
+      { début, fin },
+    )
+  })
 }

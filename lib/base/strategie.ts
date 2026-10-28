@@ -26,6 +26,7 @@ import { empreinteDeLaGrille, type FaitConnu, type Grille, type ÉtiquetteValid�
 export type OrganisationDesOutils = {
   readonly id: string
   readonly slug: string
+  readonly nom: string
   readonly registreNotion: string | null
   readonly outilsStratégiques: boolean
 }
@@ -46,6 +47,7 @@ export async function organisationPourLesOutils(
       .select({
         id: organisations.id,
         slug: organisations.slug,
+        nom: organisations.nom,
         registreNotion: organisations.registreNotion,
         outilsStratégiques: organisations.outilsStratégiques,
       })
@@ -228,7 +230,7 @@ export async function faitsConnus(
   if (ids.length === 0) return new Map()
   return protéger('lecture des faits cités par une synthèse', async () => {
     const lignes = await db
-      .select({ id: faitsÉtiquetés.id, date: faitsÉtiquetés.dateFait, entite: faitsÉtiquetés.entité })
+      .select({ id: faitsÉtiquetés.id, date: faitsÉtiquetés.dateFait, entite: faitsÉtiquetés.entité, édition: faitsÉtiquetés.éditionNotion })
       .from(faitsÉtiquetés)
       .where(
         and(
@@ -237,7 +239,7 @@ export async function faitsConnus(
           inArray(faitsÉtiquetés.id, ids),
         ),
       )
-    return new Map(lignes.map((l) => [l.id, { date: l.date, entite: l.entite }]))
+    return new Map(lignes.map((l) => [l.id, { date: l.date, entite: l.entite, édition: l.édition }]))
   })
 }
 
@@ -611,5 +613,70 @@ export async function synthèsePrécédente(
     const [[e], [p]] = await Promise.all([vivantes(élémentsSynthèse), vivantes(positions)])
     const période = [e?.période, p?.période].filter((x): x is string => !!x).sort().at(-1)
     return période ? lireUnePériode(db, entrée.organisationId, période) : null
+  })
+}
+
+export type ÉtatDePublication = 'propose' | 'publie' | 'retire'
+
+/**
+ * Publie, retire ou remet en proposition la synthèse vivante d'une période
+ * (outils stratégiques, lot 11) : c'est le geste de l'opératrice après
+ * relecture, et rien n'est montré au client avant lui. Éléments et positions
+ * changent ensemble, dans une transaction.
+ */
+export async function publierLaSynthèse(
+  entrée: { readonly organisationId: string; readonly période: string; readonly état: ÉtatDePublication },
+  db: Base = base(),
+): Promise<{ readonly éléments: number; readonly positions: number }> {
+  return protéger('publication d’une synthèse', () =>
+    db.transaction(async (tx) => {
+      const éléments = await tx
+        .update(élémentsSynthèse)
+        .set({ étatPublication: entrée.état })
+        .where(and(eq(élémentsSynthèse.organisationId, entrée.organisationId), eq(élémentsSynthèse.période, entrée.période), isNull(élémentsSynthèse.archivéeLe)))
+        .returning({ id: élémentsSynthèse.id })
+      const lignes = await tx
+        .update(positions)
+        .set({ étatPublication: entrée.état })
+        .where(and(eq(positions.organisationId, entrée.organisationId), eq(positions.période, entrée.période), isNull(positions.archivéeLe)))
+        .returning({ id: positions.id })
+      return { éléments: éléments.length, positions: lignes.length }
+    }),
+  )
+}
+
+/**
+ * La dernière synthèse publiée d'une granularité (`mois` ou `trimestre`),
+ * strictement avant `avant` quand il est donné : c'est ce que les écrans du
+ * client lisent, et rien d'autre. Une période dont une seule ligne n'est pas
+ * publiée n'est pas lue : publication et retrait portent sur la période entière.
+ */
+export async function dernièreSynthèsePubliée(
+  entrée: { readonly organisationId: string; readonly granularité: 'mois' | 'trimestre'; readonly avant?: string },
+  db: Base = base(),
+): Promise<SynthèseEnregistrée | null> {
+  const motif = entrée.granularité === 'mois' ? '^[0-9]{4}-[0-9]{2}$' : '^[0-9]{4}-T[1-4]$'
+  return protéger('lecture de la dernière synthèse publiée', async () => {
+    const publiées = (table: typeof élémentsSynthèse | typeof positions) =>
+      db
+        .select({ période: table.période })
+        .from(table)
+        .where(
+          and(
+            eq(table.organisationId, entrée.organisationId),
+            isNull(table.archivéeLe),
+            eq(table.étatPublication, 'publie'),
+            sql`${table.période} ~ ${motif}`,
+            ...(entrée.avant ? [lt(table.période, entrée.avant)] : []),
+          ),
+        )
+        .orderBy(desc(table.période))
+        .limit(1)
+    const [[e], [p]] = await Promise.all([publiées(élémentsSynthèse), publiées(positions)])
+    const période = [e?.période, p?.période].filter((x): x is string => !!x).sort().at(-1)
+    if (!période) return null
+    const lue = await lireUnePériode(db, entrée.organisationId, période)
+    const toutPublié = lue.éléments.every((é) => é.étatPublication === 'publie') && lue.positions.every((x) => x.étatPublication === 'publie')
+    return toutPublié ? lue : null
   })
 }

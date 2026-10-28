@@ -5,7 +5,10 @@ import { LégendeFraicheur } from '@/components/fraicheur'
 import { fraîcheurDUnAxe, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { libelléDeMouvement, suivreLesAxes } from '@/lib/domaine/tendances'
-import { documentsDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
+import { notesDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
+import { pestelDeLEspace } from '@/lib/portail/strategie'
+import { Onglets } from '@/components/onglets'
+import { VuePestel } from '@/components/strategie-ecrans'
 
 /**
  * Les axes : où en est chaque axe de la veille, et ce qui a bougé.
@@ -28,10 +31,20 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
 
   const semaines = await semainesPubliées(accès.organisationId)
 
-  const [documents, documentsPrécédents] = await Promise.all([
-    documentsDeLaSemaine(semaines[0]),
-    documentsDeLaSemaine(semaines[1]),
-  ])
+  const [notes, notesPrécédentes] = await Promise.all([notesDeLaSemaine(semaines[0]), notesDeLaSemaine(semaines[1])])
+  const documents = notes.map((n) => n.document)
+  const documentsPrécédents = notesPrécédentes.map((n) => n.document)
+  // L'onglet PESTEL (pilote des outils stratégiques, lot 11) : les étiquettes
+  // des treize dernières semaines, et les phrases-titres des lettres déjà lues
+  // ci-dessus. Aucune lecture Notion de plus ; hors du pilote, pas d'onglet.
+  const fin = semaines[0]?.éditions.map((é) => é.dateÉdition).sort().at(-1)
+  const pestel = fin
+    ? await pestelDeLEspace({
+        registre: accès.organisationId,
+        fin,
+        lettres: [...notes, ...notesPrécédentes].map((n) => ({ pageId: n.édition.pageId, document: n.document })),
+      })
+    : null
   // `suivreLesAxes` rend les axes triés par impact. On les regroupe par
   // fraîcheur SANS toucher à cet ordre : le tri est stable, l'impact continue
   // donc de classer à l'intérieur de chaque groupe. Ce qui a du neuf d'abord,
@@ -41,6 +54,38 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
   )
   const comparable = semaines.length > 1
   const avecNouveauté = axes.filter((axe) => fraîcheurDUnAxe(axe) === 'nouveau').length
+
+  const parAxe = (
+    <section className="mt-8 flex flex-col gap-4">
+      {axes.length === 0 ? (
+        <p className="text-ardoise">
+          Les notes de cette semaine ne portent pas d’axe. La grille se remplira à la
+          prochaine parution.
+        </p>
+      ) : (
+        <Grille étiquette="Axes de la semaine">
+          {axes.map((axe) => (
+            <CaseAxe
+              key={axe.titre}
+              axe={axe}
+              points={axe.points}
+              // Sans semaine précédente, tout serait « nouveau » : on se tait
+              // plutôt que d'annoncer un mouvement qui n'existe pas.
+              fraîcheur={
+                comparable
+                  ? {
+                      état: fraîcheurDUnAxe(axe),
+                      libellé: libelléDeMouvement(axe.mouvement),
+                    }
+                  : null
+              }
+              href={`/${accès.slug}/axes/${enSlug(axe.titre)}`}
+            />
+          ))}
+        </Grille>
+      )}
+    </section>
+  )
 
   return (
     <>
@@ -67,35 +112,20 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
         <LégendeFraicheur />
       </div>
 
-      <section className="mt-8 flex flex-col gap-4">
-        {axes.length === 0 ? (
-          <p className="text-ardoise">
-            Les notes de cette semaine ne portent pas d’axe. La grille se remplira à la
-            prochaine parution.
-          </p>
-        ) : (
-          <Grille étiquette="Axes de la semaine">
-            {axes.map((axe) => (
-              <CaseAxe
-                key={axe.titre}
-                axe={axe}
-                points={axe.points}
-                // Sans semaine précédente, tout serait « nouveau » : on se tait
-                // plutôt que d'annoncer un mouvement qui n'existe pas.
-                fraîcheur={
-                  comparable
-                    ? {
-                        état: fraîcheurDUnAxe(axe),
-                        libellé: libelléDeMouvement(axe.mouvement),
-                      }
-                    : null
-                }
-                href={`/${accès.slug}/axes/${enSlug(axe.titre)}`}
-              />
-            ))}
-          </Grille>
-        )}
-      </section>
+      {pestel ? (
+        <div className="mt-8">
+          <Onglets
+            étiquette="Lecture des axes"
+            ancre
+            panneaux={[
+              { clé: 'par-axe', libellé: 'Par axe', contenu: parAxe },
+              { clé: 'pestel', libellé: 'PESTEL', contenu: <VuePestel vue={pestel} /> },
+            ]}
+          />
+        </div>
+      ) : (
+        parAxe
+      )}
 
       <p className="mt-8">
         <LienFlèche href={`/${accès.slug}/acteurs`}>
