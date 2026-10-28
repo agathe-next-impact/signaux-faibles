@@ -43,6 +43,8 @@ const rendu = rendreLaSynthèse({
     position({ outil: 'groupes', sujet: 'ISCOD', axe: 'distance', cran: 3, faits: ['f1'] }),
     position({ outil: 'mendelow', sujet: 'France compétences', axe: 'pouvoir', cran: 3, faits: ['f2', 'f1'] }),
     position({ outil: 'mendelow', sujet: 'France compétences', axe: 'interet', cran: 2, faits: ['f2'] }),
+    position({ outil: 'ge', sujet: 'Bachelor vente', axe: 'attractivite', cran: 3, faits: ['f2'] }),
+    position({ outil: 'ge', sujet: 'Bachelor vente', axe: 'atouts', cran: 1, faits: ['f2'] }),
   ],
   faits: new Map([
     ['f1', { date: '2026-10-25', entite: 'ISCOD' }],
@@ -51,6 +53,11 @@ const rendu = rendreLaSynthèse({
 })
 
 describe('rendreLaSynthèse', () => {
+  it('rend la matrice GE par offre, en mots et non en crans', () => {
+    expect(rendu).toContain('Matrice GE (attractivité du marché et atouts, par offre)')
+    expect(rendu).toContain('- Bachelor vente : attractivité haute, atouts limités [1 fait : 2026-10-19, France compétences]')
+  })
+
   it('compte une seule fois un fait cité par les deux axes d’un même sujet', () => {
     expect(rendu).toContain("- ISCOD : Offre aux entreprises : placement d'alternants ; Part de la formation à distance : 100 % à distance [1 fait : 2026-10-25, ISCOD]")
     expect(rendu).toContain('- France compétences : pouvoir élevé, intérêt intermédiaire [2 faits : 2026-10-19, France compétences ; 2026-10-25, ISCOD]')

@@ -343,6 +343,33 @@ describe('la porte de la synthèse', () => {
     expect(codes(contrôlerLaSynthèse(rivalitéNonSuivie, contexte).refus)).toContain('non-suivi-injustifié')
     expect(codes(contrôlerLaSynthèse({ ...trimestre, scénarios: [scénario(1)] }, contexte).refus)).toContain('scénarios-hors-bornes')
   })
+
+  it('la matrice GE : une fois l’an (T4), au moins deux offres, chaque offre sur ses deux axes ; absente, elle est signalée', () => {
+    const forces = (['rivalite', 'nouveaux_entrants', 'substituts', 'pouvoir_clients', 'pouvoir_fournisseurs'] as const).map((sujet) =>
+      forcesNonSuivies(GRILLE).includes(sujet)
+        ? { outil: 'forces' as const, sujet, axe: 'intensite', cran: null, nonSuivi: true, faits: [] }
+        : { outil: 'forces' as const, sujet, axe: 'intensite', cran: 2, tendance: 'stable' as const, faits: ['f-cispe'] },
+    )
+    const scénarios = [1, 2, 3].map((n) => ({ titre: `Scénario ${n}`, énoncé: `CISPE fixe ${n} des termes du règlement en 2027.`, indicateurs: [{ famille: 1, signal: 'loi en séance' }, { famille: 5, signal: 'nouveau collectif' }], faits: ['f-cispe'] }))
+    const grille: Grille = { ...GRILLE, offres: ['Colloque annuel', 'Notes de position'] }
+    const annuel = { ...contexte, grille, revueAnnuelle: true }
+    const ge = (sujet: string, axe: string, cran: number) => ({ outil: 'ge' as const, sujet, axe, cran, faits: ['f-loi'] })
+    const complète = [ge('Colloque annuel', 'attractivite', 3), ge('Colloque annuel', 'atouts', 2), ge('Notes de position', 'attractivite', 2), ge('Notes de position', 'atouts', 1)]
+    const trimestre: SynthèseProposée = { ...SYNTHÈSE, mode: 'trimestriel', positions: [...SYNTHÈSE.positions, ...forces, ...complète], scénarios }
+
+    expect(contrôlerLaSynthèse(trimestre, annuel).refus).toEqual([])
+    expect(codes(contrôlerLaSynthèse(trimestre, { ...annuel, revueAnnuelle: false }).refus)).toContain('hors-période')
+    expect(codes(contrôlerLaSynthèse({ ...trimestre, positions: trimestre.positions.slice(0, -1) }, annuel).refus)).toEqual(['ge-incomplète'])
+    expect(codes(contrôlerLaSynthèse({ ...trimestre, positions: [...trimestre.positions, ge('Formation', 'atouts', 1)] }, annuel).refus)).toContain('position-hors-grille')
+    expect(codes(contrôlerLaSynthèse({ ...trimestre, positions: [...trimestre.positions.slice(0, -1), ge('Notes de position', 'prix', 1)] }, annuel).refus)).toContain('position-hors-grille')
+    expect(codes(contrôlerLaSynthèse(trimestre, { ...annuel, grille: { ...grille, offres: ['Colloque annuel'] } }).refus)).toContain('ge-sans-offres')
+
+    const sansGE = { ...trimestre, positions: trimestre.positions.filter((p) => p.outil !== 'ge') }
+    const r = contrôlerLaSynthèse(sansGE, annuel)
+    expect(r.refus).toEqual([])
+    expect(codes(r.avertissements)).toContain('ge-absente')
+    expect(codes(contrôlerLaSynthèse(sansGE, { ...annuel, revueAnnuelle: false }).avertissements)).not.toContain('ge-absente')
+  })
 })
 
 describe('la lecture des étiquettes pour l’espace client', () => {

@@ -351,6 +351,7 @@ export async function recevoirLaSynthèse(
     grilleVersion: grille.version,
     élémentsPrécédents,
     positionsPrécédentes,
+    revueAnnuelle: /-T4$/.test(entrée.période),
   })
   const refusDuCycle: readonly Refus[] = !entrée.cycle
     ? []

@@ -64,13 +64,22 @@ export type Cadence = (typeof CADENCES)[number]
 export const VEILLES = ['ecosysteme', 'concurrentiel'] as const
 export type Veille = (typeof VEILLES)[number]
 
-export const OUTILS_DE_POSITION = ['groupes', 'mendelow', 'forces'] as const
+export const OUTILS_DE_POSITION = ['groupes', 'mendelow', 'forces', 'ge'] as const
 export type OutilDePosition = (typeof OUTILS_DE_POSITION)[number]
 
 /** Mendelow : pouvoir et intérêt en trois crans. Jamais « faible » ni « fort », réservés à l'impact. */
 export const CRANS_MENDELOW = ['bas', 'intermediaire', 'eleve'] as const
 /** Cinq forces : intensité en trois crans, et `non_suivi` quand aucune famille ne porte la force. */
 export const CRANS_DES_FORCES = ['contenue', 'marquee', 'intense'] as const
+/**
+ * Matrice McKinsey/GE (lot 13) : chaque offre de la grille, par l'attractivité
+ * de son marché et les atouts de l'organisation sur ce marché, en trois crans
+ * comme Mendelow. Annuelle : seulement à la revue trimestrielle qui clôt
+ * l'année (période `AAAA-T4`, revue de janvier), et seulement si la grille
+ * porte au moins deux offres ; une offre seule n'a rien à arbitrer.
+ */
+export const AXES_GE = ['attractivite', 'atouts'] as const
+export const OFFRES_GE_MIN = 2
 export const TENDANCES = ['hausse', 'stable', 'baisse'] as const
 export type Tendance = (typeof TENDANCES)[number]
 
@@ -638,6 +647,8 @@ export type ContexteDeSynthèse = {
   readonly élémentsPrécédents: ReadonlyMap<string, CaseSwot>
   /** Les crans de la période précédente, par `outil:sujet:axe`, le sujet passé par `normaliserTitre`. */
   readonly positionsPrécédentes: ReadonlyMap<string, number | null>
+  /** Vrai pour la revue qui clôt l'année (période `AAAA-T4`) : la seule où la matrice GE se pose. */
+  readonly revueAnnuelle?: boolean
 }
 
 export type ContrôleDeSynthèse = {
@@ -753,6 +764,7 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
   const partiesPrenantes = new Set(contexte.grille.partiesPrenantes.map((p) => normaliserTitre(p.nom)))
   const axes = new Map(contexte.grille.axesGroupes.map((a) => [a.clé, a.crans.length]))
   const nonSuivies = new Set(forcesNonSuivies(contexte.grille))
+  const offres = new Set((contexte.grille.offres ?? []).map(normaliserTitre))
   const posées = new Set<string>()
   for (const p of synthèse.positions) {
     const cible = `${p.outil} ${p.sujet} / ${p.axe}`
@@ -772,6 +784,11 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
     } else if (p.outil === 'mendelow') {
       if (!partiesPrenantes.has(normaliserTitre(p.sujet))) refuser('position-hors-grille', 'partie prenante absente de la grille', cible)
       if (p.axe !== 'pouvoir' && p.axe !== 'interet') refuser('position-hors-grille', 'axe « pouvoir » ou « interet »', cible)
+      max = CRANS_MENDELOW.length
+    } else if (p.outil === 'ge') {
+      if (!offres.has(normaliserTitre(p.sujet))) refuser('position-hors-grille', 'offre absente de la grille', cible)
+      if (!dans(AXES_GE, p.axe)) refuser('position-hors-grille', `axe « ${AXES_GE.join(' » ou « ')} »`, cible)
+      if (synthèse.mode !== 'trimestriel' || !contexte.revueAnnuelle) refuser('hors-période', 'la matrice GE se lit une fois l’an, à la revue du quatrième trimestre', cible)
       max = CRANS_MENDELOW.length
     } else {
       if (!dans(FORCES_PORTER, p.sujet)) refuser('position-hors-grille', `force « ${p.sujet} » inconnue`, cible)
@@ -801,6 +818,16 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
   }
   if (synthèse.mode === 'trimestriel') {
     for (const force of FORCES_PORTER) if (!posées.has(`forces:${normaliserTitre(force)}:intensite`)) refuser('forces-incomplètes', `la force « ${force} » manque`)
+  }
+  // GE : toutes les offres sur les deux axes, ou aucune ; absente à la revue annuelle, elle est signalée, pas exigée.
+  const ge = synthèse.positions.filter((p) => p.outil === 'ge')
+  if (ge.length > 0 && offres.size < OFFRES_GE_MIN) refuser('ge-sans-offres', `la matrice GE demande au moins ${OFFRES_GE_MIN} offres dans la grille, elle en porte ${offres.size}`)
+  else if (ge.length > 0) {
+    for (const offre of contexte.grille.offres ?? []) {
+      for (const axe of AXES_GE) if (!posées.has(`ge:${normaliserTitre(offre)}:${axe}`)) refuser('ge-incomplète', `l’offre « ${offre} » manque sur l’axe « ${axe} »`)
+    }
+  } else if (synthèse.mode === 'trimestriel' && contexte.revueAnnuelle && offres.size >= OFFRES_GE_MIN) {
+    avertissements.push({ code: 'ge-absente', message: `revue annuelle et ${offres.size} offres dans la grille : la matrice GE n’est pas posée` })
   }
 
   // Scénarios, au trimestre.
@@ -882,6 +909,8 @@ const LIBELLÉS_ÉTATS: Readonly<Record<ÉtatDÉlément, string>> = {
 const LIBELLÉS_CRANS: Readonly<Record<string, readonly string[]>> = {
   pouvoir: ['bas', 'intermédiaire', 'élevé'],
   interet: ['bas', 'intermédiaire', 'élevé'],
+  attractivite: ['basse', 'moyenne', 'haute'],
+  atouts: ['limités', 'moyens', 'solides'],
   intensite: ['contenue', 'marquée', 'intense'],
 }
 
@@ -1012,6 +1041,18 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
       const libellé = LIBELLÉS_PORTER[force]
       if (p.nonSuivi) lignes.push(`- ${libellé} : non suivi, aucune famille ne la porte`)
       else lignes.push(`- ${libellé} : ${p.cran ? (LIBELLÉS_CRANS.intensite![p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'}, tendance ${p.tendance ?? 'n.d.'}${faitsDe(p.faits)}`)
+    }
+  }
+
+  const ge = s.positions.filter((p) => p.outil === 'ge')
+  if (ge.length > 0) {
+    lignes.push('', 'Matrice GE (attractivité du marché et atouts, par offre)')
+    for (const sujet of [...new Set(ge.map((p) => p.sujet))]) {
+      const valeur = (axe: string) => {
+        const p = ge.find((x) => x.sujet === sujet && x.axe === axe)
+        return p?.cran ? (LIBELLÉS_CRANS[axe]?.[p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'
+      }
+      lignes.push(`- ${sujet} : attractivité ${valeur('attractivite')}, atouts ${valeur('atouts')}${faitsDe(ge.filter((p) => p.sujet === sujet).flatMap((p) => p.faits))}`)
     }
   }
 
