@@ -35,7 +35,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { lireCompteDeServiceJSON } from '@/lib/email/gmail'
 import { contrôler } from './controle'
 import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
-import { lireLaMesure, résuméDeLaMesure, type RésultatBrut } from './mesure'
+import { lireLaMesure, résuméDeLaMesure, type RéponseDuModèle, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
 import { promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
@@ -219,6 +219,8 @@ export type IssueDeSession = {
   readonly init: { readonly outils: readonly string[]; readonly serveurs: readonly { name: string; status: string }[] } | null
   readonly résultat: (RésultatBrut & { result?: string }) | null
   readonly pagesNotionCréées: number
+  /** Les réponses du modèle, pour le coût des étapes (`mesurerLesÉtapes`). */
+  readonly réponses: readonly RéponseDuModèle[]
 }
 
 /** Déroule une session et rend son message `result` ; s'arrête si l'authentification n'est pas la clé API. */
@@ -226,6 +228,7 @@ export async function déroulerLaSession(prompt: string, options: Options, sorti
   let init: IssueDeSession['init'] = null
   let résultat: IssueDeSession['résultat'] = null
   let pagesNotionCréées = 0
+  const réponses: RéponseDuModèle[] = []
   const créationsEnAttente = new Map<string, number>()
   const q = query({ prompt, options })
   try {
@@ -241,14 +244,20 @@ export async function déroulerLaSession(prompt: string, options: Options, sorti
         continue
       }
       if (message.type === 'assistant') {
+        const appelsAuPortail: string[] = []
         for (const bloc of message.message.content) {
           if (bloc.type !== 'tool_use') continue
           sorties.journal(`outil ${bloc.name}`)
+          if (bloc.name === `mcp__${SERVEURS.portail}__appeler_portail`) {
+            const chemin = (bloc.input as { chemin?: unknown } | undefined)?.chemin
+            if (typeof chemin === 'string') appelsAuPortail.push(chemin)
+          }
           if (bloc.name.startsWith(`mcp__${SERVEURS.notion}__`) && nomDOutilNotion(bloc.name.slice(`mcp__${SERVEURS.notion}__`.length)) === 'create-pages') {
             const pages = (bloc.input as { pages?: unknown[] } | undefined)?.pages
             créationsEnAttente.set(bloc.id, Array.isArray(pages) ? pages.length : 1)
           }
         }
+        réponses.push({ id: message.message.id, modèle: message.message.model, usage: message.message.usage ?? null, appelsAuPortail })
         continue
       }
       if (message.type === 'user' && Array.isArray(message.message.content)) {
@@ -270,7 +279,7 @@ export async function déroulerLaSession(prompt: string, options: Options, sorti
   } finally {
     sorties.clore()
   }
-  return { init, résultat, pagesNotionCréées }
+  return { init, résultat, pagesNotionCréées, réponses }
 }
 
 // ── Une tâche ────────────────────────────────────────────────────────────────
@@ -422,7 +431,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
     stderr: (données) => sorties.journal(`cli: ${données.trimEnd()}`),
   }
 
-  let issue: IssueDeSession = { init: null, résultat: null, pagesNotionCréées: 0 }
+  let issue: IssueDeSession = { init: null, résultat: null, pagesNotionCréées: 0, réponses: [] }
   let échec: string | null = null
   try {
     issue = await déroulerLaSession(prompt, options, sorties)
@@ -438,6 +447,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
     plafondUsd,
     organisationsTraitées: relevé.organisations,
     pagesNotionCréées: issue.pagesNotionCréées,
+    réponses: issue.réponses,
   })
   sorties.écrire('mesure.json', JSON.stringify(mesure, null, 2) + '\n')
   const compteRendu = issue.résultat?.result ?? ''

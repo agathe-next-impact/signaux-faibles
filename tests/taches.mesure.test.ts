@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lireLeRefusDeGoogle, lireLaRéponseNotion } from '@/scripts/taches/controle'
 import { environnementDeLaSession, lireLaCommande } from '@/scripts/taches/executer'
-import { lireLaMesure, résuméDeLaMesure } from '@/scripts/taches/mesure'
+import { lireLaMesure, mesurerLesÉtapes, résuméDeLaMesure, type RéponseDuModèle } from '@/scripts/taches/mesure'
 
 const RÉSULTAT = {
   subtype: 'success',
@@ -115,3 +115,45 @@ describe('contrôle', () => {
     expect(lireLaRéponseNotion('rien')).toBeNull()
   })
 })
+
+describe('mesurerLesÉtapes (outils stratégiques, lot 9)', () => {
+  const usage = (entrée: number, sortie: number, lu = 0, écrit = 0) => ({ input_tokens: entrée, output_tokens: sortie, cache_read_input_tokens: lu, cache_creation_input_tokens: écrit })
+  const réponse = (id: string, appels: string[] = [], modèle = 'claude-opus-5-5', u = usage(1_000, 1_000)): RéponseDuModèle => ({ id, modèle, usage: u, appelsAuPortail: appels })
+
+  it('somme l’usage à partir de la première réponse qui appelle la route de l’étape, une fois par réponse', () => {
+    const étapes = mesurerLesÉtapes([
+      réponse('a', ['/api/veille/lint']),
+      réponse('b', ['https://www.signauxfaibles.io/api/veille/faits?slug=infralliance&debut=2026-10-28&fin=2026-10-28']),
+      // Même réponse, second bloc : usage recopié, à ne pas compter deux fois.
+      réponse('b', ['/api/veille/faits']),
+      réponse('c', [], 'claude-opus-5-5', usage(0, 2_000, 1_000_000, 0)),
+    ])
+    expect(étapes.synthese).toBeUndefined()
+    expect(étapes.etiquetage).toMatchObject({ ouverteÀLaRéponse: 2, réponses: 2, appels: 2 })
+    expect(étapes.etiquetage!.parModèle['claude-opus-5-5']).toMatchObject({ jetonsEntrée: 1_000, jetonsSortie: 3_000, cacheLu: 1_000_000 })
+    // 1 000 × 4 + 3 000 × 20 + 1 000 000 × 0,2, par million de jetons.
+    expect(étapes.etiquetage!.coûtUsd).toBeCloseTo(0.264, 6)
+  })
+
+  it('la synthèse s’ouvre à la grille, au calcul ou à la synthèse ; un modèle sans tarif rend un coût n.d.', () => {
+    const étapes = mesurerLesÉtapes([réponse('a', ['/api/veille/grille?slug=mastora']), réponse('b', [], 'claude-haiku-5-5')])
+    expect(étapes.synthese).toMatchObject({ ouverteÀLaRéponse: 1, réponses: 2, coûtUsd: null })
+    expect(étapes.synthese!.parModèle['claude-haiku-5-5']!.coûtUsd).toBeNull()
+    expect(étapes.synthese!.parModèle['claude-opus-5-5']!.coûtUsd).toBeCloseTo(0.024, 6)
+  })
+
+  it('la mesure et son résumé portent les étapes', () => {
+    const m = lireLaMesure(RÉSULTAT, {
+      tâche: 'revue',
+      organisation: 'mastora',
+      date: new Date('2026-11-02T16:10:00Z'),
+      plafondUsd: 30,
+      organisationsTraitées: ['mastora'],
+      pagesNotionCréées: 0,
+      réponses: [réponse('a'), réponse('b', ['/api/veille/syntheses'])],
+    })
+    expect(Object.keys(m.étapes)).toEqual(['synthese'])
+    expect(résuméDeLaMesure(m)).toContain('Étape « synthese » : **0,02 $**, 1 réponse(s) à partir de la 2e, 1 appel(s)')
+  })
+})
+
