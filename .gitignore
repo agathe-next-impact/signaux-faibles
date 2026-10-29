@@ -20,3 +20,6 @@ evaluation/
 
 # Tâches planifiées sur l'API : transcriptions, journaux et mesures, archivés par GitHub Actions
 sorties-taches/
+
+# Captures de la recette du portail déployé
+/recette-sorties/

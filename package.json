@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "recette": "playwright test --config playwright.recette.config.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "base:generer": "drizzle-kit generate --name",

@@ -1,0 +1,65 @@
+# Recette du portail déployé (playwright.recette.config.ts, recette/).
+#
+# Lancement à la main : onglet Actions, « Recette du portail », « Run workflow ».
+# La partie avec session lit le lien d'accès d'un lecteur de L'Hermitage dans le
+# secret RECETTE_LIEN_HERMITAGE (Settings, Secrets and variables, Actions) :
+# GitHub le masque dans les journaux, et la recette ne garde ni trace ni vidéo.
+# Sans le secret, seule la partie sans session tourne. Un lien d'opérateur ouvre
+# les écrans mais saute la preuve du cloisonnement (règle 7).
+name: Recette du portail
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - 'recette/**'
+      - 'playwright.recette.config.ts'
+      - '.github/workflows/recette.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recette
+  cancel-in-progress: false
+
+jobs:
+  recette:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RECETTE_LIEN_HERMITAGE: ${{ secrets.RECETTE_LIEN_HERMITAGE }}
+      RECETTE_URL: ${{ vars.PORTAIL_URL || 'https://www.signauxfaibles.io' }}
+      RECETTE_SORTIES: ${{ github.workspace }}/recette-sorties
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Installer les dépendances
+        run: pnpm install --frozen-lockfile
+
+      - name: Installer Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Recette
+        run: pnpm recette
+
+      # Captures de l'espace d'un client : sept jours seulement.
+      - name: Archiver les captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recette-${{ github.run_id }}-${{ github.run_attempt }}
+          path: recette-sorties/
+          retention-days: 7
+          if-no-files-found: ignore
