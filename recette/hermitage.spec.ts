@@ -17,7 +17,10 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
  */
 
 const SLUG = 'hermitage'
-const LIEN = process.env['RECETTE_LIEN_HERMITAGE'] ?? ''
+// Le secret peut porter le lien complet ou le seul jeton ; un blanc, des
+// guillemets ou des chevrons collés avec lui ne doivent pas fausser la signature.
+const BRUT = (process.env['RECETTE_LIEN_HERMITAGE'] ?? '').trim().replace(/^[<"'«\s]+|[>"'»\s]+$/g, '')
+const LIEN = !BRUT ? '' : /^https?:\/\//.test(BRUT) ? BRUT : `/acces/${BRUT.replace(/^\/?acces\//, '')}`
 const SORTIES = process.env['RECETTE_SORTIES'] ?? 'recette-sorties'
 
 /** Les autres organisations du pilote : leur nom ne doit figurer dans aucune page de L'Hermitage. */
@@ -64,6 +67,8 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
   let contexte: BrowserContext
   let page: Page
   let opérateur = false
+  /** Où le lien a mené, sans le jeton : un chemin et ses paramètres. */
+  let arrivée = ''
 
   test.beforeAll(async ({ browser }) => {
     mkdirSync(SORTIES, { recursive: true })
@@ -75,7 +80,9 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
       // Jamais l'erreur d'origine : elle porte l'adresse, donc le jeton.
       throw new Error('le lien de recette n’a pas abouti')
     }
-    opérateur = new URL(page.url()).pathname.startsWith('/espaces')
+    const url = new URL(page.url())
+    arrivée = url.pathname.startsWith('/acces/') ? '/acces/…' : `${url.pathname}${url.search}`
+    opérateur = url.pathname.startsWith('/espaces')
   })
 
   test.afterAll(async () => {
@@ -90,7 +97,11 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
   }
 
   test('le lien pose la session et disparaît de l’adresse', async () => {
-    expect(page.url()).not.toContain('/acces/')
+    expect(
+      arrivée.startsWith('/recevoir-mon-lien'),
+      `le portail a refusé le lien et renvoyé vers ${arrivée} : jeton invalide, ligne d'accès inactive ou identifiant porté par deux lignes`,
+    ).toBe(false)
+    expect(arrivée, 'le lien doit mener à l’espace de L’Hermitage ou au sélecteur').toMatch(/^\/(hermitage|espaces)(\?|$)/)
     const cookie = (await contexte.cookies()).find((c) => c.name === 'sf_acces')
     expect(cookie, 'cookie de session').toBeDefined()
     expect(cookie?.httpOnly).toBe(true)
