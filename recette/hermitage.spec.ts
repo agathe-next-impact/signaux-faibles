@@ -23,6 +23,42 @@ const BRUT = (process.env['RECETTE_LIEN_HERMITAGE'] ?? '').trim().replace(/^[<"'
 const LIEN = !BRUT ? '' : /^https?:\/\//.test(BRUT) ? BRUT : `/acces/${BRUT.replace(/^\/?acces\//, '')}`
 const SORTIES = process.env['RECETTE_SORTIES'] ?? 'recette-sorties'
 
+/**
+ * La forme du secret, pour comprendre un refus sans rien en montrer : où il
+ * mène, combien de morceaux porte le jeton, s'ils sont en base64url, et la
+ * forme de l'identifiant décodé (longueur, hexadécimal ou non). Ni le jeton,
+ * ni l'identifiant, ni la signature ne sont écrits.
+ */
+function formeDuLien(brut: string): string {
+  const préfixe = /^https?:\/\/[^/]+\/acces\//.exec(brut)?.[0]
+  const hôte = préfixe ? new URL(préfixe).host : null
+  const jeton = (préfixe ? brut.slice(préfixe.length) : brut.replace(/^\/?acces\//, '')).split(/[?#]/)[0] ?? ''
+  const décodé = (() => {
+    try {
+      return decodeURIComponent(jeton)
+    } catch {
+      return jeton
+    }
+  })()
+  const morceaux = décodé.split('.')
+  const horsBase64 = [...décodé].filter((c) => !/[A-Za-z0-9_.-]/.test(c)).length
+  let identifiant = ''
+  try {
+    identifiant = Buffer.from(morceaux[0] ?? '', 'base64url').toString('utf8')
+  } catch {
+    identifiant = ''
+  }
+  const signature = Buffer.from(morceaux[1] ?? '', 'base64url').length
+  return [
+    préfixe ? `lien complet vers ${hôte}` : /^https?:/.test(brut) ? 'adresse qui ne mène pas à /acces/' : 'jeton seul',
+    `${brut.length} caractères au total`,
+    `${morceaux.length} morceau(x) séparés par un point (2 attendus)`,
+    `${horsBase64} caractère(s) hors base64url dans le jeton`,
+    `identifiant de ${identifiant.length} caractères${/^[0-9a-f]+$/i.test(identifiant) ? ', hexadécimal' : ', pas hexadécimal'}`,
+    `signature de ${signature} octets (32 attendus)`,
+  ].join(' ; ')
+}
+
 /** Les autres organisations du pilote : leur nom ne doit figurer dans aucune page de L'Hermitage. */
 const AUTRES = [
   { slug: 'mastora', nom: 'Mastora' },
@@ -99,7 +135,7 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
   test('le lien pose la session et disparaît de l’adresse', async () => {
     expect(
       arrivée.startsWith('/recevoir-mon-lien'),
-      `le portail a refusé le lien et renvoyé vers ${arrivée} : jeton invalide, ligne d'accès inactive ou identifiant porté par deux lignes`,
+      `le portail a refusé le lien et renvoyé vers ${arrivée} : jeton invalide, ligne d'accès inactive ou identifiant porté par deux lignes. Forme du secret : ${formeDuLien(BRUT)}`,
     ).toBe(false)
     expect(arrivée, 'le lien doit mener à l’espace de L’Hermitage ou au sélecteur').toMatch(/^\/(hermitage|espaces)(\?|$)/)
     const cookie = (await contexte.cookies()).find((c) => c.name === 'sf_acces')
