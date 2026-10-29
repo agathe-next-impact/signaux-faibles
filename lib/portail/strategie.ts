@@ -10,6 +10,7 @@ import {
   lireLaSynthèse,
   organisationPourLesOutils,
   posterLaGrille,
+  périodesDesSynthèses,
   publierLaSynthèse,
   remplacerLesÉtiquettes,
   réglerLesOutilsStratégiques,
@@ -23,6 +24,7 @@ import {
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
+  périodesAPublier,
   vueDeLaCarte,
   vueDeLaSwot,
   vueDeLaTows,
@@ -32,6 +34,7 @@ import {
   vueDuPestel,
   type ForceLue,
   type ScénarioLu,
+  type SynthèsesDUneOrganisation,
   type VueDeLaCarte,
   type VueDeLaSwot,
   type VueDeLaTows,
@@ -724,6 +727,16 @@ export async function lireLesCalculs(
 export type RésultatDeLaPublication =
   | { readonly sorte: 'publiée' | 'retirée' | 'proposée'; readonly éléments: number; readonly positions: number }
   | { readonly sorte: 'organisation-inconnue' | 'hors-pilote' | 'aucune' }
+
+/**
+ * Les périodes de synthèse de toutes les organisations du pilote, pour le
+ * tableau de l'opératrice (29 octobre 2026). Traverse les clients : sa garde est
+ * dans `listerLesSynthèses` (`lib/auth/appartenance.ts`), son seul appelant
+ * (`tests/architecture.test.ts`). Des comptes et des états, jamais un énoncé.
+ */
+export async function tableauDesSynthèses(db?: Base): Promise<SynthèsesDUneOrganisation[]> {
+  return périodesAPublier(await périodesDesSynthèses(db))
+}
 
 /**
  * Le geste de l'opératrice après relecture : publier la synthèse d'une période,

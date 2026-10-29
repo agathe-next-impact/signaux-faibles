@@ -405,3 +405,59 @@ export function vueDuPestel(
       }),
   }
 }
+
+// ── Tableau de l'opératrice : les périodes à publier ─────────────────────────
+
+/** `mêlée` : une partie seulement des lignes est publiée, ce que les écrans ne lisent pas. */
+export type ÉtatDeLaPériode = 'proposée' | 'publiée' | 'retirée' | 'mêlée'
+
+export type PériodeAPublier = {
+  readonly période: string
+  readonly libellé: string
+  readonly granularité: 'mois' | 'trimestre'
+  readonly lignes: number
+  readonly état: ÉtatDeLaPériode
+}
+
+export type SynthèsesDUneOrganisation = {
+  readonly slug: string
+  readonly nom: string
+  readonly périodes: readonly PériodeAPublier[]
+}
+
+type ComptesDePériode = {
+  readonly slug: string
+  readonly nom: string
+  readonly période: string
+  readonly lignes: number
+  readonly publiées: number
+  readonly retirées: number
+}
+
+function étatDeLaPériode(c: ComptesDePériode): ÉtatDeLaPériode {
+  if (c.publiées === c.lignes) return 'publiée'
+  if (c.retirées === c.lignes) return 'retirée'
+  if (c.publiées === 0 && c.retirées === 0) return 'proposée'
+  return 'mêlée'
+}
+
+/** Une entrée par organisation, par nom ; ses périodes de la plus récente à la plus ancienne, le trimestre après les mois qu'il couvre. */
+export function périodesAPublier(comptes: readonly ComptesDePériode[]): SynthèsesDUneOrganisation[] {
+  const parOrganisation = new Map<string, { nom: string; périodes: PériodeAPublier[] }>()
+  for (const c of comptes) {
+    const entrée = parOrganisation.get(c.slug) ?? { nom: c.nom, périodes: [] }
+    entrée.périodes.push({
+      période: c.période,
+      libellé: libelléDePériode(c.période),
+      granularité: /-T[1-4]$/.test(c.période) ? 'trimestre' : 'mois',
+      lignes: c.lignes,
+      état: étatDeLaPériode(c),
+    })
+    parOrganisation.set(c.slug, entrée)
+  }
+  // « 2026-T3 » se range comme « 2026-09-99 » : après septembre, avant octobre.
+  const rang = (p: string) => p.replace(/^(\d{4})-T([1-4])$/, (_, a: string, t: string) => `${a}-${String(Number(t) * 3).padStart(2, '0')}-99`)
+  return [...parOrganisation.entries()]
+    .map(([slug, e]) => ({ slug, nom: e.nom, périodes: [...e.périodes].sort((a, b) => rang(b.période).localeCompare(rang(a.période))) }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}

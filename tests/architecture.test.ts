@@ -668,6 +668,22 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(dispositif).not.toContain("collection: 'runs'")
   })
 
+  it('les synthèses du pilote ne se publient à l’écran que derrière le privilège opérateur', () => {
+    // 29 octobre 2026 : le tableau de l'opératrice liste les périodes de tous les
+    // clients du pilote (garde dans listerLesSynthèses) et les publie par une
+    // action serveur qui vérifie le privilège avant d'écrire.
+    expect(appelants('listerLesSynthèses')).toEqual(['app/(portail)/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
+    expect(appelants('tableauDesSynthèses')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/strategie.ts'])
+    expect(appelants('périodesDesSynthèses')).toEqual(['lib/base/strategie.ts', 'lib/portail/strategie.ts'])
+    expect(appelants('publierLaSynthèseDuPilote')).toEqual(['app/api/veille/syntheses/route.ts', 'lib/portail/publication.ts', 'lib/portail/strategie.ts'])
+    const action = readFileSync(join(process.cwd(), 'lib', 'portail', 'publication.ts'), 'utf8')
+    expect(action.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(action.indexOf('exigerOpérateur()')).toBeLessThan(action.indexOf('publierLaSynthèseDuPilote('))
+    const lecture = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    const garde = lecture.slice(lecture.indexOf('export async function listerLesSynthèses'))
+    expect(garde.indexOf('exigerOpérateur()')).toBeLessThan(garde.indexOf('tableauDesSynthèses('))
+  })
+
   it('la file ne se lit à l’écran que par listerLaFile, gardée par le privilège opérateur', () => {
     expect(appelants('listerLaFile')).toEqual(['app/(portail)/espaces/file/page.tsx', 'lib/auth/appartenance.ts'])
     expect(appelants('lireLaFile')).toEqual(['app/api/veille/travaux/route.ts', 'lib/auth/appartenance.ts', 'lib/portail/file.ts'])
