@@ -25,6 +25,7 @@ const {
   lireLesFaits,
   pestelDeLEspace,
   publierLaSynthèseDuPilote,
+  tableauDesSynthèses,
   synthèseDeLEspace,
   recevoirLaGrille,
   recevoirLaSynthèse,
@@ -572,7 +573,11 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         expect(await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)).toEqual({ sorte: 'aucune' })
         await recevoir()
         expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        expect(await tableauDesSynthèses(db)).toEqual([
+          { slug: 'infralliance', nom: 'Infralliance', périodes: [{ période: '2026-10', libellé: 'd’octobre 2026', granularité: 'mois', lignes: 14, état: 'proposée' }] },
+        ])
         expect(await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)).toEqual({ sorte: 'publiée', éléments: 11, positions: 3 })
+        expect((await tableauDesSynthèses(db))[0]?.périodes[0]?.état).toBe('publiée')
         const vue = await synthèseDeLEspace({ registre: avecTirets(REGISTRE), numéros: new Map([[PAGE_OCTOBRE, 6]]) }, db)
         expect(vue?.trimestre).toBeNull()
         expect(vue?.mois?.période).toBe('2026-10')

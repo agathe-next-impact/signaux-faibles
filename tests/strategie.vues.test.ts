@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Grille } from '@/lib/domaine/strategie'
 import {
   libelléDePériode,
+  périodesAPublier,
   vueDeLaCarte,
   vueDeLaSwot,
   vueDeLaTows,
@@ -180,5 +181,27 @@ describe('vueDuPestel', () => {
       { date: '2026-10-15', dimension: 'Économique', titre: 'Aérolys relève ses cadences.', rupture: true, axe: '1 Donneurs d’ordre' },
       { date: '2026-10-15', dimension: 'Légal', titre: 'Norme révisée.', rupture: false, axe: '2 Qualité' },
     ])
+  })
+})
+
+describe('périodesAPublier', () => {
+  const c = (slug: string, nom: string, période: string, lignes: number, publiées = 0, retirées = 0) => ({ slug, nom, période, lignes, publiées, retirées })
+  it('une entrée par organisation, par nom ; le trimestre après les mois qu’il couvre ; l’état de la période entière', () => {
+    const t = périodesAPublier([
+      c('mastora', 'Mastora', '2026-10', 40),
+      c('hermitage', 'L’Hermitage', '2026-08', 39, 39),
+      c('hermitage', 'L’Hermitage', '2026-T3', 52, 52),
+      c('hermitage', 'L’Hermitage', '2026-10', 40, 10),
+      c('hermitage', 'L’Hermitage', '2026-09', 40, 0, 40),
+    ])
+    expect(t.map((o) => o.slug)).toEqual(['hermitage', 'mastora'])
+    expect(t[0]!.périodes.map((p) => [p.période, p.état])).toEqual([
+      ['2026-10', 'mêlée'],
+      ['2026-T3', 'publiée'],
+      ['2026-09', 'retirée'],
+      ['2026-08', 'publiée'],
+    ])
+    expect(t[0]!.périodes[1]).toMatchObject({ granularité: 'trimestre', libellé: 'de juillet à septembre 2026' })
+    expect(t[1]!.périodes[0]).toMatchObject({ état: 'proposée', granularité: 'mois' })
   })
 })

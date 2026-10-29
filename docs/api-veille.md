@@ -878,6 +878,12 @@ dernière période entièrement publiée (mois sur « Acteurs » et
 `proposée` (200, avec `éléments` et `positions`), `hors-pilote` (200),
 `aucune` et `organisation-inconnue` (404), `invalide` (400). N'expire aucun
 tag : les écrans relisent Postgres à chaque requête, bornés à 400 ms.
+Le même geste existe pour l'opératrice dans son navigateur depuis le
+29 octobre 2026 : section « Synthèses stratégiques » de `/espaces/abonnements`,
+une ligne par période et par organisation du pilote, avec son état (proposée,
+publiée, retirée, ou publiée en partie, que les écrans ne lisent pas) et un
+bouton « Publier » ou « Retirer » (`publierUnePériode`, même
+`publierLaSynthèseDuPilote`).
 
 ### `GET /api/veille/calculs?slug&fin&departements&texte` : les chiffres du trimestre (lot 7, 28 octobre 2026)
 

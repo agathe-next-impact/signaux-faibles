@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { listerLesAbonnements } from '@/lib/auth/appartenance'
+import { listerLesAbonnements, listerLesSynthèses } from '@/lib/auth/appartenance'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
 import type { LigneDAbonnement } from '@/lib/base/situation'
@@ -9,6 +9,8 @@ import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
 import { mettreEnParcours, poserLOffre, prolongerLEssai, réglerLaRelecture, réglerLesParutions } from '@/lib/portail/reglages'
 import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
+import { publierUnePériode } from '@/lib/portail/publication'
+import type { PériodeAPublier, SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 
 export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
 
@@ -24,6 +26,10 @@ export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
  *
  * Comme le sélecteur, la garde est dans `listerLesAbonnements`, avant toute
  * lecture ; la page vit hors de `/[slug]` et n'emprunte pas la coquille.
+ *
+ * Sous le tableau, depuis le 29 octobre 2026, les synthèses stratégiques du
+ * pilote, période par période, avec le bouton qui les publie après relecture
+ * (`listerLesSynthèses`, même garde, et `publierUnePériode`).
  */
 export const instant = false
 
@@ -43,6 +49,22 @@ const MESSAGES: Record<string, string> = {
   échec: 'La base n’a pas répondu : réglage non appliqué.',
 }
 
+const MESSAGES_DE_SYNTHÈSE: Record<string, string> = {
+  publiée: 'Période publiée : les lecteurs la voient à leur prochaine visite.',
+  retirée: 'Période retirée : elle n’est plus montrée au client.',
+  aucune: 'Aucune synthèse enregistrée pour cette période.',
+  'hors-pilote': 'Cette organisation n’est pas dans le pilote des outils stratégiques.',
+  'organisation-inconnue': 'Organisation inconnue.',
+  échec: 'La base n’a pas répondu : rien n’a changé.',
+}
+
+const LIBELLÉS_D_ÉTAT: Record<PériodeAPublier['état'], string> = {
+  proposée: 'proposée, non montrée',
+  publiée: 'publiée',
+  retirée: 'retirée',
+  mêlée: 'publiée en partie, non montrée',
+}
+
 /** Le lundi de la semaine prochaine, valeur par défaut du champ « prochaine lettre ». */
 function lundiProchain(aujourdHui: string): string {
   const date = new Date(`${aujourdHui}T00:00:00Z`)
@@ -54,13 +76,15 @@ function lundiProchain(aujourdHui: string): string {
 export default async function Abonnements({
   searchParams,
 }: {
-  searchParams: Promise<{ reglage?: string | string[]; slug?: string | string[] }>
+  searchParams: Promise<{ reglage?: string | string[]; slug?: string | string[]; synthese?: string | string[]; periode?: string | string[] }>
 }) {
-  const { accès, lignes } = await listerLesAbonnements()
+  const [{ accès, lignes }, { organisations }] = await Promise.all([listerLesAbonnements(), listerLesSynthèses()])
   const paramètres = await searchParams
   const réglage = typeof paramètres.reglage === 'string' ? paramètres.reglage : undefined
   const slugRéglé = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
-  const message = réglage ? MESSAGES[réglage] : undefined
+  const synthèse = typeof paramètres.synthese === 'string' ? paramètres.synthese : undefined
+  const périodeRéglée = typeof paramètres.periode === 'string' ? paramètres.periode : undefined
+  const message = réglage ? MESSAGES[réglage] : synthèse ? MESSAGES_DE_SYNTHÈSE[synthèse] : undefined
   const aujourdHui = aujourdHuiÀParis()
   const modeRéel = process.env['STRIPE_MODE'] === 'reel'
 
@@ -81,7 +105,7 @@ export default async function Abonnements({
 
       {message ? (
         <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
-          {slugRéglé ? `${slugRéglé} : ` : ''}
+          {slugRéglé ? `${slugRéglé}${synthèse && périodeRéglée ? `, ${périodeRéglée}` : ''} : ` : ''}
           {message}
         </p>
       ) : null}
@@ -117,7 +141,86 @@ export default async function Abonnements({
           </table>
         </div>
       )}
+
+      <Synthèses organisations={organisations} />
     </main>
+  )
+}
+
+function Synthèses({ organisations }: { organisations: SynthèsesDUneOrganisation[] | null }) {
+  if (organisations === null) return null
+  const bouton = 'rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc'
+  return (
+    <section id="syntheses" className="flex flex-col gap-4">
+      <h2 className="font-titre text-h2 font-bold text-encre">Synthèses stratégiques</h2>
+      <p className="text-ardoise">
+        Une période n’est montrée au client qu’une fois publiée en entier, après relecture du
+        courriel « [Relecture] ». Publier la rend visible à ses lecteurs dès leur prochaine
+        visite, sur « Acteurs » et « Recommandations » ; retirer la leur cache aussitôt.
+      </p>
+      {organisations.length === 0 ? (
+        <p className="text-ardoise">Aucune synthèse enregistrée pour le pilote.</p>
+      ) : (
+        <div className="overflow-x-auto border border-gris-ligne">
+          <table className="w-full border-collapse text-corps">
+            <thead>
+              <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
+                {['organisation', 'période', 'lignes', 'état', 'publication'].map((entête) => (
+                  <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
+                    {entête}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {organisations.flatMap((o) =>
+                o.périodes.map((p, i) => (
+                  <tr key={`${o.slug}:${p.période}`} className="border-b border-gris-ligne align-top">
+                    <td className="px-4 py-3">
+                      {i === 0 ? (
+                        <>
+                          <p className="text-encre">{o.nom}</p>
+                          <Link href={`/${o.slug}/recommandations`} className="label-mono text-ardoise underline underline-offset-2">
+                            {o.slug}
+                          </Link>
+                        </>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-encre">{p.granularité === 'trimestre' ? 'Trimestre' : 'Mois'} {p.libellé}</p>
+                      <p className="label-mono text-ardoise">{p.période}</p>
+                    </td>
+                    <td className="label-mono px-4 py-3 text-ardoise">{p.lignes}</td>
+                    <td className={`label-mono px-4 py-3 ${p.état === 'publiée' ? 'text-encre' : 'text-ardoise'}`}>{LIBELLÉS_D_ÉTAT[p.état]}</td>
+                    <td className="px-4 py-3">
+                      <form action={publierUnePériode} className="flex flex-wrap items-center gap-2">
+                        <input type="hidden" name="slug" value={o.slug} />
+                        <input type="hidden" name="periode" value={p.période} />
+                        {p.état === 'publiée' ? (
+                          <>
+                            <input type="hidden" name="etat" value="retire" />
+                            <button type="submit" className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
+                              Retirer
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <input type="hidden" name="etat" value="publie" />
+                            <button type="submit" className={bouton}>
+                              Publier
+                            </button>
+                          </>
+                        )}
+                      </form>
+                    </td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 

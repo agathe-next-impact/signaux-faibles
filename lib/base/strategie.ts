@@ -680,3 +680,54 @@ export async function dernièreSynthèsePubliée(
     return toutPublié ? lue : null
   })
 }
+
+/** Une période de synthèse d'une organisation du pilote, et l'état de publication de ses lignes. */
+export type PériodeDeSynthèse = {
+  readonly slug: string
+  readonly nom: string
+  readonly période: string
+  readonly lignes: number
+  readonly publiées: number
+  readonly retirées: number
+}
+
+/**
+ * Les périodes de synthèse non archivées de toutes les organisations du pilote,
+ * pour le tableau de l'opératrice (29 octobre 2026). Cette lecture traverse les
+ * clients : sa garde est dans `listerLesSynthèses` (`lib/auth/appartenance.ts`),
+ * par `tableauDesSynthèses` (`lib/portail/strategie.ts`), son seul appelant. Elle
+ * ne rend que des comptes, jamais un énoncé.
+ */
+export async function périodesDesSynthèses(db: Base = base()): Promise<PériodeDeSynthèse[]> {
+  return protéger('lecture des périodes de synthèse du pilote', async () => {
+    const compter = (table: typeof élémentsSynthèse | typeof positions) =>
+      db
+        .select({
+          slug: organisations.slug,
+          nom: organisations.nom,
+          période: table.période,
+          lignes: sql<number>`count(*)::int`,
+          publiées: sql<number>`count(*) filter (where ${table.étatPublication} = 'publie')::int`,
+          retirées: sql<number>`count(*) filter (where ${table.étatPublication} = 'retire')::int`,
+        })
+        .from(table)
+        .innerJoin(organisations, eq(organisations.id, table.organisationId))
+        .where(and(isNull(table.archivéeLe), eq(organisations.outilsStratégiques, true), isNull(organisations.archivéeLe)))
+        .groupBy(organisations.slug, organisations.nom, table.période)
+    const [éléments, lignes] = await Promise.all([compter(élémentsSynthèse), compter(positions)])
+    const parPériode = new Map<string, PériodeDeSynthèse>()
+    for (const l of [...éléments, ...lignes]) {
+      const clé = `${l.slug}:${l.période}`
+      const avant = parPériode.get(clé)
+      parPériode.set(clé, {
+        slug: l.slug,
+        nom: l.nom,
+        période: l.période,
+        lignes: (avant?.lignes ?? 0) + l.lignes,
+        publiées: (avant?.publiées ?? 0) + l.publiées,
+        retirées: (avant?.retirées ?? 0) + l.retirées,
+      })
+    }
+    return [...parPériode.values()]
+  })
+}

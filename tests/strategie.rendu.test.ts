@@ -69,3 +69,40 @@ describe('rendreLaSynthèse', () => {
     expect(tows.indexOf('- WO, candidate')).toBeLessThan(tows.indexOf('- SO : Option SO.'))
   })
 })
+
+describe('rendreLaSynthèse, benchmark', () => {
+  it('écrit « n.d. » sans unité, et l’euro derrière un montant seulement', () => {
+    const texte = rendreLaSynthèse({
+      organisation: 'hermitage',
+      période: '2026-T3',
+      fenêtre: { début: '2026-07-22', fin: '2026-10-04' },
+      grilleVersion: 1,
+      grille: GRILLE,
+      éléments: [
+        élément({
+          id: 'b',
+          outil: 'benchmark',
+          clé: 'benchmark',
+          énoncé: 'Lecture.',
+          valeur: {
+            lignes: [
+              { nom: 'Coopérative Oasis', siren: '835189002', organisation: false, fiche: 'lue', active: true, trancheEffectif: '11', année: '2025', chiffreDAffaires: 540167, résultatNet: 21125 },
+              { nom: 'Campus de la Transition', siren: '838270098', organisation: false, fiche: 'lue', active: true, trancheEffectif: '11', année: null, chiffreDAffaires: null, résultatNet: null },
+            ],
+            avecComptes: 1,
+            médianeDuChiffreDAffaires: null,
+            rangDeLOrganisation: null,
+            limites: [],
+          },
+        }),
+      ],
+      positions: [],
+      faits: new Map(),
+    })
+    expect(texte).toContain('médiane n.d. ;')
+    const fr = (n: number) => n.toLocaleString('fr-FR')
+    expect(texte).toContain(`- Coopérative Oasis : active, CA ${fr(540167)} €, résultat ${fr(21125)} € (2025)`)
+    expect(texte).toContain('- Campus de la Transition : active, CA n.d., résultat n.d., effectif')
+    expect(texte).not.toContain('n.d. €')
+  })
+})
