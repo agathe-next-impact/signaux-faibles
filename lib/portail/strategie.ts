@@ -631,6 +631,16 @@ export async function contrôlerLÉtiquetage(
 export const DÉLAI_DE_LECTURE_STRATÉGIQUE_MS = 400
 
 /**
+ * La même borne pour « Acteurs », « Recommandations » et l'onglet PESTEL
+ * (29 octobre 2026). À 400 ms, la recette sur L'Hermitage a montré que la
+ * synthèse publiée et l'onglet PESTEL n'étaient jamais affichés en production :
+ * l'ouverture de la connexion à Neon depuis une fonction Vercel, puis quatre à
+ * cinq allers-retours, dépassent ce délai. Ces sections sont l'objet de l'écran
+ * pour une organisation du pilote ; la vue d'ensemble garde 400 ms.
+ */
+export const DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS = 1500
+
+/**
  * La lecture stratégique d'un espace, pour la vue d'ensemble (26 octobre 2026) :
  * les étiquettes des lettres que l'écran vient de lire, agrégées. **Seulement
  * pour une organisation du pilote** ; ailleurs, et dans tout doute (base absente,
@@ -760,14 +770,14 @@ async function bornée<T>(nom: string, lecture: () => Promise<T | null>): Promis
   if (!baseConfigurée() || sourceAccès() === 'notion') return null
   let minuterie: ReturnType<typeof setTimeout> | undefined
   const délai = new Promise<null>((résoudre) => {
-    minuterie = setTimeout(() => résoudre(null), DÉLAI_DE_LECTURE_STRATÉGIQUE_MS)
+    minuterie = setTimeout(() => résoudre(null), DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS)
   })
   try {
     const promesse = lecture()
     promesse.catch(() => undefined)
     const r = await Promise.race([promesse.then((x) => ({ x })), délai])
     if (r === null) {
-      console.warn(`[stratégie] ${nom} en plus de ${DÉLAI_DE_LECTURE_STRATÉGIQUE_MS} ms, section non montrée.`)
+      console.warn(`[stratégie] ${nom} en plus de ${DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS} ms, section non montrée.`)
       return null
     }
     return r.x
@@ -811,9 +821,12 @@ export async function synthèseDeLEspace(
       lireLaGrille(organisation.id, db),
     ])
     if (!mois && !trimestre) return null
-    const précédente = mois ? await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois', avant: mois.période }, db) : null
+    // La synthèse précédente et les faits cités ne dépendent que du mois : en parallèle.
     const cités = [...(mois?.éléments ?? []), ...(mois?.positions ?? [])].flatMap((x) => x.faits)
-    const connus = await faitsConnus({ organisationId: organisation.id, ids: cités }, db)
+    const [précédente, connus] = await Promise.all([
+      mois ? dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois', avant: mois.période }, db) : null,
+      faitsConnus({ organisationId: organisation.id, ids: cités }, db),
+    ])
     const faits = new Map([...connus].map(([id, f]) => [id, { date: f.date, édition: f.édition ?? '' }]))
     const numéros = new Map([...entrée.numéros].map(([page, n]) => [normaliserIdentifiant(page), n]))
     const vueDuMois = mois
