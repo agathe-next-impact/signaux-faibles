@@ -705,7 +705,7 @@ entités que les lettres suivent, sans quoi l'étape 4ter échouera.
     { "cle": "couches", "libelle": "Couches couvertes", "crans": ["usage seul", "cloud", "cloud et datacenter", "trois couches"] },
     { "cle": "production", "libelle": "Production publique", "crans": ["aucune", "occasionnelle", "régulière"] } ],
   "familles": [
-    { "numero": 1, "veille": "ecosysteme", "pestel": "legal", "cadence": "hebdomadaire" },
+    { "numero": 1, "veille": "ecosysteme", "pestel": "legal", "cadence": "hebdomadaire", "libelle": "Cadre réglementaire" },
     { "numero": 1, "veille": "concurrentiel", "porter": "rivalite", "cadence": "hebdomadaire" } ],
   "entites": [ { "nom": "Cigref", "veille": "concurrentiel", "siren": "310785985" } ],
   "partiesPrenantes": [ { "nom": "DGE" }, … ],
@@ -715,7 +715,12 @@ entités que les lettres suivent, sans quoi l'étape 4ter échouera.
 Exactement deux axes, clé en minuscules (`[a-z][a-z0-9_]*`), 3 à 5 crans ;
 libellés de 40 caractères au plus, sans « faible » ni « fort » (réservés à
 l'impact) ; chaque famille (`veille` `ecosysteme` ou `concurrentiel`) avec un
-seul de `pestel` ou `porter` et une `cadence` (`hebdomadaire`, `mensuelle`) ;
+seul de `pestel` ou `porter` et une `cadence` (`hebdomadaire`, `mensuelle`),
+et un `libelle` facultatif, le nom court de la famille, borné comme les autres
+libellés (l'onglet PESTEL le montre quand aucune lettre lue par l'écran ne porte
+l'axe, cas ordinaire d'une famille mensuelle ; sans lui, « Famille N ». Absent,
+il ne change pas l'empreinte : une grille postée avant lui ne crée pas de
+version ; posé, il en crée une, à valider à son tour) ;
 40 entités au plus par veille, `siren` à neuf chiffres ou `null` ; 8 à 15
 parties prenantes, 80 caractères au plus ; `offres` seulement si la fiche porte
 plusieurs offres (matrice GE, lot 13).

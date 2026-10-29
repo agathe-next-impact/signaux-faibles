@@ -168,6 +168,11 @@ describe('vueDuPestel', () => {
     ])
     expect(vue.dimensions.find((d) => d.lettre === 'legal')!.suiviePar.map((a) => a.nom)).toEqual(['Qualité', 'Famille 3'])
     expect(vue.dimensions.find((d) => d.lettre === 'politique')).toMatchObject({ faits: 0, trou: true })
+    // Sans lettre qui porte l'axe, le libellé de la grille ; le titre de la lettre l'emporte quand il existe.
+    const nommée: Grille = { ...GRILLE, familles: GRILLE.familles.map((f) => (f.veille === 'ecosysteme' && f.numéro !== 2 ? { ...f, libellé: `Grille ${f.numéro}` } : f)) }
+    const avecLaGrille = vueDuPestel([fait('legal', '2026-10-15')], nommée, new Map([['ecosysteme:1', 'Donneurs d’ordre']]), { début: '2026-07-21', fin: '2026-10-19' })
+    expect(avecLaGrille.dimensions.find((d) => d.lettre === 'legal')!.suiviePar.map((a) => a.nom)).toEqual(['Famille 2', 'Grille 3'])
+    expect(avecLaGrille.dimensions.find((d) => d.lettre === 'economique')!.suiviePar.map((a) => a.nom)).toEqual(['Donneurs d’ordre'])
     // Une seule famille ou aucune : un trou de couverture.
     expect(vue.trous.map((t) => [t.libellé, t.familles])).toEqual([
       ['Politique', 0],

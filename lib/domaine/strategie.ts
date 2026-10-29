@@ -487,6 +487,12 @@ export type FamilleDeGrille = {
   readonly pestel?: Pestel | null
   readonly porter?: ForcePorter | null
   readonly cadence: Cadence
+  /**
+   * Le nom court de la famille (40 caractères au plus), facultatif : l'onglet
+   * PESTEL le montre quand aucune lettre lue par l'écran ne porte l'axe, ce qui
+   * est le cas ordinaire d'une famille mensuelle.
+   */
+  readonly libellé?: string | null
 }
 export type EntitéDeGrille = { readonly nom: string; readonly veille: Veille; readonly siren?: string | null }
 
@@ -529,6 +535,7 @@ export function contrôlerLaGrille(grille: Grille): readonly Refus[] {
     if (pestel !== null && !dans(PESTEL, pestel)) refuser('étiquette-inconnue', `PESTEL « ${String(pestel)} »`, cible)
     if (porter !== null && !dans(FORCES_PORTER, porter)) refuser('étiquette-inconnue', `force « ${String(porter)} »`, cible)
     if (!dans(CADENCES, f.cadence)) refuser('cadence-inconnue', `cadence « ${String(f.cadence)} »`, cible)
+    if (f.libellé != null) libellé(f.libellé, cible)
   }
   if (grille.familles.length === 0) refuser('familles-absentes', 'la grille porte la correspondance de chaque famille du référentiel')
 
@@ -555,7 +562,7 @@ export function empreinteDeLaGrille(grille: Grille): string {
   return empreinte(
     JSON.stringify({
       a: grille.axesGroupes.map((a) => [a.clé, a.libellé, a.crans]),
-      f: trié(grille.familles, (f) => `${f.veille}:${String(f.numéro).padStart(3, '0')}`).map((f) => [f.veille, f.numéro, f.pestel ?? null, f.porter ?? null, f.cadence]),
+      f: trié(grille.familles, (f) => `${f.veille}:${String(f.numéro).padStart(3, '0')}`).map((f) => [f.veille, f.numéro, f.pestel ?? null, f.porter ?? null, f.cadence, ...(f.libellé != null ? [f.libellé] : [])]),
       e: trié(grille.entités, (e) => `${e.veille}:${e.nom}`).map((e) => [e.veille, e.nom, e.siren ?? null]),
       p: trié(grille.partiesPrenantes, (p) => p.nom).map((p) => p.nom),
       o: grille.offres ?? null,

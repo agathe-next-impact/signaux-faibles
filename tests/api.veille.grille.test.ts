@@ -66,7 +66,7 @@ describe('POST /api/veille/grille', () => {
 
   it('traduit la grille dans les noms du domaine, sans rien filtrer : la porte nomme les valeurs inconnues', async () => {
     strategie.recevoirLaGrille.mockResolvedValue({ sorte: 'créée', version: 1, empreinte: 'abcd1234', trousDuPestel: [], forcesNonSuivies: [] })
-    const inconnue = { ...GRILLE, familles: [...GRILLE.familles, { numero: 2, veille: 'ecosysteme', pestel: 'climat', cadence: 'mensuelle' }] }
+    const inconnue = { ...GRILLE, familles: [...GRILLE.familles, { numero: 2, veille: 'ecosysteme', pestel: 'climat', cadence: 'mensuelle', libelle: 'Technologies et substituts' }] }
     await envoyer('POST', { ...corps, grille: inconnue })
     expect(strategie.recevoirLaGrille).toHaveBeenCalledWith({
       slug: 'infralliance',
@@ -79,7 +79,7 @@ describe('POST /api/veille/grille', () => {
         familles: [
           { numéro: 1, veille: 'ecosysteme', pestel: 'legal', porter: null, cadence: 'hebdomadaire' },
           { numéro: 1, veille: 'concurrentiel', pestel: null, porter: 'rivalite', cadence: 'hebdomadaire' },
-          { numéro: 2, veille: 'ecosysteme', pestel: 'climat', porter: null, cadence: 'mensuelle' },
+          { numéro: 2, veille: 'ecosysteme', pestel: 'climat', porter: null, cadence: 'mensuelle', libellé: 'Technologies et substituts' },
         ],
         entités: [
           { nom: 'CISPE', veille: 'concurrentiel', siren: null },
@@ -131,7 +131,10 @@ describe('GET /api/veille/grille', () => {
       validéeLe: new Date('2026-10-27T09:00:00Z'),
       grille: {
         axesGroupes: [{ clé: 'couches', libellé: 'Couches couvertes', crans: ['a', 'b', 'c'] }],
-        familles: [{ numéro: 1, veille: 'ecosysteme', pestel: 'legal', cadence: 'hebdomadaire' }],
+        familles: [
+          { numéro: 1, veille: 'ecosysteme', pestel: 'legal', cadence: 'hebdomadaire' },
+          { numéro: 2, veille: 'ecosysteme', pestel: 'technologique', cadence: 'mensuelle', libellé: 'Technologies et substituts' },
+        ],
         entités: [{ nom: 'CISPE', veille: 'concurrentiel' }],
         partiesPrenantes: [{ nom: 'DGE' }],
       },
@@ -149,7 +152,10 @@ describe('GET /api/veille/grille', () => {
       validéeLe: '2026-10-27T09:00:00.000Z',
       grille: {
         axes: [{ cle: 'couches', libelle: 'Couches couvertes', crans: ['a', 'b', 'c'] }],
-        familles: [{ numero: 1, veille: 'ecosysteme', pestel: 'legal', porter: null, cadence: 'hebdomadaire' }],
+        familles: [
+          { numero: 1, veille: 'ecosysteme', pestel: 'legal', porter: null, cadence: 'hebdomadaire', libelle: null },
+          { numero: 2, veille: 'ecosysteme', pestel: 'technologique', porter: null, cadence: 'mensuelle', libelle: 'Technologies et substituts' },
+        ],
         entites: [{ nom: 'CISPE', veille: 'concurrentiel', siren: null }],
         partiesPrenantes: [{ nom: 'DGE' }],
         offres: null,

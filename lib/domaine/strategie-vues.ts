@@ -368,7 +368,10 @@ export function vueDuPestel(
     return liste
   })()
   const trous = new Set(trousDuPestel(grille))
-  const nom = (veille: string, numéro: number) => nomsDesAxes.get(`${veille}:${numéro}`) ?? `Famille ${numéro}`
+  // Le titre de l'axe dans les lettres lues, sinon le libellé de la grille : une
+  // famille mensuelle n'est souvent dans aucune des lettres de la semaine.
+  const nomsDeLaGrille = new Map(grille.familles.filter((f) => f.libellé).map((f) => [`${f.veille}:${f.numéro}`, f.libellé!]))
+  const nom = (veille: string, numéro: number) => nomsDesAxes.get(`${veille}:${numéro}`) ?? nomsDeLaGrille.get(`${veille}:${numéro}`) ?? `Famille ${numéro}`
   const dimensions = PESTEL.map((lettre) => {
     const siens = faits.filter((f) => f.pestel === lettre)
     const familles = grille.familles.filter((f) => f.pestel === lettre)
