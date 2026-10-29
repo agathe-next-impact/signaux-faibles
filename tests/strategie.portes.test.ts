@@ -239,6 +239,17 @@ describe('la porte de la grille', () => {
     expect(empreinteDeLaGrille(réordonnée)).toBe(empreinteDeLaGrille(GRILLE))
     expect(empreinteDeLaGrille({ ...GRILLE, offres: ['Colloque'] })).not.toBe(empreinteDeLaGrille(GRILLE))
   })
+
+  it('le libellé d’une famille est facultatif, borné comme les autres, et n’entre dans l’empreinte que s’il est posé', () => {
+    const [première, ...autres] = GRILLE.familles
+    const nommée = (libellé: string | null): Grille => ({ ...GRILLE, familles: [{ ...première!, libellé }, ...autres] })
+    // Une grille postée avant le libellé garde son empreinte : pas de version en plus.
+    expect(empreinteDeLaGrille(nommée(null))).toBe(empreinteDeLaGrille(GRILLE))
+    expect(empreinteDeLaGrille(nommée('Technologies et substituts'))).not.toBe(empreinteDeLaGrille(GRILLE))
+    expect(contrôlerLaGrille(nommée('Technologies et substituts'))).toEqual([])
+    expect(codes(contrôlerLaGrille(nommée('Un libellé de famille bien trop long pour la grille')))).toEqual(['libellé-hors-bornes'])
+    expect(codes(contrôlerLaGrille(nommée('Signal fort')))).toEqual(['vocabulaire-interdit'])
+  })
 })
 
 describe('la porte de la synthèse', () => {

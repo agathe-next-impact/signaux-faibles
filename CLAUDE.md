@@ -25,7 +25,8 @@ l'opératrice le 26 octobre 2026** pour les outils stratégiques
 (`docs/plan-outils-strategiques.md`, §8, décisions 1 et 2 ; migration 0013) :
 `grilles` recopie les **libellés courts** de la grille stratégique du
 référentiel (axes et crans des groupes stratégiques, 40 caractères au plus,
-noms d'entités et de parties prenantes ; les critères complets restent dans
+noms courts des familles depuis le 29 octobre 2026, même borne, noms d'entités
+et de parties prenantes ; les critères complets restent dans
 Notion), et `elements_synthese` porte les **énoncés de synthèse** (240
 caractères au plus, 400 pour un scénario), analyse nouvelle et non texte de
 lettre ou de référentiel. Rien d'autre : un fait étiqueté (`faits_etiquetes`)
