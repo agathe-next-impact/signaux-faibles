@@ -126,12 +126,17 @@ export default async function VueDEnsemble({
   // « À la une » (demande de l'opératrice), chacune menant à
   // l'écran qui montre la grille de ses écrans ; l'activité des treize
   // dernières semaines (lot 5) vient des faits étiquetés, lue en même temps.
+  // L'espace réorganisé n'affiche plus la lecture stratégique (demande de
+  // l'opératrice du 30 octobre 2026) : ses comptes ont leurs écrans, « PESTEL »
+  // et « Forces du marché ». Elle n'y est donc pas lue du tout.
   const espace = await espaceDeLOrganisation(accès.organisationId)
   const [stratégie, tableau] = await Promise.all([
-    lectureStratégiqueDeLEspace({
-      registre: accès.organisationId,
-      lettres: récentes.map((note) => ({ pageId: note.lettre.édition.pageId, document: note.document })),
-    }),
+    espace?.réorganisé
+      ? null
+      : lectureStratégiqueDeLEspace({
+          registre: accès.organisationId,
+          lettres: récentes.map((note) => ({ pageId: note.lettre.édition.pageId, document: note.document })),
+        }),
     espace?.réorganisé
       ? tableauDeLEspace({
           slug: accès.slug,
@@ -316,7 +321,7 @@ export default async function VueDEnsemble({
               <Case key={r.href}>
                 <h3 className="font-titre text-h3 font-semibold text-encre">{r.titre}</h3>
                 {r.activité ? <MiniActivité activité={r.activité} /> : null}
-                <dl className="flex flex-col gap-2">
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                   {r.écrans.map((é) => (
                     <div key={é.écran} className="flex flex-col">
                       <dt className="label-mono text-ardoise">{é.écran}</dt>

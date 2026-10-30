@@ -113,9 +113,10 @@ cycle de vie et benchmark du dernier trimestre publié, tels que calculés à la
 synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 à la demande de l'opératrice, la vue d'ensemble porte **une carte par rubrique**
 (Le marché, L'environnement, Stratégie, Votre veille), sur deux colonnes, sous
-« À la une », sans la cartouche des chiffres de la semaine ni la section
-« L'écosystème » (retirées le même jour, à sa demande), et non plus une case par
-écran ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
+« À la une », sans la cartouche des chiffres de la semaine, la section
+« L'écosystème » ni la « Lecture stratégique » (retirées le même jour, à sa
+demande ; la lecture n'y est plus faite), et non plus une case par écran ; le
+détail de chaque carte (ses écrans et leur chiffre clé) tient sur deux colonnes ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
 `/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
 avec leur chiffre clé, sur deux colonnes elle aussi ; le rail garde ses écrans et le nom de la rubrique y
 mène (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
@@ -770,7 +771,9 @@ une analyse ; mention « outil en test ». `lectureStratégiqueDeLEspace`
 (`lib/portail/strategie.ts`) ne lit **aucun corps Notion de plus**, n'ouvre pas
 Postgres en mode `notion`, est bornée à 400 ms et rend `null` dans tout doute,
 hors du pilote (`organisations.outils_strategiques`) ou sans fait : la section
-n'existe alors pas, et l'écran reste celui d'avant. Agrégation pure dans
+n'existe alors pas, et l'écran reste celui d'avant. Elle n'est plus ni lue ni montrée
+sur l'espace réorganisé (L'Hermitage, 30 octobre 2026, à la demande de
+l'opératrice) : ses comptes y ont leurs écrans, « PESTEL » et « Forces du marché ». Agrégation pure dans
 `lectureDesÉtiquettes` (`lib/domaine/strategie.ts`), rendu dans
 `components/lecture-strategique.tsx` ; la vue d'ensemble est son seul appelant
 (`tests/architecture.test.ts`).
