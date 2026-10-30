@@ -1,7 +1,9 @@
 # Proposition : réorganiser l'espace client pour la lecture rapide
 
-30 octobre 2026. Proposition à discuter, rien n'est codé. Elle touche la règle
-« pas d'autre écran sans discussion » de `CLAUDE.md` : c'est cette discussion.
+30 octobre 2026. Proposition acceptée par l'opératrice le même jour, avec
+l'**option A** pour les écrans « Votre veille » (§6) ; rien n'est encore codé.
+Elle tient lieu de la discussion que demande la règle « pas d'autre écran sans
+discussion » de `CLAUDE.md`. Reste ouvert le périmètre (§8, point 4).
 
 ## 1. Le constat
 
@@ -167,6 +169,10 @@ Chaque lot passe par la recette Playwright (`pnpm recette`), qui recevra un
 contrôle par nouvel écran et le contrôle de cloisonnement sur chacun.
 
 ## 8. Ce qu'il faut trancher
+
+Décidé le 30/10/2026 : accord sur la proposition, option A pour la source des
+écrans « Votre veille ». L'extension de l'exception de données qu'elle suppose
+sera écrite dans `CLAUDE.md` avec le lot 6, bornes du §6 comprises.
 
 1. Admettre les **positions déclaratives** (§2), pour que la carte et
    Mendelow montrent tout le corpus.
