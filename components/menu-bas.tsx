@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useRef, useState } from 'react'
 import type { Onglet } from '@/components/coquille'
-import { estOngletCourant, répartirLeMenuBas } from '@/lib/portail/onglet'
+import { estOngletCourant, groupeCourant, grouperParRubrique, répartirLeMenuBas } from '@/lib/portail/onglet'
 
 /**
  * Le menu de pied, sur mobile, sur le site comme dans l'application installée.
@@ -23,6 +23,10 @@ import { estOngletCourant, répartirLeMenuBas } from '@/lib/portail/onglet'
  *
  * La liste ne reste ouverte que sur le chemin où elle a été ouverte : changer
  * d'écran la referme, sans effet ni écouteur à défaire.
+ *
+ * Dans l'espace réorganisé, les rubriques de la liste sont des accordéons
+ * (30 octobre 2026), comme dans le rail : fermées, sauf celle de l'écran
+ * courant ; l'écran de la rubrique est le premier lien de son panneau.
  */
 export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
   const chemin = usePathname()
@@ -48,39 +52,39 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
       }}
     >
       {ouvert ? (
-        <ul id="menu-bas-plus" className="absolute inset-x-0 bottom-full flex flex-col border-t border-gris-ligne bg-blanc">
-          {autres.map((onglet, rang) => {
-            const courant = estOngletCourant(onglet, chemin)
-            const rubrique = onglet.rubrique && onglet.rubrique !== autres[rang - 1]?.rubrique ? onglet.rubrique : null
-            return [
-              rubrique ? (
-                onglet.rubriqueHref ? (
-                  <li key={`rubrique-${rubrique}`} className="border-b border-gris-ligne bg-fond-neutre">
-                    <Link href={onglet.rubriqueHref} onClick={fermer} className="label-mono block px-6 py-2 text-ardoise">
-                      {rubrique} →
-                    </Link>
-                  </li>
-                ) : (
-                  <li key={`rubrique-${rubrique}`} aria-hidden="true" className="label-mono border-b border-gris-ligne bg-fond-neutre px-6 py-2 text-ardoise">
-                    {rubrique}
-                  </li>
-                )
-              ) : null,
-              <li key={onglet.href} className="border-b border-gris-ligne">
-                <Link
-                  href={onglet.href}
-                  aria-current={courant ? 'page' : undefined}
-                  onClick={fermer}
-                  className={`flex items-center justify-between gap-4 px-6 py-3 text-corps ${
-                    courant ? 'bg-fond-neutre text-encre' : 'text-ardoise'
-                  }`}
-                >
-                  <span>{onglet.libellé}</span>
-                  {onglet.compte ? <span className="label-mono text-ardoise">{onglet.compte}</span> : null}
-                </Link>
-              </li>,
-            ]
-          })}
+        <ul id="menu-bas-plus" className="absolute inset-x-0 bottom-full flex max-h-[70dvh] flex-col overflow-y-auto border-t border-gris-ligne bg-blanc">
+          {grouperParRubrique(autres).map((groupe) =>
+            groupe.rubrique ? (
+              <li key={groupe.rubrique} className="border-b border-gris-ligne">
+                <details open={groupeCourant(groupe, chemin)} className="group/rubrique">
+                  <summary className="label-mono flex cursor-pointer list-none items-center justify-between bg-fond-neutre px-6 py-3 text-ardoise [&::-webkit-details-marker]:hidden">
+                    <span>{groupe.rubrique}</span>
+                    <span aria-hidden="true" className="text-rose transition-transform group-open/rubrique:rotate-90">
+                      →
+                    </span>
+                  </summary>
+                  <ul>
+                    {groupe.rubriqueHref ? (
+                      <ÉlémentDeListe href={groupe.rubriqueHref} courant={chemin === groupe.rubriqueHref} onClick={fermer}>
+                        Vue de la rubrique<span className="sr-only"> {groupe.rubrique}</span>
+                      </ÉlémentDeListe>
+                    ) : null}
+                    {groupe.onglets.map((onglet) => (
+                      <ÉlémentDeListe key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte} onClick={fermer}>
+                        {onglet.libellé}
+                      </ÉlémentDeListe>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ) : (
+              groupe.onglets.map((onglet) => (
+                <ÉlémentDeListe key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte} onClick={fermer}>
+                  {onglet.libellé}
+                </ÉlémentDeListe>
+              ))
+            ),
+          )}
         </ul>
       ) : null}
 
@@ -126,6 +130,35 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
         ) : null}
       </ul>
     </nav>
+  )
+}
+
+/** Un écran de la liste ouverte par « Plus ». */
+function ÉlémentDeListe({
+  href,
+  courant,
+  compte,
+  onClick,
+  children,
+}: {
+  href: string
+  courant: boolean
+  compte?: number | null
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <li className="border-t border-gris-ligne first:border-t-0">
+      <Link
+        href={href}
+        aria-current={courant ? 'page' : undefined}
+        onClick={onClick}
+        className={`flex items-center justify-between gap-4 px-6 py-3 text-corps ${courant ? 'bg-fond-neutre text-encre' : 'text-ardoise'}`}
+      >
+        <span>{children}</span>
+        {compte ? <span className="label-mono text-ardoise">{compte}</span> : null}
+      </Link>
+    </li>
   )
 }
 
