@@ -131,7 +131,12 @@ composant client de la coquille) ; le choix tient dans le cookie `rail`
 rendre le rail déjà replié, sans saut à l'affichage ; sur mobile, rien ne change. L'**ocre**, troisième couleur de signal (amendement de la charte du même jour,
 `docs/charte-design.md` §02 ; tokens `ocre`, `ocre-texte`, `fond-ocre`), ne
 porte que le temps (repère et date d'une échéance du calendrier) et la seconde
-série d'un graphique (les procédures face aux entrées) ; jamais un impact. Une période
+série d'un graphique (les procédures face aux entrées) ; jamais un impact. Les
+graphiques de l'espace s'**animent au chargement** (§05 de la charte, même jour) :
+une animation par graphique, 400 à 700 ms, en cascade de gauche à droite, depuis
+une marque déjà visible, en CSS seul (`anime-…` dans `app/globals.css`, rang
+dans `--i`) et sous `prefers-reduced-motion: no-preference` seulement ; jamais
+un chiffre, jamais en boucle. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

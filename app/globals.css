@@ -91,6 +91,54 @@ body {
   color: var(--color-ardoise);
 }
 
+/* Le mouvement des graphiques (30 octobre 2026, docs/charte-design.md §05).
+   Une seule animation par graphique, au chargement de l'écran, qui dit dans
+   quel sens lire : les barres montent ou s'étirent de gauche à droite, comme
+   le temps ; les crans se remplissent un par un ; la carte de chaleur se
+   découvre semaine après semaine. Durée de 400 à 700 ms, départ vif et arrivée
+   douce sans rebond, décalage de 45 à 180 ms par marque porté par `--i`, et
+   une marque déjà visible au départ (un cran part du gris d'un cran vide), pour qu'une capture prise pendant
+   l'animation reste lisible. Ni boucle, ni défilement, ni survol ; rien du
+   tout quand le système demande moins de mouvement : les règles n'existent
+   que sous `no-preference`. */
+@media (prefers-reduced-motion: no-preference) {
+  .anime-monte {
+    transform-origin: bottom;
+    animation: sf-monte 640ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+  .anime-etire {
+    transform-origin: left;
+    animation: sf-etire 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 80ms);
+  }
+  .anime-remplit {
+    animation: sf-remplit 400ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 180ms + 200ms);
+  }
+  .anime-decouvre {
+    animation: sf-decouvre 400ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+}
+
+@keyframes sf-monte {
+  from { transform: scaleY(0.06); }
+  to { transform: scaleY(1); }
+}
+@keyframes sf-etire {
+  from { transform: scaleX(0.06); }
+  to { transform: scaleX(1); }
+}
+/* Un cran part du gris de filet, la couleur d'un cran vide, et prend la sienne. */
+@keyframes sf-remplit {
+  from { background-color: var(--color-gris-ligne); }
+}
+@keyframes sf-decouvre {
+  from { opacity: 0.25; }
+  to { opacity: 1; }
+}
+
 /* Focus visible : bordure ardoise, comme les champs de la charte. */
 :where(a, button, input, summary):focus-visible {
   outline: 2px solid var(--color-ardoise);
