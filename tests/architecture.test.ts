@@ -501,6 +501,38 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(écrans.slice(écrans.indexOf('export async function synthèseDeLEspace('))).not.toMatch(/lireLaSynthèse\(|synthèsePrécédente\(/)
   })
 
+  /**
+   * L'espace réorganisé (lot 2, 30 octobre 2026, pilote sur L'Hermitage) : chaque
+   * lecture a son écran, passe par la lecture bornée, ne lit aucun corps Notion,
+   * et un écran par outil répond 404 hors de l'espace réorganisé **avant** de
+   * lire quoi que ce soit d'autre.
+   */
+  it('l’espace réorganisé : un écran par lecture, bornée, et 404 avant la lecture hors du pilote', () => {
+    expect(appelants('concurrentsDeLEspace')).toEqual(['app/(portail)/[slug]/concurrents/page.tsx', 'lib/portail/strategie.ts'])
+    expect(appelants('ficheDuConcurrent')).toEqual(['app/(portail)/[slug]/concurrents/[concurrent]/page.tsx', 'lib/portail/strategie.ts'])
+    expect(appelants('espaceDeLOrganisation')).toEqual([
+      'app/(portail)/[slug]/acteurs/page.tsx',
+      'app/(portail)/[slug]/concurrents/[concurrent]/page.tsx',
+      'app/(portail)/[slug]/concurrents/page.tsx',
+      'app/(portail)/[slug]/layout.tsx',
+      'lib/portail/strategie.ts',
+    ])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
+    const section = source.slice(source.indexOf('// ── L\'espace réorganisé (lot 2'))
+    expect(section).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
+    for (const nom of ['concurrentsDeLEspace', 'ficheDuConcurrent']) {
+      const corps = section.slice(section.indexOf(`export async function ${nom}(`))
+      expect(corps.indexOf("bornée('"), nom).toBeGreaterThan(0)
+      expect(corps.indexOf('espaceRéorganisé'), nom).toBeGreaterThan(0)
+    }
+    for (const page of [join('concurrents', 'page.tsx'), join('concurrents', '[concurrent]', 'page.tsx')]) {
+      const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
+      const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
+      expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
+      expect(garde, page).toBeLessThan(écran.search(/concurrentsDeLEspace\(\{|ficheDuConcurrent\(\{/))
+    }
+  })
+
   it('les étiquettes : pilote, règle 2, porte, puis écriture, sans invalidation', () => {
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
     const recevoir = source.slice(source.indexOf('export async function recevoirLesÉtiquettes'), source.indexOf('export type FaitPourLaRevue'))
@@ -935,6 +967,19 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
       // Le menu de pied tronque au-delà : un libellé coupé ne dit plus où il mène.
       expect(onglet.libelléCourt.length, onglet.libelléCourt).toBeLessThanOrEqual(8)
     }
+  })
+
+  it('l’espace réorganisé ajoute « Concurrents » au rail, avant « Acteurs », et la route existe', async () => {
+    const { ongletsDe } = await import('@/lib/portail/semaine')
+    const comptes = { lettres: 2, recommandations: 0, archives: 1 }
+    const onglets = ongletsDe('client', comptes, 'complète', { réorganisé: true })
+    expect(onglets).toHaveLength(8)
+    const hrefs = onglets.map((o) => o.href)
+    expect(hrefs.indexOf('/client/concurrents')).toBe(hrefs.indexOf('/client/acteurs') - 1)
+    expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', 'concurrents', 'page.tsx'))).toBe(true)
+    expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', 'concurrents', '[concurrent]', 'page.tsx'))).toBe(true)
+    expect(onglets.every((o) => o.libelléCourt.length <= 8)).toBe(true)
+    expect(ongletsDe('client', comptes, 'essentiel', { réorganisé: true }).map((o) => o.href)).toEqual(['/client', '/client/lettres'])
   })
 
   it('hors lecture complète, le rail ne montre que ce qui reste ouvert', async () => {

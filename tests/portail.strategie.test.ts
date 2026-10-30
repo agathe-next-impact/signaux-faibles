@@ -17,7 +17,10 @@ vi.mock('@/lib/notion/travail', () => ({ lireÉditionDeTravail: notion.lireÉdit
 vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePage, listerÉditionsPubliées: notion.listerÉditionsPubliées }))
 
 const {
+  concurrentsDeLEspace,
   contrôlerLÉtiquetage,
+  espaceDeLOrganisation,
+  ficheDuConcurrent,
   lectureStratégiqueDeLEspace,
   lireLaGrilleDuPilote,
   lireLaSynthèseDuPilote,
@@ -32,6 +35,7 @@ const {
   recevoirLaGrille,
   recevoirLaSynthèse,
   recevoirLesÉtiquettes,
+  réglerLEspace,
   réglerLePilote,
   validerLaVersion,
 } = await import('@/lib/portail/strategie')
@@ -619,6 +623,60 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         expect(vue?.mois?.carte).toMatchObject({ placés: 1, déclaratifs: 1 })
         expect(vue?.mois?.carte?.cases.get('3:1')).toEqual([{ sujet: 'Cigref', organisation: false, aBougé: false, venuDe: null, fait: null }])
         expect(vue?.mois?.mendelow).toMatchObject({ placés: 1, déclaratifs: 0 })
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
+    it('espace réorganisé : réglé dans le pilote seulement, puis Concurrents et la fiche, rien d’un autre registre', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      try {
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toEqual({ réorganisé: false, concurrents: [] })
+        expect(await concurrentsDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+        await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: false }, db)
+        expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('hors-pilote')
+        await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+        expect(await réglerLEspace({ slug: 'inconnue', actif: true }, db)).toBe('organisation-inconnue')
+        expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
+        expect(await espaceDeLOrganisation(avecTirets(REGISTRE), db)).toEqual({ réorganisé: true, concurrents: ['CISPE', 'Cigref'] })
+
+        // Avant toute synthèse publiée : la liste, sans carte ni position.
+        const avant = await concurrentsDeLEspace({ registre: REGISTRE }, db)
+        expect(avant).toMatchObject({ période: null, carte: null })
+        expect(avant?.vue.concurrents.map((c) => [c.nom, c.crans.length])).toEqual([['Cigref', 0], ['CISPE', 0]])
+
+        const cispe = fait((f) => f.entite === 'CISPE')
+        const déclarée = (axe: string, cran: number) => ({ outil: 'groupes' as const, sujet: 'Cigref', axe, cran, faits: [], origine: 'declaratif' as const, référence: '§2, famille 1' })
+        await recevoir({
+          ...octobre(),
+          positions: [...octobre().positions, { outil: 'groupes', sujet: 'CISPE', axe: 'production', cran: 2, faits: [cispe] }, déclarée('couches', 2), déclarée('production', 1)],
+        })
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)
+
+        const lus = await concurrentsDeLEspace({ registre: avecTirets(REGISTRE) }, db)
+        expect(lus?.période).toBe('2026-10')
+        expect(lus?.carte?.placés).toBe(2)
+        const parNom = new Map(lus?.vue.concurrents.map((c) => [c.nom, c]))
+        expect(parNom.get('CISPE')).toMatchObject({ segment: 'cispe', déclaratif: false, faits: 1 })
+        expect(parNom.get('Cigref')).toMatchObject({ segment: 'cigref', déclaratif: true })
+
+        const fiche = await ficheDuConcurrent({ registre: REGISTRE, segment: 'cispe' }, db)
+        expect(fiche?.sorte).toBe('fiche')
+        if (fiche?.sorte !== 'fiche') return
+        expect(fiche.fiche.position).toMatchObject({ période: '2026-10', déclaratif: false })
+        expect(fiche.fiche.faits).toHaveLength(1)
+        expect(fiche.fiche.faits[0]?.empreinte).toMatch(/^[0-9a-f]{8}$/)
+        expect(await ficheDuConcurrent({ registre: REGISTRE, segment: 'dge' }, db)).toEqual({ sorte: 'inconnu' })
+
+        // Rien pour un autre registre ; rien en mode notion ; rien une fois l'espace refermé.
+        expect(await concurrentsDeLEspace({ registre: AUTRE_REGISTRE }, db)).toBeNull()
+        expect(await ficheDuConcurrent({ registre: AUTRE_REGISTRE, segment: 'cispe' }, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'notion')
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'double')
+        expect(await réglerLEspace({ slug: 'infralliance', actif: false }, db)).toBe('réglé')
+        expect(await concurrentsDeLEspace({ registre: REGISTRE }, db)).toBeNull()
       } finally {
         vi.unstubAllEnvs()
       }

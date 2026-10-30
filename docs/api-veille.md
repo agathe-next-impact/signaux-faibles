@@ -602,6 +602,18 @@ une organisation recommandée.
 `pilote-réglé` avec `actif`, 404 `inconnue`. Les lignes d'une organisation
 sortie du pilote restent ; elle les retrouve si elle y revient.
 
+**Ouvrir l'espace réorganisé, ou le refermer** (30 octobre 2026, lot 2 de
+`docs/proposition-reorganisation-espace.md`, pilote sur L'Hermitage) :
+`PATCH /api/veille/organisations`
+`{ "slug": "hermitage", "action": "espace", "actif": true }`. 200
+`espace-réglé` avec `actif`, 409 `hors-pilote` (l'organisation n'est pas dans le
+pilote des outils : les écrans par outil lisent sa grille et ses synthèses),
+404 `inconnue`. Ouvert, l'espace gagne « Concurrents » (`/[slug]/concurrents`,
+la carte et les concurrents de la grille) et la fiche de chacun
+(`/[slug]/concurrents/[concurrent]`), et « Acteurs » ne garde que Mendelow et
+les dossiers qui ne nomment pas un concurrent. Refermé, il retrouve ses sept
+écrans ; rien n'est supprimé.
+
 **Étape 4ter de la tâche des lettres** (page « Tâche — Lettres de veille »,
 depuis le 26 octobre 2026) : après le lint conforme, un `GET` sur la date de
 l'édition sert de porte du pilote ; toute réponse autre que `lu` fait passer

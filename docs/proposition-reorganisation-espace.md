@@ -5,7 +5,8 @@ l'**option A** pour les écrans « Votre veille » (§6), et un périmètre tran
 le même jour : **le pilote se fait sur L'Hermitage** (§8, point 4). Elle tient
 lieu de la discussion que demande la règle « pas d'autre écran sans
 discussion » de `CLAUDE.md`. Lot 1 (positions déclaratives) codé le
-30 octobre 2026.
+30 octobre 2026, lot 2 (Concurrents, fiche concurrent, Acteurs recentré) le
+même jour, derrière l'interrupteur `organisations.espace_reorganise`.
 
 ## 1. Le constat
 
@@ -169,6 +170,25 @@ d'accès), les variables du §2 déjà dans la grille, 80 caractères par éché
 
 Chaque lot passe par la recette Playwright (`pnpm recette`), qui recevra un
 contrôle par nouvel écran et le contrôle de cloisonnement sur chacun.
+
+**Lot 2, ce qui est livré (30 octobre 2026).** L'interrupteur par organisation
+est `organisations.espace_reorganise` (migration 0016), posé par
+`PATCH /api/veille/organisations` (`action: espace`), refusé hors du pilote des
+outils ; il vaudra pour les lots 3 à 6. Le rail lit le drapeau par
+`espaceDeLOrganisation` (mémoïsée par requête, bornée à 400 ms, `null` dans le
+doute : le rail garde alors ses sept écrans). « Concurrents » montre la carte de
+la dernière synthèse publiée, chaque nom menant à sa fiche, puis une case par
+concurrent de la grille (veille `concurrentiel`, l'organisation exclue) : ses
+deux crans, déclaratif ou non, le nombre de faits datés qui le nomment, ce qui a
+bougé en tête ; puis les dossiers ouverts sur un concurrent. La fiche réunit sa
+position et l'historique de ses crans publiés, ses faits étiquetés (phrase-titre
+relue dans les quatre dernières lettres, lien vers la lettre), ses chiffres
+publiés au registre (benchmark du dernier trimestre publié) et les passages des
+quatre dernières lettres qui le nomment. « Acteurs » perd la carte et les
+dossiers des concurrents, garde Mendelow et le reste. Aucune lecture Notion de
+plus que la liste des éditions, hormis les quatre corps de la fiche, déjà en
+cache. La santé financière au BODACC, entité par entité, n'est pas encore lue :
+le benchmark donne les comptes publiés, pas les procédures.
 
 ## 8. Ce qu'il faut trancher
 

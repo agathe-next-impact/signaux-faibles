@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée, type Base } from '@/lib/base/client'
 import {
@@ -6,14 +7,18 @@ import {
   faitsConnus,
   faitsDeLaFenêtre,
   faitsDesÉditions,
+  faitsDUneEntité,
+  faitsParEntité,
   lireLaGrille,
   lireLaSynthèse,
   modifierUnÉnoncé,
   organisationPourLesOutils,
+  positionsPubliées,
   posterLaGrille,
   périodesDesSynthèses,
   publierLaSynthèse,
   remplacerLesÉtiquettes,
+  réglerLEspaceRéorganisé,
   réglerLesOutilsStratégiques,
   synthèsePrécédente,
   validerLaGrille,
@@ -25,17 +30,22 @@ import {
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
+  nomsDesConcurrents,
   périodesAPublier,
   vueDeLaCarte,
+  vueDeLaFiche,
+  vueDesConcurrents,
   vueDeLaSwot,
   vueDeLaTows,
   vueDeMendelow,
   vueDesForces,
   vueDesScénarios,
   vueDuPestel,
+  type FicheDuConcurrent,
   type ForceLue,
   type ScénarioLu,
   type SynthèsesDUneOrganisation,
+  type VueDesConcurrents,
   type VueDeLaCarte,
   type VueDeLaSwot,
   type VueDeLaTows,
@@ -57,6 +67,7 @@ import {
   rendreLaSynthèse,
   trousDuPestel,
   type CaseSwot,
+  type LigneDeBenchmark,
   type ForcePorter,
   type Grille,
   type LectureDesÉtiquettes,
@@ -857,18 +868,18 @@ export async function modifierLÉnoncéDuPilote(
 }
 
 /** Une lecture bornée dans le temps : `null` au-delà du délai, ou sur toute erreur, sans faire tomber l'écran. */
-async function bornée<T>(nom: string, lecture: () => Promise<T | null>): Promise<T | null> {
+async function bornée<T>(nom: string, lecture: () => Promise<T | null>, ms: number = DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS): Promise<T | null> {
   if (!baseConfigurée() || sourceAccès() === 'notion') return null
   let minuterie: ReturnType<typeof setTimeout> | undefined
   const délai = new Promise<null>((résoudre) => {
-    minuterie = setTimeout(() => résoudre(null), DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS)
+    minuterie = setTimeout(() => résoudre(null), ms)
   })
   try {
     const promesse = lecture()
     promesse.catch(() => undefined)
     const r = await Promise.race([promesse.then((x) => ({ x })), délai])
     if (r === null) {
-      console.warn(`[stratégie] ${nom} en plus de ${DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS} ms, section non montrée.`)
+      console.warn(`[stratégie] ${nom} en plus de ${ms} ms, section non montrée.`)
       return null
     }
     return r.x
@@ -988,5 +999,128 @@ export async function pestelDeLEspace(
       noms,
       { début, fin },
     )
+  })
+}
+
+// ── L'espace réorganisé (lot 2, 30 octobre 2026) ─────────────────────────────
+
+/**
+ * Ouvre ou referme l'espace réorganisé d'une organisation
+ * (`PATCH /api/veille/organisations`, action `espace`). Refusé hors du pilote
+ * des outils : les écrans par outil lisent la grille et les synthèses.
+ */
+export async function réglerLEspace(
+  entrée: { readonly slug: string; readonly actif: boolean },
+  db?: Base,
+): Promise<'réglé' | 'organisation-inconnue' | 'hors-pilote'> {
+  return réglerLEspaceRéorganisé(entrée, db)
+}
+
+export type EspaceDeLOrganisation = {
+  readonly réorganisé: boolean
+  /** Les concurrents de la grille, l'organisation exclue : ce qu'« Acteurs » laisse à « Concurrents ». */
+  readonly concurrents: readonly string[]
+}
+
+const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, concurrents: [] }
+
+/**
+ * L'espace de l'organisation de la session est-il réorganisé ? Le rail le
+ * demande à chaque page, « Acteurs » aussi : la lecture est **mémoïsée par
+ * requête**, et bornée à 400 ms comme le droit de lecture. `null` dans le doute
+ * (base absente, `SOURCE_ACCES=notion`, base lente) : le rail garde alors ses
+ * sept écrans, et un écran par outil le dit plutôt que de répondre 404.
+ */
+export async function espaceDeLOrganisation(registre: string, db?: Base): Promise<EspaceDeLOrganisation | null> {
+  return espaceMémoïsé(normaliserIdentifiant(registre), db)
+}
+
+const espaceMémoïsé = cache(async (registre: string, db?: Base): Promise<EspaceDeLOrganisation | null> =>
+  bornée(
+    'lecture de l’espace réorganisé',
+    async () => {
+      const organisation = await organisationPourLesOutils({ registreNotion: registre }, db)
+      if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return NON_RÉORGANISÉ
+      const grille = await lireLaGrille(organisation.id, db)
+      return { réorganisé: true, concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [] }
+    },
+    DÉLAI_DE_LECTURE_STRATÉGIQUE_MS,
+  ),
+)
+
+export type ConcurrentsDeLEspace = {
+  /** La période de la dernière synthèse mensuelle publiée, ou `null` s'il n'y en a pas. */
+  readonly période: string | null
+  readonly carte: VueDeLaCarte | null
+  readonly vue: VueDesConcurrents
+}
+
+/**
+ * L'écran « Concurrents » : la carte de la dernière synthèse publiée et la
+ * liste des concurrents de la grille, avec leurs crans et le nombre de faits
+ * qui les nomment. Par le registre de la session (règle 2), sans aucune lecture
+ * Notion. `null` hors de l'espace réorganisé, sans grille, ou dans le doute.
+ */
+export async function concurrentsDeLEspace(
+  entrée: { readonly registre: string },
+  db?: Base,
+): Promise<ConcurrentsDeLEspace | null> {
+  return bornée('lecture des concurrents', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
+    const [mois, grille, comptes] = await Promise.all([
+      dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois' }, db),
+      lireLaGrille(organisation.id, db),
+      faitsParEntité({ organisationId: organisation.id }, db),
+    ])
+    if (!grille) return null
+    const [précédente, connus] = await Promise.all([
+      mois ? dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois', avant: mois.période }, db) : null,
+      faitsConnus({ organisationId: organisation.id, ids: (mois?.positions ?? []).flatMap((p) => p.faits) }, db),
+    ])
+    const faits = new Map([...connus].map(([id, f]) => [id, { date: f.date, édition: f.édition ?? '' }]))
+    return {
+      période: mois?.période ?? null,
+      carte: mois ? vueDeLaCarte(grille.grille, mois.positions, précédente?.positions ?? [], organisation.nom, faits) : null,
+      vue: vueDesConcurrents(grille.grille, mois?.positions ?? [], précédente?.positions ?? [], comptes, organisation.nom),
+    }
+  })
+}
+
+export type FicheLue = { readonly sorte: 'fiche'; readonly fiche: FicheDuConcurrent } | { readonly sorte: 'inconnu' }
+
+/**
+ * La fiche d'un concurrent : position et historique de ses crans publiés, ses
+ * faits étiquetés, ses chiffres du registre lus par le benchmark du dernier
+ * trimestre publié. Le concurrent est retrouvé par le segment d'URL **dans la
+ * grille de l'organisation de la session** : un segment inconnu rend `inconnu`,
+ * et rien venu de l'URL n'atteint la base autrement que comparé à cette grille.
+ */
+export async function ficheDuConcurrent(
+  entrée: { readonly registre: string; readonly segment: string },
+  db?: Base,
+): Promise<FicheLue | null> {
+  return bornée('lecture d’une fiche concurrent', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
+    const grille = await lireLaGrille(organisation.id, db)
+    if (!grille) return null
+    const vide = vueDeLaFiche(grille.grille, entrée.segment, [], [], null)
+    if (!vide) return { sorte: 'inconnu' }
+    const [lignes, faits, trimestre] = await Promise.all([
+      positionsPubliées({ organisationId: organisation.id, outil: 'groupes' }, db),
+      faitsDUneEntité({ organisationId: organisation.id, entité: vide.nom }, db),
+      dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db),
+    ])
+    const valeur = trimestre?.éléments.find((é) => é.outil === 'benchmark')?.valeur as { lignes?: unknown } | null | undefined
+    const benchmark = trimestre && Array.isArray(valeur?.lignes) ? { période: trimestre.période, lignes: valeur.lignes as readonly LigneDeBenchmark[] } : null
+    const fiche = vueDeLaFiche(
+      grille.grille,
+      entrée.segment,
+      lignes,
+      faits.map((f) => ({ date: f.dateFait, édition: f.éditionNotion, empreinte: f.empreinteTitre, pestel: f.pestel, porter: f.forcePorter, impact: f.impact, rupture: f.rupture })),
+      benchmark,
+    )
+    return fiche ? { sorte: 'fiche', fiche } : { sorte: 'inconnu' }
   })
 }

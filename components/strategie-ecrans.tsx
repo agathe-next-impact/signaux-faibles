@@ -1,4 +1,5 @@
-import { Case, Grille } from '@/components/coquille'
+import Link from 'next/link'
+import { Case, Grille, LienFlèche } from '@/components/coquille'
 import {
   dateCourte,
   LIBELLÉS_MENDELOW,
@@ -6,6 +7,8 @@ import {
   libelléDePériode,
   STRATÉGIES_MENDELOW,
   TYPES_DE_TOWS,
+  type ConcurrentVu,
+  type FicheDuConcurrent,
   type ForceLue,
   type ScénarioLu,
   type VueDeLaCarte,
@@ -51,7 +54,8 @@ function Numéro({ n }: { n: number }) {
 
 // ── Acteurs ──────────────────────────────────────────────────────────────────
 
-export function CarteDesGroupes({ carte }: { carte: VueDeLaCarte }) {
+/** `lien` mène d'un nom de la carte à sa fiche (espace réorganisé) ; sans lui, les noms restent du texte. */
+export function CarteDesGroupes({ carte, lien }: { carte: VueDeLaCarte; lien?: (sujet: string) => string | null }) {
   const lignes = carte.lignes.crans.map((libellé, i) => ({ cran: i + 1, libellé })).reverse()
   const colonnes = carte.colonnes.crans.map((libellé, i) => ({ cran: i + 1, libellé }))
   return (
@@ -99,7 +103,17 @@ export function CarteDesGroupes({ carte }: { carte: VueDeLaCarte }) {
                       <div key={o.sujet} className="flex flex-col gap-1">
                         <p className="flex gap-2 leading-snug">
                           <Pastille couleur={o.organisation ? 'encre' : o.aBougé ? 'rose' : 'ardoise'} />
-                          <span className={o.organisation || o.aBougé ? 'font-medium text-encre' : 'text-encre'}>{o.sujet}</span>
+                          {(() => {
+                            const classe = o.organisation || o.aBougé ? 'font-medium text-encre' : 'text-encre'
+                            const href = o.organisation ? null : (lien?.(o.sujet) ?? null)
+                            return href ? (
+                              <Link href={href} className={`${classe} underline decoration-gris-ligne underline-offset-2 hover:decoration-encre`}>
+                                {o.sujet}
+                              </Link>
+                            ) : (
+                              <span className={classe}>{o.sujet}</span>
+                            )
+                          })()}
                         </p>
                         {o.organisation ? <p className="label-mono text-ardoise">Vous</p> : null}
                         {o.venuDe ? (
@@ -196,6 +210,108 @@ export function SynthèseDesActeurs({ période, carte, mendelow }: { période: s
             {mendelow.déclaratifs > 0 ? ` ${déclarés(mendelow.déclaratifs, mendelow.placés)}` : ''}
           </p>
           <MatriceDeMendelow mendelow={mendelow} />
+        </section>
+      ) : null}
+    </div>
+  )
+}
+
+// ── Concurrents (lot 2 de la réorganisation, 30 octobre 2026) ────────────────
+
+/** Les crans d'un concurrent, un par axe de la carte, en mono. */
+function Crans({ crans }: { crans: ConcurrentVu['crans'] }) {
+  if (crans.length === 0) return <p className="text-sm text-ardoise">Pas encore placé sur la carte.</p>
+  return (
+    <dl className="flex flex-col gap-1">
+      {crans.map((c) => (
+        <div key={c.axe} className="flex flex-wrap gap-x-2">
+          <dt className="label-mono text-ardoise">{c.axe}</dt>
+          <dd className="text-sm text-encre">{c.libellé}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/** Une case par concurrent de la grille, cliquable en entier vers sa fiche. */
+export function ListeDesConcurrents({ slug, concurrents }: { slug: string; concurrents: readonly ConcurrentVu[] }) {
+  return (
+    <Grille colonnes={3} étiquette="Les concurrents suivis">
+      {concurrents.map((c) => (
+        <Case key={c.segment} accent={c.aBougé}>
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="font-titre text-h3 font-semibold text-encre">{c.nom}</h3>
+            {c.aBougé ? <p className="label-mono shrink-0 text-encre">A bougé</p> : null}
+          </div>
+          <Crans crans={c.crans} />
+          <p className="label-mono text-ardoise">
+            {c.faits > 0 ? `${c.faits} fait${c.faits > 1 ? 's' : ''} daté${c.faits > 1 ? 's' : ''}, le dernier du ${dateCourte(c.dernierFait ?? '')}` : 'Aucun fait daté'}
+            {c.déclaratif ? ' · déclaratif' : ''}
+          </p>
+          <div className="mt-auto">
+            <LienFlèche href={`/${slug}/concurrents/${c.segment}`} étendu>
+              Fiche
+            </LienFlèche>
+          </div>
+        </Case>
+      ))}
+    </Grille>
+  )
+}
+
+const montant = (n: number | null) => (n === null ? 'n.d.' : `${new Intl.NumberFormat('fr-FR').format(n)} €`)
+
+/** La position, l'historique et les chiffres d'une fiche concurrent ; les faits et les passages sont rendus par la page. */
+export function PositionDuConcurrent({ fiche }: { fiche: FicheDuConcurrent }) {
+  return (
+    <div className="flex flex-col gap-10">
+      <section className="flex flex-col gap-4">
+        <TitreDeSection titre="Sa position" mention="Carte des groupes stratégiques" />
+        {fiche.position ? (
+          <>
+            <p className="max-w-[68ch] text-ardoise">
+              Synthèse {libelléDePériode(fiche.position.période)}.{' '}
+              {fiche.position.déclaratif
+                ? 'Position lue dans le corpus de votre veille (déclaratif), en attendant un fait daté.'
+                : 'Position appuyée sur un fait daté d’une lettre.'}
+            </p>
+            <Crans crans={fiche.position.crans} />
+          </>
+        ) : (
+          <p className="text-ardoise">Aucune synthèse publiée ne le place encore sur la carte.</p>
+        )}
+        {fiche.historique.length > 1 ? (
+          <ol className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne" aria-label="Historique de ses crans">
+            {fiche.historique.map((h) => (
+              <li key={h.période} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3">
+                <p className="label-mono w-40 shrink-0 text-ardoise">Synthèse {libelléDePériode(h.période)}</p>
+                <p className="flex-1 text-sm text-encre">{h.crans.map((c) => c.libellé).join(' · ')}</p>
+                <p className={`label-mono ${h.aBougé ? 'text-encre' : 'text-ardoise'}`}>{h.aBougé ? 'A bougé' : h.déclaratif ? 'Déclaratif' : 'Sans mouvement'}</p>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </section>
+
+      {fiche.chiffres ? (
+        <section className="flex flex-col gap-4">
+          <TitreDeSection titre="Ses chiffres publiés" mention="Registre des entreprises" />
+          <p className="max-w-[68ch] text-ardoise">
+            Lus au registre pour le trimestre {libelléDePériode(fiche.chiffres.période)}. Un chiffre absent n’est pas publié, il n’est pas nul.
+          </p>
+          <dl className="grid grid-cols-1 border-t border-l border-gris-ligne sm:grid-cols-4">
+            {[
+              ['Situation', fiche.chiffres.active === null ? 'n.d.' : fiche.chiffres.active ? 'active' : 'cessée'],
+              ['Exercice', fiche.chiffres.année ?? 'n.d.'],
+              ['Chiffre d’affaires', montant(fiche.chiffres.chiffreDAffaires)],
+              ['Résultat net', montant(fiche.chiffres.résultatNet)],
+            ].map(([intitulé, valeur]) => (
+              <div key={intitulé} className="flex flex-col gap-1 border-r border-b border-gris-ligne p-4">
+                <dt className="label-mono text-ardoise">{intitulé}</dt>
+                <dd className="text-encre">{valeur}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
       ) : null}
     </div>
