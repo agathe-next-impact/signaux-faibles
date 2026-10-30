@@ -42,8 +42,8 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
                   <li key={m.mois} className={`flex min-h-[160px] flex-col gap-2 border-r border-b border-gris-ligne p-2.5 ${m.échéances.length > 0 ? 'bg-blanc' : 'bg-fond-neutre'}`}>
                     <p className="label-mono text-encre">{m.libellé}</p>
                     {m.échéances.map((é) => (
-                      <div key={`${é.date}-${é.libellé}`} className="flex flex-col gap-0.5 border-t border-gris-ligne pt-1.5">
-                        <p className="font-mono text-label text-ardoise">{dateCourte(é.date)}</p>
+                      <div key={`${é.date}-${é.libellé}`} className="flex flex-col gap-0.5 border-t-2 border-ocre pt-1.5">
+                        <p className="font-mono text-label text-ocre-texte">{dateCourte(é.date)}</p>
                         <p className="text-sm leading-snug text-encre">{é.libellé}</p>
                         {é.famille ? <p className="font-mono text-label text-ardoise">{é.famille}</p> : null}
                       </div>
