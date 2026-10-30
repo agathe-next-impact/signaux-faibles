@@ -84,8 +84,10 @@ du pilote des outils ; L'Hermitage seulement) ajoute au rail « Concurrents »
 (`/[slug]/concurrents`, carte et concurrents de la grille) et la fiche de chacun
 (`/[slug]/concurrents/[concurrent]`), et recentre « Acteurs » sur Mendelow et
 les dossiers hors concurrents ; ailleurs, les sept écrans restent
-(`espaceDeLOrganisation`, `concurrentsDeLEspace`, `ficheDuConcurrent`, 404 avant
-toute lecture hors de l'espace réorganisé, garde d'architecture). Le lot 3
+(`espaceDeLOrganisation`, bornée à 1 500 ms depuis le 30 octobre 2026 : à
+400 ms, une visite de L'Hermitage a reçu l'espace d'avant ; `concurrentsDeLEspace`,
+`ficheDuConcurrent`, 404 avant toute lecture hors de l'espace réorganisé, garde
+d'architecture). Le lot 3
 (même jour) y sort chaque outil dans son écran : « Forces du marché »
 (`/[slug]/forces`), « PESTEL » (`/[slug]/pestel`, l'onglet de « Les axes » en
 écran), « Diagnostic » (`/[slug]/diagnostic`, la SWOT, codes en ancres) et
