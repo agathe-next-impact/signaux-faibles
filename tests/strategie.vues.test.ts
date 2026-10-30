@@ -192,7 +192,7 @@ describe('SWOT et TOWS', () => {
 
   it('code les éléments par case et les date par le fait le plus récent et sa lettre', () => {
     const { swot, codes } = vueDeLaSwot(éléments, FAITS, new Map([['page9', 9]]))
-    expect(swot.forces).toEqual([{ code: 'F1', énoncé: 'É.', source: 'Déclaratif · votre fiche' }])
+    expect(swot.forces).toEqual([{ code: 'F1', énoncé: 'É.', source: 'Déclaratif · votre fiche', édition: null }])
     expect(swot.faiblesses[0]!.code).toBe('Fa1')
     expect(swot.opportunites.map((é) => [é.code, é.source])).toEqual([
       ['O1', 'Fait du 15/10 · lettre n° 9'],

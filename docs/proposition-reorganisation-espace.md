@@ -7,7 +7,8 @@ lieu de la discussion que demande la règle « pas d'autre écran sans
 discussion » de `CLAUDE.md`. Lot 1 (positions déclaratives) codé le
 30 octobre 2026, lot 2 (Concurrents, fiche concurrent, Acteurs recentré) le
 même jour, derrière l'interrupteur `organisations.espace_reorganise`, et lot 3
-(un écran par outil, rail en rubriques) dans la foulée.
+(un écran par outil, rail en rubriques) et lot 4 (tableau de bord en cases,
+bandeaux « En bref », listes repliées, liens internes) dans la foulée.
 
 ## 1. Le constat
 
@@ -205,6 +206,22 @@ l'option retenue et la TOWS, dont les codes mènent à l'élément du diagnostic
 puis les actions des lettres. Un écran sans donnée publiée reste dans le rail et
 le dit ; le cacher demanderait au rail de lire les synthèses à chaque page. Les
 barres et graphiques sont pour le lot 5.
+
+**Lot 4, ce qui est livré (30 octobre 2026).** La vue d'ensemble d'un espace
+réorganisé porte, sous l'action de la semaine, la section « Votre espace » : une
+case par écran (onze, dans l'ordre du rail), avec sa rubrique, son chiffre clé
+et une mention, cliquable en entier (`casesDuTableauDeBord`). Les chiffres
+viennent de ce que l'écran lit déjà (lettres, axes de la semaine, dossiers,
+étiquettes des trois dernières lettres) et de la synthèse publiée, lue en même
+temps que les étiquettes ; un chiffre absent s'écrit « n.d. » ou « pas encore
+publié ». Les écrans Concurrents, Acteurs, Forces du marché, PESTEL, Diagnostic
+et Scénarios s'ouvrent sur un bandeau « En bref » de trois chiffres, sans
+phrase : les phrases reprises de la synthèse sont déjà sur l'écran, et en écrire
+pour lui serait rédiger. Au-delà de six concurrents, cinq dossiers ou quatre
+semaines d'actions, le reste se replie (`details` natif, sans script, la liste
+entière reste dans le HTML). Liens internes : la source d'un élément SWOT daté
+mène à sa lettre (parmi celles listées pour l'organisation), un dossier de
+l'accueil qui nomme un concurrent mène à sa fiche.
 
 ## 8. Ce qu'il faut trancher
 

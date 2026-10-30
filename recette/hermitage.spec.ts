@@ -224,6 +224,21 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await expect(page.getByText(/^Famille \d+$/)).toHaveCount(0)
   })
 
+  test('lecture rapide : tableau de bord en cases, bandeaux « En bref », listes repliées', async () => {
+    test.skip(!parOutil, 'écrans par outil absents')
+    await page.goto(`/${SLUG}`)
+    const espace = await page.getByRole('heading', { name: 'Votre espace' }).isVisible()
+    test.skip(!espace, 'lot 4 non déployé : pas de tableau de bord en cases')
+    await expect(page.getByRole('list', { name: 'Les écrans de votre espace' }).getByRole('listitem')).toHaveCount(11)
+    await page.screenshot({ path: `${SORTIES}/tableau-de-bord.png`, fullPage: true })
+    await ouvrir(`/${SLUG}/concurrents`, 'concurrents-lot4')
+    await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
+    await expect(page.getByText(/Voir les \d+ autres concurrents/)).toBeVisible()
+    await ouvrir(`/${SLUG}/diagnostic`, 'diagnostic-lot4')
+    await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^Fait du .* lettre n° \d+$/ }).first()).toBeVisible()
+  })
+
   test('recommandations : l’option retenue de septembre, et le reste selon l’espace', async () => {
     await ouvrir(`/${SLUG}/recommandations`, 'recommandations')
     await expect(page.getByRole('heading', { name: 'Options stratégiques' })).toBeVisible()

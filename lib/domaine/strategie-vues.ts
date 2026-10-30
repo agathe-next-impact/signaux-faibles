@@ -391,6 +391,8 @@ export type ÉlémentDeLaSwot = {
   readonly énoncé: string
   /** « Déclaratif · votre fiche » ou « Fait du 15/10 · lettre n° 9 ». */
   readonly source: string
+  /** La lettre du fait le plus récent (32 hexadécimaux), pour y mener ; nulle pour un élément déclaratif. */
+  readonly édition: string | null
 }
 export type VueDeLaSwot = Readonly<Record<CaseSwot, readonly ÉlémentDeLaSwot[]>>
 
@@ -417,7 +419,7 @@ export function vueDeLaSwot(
         : fait
           ? `Fait du ${dateCourte(fait.date)}${numéro ? ` · lettre n° ${numéro}` : ''}`
           : 'Faits de vos lettres'
-    swot[c].push({ code, énoncé: é.énoncé ?? '', source })
+    swot[c].push({ code, énoncé: é.énoncé ?? '', source, édition: é.origine === 'declaratif' ? null : (fait?.édition || null) })
   }
   return { swot, codes }
 }
@@ -454,7 +456,15 @@ export function vueDeLaTows(éléments: readonly ÉlémentLu[], codes: ReadonlyM
 const LIBELLÉS_INTENSITÉ = ['Contenue', 'Marquée', 'Intense'] as const
 const LIBELLÉS_TENDANCE: Readonly<Record<string, string>> = { hausse: 'en hausse', stable: 'stable', baisse: 'en baisse' }
 
-export type ForceLue = { readonly force: ForcePorter; readonly libellé: string; readonly lecture: string; readonly nonSuivi: boolean }
+export type ForceLue = {
+  readonly force: ForcePorter
+  readonly libellé: string
+  readonly lecture: string
+  readonly nonSuivi: boolean
+  /** 1 contenue, 2 marquée, 3 intense ; nul pour une force non suivie. */
+  readonly cran: number | null
+  readonly tendance: string | null
+}
 
 /** Les cinq forces, dans l'ordre du cadre ; une force absente de la synthèse n'est pas inventée. */
 export function vueDesForces(positions: readonly PositionLue[]): readonly ForceLue[] {
@@ -466,6 +476,8 @@ export function vueDesForces(positions: readonly PositionLue[]): readonly ForceL
         force,
         libellé: LIBELLÉS_PORTER[force],
         nonSuivi: p.nonSuivi,
+        cran: p.nonSuivi ? null : p.cran,
+        tendance: p.nonSuivi ? null : p.tendance,
         lecture: p.nonSuivi
           ? 'Non suivi'
           : `${LIBELLÉS_INTENSITÉ[(p.cran ?? 1) - 1] ?? `Cran ${p.cran}`}${p.tendance ? ` · ${LIBELLÉS_TENDANCE[p.tendance] ?? p.tendance}` : ''}`,
@@ -665,4 +677,83 @@ export function périodesAPublier(comptes: readonly ComptesDePériode[]): Synth�
   return [...parOrganisation.entries()]
     .map(([slug, e]) => ({ slug, nom: e.nom, périodes: [...e.périodes].sort((a, b) => rang(b.période).localeCompare(rang(a.période))) }))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}
+
+// ── En bref (lot 4 de la réorganisation, 30 octobre 2026) ────────────────────
+
+/**
+ * Trois chiffres en tête d'écran, comptés sur ce que l'écran montre déjà :
+ * jamais rédigés pour l'écran, jamais une note. Un chiffre que la synthèse ne
+ * porte pas n'est pas inventé ; la case dit alors « n.d. ».
+ */
+export type ChiffreEnBref = { readonly intitulé: string; readonly valeur: number | string; readonly mention?: string | null }
+
+const pluriel = (n: number, mot: string, mots = `${mot}s`) => `${n} ${n > 1 ? mots : mot}`
+
+/** Combien de sujets ont changé de case depuis la synthèse publiée précédente, l'organisation exclue. */
+export function mouvementsDeLaCarte(carte: VueDeLaCarte | null): number {
+  if (!carte) return 0
+  return [...carte.cases.values()].flat().filter((o) => o.aBougé && !o.organisation).length
+}
+
+export function enBrefDesConcurrents(vue: VueDesConcurrents): readonly ChiffreEnBref[] {
+  const placés = vue.concurrents.length - vue.nonPlacés
+  const déclaratifs = vue.concurrents.filter((c) => c.déclaratif).length
+  const cités = vue.concurrents.filter((c) => c.faits > 0).length
+  return [
+    { intitulé: 'Concurrents suivis', valeur: vue.concurrents.length, mention: `${placés} placés sur la carte` },
+    { intitulé: 'Ont changé de case', valeur: vue.mouvements.length, mention: 'depuis la synthèse précédente' },
+    { intitulé: 'Cités par vos lettres', valeur: cités, mention: déclaratifs > 0 ? `${pluriel(déclaratifs, 'position')} lue${déclaratifs > 1 ? 's' : ''} dans le corpus` : null },
+  ]
+}
+
+export function enBrefDeLaSwot(swot: VueDeLaSwot): readonly ChiffreEnBref[] {
+  const tous = CASES_SWOT.flatMap((c) => swot[c])
+  const déclaratifs = tous.filter((é) => é.édition === null && é.source.startsWith('Déclaratif')).length
+  return [
+    { intitulé: 'Éléments de la SWOT', valeur: tous.length, mention: `${pluriel(déclaratifs, 'déclaratif')}, ${tous.length - déclaratifs} datés` },
+    { intitulé: 'Opportunités', valeur: swot.opportunites.length, mention: 'tirées des faits de vos lettres' },
+    { intitulé: 'Menaces', valeur: swot.menaces.length, mention: 'tirées des faits de vos lettres' },
+  ]
+}
+
+export function enBrefDesForces(forces: readonly ForceLue[]): readonly ChiffreEnBref[] {
+  const suivies = forces.filter((f) => !f.nonSuivi)
+  return [
+    { intitulé: 'Forces suivies', valeur: `${suivies.length} sur ${forces.length}`, mention: forces.length - suivies.length > 0 ? `${pluriel(forces.length - suivies.length, 'non suivie')}` : null },
+    { intitulé: 'Intenses', valeur: suivies.filter((f) => f.cran === 3).length, mention: 'au troisième cran' },
+    { intitulé: 'En hausse', valeur: suivies.filter((f) => f.tendance === 'hausse').length, mention: 'sur le trimestre' },
+  ]
+}
+
+export function enBrefDuPestel(vue: VueDuPestel): readonly ChiffreEnBref[] {
+  const tête = [...vue.dimensions].sort((a, b) => b.faits - a.faits)[0]
+  const ruptures = vue.dimensions.reduce((n, d) => n + d.ruptures, 0)
+  return [
+    { intitulé: 'Faits datés', valeur: vue.total, mention: 'sur treize semaines' },
+    { intitulé: 'Dimension la plus citée', valeur: tête && tête.faits > 0 ? tête.libellé : 'n.d.', mention: tête && tête.faits > 0 ? pluriel(tête.faits, 'fait') : null },
+    { intitulé: 'Ruptures', valeur: ruptures, mention: vue.trous.length > 0 ? `${pluriel(vue.trous.length, 'dimension')} peu couverte${vue.trous.length > 1 ? 's' : ''}` : null },
+  ]
+}
+
+export function enBrefDesScénarios(scénarios: readonly ScénarioLu[]): readonly ChiffreEnBref[] {
+  const indicateurs = scénarios.reduce((n, s) => n + s.indicateurs.length, 0)
+  const familles = new Set(scénarios.flatMap((s) => s.indicateurs.map((i) => i.famille))).size
+  return [
+    { intitulé: 'Scénarios', valeur: scénarios.length, mention: 'aucune probabilité' },
+    { intitulé: 'Indicateurs à guetter', valeur: indicateurs, mention: 'datables et cherchables' },
+    { intitulé: 'Thèmes qui les suivent', valeur: familles, mention: 'dans vos lettres' },
+  ]
+}
+
+/** La synthèse publiée telle que les écrans la lisent : le mois et le trimestre, chacun absent s'il n'est pas publié. */
+export type SynthèseVue = {
+  readonly mois: {
+    readonly période: string
+    readonly carte: VueDeLaCarte | null
+    readonly mendelow: VueDeMendelow
+    readonly swot: VueDeLaSwot
+    readonly tows: VueDeLaTows
+  } | null
+  readonly trimestre: { readonly période: string; readonly forces: readonly ForceLue[]; readonly scénarios: readonly ScénarioLu[] } | null
 }

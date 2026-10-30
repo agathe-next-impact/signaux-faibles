@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
-import { TroisScénarios } from '@/components/strategie-ecrans'
-import { libelléDePériode } from '@/lib/domaine/strategie-vues'
+import { EnBref, TroisScénarios } from '@/components/strategie-ecrans'
+import { enBrefDesScénarios, libelléDePériode } from '@/lib/domaine/strategie-vues'
 import { semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 
@@ -27,9 +27,12 @@ export default async function Scénarios({ params }: { params: Promise<{ slug: s
     <>
       <EntêteÉcran surtitre="stratégie" titre="Ce qui peut arriver" état={trimestre ? `trimestre ${libelléDePériode(trimestre.période)}` : undefined} />
       {trimestre ? (
-        <div className="mt-8">
-          <TroisScénarios scénarios={trimestre.scénarios} />
-        </div>
+        <>
+          <EnBref chiffres={enBrefDesScénarios(trimestre.scénarios)} />
+          <div className="mt-8">
+            <TroisScénarios scénarios={trimestre.scénarios} />
+          </div>
+        </>
       ) : (
         <p className="mt-5 text-ardoise">Aucun scénario n’est publié pour l’instant. Ils paraissent avec la revue de chaque trimestre.</p>
       )}

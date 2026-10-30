@@ -82,7 +82,15 @@ toute lecture hors de l'espace réorganisé, garde d'architecture). Le lot 3
 « Scénarios » (`/[slug]/scenarios`) ; « Recommandations » devient « Options »
 (option retenue et TOWS, codes menant au diagnostic, puis les actions des
 lettres) ; le rail est groupé en rubriques (`Onglet.rubrique` : Cette semaine,
-Le marché, L'environnement, Stratégie, Votre veille), douze écrans. Une période
+Le marché, L'environnement, Stratégie, Votre veille), douze écrans. Le lot 4
+(même jour) donne à la vue d'ensemble une case par écran avec son chiffre clé
+(`casesDuTableauDeBord`, `lib/domaine/tableau-de-bord.ts`, calculé sur ce que
+l'écran lit déjà plus la synthèse publiée), un bandeau « En bref » de trois
+chiffres en tête des écrans par outil (`enBref…`, `lib/domaine/strategie-vues.ts`,
+comptés, jamais rédigés), les longues listes repliées derrière un `details`
+natif (`components/repliable.tsx` : concurrents au-delà de six, dossiers au-delà
+de cinq, semaines d'actions au-delà de quatre) et des liens internes (un élément
+SWOT daté vers sa lettre, un dossier concurrent de l'accueil vers sa fiche). Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la
