@@ -514,6 +514,8 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('l’espace réorganisé : un écran par lecture, bornée, et 404 avant la lecture hors du pilote', () => {
     expect(appelants('concurrentsDeLEspace')).toEqual(['app/(portail)/[slug]/concurrents/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('ficheDuConcurrent')).toEqual(['app/(portail)/[slug]/concurrents/[concurrent]/page.tsx', 'lib/portail/strategie.ts'])
+    expect(appelants('faitsRécentsDeLEspace')).toEqual(['app/(portail)/[slug]/axes/page.tsx', 'app/(portail)/[slug]/page.tsx', 'lib/portail/strategie.ts'])
+    expect(appelants('indicateursDeLEspace')).toEqual(['app/(portail)/[slug]/indicateurs/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('espaceDeLOrganisation')).toEqual([
       'app/(portail)/[slug]/acteurs/page.tsx',
       'app/(portail)/[slug]/axes/page.tsx',
@@ -521,6 +523,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/concurrents/page.tsx',
       'app/(portail)/[slug]/diagnostic/page.tsx',
       'app/(portail)/[slug]/forces/page.tsx',
+      'app/(portail)/[slug]/indicateurs/page.tsx',
       'app/(portail)/[slug]/layout.tsx',
       'app/(portail)/[slug]/page.tsx',
       'app/(portail)/[slug]/pestel/page.tsx',
@@ -531,12 +534,12 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
     const section = source.slice(source.indexOf('// ── L\'espace réorganisé (lot 2'))
     expect(section).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
-    for (const nom of ['concurrentsDeLEspace', 'ficheDuConcurrent']) {
+    for (const nom of ['concurrentsDeLEspace', 'ficheDuConcurrent', 'faitsRécentsDeLEspace', 'indicateursDeLEspace']) {
       const corps = section.slice(section.indexOf(`export async function ${nom}(`))
       expect(corps.indexOf("bornée('"), nom).toBeGreaterThan(0)
       expect(corps.indexOf('espaceRéorganisé'), nom).toBeGreaterThan(0)
     }
-    // Les écrans par outil (lots 2 et 3) : 404 hors de l'espace réorganisé, avant toute autre lecture.
+    // Les écrans par outil (lots 2, 3 et 5) : 404 hors de l'espace réorganisé, avant toute autre lecture.
     const parOutil = [
       join('concurrents', 'page.tsx'),
       join('concurrents', '[concurrent]', 'page.tsx'),
@@ -544,12 +547,13 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       join('pestel', 'page.tsx'),
       join('diagnostic', 'page.tsx'),
       join('scenarios', 'page.tsx'),
+      join('indicateurs', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|notesDeLaSemaine)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|notesDeLaSemaine)\(/))
     }
   })
 
@@ -989,11 +993,11 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     }
   })
 
-  it('l’espace réorganisé : douze écrans en rubriques, chacun avec sa route', async () => {
+  it('l’espace réorganisé : treize écrans en rubriques, chacun avec sa route', async () => {
     const { ongletsDe } = await import('@/lib/portail/semaine')
     const comptes = { lettres: 2, recommandations: 0, archives: 1 }
     const onglets = ongletsDe('client', comptes, 'complète', { réorganisé: true })
-    expect(onglets).toHaveLength(12)
+    expect(onglets).toHaveLength(13)
     for (const onglet of onglets) {
       const segment = onglet.href.replace(/^\/client\/?/, '')
       const chemin = join(process.cwd(), 'app', '(portail)', '[slug]', ...(segment ? [segment] : []), 'page.tsx')

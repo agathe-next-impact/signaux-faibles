@@ -40,7 +40,7 @@ export default async function Pestel({ params }: { params: Promise<{ slug: strin
         <>
           <EnBref chiffres={enBrefDuPestel(pestel)} />
           <div className="mt-8">
-            <VuePestel vue={pestel} />
+            <VuePestel vue={pestel} barres />
           </div>
         </>
       ) : (

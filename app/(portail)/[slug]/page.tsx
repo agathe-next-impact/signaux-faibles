@@ -17,7 +17,8 @@ import {
   semainesPubliées,
 } from '@/lib/portail/semaine'
 import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat'
-import { espaceDeLOrganisation, lectureStratégiqueDeLEspace, synthèseDeLEspace } from '@/lib/portail/strategie'
+import { espaceDeLOrganisation, faitsRécentsDeLEspace, lectureStratégiqueDeLEspace, synthèseDeLEspace } from '@/lib/portail/strategie'
+import { ActivitéDesSemaines } from '@/components/graphiques-strategie'
 import { casesDuTableauDeBord } from '@/lib/domaine/tableau-de-bord'
 import { normaliserTitre } from '@/lib/domaine/strategie'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
@@ -123,12 +124,16 @@ export default async function VueDEnsemble({
   // Notion de plus ; ailleurs, ni l'une ni la section n'existent.
   const espace = await espaceDeLOrganisation(accès.organisationId)
   const numéros = new Map(semaines.flatMap((s) => s.éditions).flatMap((é) => (é.numéro !== null ? [[é.pageId, é.numéro] as const] : [])))
-  const [stratégie, synthèseStratégique] = await Promise.all([
+  // L'activité des treize dernières semaines (lot 5) vient des faits étiquetés,
+  // lue en même temps : la date de la dernière lettre suffit.
+  const fin = courante.éditions.map((é) => é.dateÉdition).sort().at(-1)
+  const [stratégie, synthèseStratégique, récents] = await Promise.all([
     lectureStratégiqueDeLEspace({
       registre: accès.organisationId,
       lettres: récentes.map((note) => ({ pageId: note.lettre.édition.pageId, document: note.document })),
     }),
     espace?.réorganisé ? synthèseDeLEspace({ registre: accès.organisationId, numéros }) : null,
+    espace?.réorganisé && fin ? faitsRécentsDeLEspace({ registre: accès.organisationId, fin }) : null,
   ])
   const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
   const cases = espace?.réorganisé
@@ -228,6 +233,12 @@ export default async function VueDEnsemble({
         <section className="mt-10 flex flex-col gap-4">
           <h2 className="font-titre text-h2 font-bold text-encre">Votre espace</h2>
           <p className="max-w-[68ch] text-ardoise">Un écran par question. Chaque case mène à son écran, avec ce qu’il dit en un chiffre.</p>
+          {récents ? (
+            <div className="border border-gris-ligne p-5">
+              <p className="mb-3 label-mono text-ardoise">Faits relevés par vos lettres, semaine par semaine</p>
+              <ActivitéDesSemaines activité={récents.activité} />
+            </div>
+          ) : null}
           <Grille étiquette="Les écrans de votre espace" colonnes={4}>
             {cases.map((c) => (
               <Case key={c.href}>

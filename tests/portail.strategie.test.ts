@@ -18,6 +18,8 @@ vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePag
 
 const {
   concurrentsDeLEspace,
+  faitsRécentsDeLEspace,
+  indicateursDeLEspace,
   contrôlerLÉtiquetage,
   espaceDeLOrganisation,
   ficheDuConcurrent,
@@ -556,6 +558,47 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       expect(lue.texte).toContain('- Interprétation : Un marché qui attire en 2026')
       expect(lue.texte).toContain('- Rivalité entre acteurs : intense, tendance hausse')
       expect(lue.texte).toContain('- Substituts : non suivi')
+    })
+
+    it('graphiques de l’espace réorganisé : faits récents et indicateurs du trimestre publié, rien ailleurs', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      try {
+        const f = registres()
+        await recevoirLaSynthèse(
+          { slug: 'infralliance', période: '2026-T4', fenêtre: FENÊTRE, synthèse: trimestre(), cycle: { départements: ['75', '92'], texte: 'centre de données' } },
+          db,
+          { f: f as unknown as typeof fetch, attente: async () => {} },
+        )
+        // Hors de l'espace réorganisé : rien, même dans le pilote.
+        expect(await faitsRécentsDeLEspace({ registre: REGISTRE, fin: DATE_OCTOBRE }, db)).toBeNull()
+        expect(await indicateursDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+        expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
+
+        const récents = await faitsRécentsDeLEspace({ registre: avecTirets(REGISTRE), fin: DATE_OCTOBRE }, db)
+        expect(récents?.activité).toHaveLength(13)
+        expect(récents?.activité.reduce((n, s) => n + s.faits, 0)).toBe(11)
+        expect(récents?.activité.at(-1)?.faits).toBe(11)
+        expect(récents?.chaleur?.semaines).toHaveLength(8)
+        expect(récents?.chaleur?.lignes.some((l) => l.cases.at(-1)?.niveau === 'FORT')).toBe(true)
+
+        // Le trimestre n'est lu qu'une fois publié.
+        expect(await indicateursDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-T4', état: 'publie' }, db)
+        const vue = await indicateursDeLEspace({ registre: REGISTRE }, db)
+        expect(vue?.période).toBe('2026-T4')
+        expect(vue?.indice).toMatchObject({ valeurs: { entrées: 12, sorties: 3, solde: 9 }, interprétation: 'Un marché qui attire en 2026 : plus d’entrées que de sorties.' })
+        expect(vue?.benchmark?.valeurs.lignes.some((l) => l.chiffreDAffaires === 5_000_000)).toBe(true)
+        const synthèse = await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)
+        expect(synthèse?.trimestre?.indicateurs?.indice?.valeurs.entrées).toBe(12)
+
+        expect(await faitsRécentsDeLEspace({ registre: AUTRE_REGISTRE, fin: DATE_OCTOBRE }, db)).toBeNull()
+        expect(await indicateursDeLEspace({ registre: AUTRE_REGISTRE }, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'notion')
+        expect(await indicateursDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+      } finally {
+        vi.unstubAllEnvs()
+      }
     })
 
     it('une synthèse refusée ne coûte aucun appel aux registres ; l’indice ne se calcule qu’au trimestre', async () => {

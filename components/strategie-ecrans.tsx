@@ -19,6 +19,7 @@ import {
   type VueDuPestel,
 } from '@/lib/domaine/strategie-vues'
 import { CASES_SWOT } from '@/lib/domaine/strategie'
+import { BarresMensuelles, CransDeForce } from '@/components/graphiques-strategie'
 
 /**
  * Les outils stratégiques sur les écrans du client (lot 11), selon les
@@ -454,7 +455,8 @@ export function SynthèseDesRecommandations({ période, swot, tows }: { période
   )
 }
 
-export function CinqForces({ période, forces }: { période: string; forces: readonly ForceLue[] }) {
+/** `barres` : les crans en barres et la flèche de tendance (espace réorganisé, lot 5) ; ailleurs, le libellé seul. */
+export function CinqForces({ période, forces, barres = false }: { période: string; forces: readonly ForceLue[]; barres?: boolean }) {
   return (
     <section className="flex flex-col gap-4">
       <TitreDeSection titre="Intensité des cinq forces" mention={`Trimestre ${libelléDePériode(période)} · outil en test`} />
@@ -463,6 +465,7 @@ export function CinqForces({ période, forces }: { période: string; forces: rea
         {forces.map((f) => (
           <Case key={f.force}>
             <p className="label-mono text-encre">{f.libellé}</p>
+            {barres ? <CransDeForce cran={f.cran} tendance={f.tendance} /> : null}
             <p className={f.nonSuivi ? 'text-ardoise' : 'font-medium text-encre'}>{f.lecture}</p>
           </Case>
         ))}
@@ -512,7 +515,9 @@ export function LectureDuTrimestre({ période, forces, scénarios }: { période:
 
 const LIMITE_DES_FAITS = 40
 
-export function VuePestel({ vue }: { vue: VueDuPestel }) {
+export function VuePestel({ vue, barres = false }: { vue: VueDuPestel; barres?: boolean }) {
+  // Une même échelle pour les six dimensions : deux barres de même hauteur disent le même nombre de faits.
+  const max = Math.max(...vue.dimensions.flatMap((d) => d.parMois.map((m) => m.faits)), 0)
   return (
     <div className="mt-6 flex flex-col gap-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -527,8 +532,9 @@ export function VuePestel({ vue }: { vue: VueDuPestel }) {
           <Case key={d.lettre}>
             <div className="flex flex-col gap-0.5">
               <p className="label-mono text-encre">{d.initiale} · {d.libellé}</p>
-              <p className="label-mono text-ardoise">{d.parMois.map((m) => `${m.mois} ${m.faits}`).join(' · ')}</p>
+              {barres ? null : <p className="label-mono text-ardoise">{d.parMois.map((m) => `${m.mois} ${m.faits}`).join(' · ')}</p>}
             </div>
+            {barres ? <BarresMensuelles dimension={d} max={max} /> : null}
             <p className="font-titre text-h2 font-bold text-encre">
               {d.faits}{' '}
               <span className="font-sans text-base font-normal text-ardoise">

@@ -30,8 +30,12 @@ import {
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
+  activitéParSemaine,
   nomsDesConcurrents,
   périodesAPublier,
+  SEMAINES_D_ACTIVITÉ,
+  vueDeLaChaleur,
+  vueDesIndicateurs,
   vueDeLaCarte,
   vueDeLaFiche,
   vueDesConcurrents,
@@ -41,8 +45,11 @@ import {
   vueDesForces,
   vueDesScénarios,
   vueDuPestel,
+  type CarteDeChaleur,
   type FicheDuConcurrent,
   type ForceLue,
+  type SemaineDActivité,
+  type VueDesIndicateurs,
   type ScénarioLu,
   type SynthèsesDUneOrganisation,
   type SynthèseVue,
@@ -938,7 +945,14 @@ export async function synthèseDeLEspace(
       : null
     return {
       mois: vueDuMois,
-      trimestre: trimestre ? { période: trimestre.période, forces: vueDesForces(trimestre.positions), scénarios: vueDesScénarios(trimestre.éléments) } : null,
+      trimestre: trimestre
+        ? {
+            période: trimestre.période,
+            forces: vueDesForces(trimestre.positions),
+            scénarios: vueDesScénarios(trimestre.éléments),
+            indicateurs: vueDesIndicateurs(trimestre.période, trimestre.éléments),
+          }
+        : null,
     }
   })
 }
@@ -1115,5 +1129,56 @@ export async function ficheDuConcurrent(
       benchmark,
     )
     return fiche ? { sorte: 'fiche', fiche } : { sorte: 'inconnu' }
+  })
+}
+
+// ── Les graphiques de l'espace réorganisé (lot 5, 30 octobre 2026) ───────────
+
+export type FaitsRécentsDeLEspace = {
+  /** Les faits étiquetés des treize dernières semaines, par semaine de parution. */
+  readonly activité: readonly SemaineDActivité[]
+  /** Les axes de la grille sur les huit dernières semaines, au niveau de leur fait le plus fort ; `null` sans grille. */
+  readonly chaleur: CarteDeChaleur | null
+}
+
+/**
+ * L'activité de la vue d'ensemble et la carte de chaleur de « Les axes », lues
+ * dans les faits étiquetés (une requête sur treize semaines) et la grille :
+ * aucune lecture Notion, et rien de plus que ce que l'onglet PESTEL lit déjà.
+ * `fin` est la date de la dernière lettre publiée, que l'écran a en main.
+ * `null` hors de l'espace réorganisé, sans fait, ou dans le doute.
+ */
+export async function faitsRécentsDeLEspace(
+  entrée: { readonly registre: string; readonly fin: string },
+  db?: Base,
+): Promise<FaitsRécentsDeLEspace | null> {
+  return bornée('lecture des faits récents', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
+    const d = new Date(`${entrée.fin}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - 7 * SEMAINES_D_ACTIVITÉ)
+    const [lignes, grille] = await Promise.all([
+      faitsDeLaFenêtre({ organisationId: organisation.id, début: d.toISOString().slice(0, 10), fin: entrée.fin }, db),
+      lireLaGrille(organisation.id, db),
+    ])
+    if (lignes.length === 0) return null
+    const faits = lignes.map((l) => ({ dateÉdition: l.dateÉdition, famille: l.familleÉdition, axe: l.numéroAxe, impact: l.impact, rupture: l.rupture }))
+    return { activité: activitéParSemaine(faits, entrée.fin), chaleur: grille ? vueDeLaChaleur(faits, grille.grille, entrée.fin) : null }
+  })
+}
+
+/**
+ * L'écran « Indicateurs » : l'indice de cycle de vie et le benchmark du dernier
+ * trimestre **publié**, calculés par le portail au moment de la synthèse et
+ * gardés dans leurs éléments. Aucune lecture Notion, aucun appel au BODACC ni au
+ * registre depuis l'écran. `null` hors de l'espace réorganisé, sans trimestre
+ * publié qui les porte, ou dans le doute.
+ */
+export async function indicateursDeLEspace(entrée: { readonly registre: string }, db?: Base): Promise<VueDesIndicateurs | null> {
+  return bornée('lecture des indicateurs', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
+    const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
+    return trimestre ? vueDesIndicateurs(trimestre.période, trimestre.éléments) : null
   })
 }

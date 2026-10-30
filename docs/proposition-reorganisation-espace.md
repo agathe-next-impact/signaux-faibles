@@ -167,7 +167,7 @@ d'accès), les variables du §2 déjà dans la grille, 80 caractères par éché
 | 2 | Concurrents et Acteurs séparés, fiche concurrent | lot 1 pour la carte |
 | 3 | Écrans Stratégie et PESTEL sortis de leurs écrans actuels, rail en rubriques | rien |
 | 4 | Tableau de bord en cases, liens internes partout, bandeaux « En bref » | lots 2 et 3 |
-| 5 | Graphiques, dont l'écran Indicateurs | lot 3 |
+| 5 | Graphiques, dont l'écran Indicateurs (livré le 30/10/2026) | lot 3 |
 | 6 | Écrans « Votre veille » | votre choix au §6, puis la revue |
 
 Chaque lot passe par la recette Playwright (`pnpm recette`), qui recevra un
@@ -222,6 +222,33 @@ semaines d'actions, le reste se replie (`details` natif, sans script, la liste
 entière reste dans le HTML). Liens internes : la source d'un élément SWOT daté
 mène à sa lettre (parmi celles listées pour l'organisation), un dossier de
 l'accueil qui nomme un concurrent mène à sa fiche.
+
+**Lot 5, ce qui est livré (30 octobre 2026).** Les graphiques du §5, en HTML et
+CSS à la charte (`components/graphiques-strategie.tsx`), pour l'espace
+réorganisé seulement : ailleurs, les écrans des autres organisations du pilote
+ne changent pas. « Forces du marché » montre chaque force en trois crans pleins
+ou vides, avec la flèche de sa tendance ; « PESTEL » donne à chaque dimension
+ses barres mensuelles, zéro compris, sur une même échelle pour les six ; « Les
+axes » gagne la carte de chaleur des axes sur huit semaines, chaque case au
+niveau du fait le plus fort de l'axe cette semaine-là (la porte des étiquettes
+tient que c'est le niveau de l'axe), F sur fond rose, M sur fond ardoise, vide
+pour un axe RAS ou une semaine où son thème n'a pas paru ; la vue d'ensemble
+porte l'activité, les faits relevés par semaine sur treize semaines. Ces deux
+derniers lisent les faits étiquetés dans Postgres (`faitsRécentsDeLEspace`, une
+requête sur treize semaines et la grille) : la carte de chaleur ne lit **aucun
+corps de lettre**, quand l'avoir tirée des corps aurait demandé seize lettres
+pour huit semaines. Nouvel écran **« Indicateurs »** (`/[slug]/indicateurs`,
+rubrique Stratégie, treize écrans au rail, douze cases au tableau de bord) :
+l'indice de cycle de vie en barres, entrées et procédures collectives sur deux
+périodes de douze mois, et le benchmark, chiffre d'affaires publié par entité,
+l'organisation en encre, « n.d. » sans barre ; l'un et l'autre lus dans les
+éléments du dernier trimestre publié (`indicateursDeLEspace`), tels que le
+portail les a calculés à la synthèse, avec l'interprétation relue et les
+limites ; l'écran n'appelle ni le BODACC ni le registre. La carte des groupes
+avait déjà la position du mois précédent en pointillé ; la frise du calendrier
+attend les écrans « Votre veille » (lot 6), et les cases du tableau de bord
+gardent leur chiffre sans mini graphique, l'activité tenant ce rôle en tête de
+section.
 
 ## 8. Ce qu'il faut trancher
 

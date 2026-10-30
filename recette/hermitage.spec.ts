@@ -229,7 +229,9 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await page.goto(`/${SLUG}`)
     const espace = await page.getByRole('heading', { name: 'Votre espace' }).isVisible()
     test.skip(!espace, 'lot 4 non déployé : pas de tableau de bord en cases')
-    await expect(page.getByRole('list', { name: 'Les écrans de votre espace' }).getByRole('listitem')).toHaveCount(11)
+    // Onze cases au lot 4, douze avec l'écran « Indicateurs » du lot 5.
+    const cases = await page.getByRole('list', { name: 'Les écrans de votre espace' }).getByRole('listitem').count()
+    expect([11, 12]).toContain(cases)
     await page.screenshot({ path: `${SORTIES}/tableau-de-bord.png`, fullPage: true })
     await ouvrir(`/${SLUG}/concurrents`, 'concurrents-lot4')
     await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
@@ -237,6 +239,26 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await ouvrir(`/${SLUG}/diagnostic`, 'diagnostic-lot4')
     await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Fait du .* lettre n° \d+$/ }).first()).toBeVisible()
+  })
+
+  test('graphiques : indicateurs, forces en crans, PESTEL en barres, chaleur des axes, activité', async () => {
+    test.skip(!parOutil, 'écrans par outil absents')
+    await page.goto(`/${SLUG}/indicateurs`)
+    const lot5 = await page.getByRole('heading', { name: 'Le secteur grandit-il' }).isVisible()
+    test.skip(!lot5, 'lot 5 non déployé : pas d’écran « Indicateurs »')
+    await page.screenshot({ path: `${SORTIES}/indicateurs.png`, fullPage: true })
+    await expect(page.getByRole('heading', { name: 'Entrées et sorties du marché' })).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Chiffre d’affaires publié, par entité' })).toBeVisible()
+    await ouvrir(`/${SLUG}/forces`, 'forces-lot5')
+    await expect(page.getByRole('img', { name: /^cran \d sur 3$/ }).first()).toBeVisible()
+    await ouvrir(`/${SLUG}/pestel`, 'pestel-lot5')
+    await expect(page.getByRole('list', { name: 'Politique, faits par mois' })).toBeVisible()
+    await ouvrir(`/${SLUG}/axes`, 'axes-lot5')
+    await expect(page.getByRole('heading', { name: 'Les axes sur huit semaines' })).toBeVisible()
+    await expect(page.getByRole('table', { name: 'Niveau des axes sur les huit dernières semaines' })).toBeVisible()
+    await ouvrir(`/${SLUG}`, 'tableau-de-bord-lot5')
+    await expect(page.getByRole('list', { name: /^Faits relevés par semaine/ })).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Les écrans de votre espace' }).getByRole('listitem')).toHaveCount(12)
   })
 
   test('recommandations : l’option retenue de septembre, et le reste selon l’espace', async () => {
