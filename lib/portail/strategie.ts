@@ -1038,7 +1038,10 @@ const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, concurren
 /**
  * L'espace de l'organisation de la session est-il réorganisé ? Le rail le
  * demande à chaque page, « Acteurs » aussi : la lecture est **mémoïsée par
- * requête**, et bornée à 400 ms comme le droit de lecture. `null` dans le doute
+ * requête**, et bornée à 1 500 ms comme les écrans stratégiques (400 ms
+ * jusqu'au 30 octobre 2026 : en production, une visite de L'Hermitage a dépassé
+ * ce délai et reçu l'espace d'avant, rail à sept écrans et vue d'ensemble sans
+ * ses rubriques, alors que la lecture n'avait rien d'anormal). `null` dans le doute
  * (base absente, `SOURCE_ACCES=notion`, base lente) : le rail garde alors ses
  * sept écrans, et un écran par outil le dit plutôt que de répondre 404.
  */
@@ -1055,7 +1058,7 @@ const espaceMémoïsé = cache(async (registre: string, db?: Base): Promise<Espa
       const grille = await lireLaGrille(organisation.id, db)
       return { réorganisé: true, concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [] }
     },
-    DÉLAI_DE_LECTURE_STRATÉGIQUE_MS,
+    DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS,
   ),
 )
 
