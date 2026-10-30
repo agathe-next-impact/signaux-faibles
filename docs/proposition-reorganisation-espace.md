@@ -252,7 +252,8 @@ section.
 
 **Tableau de bord par rubriques (30 octobre 2026, décision de l'opératrice).**
 Après le lot 5, la section « Votre espace » de la vue d'ensemble ne porte plus
-une case par écran mais **une carte par rubrique** : Le marché, L'environnement,
+une case par écran mais **une carte par rubrique**, sur deux colonnes et sous
+« À la une » (même jour, demande de l'opératrice) : Le marché, L'environnement,
 Stratégie, Votre veille (« Cette semaine » n'en a pas : c'est la vue d'ensemble
 elle-même, et « Lettres » reste au rail). Chaque carte nomme ses écrans avec leur
 chiffre clé et ouvre l'**écran de sa rubrique** (`/[slug]/marche`,

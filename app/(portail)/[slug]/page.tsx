@@ -122,7 +122,8 @@ export default async function VueDEnsemble({
   // L'espace réorganisé (lot 4) : une case par écran, avec son chiffre clé.
   // La synthèse publiée est lue en même temps que les étiquettes, sans lecture
   // Notion de plus ; ailleurs, ni l'une ni la section n'existent.
-  // Depuis le 30 octobre 2026, une carte par rubrique, chacune menant à
+  // Depuis le 30 octobre 2026, une carte par rubrique sur deux colonnes, sous
+  // « À la une » (demande de l'opératrice), chacune menant à
   // l'écran qui montre la grille de ses écrans ; l'activité des treize
   // dernières semaines (lot 5) vient des faits étiquetés, lue en même temps.
   const espace = await espaceDeLOrganisation(accès.organisationId)
@@ -222,39 +223,6 @@ export default async function VueDEnsemble({
         </div>
       ) : null}
 
-      {cartes ? (
-        <section className="mt-10 flex flex-col gap-4">
-          <h2 className="font-titre text-h2 font-bold text-encre">Votre espace</h2>
-          <p className="max-w-[68ch] text-ardoise">Quatre rubriques. Chaque carte ouvre la sienne, qui réunit ses écrans ; leurs chiffres clés se lisent sans l’ouvrir.</p>
-          {tableau?.activité ? (
-            <div className="border border-gris-ligne p-5">
-              <p className="mb-3 label-mono text-ardoise">Faits relevés par vos lettres, semaine par semaine</p>
-              <ActivitéDesSemaines activité={tableau.activité} />
-            </div>
-          ) : null}
-          <Grille étiquette="Les rubriques de votre espace" colonnes={4}>
-            {cartes.map((r) => (
-              <Case key={r.href}>
-                <h3 className="font-titre text-h3 font-semibold text-encre">{r.titre}</h3>
-                <dl className="flex flex-col gap-1.5">
-                  {r.écrans.map((é) => (
-                    <div key={é.écran} className="flex flex-col">
-                      <dt className="label-mono text-ardoise">{é.écran}</dt>
-                      <dd className="text-encre">{é.valeur}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <div className="mt-auto pt-1">
-                  <LienFlèche href={r.href} étendu>
-                    Ouvrir
-                  </LienFlèche>
-                </div>
-              </Case>
-            ))}
-          </Grille>
-        </section>
-      ) : null}
-
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">À la une</h2>
@@ -328,6 +296,39 @@ export default async function VueDEnsemble({
           </Grille>
         )}
       </section>
+
+      {cartes ? (
+        <section className="mt-10 flex flex-col gap-4">
+          <h2 className="font-titre text-h2 font-bold text-encre">Votre espace</h2>
+          <p className="max-w-[68ch] text-ardoise">Quatre rubriques. Chaque carte ouvre la sienne, qui réunit ses écrans ; leurs chiffres clés se lisent sans l’ouvrir.</p>
+          {tableau?.activité ? (
+            <div className="border border-gris-ligne p-5">
+              <p className="mb-3 label-mono text-ardoise">Faits relevés par vos lettres, semaine par semaine</p>
+              <ActivitéDesSemaines activité={tableau.activité} />
+            </div>
+          ) : null}
+          <Grille étiquette="Les rubriques de votre espace" colonnes={2}>
+            {cartes.map((r) => (
+              <Case key={r.href}>
+                <h3 className="font-titre text-h3 font-semibold text-encre">{r.titre}</h3>
+                <dl className="flex flex-col gap-1.5">
+                  {r.écrans.map((é) => (
+                    <div key={é.écran} className="flex flex-col">
+                      <dt className="label-mono text-ardoise">{é.écran}</dt>
+                      <dd className="text-encre">{é.valeur}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="mt-auto pt-1">
+                  <LienFlèche href={r.href} étendu>
+                    Ouvrir
+                  </LienFlèche>
+                </div>
+              </Case>
+            ))}
+          </Grille>
+        </section>
+      ) : null}
 
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
