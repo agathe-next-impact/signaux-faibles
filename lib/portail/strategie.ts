@@ -45,6 +45,7 @@ import {
   type ForceLue,
   type ScénarioLu,
   type SynthèsesDUneOrganisation,
+  type SynthèseVue,
   type VueDesConcurrents,
   type VueDeLaCarte,
   type VueDeLaSwot,
@@ -891,16 +892,8 @@ async function bornée<T>(nom: string, lecture: () => Promise<T | null>, ms: num
   }
 }
 
-export type SynthèseDeLEspace = {
-  readonly mois: {
-    readonly période: string
-    readonly carte: VueDeLaCarte | null
-    readonly mendelow: VueDeMendelow
-    readonly swot: VueDeLaSwot
-    readonly tows: VueDeLaTows
-  } | null
-  readonly trimestre: { readonly période: string; readonly forces: readonly ForceLue[]; readonly scénarios: readonly ScénarioLu[] } | null
-}
+/** Ce que les écrans du client lisent d'une synthèse publiée ; le type vit avec les vues. */
+export type SynthèseDeLEspace = SynthèseVue
 
 /**
  * La dernière synthèse **publiée** de l'organisation de la session, mise en

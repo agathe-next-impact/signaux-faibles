@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
-import { VuePestel } from '@/components/strategie-ecrans'
+import { EnBref, VuePestel } from '@/components/strategie-ecrans'
+import { enBrefDuPestel } from '@/lib/domaine/strategie-vues'
 import { notesDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, pestelDeLEspace } from '@/lib/portail/strategie'
 
@@ -36,9 +37,12 @@ export default async function Pestel({ params }: { params: Promise<{ slug: strin
     <>
       <EntêteÉcran surtitre="l’environnement" titre="Quelles dimensions bougent" état="treize semaines" />
       {pestel ? (
-        <div className="mt-8">
-          <VuePestel vue={pestel} />
-        </div>
+        <>
+          <EnBref chiffres={enBrefDuPestel(pestel)} />
+          <div className="mt-8">
+            <VuePestel vue={pestel} />
+          </div>
+        </>
       ) : (
         <p className="mt-5 text-ardoise">Aucun fait étiqueté sur les treize dernières semaines, ou la lecture n’a pas abouti. Réessayez dans quelques minutes.</p>
       )}

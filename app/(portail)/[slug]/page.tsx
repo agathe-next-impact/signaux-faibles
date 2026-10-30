@@ -17,7 +17,10 @@ import {
   semainesPubliées,
 } from '@/lib/portail/semaine'
 import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat'
-import { lectureStratégiqueDeLEspace } from '@/lib/portail/strategie'
+import { espaceDeLOrganisation, lectureStratégiqueDeLEspace, synthèseDeLEspace } from '@/lib/portail/strategie'
+import { casesDuTableauDeBord } from '@/lib/domaine/tableau-de-bord'
+import { normaliserTitre } from '@/lib/domaine/strategie'
+import { suivreLesDossiers } from '@/lib/domaine/tendances'
 
 /**
  * Vue d'ensemble : ce que la semaine dit, en un écran.
@@ -115,10 +118,33 @@ export default async function VueDEnsemble({
   // Les outils stratégiques (pilote du 26 octobre 2026) : les étiquettes des
   // lettres que l'écran vient de lire, sans lecture Notion de plus. Hors du
   // pilote, ou dans le moindre doute sur la base, la section n'existe pas.
-  const stratégie = await lectureStratégiqueDeLEspace({
-    registre: accès.organisationId,
-    lettres: récentes.map((note) => ({ pageId: note.lettre.édition.pageId, document: note.document })),
-  })
+  // L'espace réorganisé (lot 4) : une case par écran, avec son chiffre clé.
+  // La synthèse publiée est lue en même temps que les étiquettes, sans lecture
+  // Notion de plus ; ailleurs, ni l'une ni la section n'existent.
+  const espace = await espaceDeLOrganisation(accès.organisationId)
+  const numéros = new Map(semaines.flatMap((s) => s.éditions).flatMap((é) => (é.numéro !== null ? [[é.pageId, é.numéro] as const] : [])))
+  const [stratégie, synthèseStratégique] = await Promise.all([
+    lectureStratégiqueDeLEspace({
+      registre: accès.organisationId,
+      lettres: récentes.map((note) => ({ pageId: note.lettre.édition.pageId, document: note.document })),
+    }),
+    espace?.réorganisé ? synthèseDeLEspace({ registre: accès.organisationId, numéros }) : null,
+  ])
+  const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
+  const cases = espace?.réorganisé
+    ? casesDuTableauDeBord({
+        slug: accès.slug,
+        lettres: semaines.reduce((n, s) => n + s.éditions.length, 0),
+        dernièreSemaine: courante.libellé,
+        archives: semaines.length,
+        axes: axes.length,
+        axesForts: axes.filter((a) => a.niveau === 'FORT').length,
+        dossiersHorsConcurrents: suivreLesDossiers(semaines).filter((d) => !concurrents.has(normaliserTitre(d.nom))).length,
+        concurrents: espace.concurrents.length,
+        synthèse: synthèseStratégique,
+        étiquettes: stratégie,
+      })
+    : null
 
   // Le portail ne devine pas un format qu'il ne reconnaît pas — mais il ne doit
   // pas se taire non plus. Deux lettres complètes et publiées peuvent donner un
@@ -198,6 +224,28 @@ export default async function VueDEnsemble({
         </div>
       ) : null}
 
+      {cases ? (
+        <section className="mt-10 flex flex-col gap-4">
+          <h2 className="font-titre text-h2 font-bold text-encre">Votre espace</h2>
+          <p className="max-w-[68ch] text-ardoise">Un écran par question. Chaque case mène à son écran, avec ce qu’il dit en un chiffre.</p>
+          <Grille étiquette="Les écrans de votre espace" colonnes={4}>
+            {cases.map((c) => (
+              <Case key={c.href}>
+                <p className="label-mono text-ardoise">{c.rubrique}</p>
+                <h3 className="font-titre text-h3 font-semibold text-encre">{c.écran}</h3>
+                <p className="text-corps font-medium text-encre">{c.valeur}</p>
+                <p className="label-mono text-ardoise">{c.mention}</p>
+                <div className="mt-auto pt-1">
+                  <LienFlèche href={c.href} étendu>
+                    Ouvrir
+                  </LienFlèche>
+                </div>
+              </Case>
+            ))}
+          </Grille>
+        </section>
+      ) : null}
+
       <section className="mt-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">À la une</h2>
@@ -255,7 +303,12 @@ export default async function VueDEnsemble({
                         : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
                   </p>
                   <LienFlèche
-                    href={`/${accès.slug}/acteurs/${enSlug(acteur.nom)}`}
+                    href={
+                      // Espace réorganisé : un concurrent de la grille mène à sa fiche.
+                      concurrents.has(normaliserTitre(acteur.nom))
+                        ? `/${accès.slug}/concurrents/${enSlug(acteur.nom)}`
+                        : `/${accès.slug}/acteurs/${enSlug(acteur.nom)}`
+                    }
                     étendu
                   >
                     Détail

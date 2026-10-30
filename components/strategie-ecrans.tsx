@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Case, Grille, LienFlèche } from '@/components/coquille'
+import { Case, Grille, LienFlèche, Tuile } from '@/components/coquille'
 import {
   dateCourte,
   LIBELLÉS_MENDELOW,
@@ -7,6 +7,7 @@ import {
   libelléDePériode,
   STRATÉGIES_MENDELOW,
   TYPES_DE_TOWS,
+  type ChiffreEnBref,
   type ConcurrentVu,
   type FicheDuConcurrent,
   type ForceLue,
@@ -234,9 +235,9 @@ function Crans({ crans }: { crans: ConcurrentVu['crans'] }) {
 }
 
 /** Une case par concurrent de la grille, cliquable en entier vers sa fiche. */
-export function ListeDesConcurrents({ slug, concurrents }: { slug: string; concurrents: readonly ConcurrentVu[] }) {
+export function ListeDesConcurrents({ slug, concurrents, étiquette = 'Les concurrents suivis' }: { slug: string; concurrents: readonly ConcurrentVu[]; étiquette?: string }) {
   return (
-    <Grille colonnes={3} étiquette="Les concurrents suivis">
+    <Grille colonnes={3} étiquette={étiquette}>
       {concurrents.map((c) => (
         <Case key={c.segment} accent={c.aBougé}>
           <div className="flex items-start justify-between gap-3">
@@ -389,8 +390,25 @@ export function OptionsStratégiques({ période, tows, diagnostic }: { période:
   )
 }
 
-/** La matrice SWOT ; chaque élément porte son code en ancre, pour que les options y mènent. */
-export function MatriceSwot({ swot }: { swot: VueDeLaSwot }) {
+/** Trois chiffres en tête d'écran (lot 4) : comptés sur ce que l'écran montre, jamais rédigés pour lui. */
+export function EnBref({ chiffres }: { chiffres: readonly ChiffreEnBref[] }) {
+  return (
+    <section aria-label="En bref" className="mt-6">
+      <Grille étiquette="En bref" colonnes={3}>
+        {chiffres.map((c) => (
+          <Tuile key={c.intitulé} intitulé={c.intitulé} valeur={c.valeur} mention={c.mention ?? null} />
+        ))}
+      </Grille>
+    </section>
+  )
+}
+
+/**
+ * La matrice SWOT ; chaque élément porte son code en ancre, pour que les options
+ * y mènent. `lettre` mène d'un élément daté à la lettre qui porte son fait
+ * (espace réorganisé) ; sans elle, la source reste du texte.
+ */
+export function MatriceSwot({ swot, lettre }: { swot: VueDeLaSwot; lettre?: (édition: string) => string | null }) {
   return (
     <section className="flex flex-col gap-4">
       <TitreDeSection titre="Votre situation" mention="Matrice SWOT" />
@@ -405,7 +423,16 @@ export function MatriceSwot({ swot }: { swot: VueDeLaSwot }) {
                 <span className="w-7 shrink-0 pt-0.5 font-mono text-label text-ardoise">{é.code}</span>
                 <span className="flex flex-col gap-0.5">
                   <span className="text-encre">{é.énoncé}</span>
-                  <span className="label-mono text-ardoise">{é.source}</span>
+                  {(() => {
+                    const href = é.édition ? (lettre?.(é.édition) ?? null) : null
+                    return href ? (
+                      <Link href={href} className="label-mono text-ardoise underline decoration-gris-ligne underline-offset-2 hover:text-encre">
+                        {é.source}
+                      </Link>
+                    ) : (
+                      <span className="label-mono text-ardoise">{é.source}</span>
+                    )
+                  })()}
                 </span>
               </div>
             ))}

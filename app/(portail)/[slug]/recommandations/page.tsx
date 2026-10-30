@@ -1,5 +1,6 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
+import { Repliable } from '@/components/repliable'
 import { semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 import { LectureDuTrimestre, OptionsStratégiques, SynthèseDesRecommandations } from '@/components/strategie-ecrans'
@@ -10,6 +11,9 @@ import { LectureDuTrimestre, OptionsStratégiques, SynthèseDesRecommandations }
  * Une seule propriété d'édition porte tout cet écran ; il ne lit aucun corps de
  * note, et tient donc en une requête Notion.
  */
+/** Deux rangées de semaines avant de replier (espace réorganisé). */
+const ACTIONS_VISIBLES = 4
+
 export default async function Recommandations({
   params,
 }: {
@@ -74,39 +78,59 @@ export default async function Recommandations({
       ) : (
         <div className="mt-8">
           <Grille étiquette="Actions proposées" colonnes={2}>
-            {avecAction.map(({ semaine, actions }, rang) => (
-              // La semaine en cours est la seule accentuée : le fond rose
-              // signale l'actualité, il ne hiérarchise pas les autres.
-              <Case key={semaine.clé} accent={rang === 0}>
-                <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <h2 className="font-titre text-h3 font-semibold text-encre">
-                    {semaine.libellé}
-                  </h2>
-                  {/* En encre et non en rose : le fond de la case est déjà
-                      rose, et rose sur rose est le contraste que la charte
-                      signale elle-même comme limite. */}
-                  {rang === 0 ? (
-                    <span className="label-mono text-encre">cette semaine</span>
-                  ) : null}
-                </div>
-
-                {actions.map(({ veille, action }) => (
-                  <div key={`${veille}-${action}`} className="flex flex-col gap-1">
-                    {veille ? <p className="label-mono text-ardoise">{veille}</p> : null}
-                    <p className="text-encre">{action}</p>
-                  </div>
-                ))}
-
-                <div className="mt-auto pt-1">
-                  <LienFlèche href={`/${accès.slug}/archives/${semaine.clé}`} étendu>
-                    Relire cette semaine
-                  </LienFlèche>
-                </div>
-              </Case>
+            {(réorganisé ? avecAction.slice(0, ACTIONS_VISIBLES) : avecAction).map(({ semaine, actions }, rang) => (
+              <CaseDActions key={semaine.clé} slug={accès.slug} semaine={semaine} actions={actions} courante={rang === 0} />
             ))}
           </Grille>
+          {réorganisé ? (
+            <Repliable reste={avecAction.length - ACTIONS_VISIBLES} nom="semaines">
+              <Grille étiquette="Actions des semaines précédentes" colonnes={2}>
+                {avecAction.slice(ACTIONS_VISIBLES).map(({ semaine, actions }) => (
+                  <CaseDActions key={semaine.clé} slug={accès.slug} semaine={semaine} actions={actions} courante={false} />
+                ))}
+              </Grille>
+            </Repliable>
+          ) : null}
         </div>
       )}
     </>
+  )
+}
+
+/** Les actions d'une semaine, dans sa case ; la semaine en cours est la seule accentuée. */
+function CaseDActions({
+  slug,
+  semaine,
+  actions,
+  courante,
+}: {
+  slug: string
+  semaine: { readonly clé: string; readonly libellé: string }
+  actions: readonly { readonly veille: string | null; readonly action: string }[]
+  courante: boolean
+}) {
+  return (
+    // Le fond rose signale l'actualité, il ne hiérarchise pas les autres.
+    <Case accent={courante}>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="font-titre text-h3 font-semibold text-encre">{semaine.libellé}</h2>
+        {/* En encre et non en rose : le fond de la case est déjà rose, et rose
+            sur rose est le contraste que la charte signale elle-même comme limite. */}
+        {courante ? <span className="label-mono text-encre">cette semaine</span> : null}
+      </div>
+
+      {actions.map(({ veille, action }) => (
+        <div key={`${veille}-${action}`} className="flex flex-col gap-1">
+          {veille ? <p className="label-mono text-ardoise">{veille}</p> : null}
+          <p className="text-encre">{action}</p>
+        </div>
+      ))}
+
+      <div className="mt-auto pt-1">
+        <LienFlèche href={`/${slug}/archives/${semaine.clé}`} étendu>
+          Relire cette semaine
+        </LienFlèche>
+      </div>
+    </Case>
   )
 }

@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
-import { MatriceSwot } from '@/components/strategie-ecrans'
-import { libelléDePériode } from '@/lib/domaine/strategie-vues'
-import { semainesPubliées } from '@/lib/portail/semaine'
+import { EnBref, MatriceSwot } from '@/components/strategie-ecrans'
+import { enBrefDeLaSwot, libelléDePériode } from '@/lib/domaine/strategie-vues'
+import { normaliserIdentifiant } from '@/lib/notion/proprietes'
+import { lettresPubliées, semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 
 /**
@@ -23,14 +24,19 @@ export default async function Diagnostic({ params }: { params: Promise<{ slug: s
   if (espace && !espace.réorganisé) notFound()
   const numéros = new Map(semaines.flatMap((s) => s.éditions).flatMap((é) => (é.numéro !== null ? [[é.pageId, é.numéro] as const] : [])))
   const synthèse = espace ? await synthèseDeLEspace({ registre: accès.organisationId, numéros }) : null
+  // Un élément daté mène à la lettre qui porte son fait, parmi celles déjà listées pour l'organisation (règle 2).
+  const lettres = new Map(lettresPubliées(semaines).map((l) => [normaliserIdentifiant(l.édition.pageId), `/${accès.slug}/lettres/${l.édition.pageId}`]))
 
   return (
     <>
       <EntêteÉcran surtitre="stratégie" titre="Où en êtes-vous" état={synthèse?.mois ? `synthèse ${libelléDePériode(synthèse.mois.période)}` : undefined} />
       {synthèse?.mois ? (
-        <div className="mt-8">
-          <MatriceSwot swot={synthèse.mois.swot} />
-        </div>
+        <>
+          <EnBref chiffres={enBrefDeLaSwot(synthèse.mois.swot)} />
+          <div className="mt-8">
+            <MatriceSwot swot={synthèse.mois.swot} lettre={(édition) => lettres.get(édition) ?? null} />
+          </div>
+        </>
       ) : (
         <p className="mt-5 text-ardoise">Aucune synthèse n’est publiée pour l’instant. Le diagnostic paraît avec la première revue mensuelle relue.</p>
       )}

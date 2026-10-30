@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
-import { CarteDesGroupes, ListeDesConcurrents } from '@/components/strategie-ecrans'
+import { Repliable } from '@/components/repliable'
+import { CarteDesGroupes, EnBref, ListeDesConcurrents } from '@/components/strategie-ecrans'
 import { enSlug } from '@/lib/domaine/slug'
 import { normaliserTitre } from '@/lib/domaine/strategie'
-import { libelléDePériode } from '@/lib/domaine/strategie-vues'
+import { enBrefDesConcurrents, libelléDePériode } from '@/lib/domaine/strategie-vues'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import { semainesPubliées } from '@/lib/portail/semaine'
 import { concurrentsDeLEspace, espaceDeLOrganisation } from '@/lib/portail/strategie'
@@ -23,6 +24,9 @@ import { concurrentsDeLEspace, espaceDeLOrganisation } from '@/lib/portail/strat
  * rail : la carte, les crans et les comptes de faits viennent de Postgres, par
  * le registre de la session (règle 2).
  */
+/** Deux rangées de trois cases avant de replier. */
+const CONCURRENTS_VISIBLES = 6
+
 export default async function LesConcurrents({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
@@ -59,6 +63,8 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
             {lus.vue.nonPlacés > 0 ? ` ${lus.vue.nonPlacés} ne sont pas encore placés, faute de capacité ou de récit connus.` : ''}
           </p>
 
+          <EnBref chiffres={enBrefDesConcurrents(lus.vue)} />
+
           {lus.carte && lus.carte.placés > 0 ? (
             <section className="mt-8 flex flex-col gap-4">
               <h2 className="font-titre text-h2 font-bold text-encre">Carte des groupes stratégiques</h2>
@@ -78,7 +84,11 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
               Ce qui a bougé d’abord, puis ceux dont les lettres parlent le plus. Chaque fiche réunit sa position,
               ses faits datés et ses chiffres publiés.
             </p>
-            <ListeDesConcurrents slug={accès.slug} concurrents={lus.vue.concurrents} />
+            {/* Lecture rapide (lot 4) : deux rangées, le reste replié. */}
+            <ListeDesConcurrents slug={accès.slug} concurrents={lus.vue.concurrents.slice(0, CONCURRENTS_VISIBLES)} />
+            <Repliable reste={lus.vue.concurrents.length - CONCURRENTS_VISIBLES} nom="concurrents">
+              <ListeDesConcurrents slug={accès.slug} concurrents={lus.vue.concurrents.slice(CONCURRENTS_VISIBLES)} étiquette="Les autres concurrents suivis" />
+            </Repliable>
           </section>
 
           {dossiers.length > 0 ? (
