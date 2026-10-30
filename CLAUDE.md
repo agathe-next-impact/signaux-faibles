@@ -59,7 +59,8 @@ d'écrire). Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la
-session, bornées à 400 ms, sans lecture Notion de plus, `null` dans le
+session, bornées à 1 500 ms (400 ms jusqu'au 29 octobre 2026 : la recette a
+montré qu'en production la section n'apparaissait jamais), sans lecture Notion de plus, `null` dans le
 doute) ; vues pures dans `lib/domaine/strategie-vues.ts`, rendu dans
 `components/strategie-ecrans.tsx`.
 
