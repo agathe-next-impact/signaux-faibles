@@ -105,7 +105,10 @@ synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 `/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
 avec leur chiffre clé ; le rail garde ses écrans et le nom de la rubrique y
 mène (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
-(`lib/portail/tableau.ts`). Une période
+(`lib/portail/tableau.ts`). Sur « PESTEL », chaque axe qui suit une dimension
+mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
+`faitsDeLAxeDeLEspace`, segment comparé à la seule grille de l'organisation,
+404 sinon). Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

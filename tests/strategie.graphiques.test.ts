@@ -3,10 +3,13 @@ import type { Grille } from '@/lib/domaine/strategie'
 import {
   activitéParSemaine,
   enBrefDesIndicateurs,
+  segmentDeFamille,
   semainesJusquÀ,
   vueDeLaChaleur,
+  vueDeLAxe,
   vueDesIndicateurs,
   type FaitDeLActivité,
+  type FaitDeLAxe,
 } from '@/lib/domaine/strategie-vues'
 
 /** Les graphiques de l'espace réorganisé (lot 5, 30 octobre 2026) : des comptes, zéro compris, jamais une valeur inventée. */
@@ -125,5 +128,47 @@ describe('vueDesIndicateurs', () => {
       ['n.d.', 'indice non calculé'],
       ['n.d.', 'indice non calculé'],
     ])
+  })
+})
+
+describe('vueDeLAxe', () => {
+  const faitDeLAxe = (date: string, famille: string, axe: number, autres: Partial<FaitDeLAxe> = {}): FaitDeLAxe => ({
+    date,
+    dateÉdition: date,
+    édition: 'e1',
+    empreinte: 'abcd1234',
+    famille,
+    axe,
+    pestel: 'politique',
+    porter: null,
+    impact: 'MOYEN',
+    rupture: false,
+    ...autres,
+  })
+
+  it('le segment vient du nom court de la famille, à défaut de sa veille et de son numéro', () => {
+    expect(GRILLE.familles.map(segmentDeFamille)).toEqual(['politiques-publiques', 'famille-ecosysteme-2', 'lieux-concurrents'])
+  })
+
+  it('rend les faits de la seule famille désignée, du plus récent au plus ancien, avec leur dimension', () => {
+    const faits = [
+      faitDeLAxe('2026-10-01', 'Écosystème', 1),
+      faitDeLAxe('2026-10-20', 'Écosystème', 1, { impact: 'FORT', rupture: true }),
+      // Même numéro, autre veille : un autre axe.
+      faitDeLAxe('2026-10-21', 'Concurrentiel', 1, { pestel: null, porter: 'rivalite' }),
+      faitDeLAxe('2026-10-22', 'Écosystème', 2),
+    ]
+    const vue = vueDeLAxe(GRILLE, 'politiques-publiques', faits)
+    expect(vue).toMatchObject({ nom: 'Politiques publiques', numéro: 1, suit: 'Politique', forts: 1, ruptures: 1 })
+    expect(vue?.faits.map((f) => [f.date, f.dimension])).toEqual([
+      ['2026-10-20', 'Politique'],
+      ['2026-10-01', 'Politique'],
+    ])
+    expect(vueDeLAxe(GRILLE, 'lieux-concurrents', faits)?.faits.map((f) => f.dimension)).toEqual(['Rivalité entre acteurs'])
+  })
+
+  it('un segment qui n’est pas dans la grille ne mène à rien', () => {
+    expect(vueDeLAxe(GRILLE, 'famille-ecosysteme-9', [])).toBeNull()
+    expect(vueDeLAxe(GRILLE, '..', [])).toBeNull()
   })
 })

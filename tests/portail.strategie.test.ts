@@ -18,6 +18,7 @@ vi.mock('@/lib/notion/editions', () => ({ lireBlocsDePage: notion.lireBlocsDePag
 
 const {
   concurrentsDeLEspace,
+  faitsDeLAxeDeLEspace,
   faitsRécentsDeLEspace,
   indicateursDeLEspace,
   contrôlerLÉtiquetage,
@@ -572,6 +573,7 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         )
         // Hors de l'espace réorganisé : rien, même dans le pilote.
         expect(await faitsRécentsDeLEspace({ registre: REGISTRE, fin: DATE_OCTOBRE }, db)).toBeNull()
+        expect(await faitsDeLAxeDeLEspace({ registre: REGISTRE, segment: 'famille-ecosysteme-1', fin: DATE_OCTOBRE }, db)).toBeNull()
         expect(await indicateursDeLEspace({ registre: REGISTRE }, db)).toBeNull()
         expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
 
@@ -584,6 +586,17 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         expect(récents?.pestel).toHaveLength(6)
         expect(récents?.pestel.reduce((n, d) => n + d.faits, 0)).toBe(faits.filter((x) => x.pestel).length)
         expect(récents?.chaleur?.lignes.some((l) => l.cases.at(-1)?.niveau === 'FORT')).toBe(true)
+
+        // L'écran des faits d'un axe : la famille désignée dans la grille, rien d'autre.
+        const axe = await faitsDeLAxeDeLEspace({ registre: REGISTRE, segment: 'famille-ecosysteme-1', fin: DATE_OCTOBRE }, db)
+        expect(axe?.sorte).toBe('axe')
+        if (axe?.sorte === 'axe') {
+          expect(axe.vue).toMatchObject({ nom: 'Famille 1', numéro: 1, suit: 'Légal' })
+          expect(axe.vue.faits.length).toBeGreaterThan(0)
+          expect(axe.vue.faits.every((f) => f.axe === 1)).toBe(true)
+        }
+        expect(await faitsDeLAxeDeLEspace({ registre: REGISTRE, segment: 'famille-ecosysteme-9', fin: DATE_OCTOBRE }, db)).toEqual({ sorte: 'inconnu' })
+        expect(await faitsDeLAxeDeLEspace({ registre: AUTRE_REGISTRE, segment: 'famille-ecosysteme-1', fin: DATE_OCTOBRE }, db)).toBeNull()
 
         // Le trimestre n'est lu qu'une fois publié.
         expect(await indicateursDeLEspace({ registre: REGISTRE }, db)).toBeNull()

@@ -268,6 +268,17 @@ l'écran « L'environnement » lit les corps de la semaine, pour compter les axe
 les mêmes entrées de cache que « Les axes ». `/[slug]/veille` accueillera les
 écrans du lot 6 sous son segment.
 
+**Les faits d'un axe (30 octobre 2026, demande de l'opératrice).** Sur
+« PESTEL », chaque axe qui suit une dimension (« Suivie par ») mène à l'écran de
+ses faits, `/[slug]/pestel/[axe]` : les faits étiquetés de la famille sur treize
+semaines, du plus récent au plus ancien, avec leur date, leur dimension, leur
+niveau, la rupture le cas échéant, la phrase-titre relue dans les quatre
+dernières lettres et le lien vers la lettre. Le segment est le nom court de la
+famille en `enSlug` (`segmentDeFamille`), à défaut sa veille et son numéro ; il
+n'est comparé qu'à la grille de l'organisation, et un segment inconnu répond
+404. Lecture bornée `faitsDeLAxeDeLEspace`, Postgres seulement, plus les quatre
+dernières lettres déjà en cache.
+
 ## 8. Ce qu'il faut trancher
 
 Décidé le 30/10/2026 : accord sur la proposition, option A pour la source des
