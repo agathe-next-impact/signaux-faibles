@@ -138,7 +138,7 @@ describe('en bref', () => {
     expect(enBrefDesConcurrents({ ...vue, mouvements: [vue.concurrents[0]!] }).map((c) => [c.valeur, c.mention])).toEqual([
       [3, '2 placés sur la carte'],
       [1, 'depuis la synthèse précédente'],
-      [1, '1 position lue dans le corpus'],
+      [1, '1 placé d’après le corpus seul'],
     ])
     const pestel = {
       fenêtre: { début: '2026-07-01', fin: '2026-10-01' },

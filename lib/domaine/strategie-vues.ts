@@ -703,7 +703,7 @@ export function enBrefDesConcurrents(vue: VueDesConcurrents): readonly ChiffreEn
   return [
     { intitulé: 'Concurrents suivis', valeur: vue.concurrents.length, mention: `${placés} placés sur la carte` },
     { intitulé: 'Ont changé de case', valeur: vue.mouvements.length, mention: 'depuis la synthèse précédente' },
-    { intitulé: 'Cités par vos lettres', valeur: cités, mention: déclaratifs > 0 ? `${pluriel(déclaratifs, 'position')} lue${déclaratifs > 1 ? 's' : ''} dans le corpus` : null },
+    { intitulé: 'Cités par vos lettres', valeur: cités, mention: déclaratifs > 0 ? `${pluriel(déclaratifs, 'placé')} d’après le corpus seul` : null },
   ]
 }
 
