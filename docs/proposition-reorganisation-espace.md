@@ -250,6 +250,24 @@ attend les écrans « Votre veille » (lot 6), et les cases du tableau de bord
 gardent leur chiffre sans mini graphique, l'activité tenant ce rôle en tête de
 section.
 
+**Tableau de bord par rubriques (30 octobre 2026, décision de l'opératrice).**
+Après le lot 5, la section « Votre espace » de la vue d'ensemble ne porte plus
+une case par écran mais **une carte par rubrique** : Le marché, L'environnement,
+Stratégie, Votre veille (« Cette semaine » n'en a pas : c'est la vue d'ensemble
+elle-même, et « Lettres » reste au rail). Chaque carte nomme ses écrans avec leur
+chiffre clé et ouvre l'**écran de sa rubrique** (`/[slug]/marche`,
+`/[slug]/environnement`, `/[slug]/strategie`, `/[slug]/veille`), qui montre la
+grille de ses écrans, chacun avec son chiffre et sa mention
+(`components/grille-des-ecrans.tsx`). Le rail garde ses treize écrans ; le nom de
+chaque rubrique y devient un lien vers son écran (`Onglet.rubriqueHref`). Un seul
+calcul pour la carte et l'écran qu'elle ouvre : `tableauDeLEspace`
+(`lib/portail/tableau.ts`), sur la synthèse publiée et les faits étiquetés des
+treize dernières semaines ; la case PESTEL compte désormais ces treize semaines,
+comme l'écran qu'elle ouvre, et non plus les trois dernières lettres. Seul
+l'écran « L'environnement » lit les corps de la semaine, pour compter les axes :
+les mêmes entrées de cache que « Les axes ». `/[slug]/veille` accueillera les
+écrans du lot 6 sous son segment.
+
 ## 8. Ce qu'il faut trancher
 
 Décidé le 30/10/2026 : accord sur la proposition, option A pour la source des

@@ -776,6 +776,12 @@ export type FaitDeLActivité = {
   readonly axe: number | null
   readonly impact: string
   readonly rupture: boolean
+  readonly pestel?: Pestel | null
+}
+
+/** Les faits par dimension PESTEL, dans l'ordre du cadre, zéro compris : ce que compte l'écran « PESTEL ». */
+export function pestelDesFaits(faits: readonly FaitDeLActivité[]): readonly { readonly libellé: string; readonly faits: number }[] {
+  return PESTEL.map((lettre) => ({ libellé: LIBELLÉS_PESTEL_COURTS[lettre].libellé, faits: faits.filter((f) => f.pestel === lettre).length }))
 }
 
 /** Les lundis des `n` semaines qui finissent à la semaine de `fin`, du plus ancien au plus récent. */

@@ -580,6 +580,9 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         expect(récents?.activité.reduce((n, s) => n + s.faits, 0)).toBe(11)
         expect(récents?.activité.at(-1)?.faits).toBe(11)
         expect(récents?.chaleur?.semaines).toHaveLength(8)
+        // Les six dimensions, zéro compris, comptées comme l'écran « PESTEL » les compte.
+        expect(récents?.pestel).toHaveLength(6)
+        expect(récents?.pestel.reduce((n, d) => n + d.faits, 0)).toBe(faits.filter((x) => x.pestel).length)
         expect(récents?.chaleur?.lignes.some((l) => l.cases.at(-1)?.niveau === 'FORT')).toBe(true)
 
         // Le trimestre n'est lu qu'une fois publié.

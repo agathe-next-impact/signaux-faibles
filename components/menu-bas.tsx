@@ -54,9 +54,17 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
             const rubrique = onglet.rubrique && onglet.rubrique !== autres[rang - 1]?.rubrique ? onglet.rubrique : null
             return [
               rubrique ? (
-                <li key={`rubrique-${rubrique}`} aria-hidden="true" className="label-mono border-b border-gris-ligne bg-fond-neutre px-6 py-1.5 text-ardoise">
-                  {rubrique}
-                </li>
+                onglet.rubriqueHref ? (
+                  <li key={`rubrique-${rubrique}`} className="border-b border-gris-ligne bg-fond-neutre">
+                    <Link href={onglet.rubriqueHref} onClick={fermer} className="label-mono block px-6 py-1.5 text-ardoise">
+                      {rubrique} →
+                    </Link>
+                  </li>
+                ) : (
+                  <li key={`rubrique-${rubrique}`} aria-hidden="true" className="label-mono border-b border-gris-ligne bg-fond-neutre px-6 py-1.5 text-ardoise">
+                    {rubrique}
+                  </li>
+                )
               ) : null,
               <li key={onglet.href} className="border-b border-gris-ligne">
                 <Link

@@ -229,9 +229,10 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await page.goto(`/${SLUG}`)
     const espace = await page.getByRole('heading', { name: 'Votre espace' }).isVisible()
     test.skip(!espace, 'lot 4 non déployé : pas de tableau de bord en cases')
-    // Onze cases au lot 4, douze avec l'écran « Indicateurs » du lot 5.
+    // Onze cases au lot 4, douze au lot 5, puis quatre cartes de rubrique (30 octobre 2026).
     const cases = await page.getByRole('list', { name: 'Les écrans de votre espace' }).getByRole('listitem').count()
-    expect([11, 12]).toContain(cases)
+    const rubriques = await page.getByRole('list', { name: 'Les rubriques de votre espace' }).getByRole('listitem').count()
+    expect([11, 12]).toContain(cases + rubriques * 3)
     await page.screenshot({ path: `${SORTIES}/tableau-de-bord.png`, fullPage: true })
     await ouvrir(`/${SLUG}/concurrents`, 'concurrents-lot4')
     await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
@@ -258,7 +259,24 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await expect(page.getByRole('table', { name: 'Niveau des axes sur les huit dernières semaines' })).toBeVisible()
     await ouvrir(`/${SLUG}`, 'tableau-de-bord-lot5')
     await expect(page.getByRole('list', { name: /^Faits relevés par semaine/ })).toBeVisible()
-    await expect(page.getByRole('list', { name: 'Les écrans de votre espace' }).getByRole('listitem')).toHaveCount(12)
+  })
+
+  test('rubriques : quatre cartes sur la vue d’ensemble, chaque écran de rubrique avec la grille de ses écrans', async () => {
+    test.skip(!parOutil, 'écrans par outil absents')
+    await page.goto(`/${SLUG}/marche`)
+    const déployé = await page.getByRole('heading', { name: 'Le marché' }).isVisible()
+    test.skip(!déployé, 'écrans de rubrique non déployés')
+    await page.screenshot({ path: `${SORTIES}/rubrique-marche.png`, fullPage: true })
+    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique Le marché' }).getByRole('listitem')).toHaveCount(3)
+    await ouvrir(`/${SLUG}/strategie`, 'rubrique-strategie')
+    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique Stratégie' }).getByRole('listitem')).toHaveCount(4)
+    await ouvrir(`/${SLUG}/environnement`, 'rubrique-environnement')
+    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique L’environnement' }).getByRole('listitem')).toHaveCount(2)
+    await ouvrir(`/${SLUG}/veille`, 'rubrique-veille')
+    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique Votre veille' }).getByRole('listitem')).toHaveCount(2)
+    await ouvrir(`/${SLUG}`, 'tableau-de-bord-rubriques')
+    await expect(page.getByRole('list', { name: 'Les rubriques de votre espace' }).getByRole('listitem')).toHaveCount(4)
+    await expect(page.locator('nav[aria-label="Sections"]').first().getByRole('link', { name: 'Stratégie →' })).toBeVisible()
   })
 
   test('recommandations : l’option retenue de septembre, et le reste selon l’espace', async () => {

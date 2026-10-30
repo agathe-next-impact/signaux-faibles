@@ -487,10 +487,10 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/acteurs/page.tsx',
       'app/(portail)/[slug]/diagnostic/page.tsx',
       'app/(portail)/[slug]/forces/page.tsx',
-      'app/(portail)/[slug]/page.tsx',
       'app/(portail)/[slug]/recommandations/page.tsx',
       'app/(portail)/[slug]/scenarios/page.tsx',
       'lib/portail/strategie.ts',
+      'lib/portail/tableau.ts',
     ])
     expect(appelants('pestelDeLEspace')).toEqual(['app/(portail)/[slug]/axes/page.tsx', 'app/(portail)/[slug]/pestel/page.tsx', 'lib/portail/strategie.ts'])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
@@ -514,7 +514,16 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('l’espace réorganisé : un écran par lecture, bornée, et 404 avant la lecture hors du pilote', () => {
     expect(appelants('concurrentsDeLEspace')).toEqual(['app/(portail)/[slug]/concurrents/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('ficheDuConcurrent')).toEqual(['app/(portail)/[slug]/concurrents/[concurrent]/page.tsx', 'lib/portail/strategie.ts'])
-    expect(appelants('faitsRécentsDeLEspace')).toEqual(['app/(portail)/[slug]/axes/page.tsx', 'app/(portail)/[slug]/page.tsx', 'lib/portail/strategie.ts'])
+    expect(appelants('faitsRécentsDeLEspace')).toEqual(['app/(portail)/[slug]/axes/page.tsx', 'lib/portail/strategie.ts', 'lib/portail/tableau.ts'])
+    // Les cases des écrans : un seul calcul pour la vue d'ensemble et les écrans de rubrique (30 octobre 2026).
+    expect(appelants('tableauDeLEspace')).toEqual([
+      'app/(portail)/[slug]/environnement/page.tsx',
+      'app/(portail)/[slug]/marche/page.tsx',
+      'app/(portail)/[slug]/page.tsx',
+      'app/(portail)/[slug]/strategie/page.tsx',
+      'app/(portail)/[slug]/veille/page.tsx',
+      'lib/portail/tableau.ts',
+    ])
     expect(appelants('indicateursDeLEspace')).toEqual(['app/(portail)/[slug]/indicateurs/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('espaceDeLOrganisation')).toEqual([
       'app/(portail)/[slug]/acteurs/page.tsx',
@@ -522,13 +531,17 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/concurrents/[concurrent]/page.tsx',
       'app/(portail)/[slug]/concurrents/page.tsx',
       'app/(portail)/[slug]/diagnostic/page.tsx',
+      'app/(portail)/[slug]/environnement/page.tsx',
       'app/(portail)/[slug]/forces/page.tsx',
       'app/(portail)/[slug]/indicateurs/page.tsx',
       'app/(portail)/[slug]/layout.tsx',
+      'app/(portail)/[slug]/marche/page.tsx',
       'app/(portail)/[slug]/page.tsx',
       'app/(portail)/[slug]/pestel/page.tsx',
       'app/(portail)/[slug]/recommandations/page.tsx',
       'app/(portail)/[slug]/scenarios/page.tsx',
+      'app/(portail)/[slug]/strategie/page.tsx',
+      'app/(portail)/[slug]/veille/page.tsx',
       'lib/portail/strategie.ts',
     ])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
@@ -548,12 +561,16 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       join('diagnostic', 'page.tsx'),
       join('scenarios', 'page.tsx'),
       join('indicateurs', 'page.tsx'),
+      join('marche', 'page.tsx'),
+      join('environnement', 'page.tsx'),
+      join('strategie', 'page.tsx'),
+      join('veille', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|notesDeLaSemaine)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|notesDeLaSemaine|documentsDeLaSemaine)\(/))
     }
   })
 
@@ -1004,6 +1021,12 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
       expect(existsSync(chemin), `${onglet.libellé} → ${onglet.href}`).toBe(true)
       expect(onglet.libelléCourt.length, onglet.libelléCourt).toBeLessThanOrEqual(8)
       expect(onglet.rubrique, onglet.libellé).toBeTruthy()
+      // Le nom d'une rubrique mène à son écran (30 octobre 2026), sauf « Cette semaine », qui est la vue d'ensemble.
+      if (onglet.rubriqueHref) {
+        expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', onglet.rubriqueHref.replace(/^\/client\//, ''), 'page.tsx')), onglet.rubriqueHref).toBe(true)
+      } else {
+        expect(onglet.rubrique).toBe('Cette semaine')
+      }
     }
     // Une rubrique ne revient pas après une autre : ses écrans se suivent dans le rail.
     const rubriques = onglets.map((o) => o.rubrique)

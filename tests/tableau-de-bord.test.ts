@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { casesDuTableauDeBord, type DonnéesDuTableau } from '@/lib/domaine/tableau-de-bord'
+import { cartesDesRubriques, casesDeLaRubrique, casesDuTableauDeBord, RUBRIQUES, type DonnéesDuTableau } from '@/lib/domaine/tableau-de-bord'
 import {
   enBrefDeLaSwot,
   enBrefDesConcurrents,
@@ -66,16 +66,10 @@ const DONNÉES: DonnéesDuTableau = {
   dossiersHorsConcurrents: 10,
   concurrents: 36,
   synthèse: SYNTHÈSE,
-  étiquettes: {
-    total: 9,
-    pestel: [
-      { clé: 'politique', libellé: 'Politique', faits: 2 },
-      { clé: 'economique', libellé: 'Économique', faits: 5 },
-    ],
-    forces: [],
-    mouvements: [],
-    ruptures: [],
-  },
+  pestel: [
+    { libellé: 'Politique', faits: 2 },
+    { libellé: 'Économique', faits: 5 },
+  ],
 }
 
 describe('casesDuTableauDeBord', () => {
@@ -100,7 +94,7 @@ describe('casesDuTableauDeBord', () => {
     expect(par.get('Acteurs')).toMatchObject({ valeur: '10 dossiers', mention: '4 parties prenantes sur Mendelow' })
     expect(par.get('Forces du marché')).toMatchObject({ valeur: '1 intense', mention: 'trimestre de juillet à septembre 2026' })
     expect(par.get('Les axes')).toMatchObject({ valeur: '12 axes', mention: '3 signaux forts cette semaine' })
-    expect(par.get('PESTEL')).toMatchObject({ valeur: 'Économique' })
+    expect(par.get('PESTEL')).toMatchObject({ valeur: 'Économique', mention: 'la plus citée, 5 faits en treize semaines' })
     expect(par.get('Diagnostic')).toMatchObject({ valeur: '5 éléments', mention: '1 menace, 2 opportunités' })
     expect(par.get('Options')).toMatchObject({ valeur: '2 options', mention: 'retenue : saisir, forces × opportunités' })
     expect(par.get('Scénarios')).toMatchObject({ valeur: '3 scénarios' })
@@ -131,9 +125,26 @@ describe('casesDuTableauDeBord', () => {
   })
 
   it('sans synthèse publiée ni étiquettes, les cases le disent au lieu d’inventer un chiffre', () => {
-    const par = new Map(casesDuTableauDeBord({ ...DONNÉES, synthèse: null, étiquettes: null }).map((c) => [c.écran, c]))
-    for (const écran of ['Forces du marché', 'Diagnostic', 'Options', 'Scénarios', 'Indicateurs', 'PESTEL']) expect(par.get(écran)?.valeur, écran).toBe('n.d.')
+    const par = new Map(casesDuTableauDeBord({ ...DONNÉES, synthèse: null, pestel: null, axes: null }).map((c) => [c.écran, c]))
+    for (const écran of ['Forces du marché', 'Diagnostic', 'Options', 'Scénarios', 'Indicateurs', 'PESTEL', 'Les axes']) expect(par.get(écran)?.valeur, écran).toBe('n.d.')
     expect(par.get('Concurrents')?.mention).toBe('pas encore publié')
+  })
+})
+
+describe('les rubriques', () => {
+  it('une carte par rubrique, Cette semaine exceptée, avec les chiffres de ses écrans', () => {
+    const cases = casesDuTableauDeBord(DONNÉES)
+    const cartes = cartesDesRubriques('hermitage', cases)
+    expect(cartes.map((c) => [c.titre, c.href, c.écrans.map((é) => é.écran)])).toEqual([
+      ['Le marché', '/hermitage/marche', ['Concurrents', 'Acteurs', 'Forces du marché']],
+      ['L’environnement', '/hermitage/environnement', ['Les axes', 'PESTEL']],
+      ['Stratégie', '/hermitage/strategie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
+      ['Votre veille', '/hermitage/veille', ['Périmètre', 'Archives']],
+    ])
+    expect(cartes[0]!.écrans[0]).toEqual({ écran: 'Concurrents', valeur: '36 suivis' })
+    // Chaque écran hors « Cette semaine » est dans une rubrique, et une seule.
+    const rangés = RUBRIQUES.flatMap((r) => casesDeLaRubrique(cases, r.clé))
+    expect(rangés.map((c) => c.href).sort()).toEqual(cases.filter((c) => c.rubrique !== 'Cette semaine').map((c) => c.href).sort())
   })
 })
 

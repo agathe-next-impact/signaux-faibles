@@ -37,6 +37,8 @@ export type Onglet = {
    * nom ; sans rubrique, le rail reste une liste simple.
    */
   readonly rubrique?: string
+  /** L'écran de la rubrique (30 octobre 2026) : son nom, dans le rail, y mène. */
+  readonly rubriqueHref?: string
 }
 
 export function Coquille({
