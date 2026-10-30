@@ -381,7 +381,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 
 ## 6. Pilote
 
-**Organisations** : cinq, toutes portant `organisations.outils_strategiques` à vrai (vérifié le 27/10/2026 par `GET /api/veille/faits`, qui répond `hors-pilote` pour les cinq autres espaces).
+**Organisations** : cinq, toutes portant `organisations.outils_strategiques` à vrai (vérifié le 27/10/2026 par `GET /api/veille/faits`, qui répond `hors-pilote` pour les cinq autres espaces). Six depuis le 30/10/2026 : Suneido entre au pilote le même jour (décision de l'opératrice : espace réorganisé pour Infralliance et Suneido). Le 30/10/2026 aussi, les six grilles sont revues pour suivre les cinq forces et couvrir les six dimensions PESTEL : rattachements de familles existantes quand leur contenu s'y prête, familles mensuelles ajoutées sinon (versions : L'Hermitage 3, Heritech 3, Konica 4, Mastora 3, Infralliance 3, Suneido 1).
 
 | Organisation | Slug | Entrée | Rôle | Étiquetage après coup |
 |---|---|---|---|---|
@@ -390,6 +390,7 @@ Chaque lot se livre seul, testé, sur une branche et une PR. Pour chaque page No
 | L'Hermitage | `hermitage` | 26/10/2026, décision 12 | Section « Lecture stratégique » de la vue d'ensemble (lot 11 avancé) | 19 éditions, du 29/07 au 26/10 : 156 faits (exécution 40308438865) |
 | Heritech | `heritech` | 27/10/2026, décision 13 | Section « Lecture stratégique » de la vue d'ensemble | 3 éditions sur 4 : 37 faits, 0,78 $ (exécution 40465990144) ; le concurrentiel n°2 du 27/10, tout en RAS, n'a aucun fait étiquetable |
 | Konica Minolta France | `konica-minolta-france` | 27/10/2026, décision 13 | Section « Lecture stratégique » de la vue d'ensemble | 12 éditions sur 12 : 93 faits, aucune rupture. Premier passage : 8 éditions, 56 faits, 2,34 $ (exécution 40466848673) ; les 4 autres refusées ou passées pour `source-absente`, des faits sans URL dans leur propre bloc (Écosystème et Concurrentiel n°1 du 12/09, Concurrentiel n°3 du 30/09, Écosystème n°5 du 14/10). Pages corrigées le 27/10/2026 (liens seulement, repris d'une source déjà citée par la lettre ; note dans « Livraison »), puis second passage : 37 faits, 0,79 $ (exécution 40469515637), chaque lot accepté au premier envoi |
+| Suneido | `suneido` | 30/10/2026, décision de l'opératrice (espace réorganisé) | Espace réorganisé ouvert le même jour ; grille v1 (empreinte ecfaa559) composée depuis ses deux référentiels, famille ⑧ du cadre ajoutée pour l'écologique | Lancé le 30/10/2026 sur ses éditions publiées, résultat à relever |
 
 Pour les cinq, l'étape 4ter étiquette chaque nouvelle lettre, et le contrôle du soir signale `étiquettes-manquantes`. Seule Infralliance reçoit la synthèse mensuelle pendant le pilote (lot 6) ; les critères de décision ci-dessous se mesurent sur elle. Heritech et Konica n'ont pas de grille (lot 5) : la porte ne contrôle pas les entités (`entité-hors-grille` ne joue pas). Les critères FAIBLE du référentiel de Konica (§2) restent sans effet sur les étiquettes. Le contrôle du soir du 27/10/2026 signale `étiquettes-manquantes` pour Heritech (le concurrentiel n°2 du 27/10, tout en RAS, à tort, comme son message le prévoit) et pour Konica (les éditions du 30/09 et du 14/10, postérieures à sa première étiquetée) ; celui de Konica a disparu après le second passage.
 
