@@ -161,7 +161,14 @@ barres horizontales du benchmark, barres mensuelles du PESTEL
 `components/graphiques-strategie.tsx` leur passent des données calculées et
 posent le texte lu par les lecteurs d'écran) ; animation de 600 ms au
 chargement, aucune en mouvement réduit ; la carte de chaleur et les crans
-restent en HTML. Couleur d'**accent turquoise** (#0FA3A3, tokens `turquoise`,
+restent en HTML. Le même jour, à sa demande, les **autres écrans** reçoivent leur graphique
+animé, en tête du détail qu'il ne remplace pas (`components/graphiques-strategie.tsx`,
+enveloppes sur `Bulles`, `BarresVerticales`, `BarresCouchées`, `Anneau`) : la
+carte des groupes et Mendelow en bulles (aire proportionnelle au nombre de
+sujets), les cases de la SWOT (« Diagnostic »), les croisements TOWS
+(« Options »), les faits d'un axe par semaine (`/[slug]/pestel/[axe]`), les faits
+d'un concurrent par mois (sa fiche), les sources par thème, les échéances par
+mois (ocre) et l'anneau du corpus (« Votre veille »). Couleur d'**accent turquoise** (#0FA3A3, tokens `turquoise`,
 `turquoise-texte`, `fond-turquoise`, charte §02) pour la série mise en avant,
 jamais un impact ni un « favorable ». Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »

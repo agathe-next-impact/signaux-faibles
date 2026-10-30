@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
+import { FaitsParSemaine } from '@/components/graphiques-strategie'
 import { faitsDeLaLettre } from '@/lib/domaine/strategie'
 import { dateCourte } from '@/lib/domaine/strategie-vues'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
@@ -67,6 +68,12 @@ export default async function FaitsDUnAxe({ params }: { params: Promise<{ slug: 
         {vue.forts > 0 ? `, dont ${vue.forts} de niveau fort` : ''}
         {vue.ruptures > 0 ? ` et ${vue.ruptures} rupture${vue.ruptures > 1 ? 's' : ''}` : ''}. Le titre d’un fait plus ancien que les {LETTRES_SUIVIES} dernières lettres se lit dans sa lettre.
       </p>
+
+      {fin && vue.faits.length > 0 ? (
+        <div className="mt-6">
+          <FaitsParSemaine faits={vue.faits} fin={fin} />
+        </div>
+      ) : null}
 
       <section className="mt-6">
         {vue.faits.length === 0 ? (

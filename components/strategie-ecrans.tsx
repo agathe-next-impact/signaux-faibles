@@ -19,7 +19,7 @@ import {
   type VueDuPestel,
 } from '@/lib/domaine/strategie-vues'
 import { CASES_SWOT } from '@/lib/domaine/strategie'
-import { BarresMensuelles, CransDeForce, RadarDesForces, RadarDuPestel } from '@/components/graphiques-strategie'
+import { BarresMensuelles, BullesDeLaCarte, BullesDeMendelow, ComptesDeLaSwot, ComptesDeLaTows, CransDeForce, RadarDesForces, RadarDuPestel } from '@/components/graphiques-strategie'
 
 /**
  * Les outils stratégiques sur les écrans du client (lot 11), selon les
@@ -62,6 +62,7 @@ export function CarteDesGroupes({ carte, lien }: { carte: VueDeLaCarte; lien?: (
   const colonnes = carte.colonnes.crans.map((libellé, i) => ({ cran: i + 1, libellé }))
   return (
     <div className="flex flex-col gap-4">
+      <BullesDeLaCarte carte={carte} />
       <div className="overflow-x-auto border-t border-l border-gris-ligne">
         <div
           role="table"
@@ -151,34 +152,37 @@ export function CarteDesGroupes({ carte, lien }: { carte: VueDeLaCarte; lien?: (
 
 export function MatriceDeMendelow({ mendelow }: { mendelow: VueDeMendelow }) {
   return (
-    <div className="overflow-x-auto border-t border-l border-gris-ligne">
-      <div role="table" aria-label="Matrice de Mendelow : pouvoir en lignes, intérêt en colonnes" className="grid min-w-[680px] grid-cols-[150px_repeat(3,minmax(170px,1fr))]">
-        <div role="row" className="contents">
-          <div role="columnheader" className="border-r border-b border-gris-ligne p-3"><p className="label-mono text-ardoise">Pouvoir ↓ · Intérêt →</p></div>
-          {[1, 2, 3].map((i) => (
-            <div key={i} role="columnheader" className="border-r border-b border-gris-ligne p-3"><p className="label-mono text-encre">Intérêt {LIBELLÉS_MENDELOW[i - 1]}</p></div>
+    <div className="flex flex-col gap-4">
+      <BullesDeMendelow mendelow={mendelow} />
+      <div className="overflow-x-auto border-t border-l border-gris-ligne">
+        <div role="table" aria-label="Matrice de Mendelow : pouvoir en lignes, intérêt en colonnes" className="grid min-w-[680px] grid-cols-[150px_repeat(3,minmax(170px,1fr))]">
+          <div role="row" className="contents">
+            <div role="columnheader" className="border-r border-b border-gris-ligne p-3"><p className="label-mono text-ardoise">Pouvoir ↓ · Intérêt →</p></div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} role="columnheader" className="border-r border-b border-gris-ligne p-3"><p className="label-mono text-encre">Intérêt {LIBELLÉS_MENDELOW[i - 1]}</p></div>
+            ))}
+          </div>
+          {[3, 2, 1].map((p) => (
+            <div key={p} role="row" className="contents">
+              <div role="rowheader" className="border-r border-b border-gris-ligne p-3"><p className="label-mono text-encre">Pouvoir {LIBELLÉS_MENDELOW[p - 1]}</p></div>
+              {[1, 2, 3].map((i) => {
+                const sujets = mendelow.cases.get(`${p}:${i}`) ?? []
+                const coin = STRATÉGIES_MENDELOW[`${p}:${i}`]
+                return (
+                  <div key={i} role="cell" className={`flex min-h-[120px] flex-col gap-2 border-r border-b border-gris-ligne p-3 ${p === 3 && i === 3 ? 'bg-fond-ardoise' : 'bg-blanc'}`}>
+                    {coin ? <p className="label-mono text-ardoise">{coin}</p> : null}
+                    {sujets.map((s) => (
+                      <div key={s.sujet} className="flex flex-col gap-1">
+                        <p className="flex gap-2 leading-snug"><Pastille couleur={s.aBougé ? 'rose' : 'ardoise'} /><span className="text-encre">{s.sujet}</span></p>
+                        {s.aBougé && s.fait ? <p className="label-mono text-ardoise">Fait du {dateCourte(s.fait.date)}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
           ))}
         </div>
-        {[3, 2, 1].map((p) => (
-          <div key={p} role="row" className="contents">
-            <div role="rowheader" className="border-r border-b border-gris-ligne p-3"><p className="label-mono text-encre">Pouvoir {LIBELLÉS_MENDELOW[p - 1]}</p></div>
-            {[1, 2, 3].map((i) => {
-              const sujets = mendelow.cases.get(`${p}:${i}`) ?? []
-              const coin = STRATÉGIES_MENDELOW[`${p}:${i}`]
-              return (
-                <div key={i} role="cell" className={`flex min-h-[120px] flex-col gap-2 border-r border-b border-gris-ligne p-3 ${p === 3 && i === 3 ? 'bg-fond-ardoise' : 'bg-blanc'}`}>
-                  {coin ? <p className="label-mono text-ardoise">{coin}</p> : null}
-                  {sujets.map((s) => (
-                    <div key={s.sujet} className="flex flex-col gap-1">
-                      <p className="flex gap-2 leading-snug"><Pastille couleur={s.aBougé ? 'rose' : 'ardoise'} /><span className="text-encre">{s.sujet}</span></p>
-                      {s.aBougé && s.fait ? <p className="label-mono text-ardoise">Fait du {dateCourte(s.fait.date)}</p> : null}
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
-          </div>
-        ))}
       </div>
     </div>
   )
@@ -365,6 +369,7 @@ export function OptionsStratégiques({ période, tows, diagnostic }: { période:
           Chaque option croise un élément de votre situation et un élément de votre environnement
           {diagnostic ? ', détaillés sur l’écran « Diagnostic »' : ', lus plus bas'}. Les codes renvoient aux éléments de l’analyse.
         </p>
+        <ComptesDeLaTows tows={tows} />
         <Grille étiquette="Matrice TOWS" colonnes={2}>
           {TYPES_DE_TOWS.map((t) => {
             const options = tows.parType[t.type]
@@ -414,6 +419,7 @@ export function MatriceSwot({ swot, lettre }: { swot: VueDeLaSwot; lettre?: (éd
     <section className="flex flex-col gap-4">
       <TitreDeSection titre="Votre situation" mention="Matrice SWOT" />
       <p className="max-w-[68ch] text-ardoise">Les opportunités et les menaces viennent des faits de vos lettres, datés. Les forces et les faiblesses peuvent venir de ce que vous nous avez déclaré : elles sont marquées comme telles.</p>
+      <ComptesDeLaSwot swot={swot} />
       <Grille étiquette="Matrice SWOT" colonnes={2}>
         {CASES_SWOT.map((c) => (
           <Case key={c}>

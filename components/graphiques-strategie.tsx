@@ -1,8 +1,17 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { AireDActivité, BarresDuMois, BarresGroupées, BarresHorizontales, MiniAire, RadarDeValeurs } from '@/components/graphiques-recharts'
+import { AireDActivité, Anneau, BarresCouchées, BarresDuMois, BarresGroupées, BarresHorizontales, BarresVerticales, Bulles, MiniAire, RadarDeValeurs, type Barre, type Bulle } from '@/components/graphiques-recharts'
+import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
+import { CASES_SWOT } from '@/lib/domaine/strategie'
 import {
   dateCourte,
+  LIBELLÉS_SWOT,
+  semainesJusquÀ,
+  TYPES_DE_TOWS,
   type ActivitéDeRubrique,
+  type VueDeLaCarte,
+  type VueDeLaSwot,
+  type VueDeLaTows,
+  type VueDeMendelow,
   type CarteDeChaleur,
   type DimensionDuPestel,
   type SemaineDActivité,
@@ -298,5 +307,157 @@ export function BarresDuBenchmark({ benchmark }: { benchmark: NonNullable<VueDes
       </ul>
       {autres.length > 0 ? <p className="text-ardoise">{autres.length} entité{autres.length > 1 ? 's' : ''} sans chiffre d’affaires publié.</p> : null}
     </div>
+  )
+}
+
+// ── Les autres écrans (30 octobre 2026) : un graphique en tête, le détail dessous ─
+
+/** Une figure dont le graphique est masqué aux lecteurs d'écran, qui lisent sa légende. */
+function Figure({ légende, visible = false, children }: { légende: string; visible?: boolean; children: ReactNode }) {
+  return (
+    <figure className="flex flex-col gap-2">
+      {children}
+      <figcaption className={visible ? 'text-center font-mono text-label text-ardoise' : 'sr-only'}>{légende}</figcaption>
+    </figure>
+  )
+}
+
+const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
+
+/** La carte des groupes en bulles : une bulle par case occupée ; encre pour vous, rose pour un mouvement. */
+export function BullesDeLaCarte({ carte }: { carte: VueDeLaCarte }) {
+  const bulles: Bulle[] = [...carte.cases.entries()].flatMap(([clé, occupants]) => {
+    if (occupants.length === 0) return []
+    const [ligne, colonne] = clé.split(':').map(Number)
+    const teinte = occupants.some((o) => o.organisation) ? 'encre' : occupants.some((o) => o.aBougé) ? 'rose' : 'ardoise'
+    return [{ x: colonne!, y: ligne!, n: occupants.length, teinte, libellé: occupants.map((o) => (o.organisation ? `${o.sujet} (vous)` : o.sujet)).join(', ') }]
+  })
+  if (bulles.length === 0) return null
+  return (
+    <Figure légende={`La carte en bulles, ${pluriel(carte.placés, 'sujet')} placé${carte.placés > 1 ? 's' : ''} ; le tableau qui suit la détaille case par case.`}>
+      <Bulles bulles={bulles} axeX={carte.colonnes} axeY={carte.lignes} />
+    </Figure>
+  )
+}
+
+const NIVEAUX_MENDELOW = ['faible', 'moyen', 'fort'] as const
+
+/** Mendelow en bulles : intérêt en abscisse, pouvoir en ordonnée ; rose pour un mouvement. */
+export function BullesDeMendelow({ mendelow }: { mendelow: VueDeMendelow }) {
+  const bulles: Bulle[] = [...mendelow.cases.entries()].flatMap(([clé, sujets]) => {
+    if (sujets.length === 0) return []
+    const [pouvoir, intérêt] = clé.split(':').map(Number)
+    return [{ x: intérêt!, y: pouvoir!, n: sujets.length, teinte: sujets.some((s) => s.aBougé) ? 'rose' : 'ardoise', libellé: sujets.map((s) => s.sujet).join(', ') }]
+  })
+  if (bulles.length === 0) return null
+  return (
+    <Figure légende={`Les parties prenantes en bulles, ${pluriel(mendelow.placés, 'sujet')} placé${mendelow.placés > 1 ? 's' : ''} ; la matrice qui suit les détaille case par case.`}>
+      <Bulles bulles={bulles} axeX={{ libellé: 'Intérêt', crans: NIVEAUX_MENDELOW }} axeY={{ libellé: 'Pouvoir', crans: NIVEAUX_MENDELOW }} />
+    </Figure>
+  )
+}
+
+export function ComptesDeLaSwot({ swot }: { swot: VueDeLaSwot }) {
+  const barres: Barre[] = CASES_SWOT.map((c) => ({ libellé: LIBELLÉS_SWOT[c], valeur: swot[c].length }))
+  if (barres.every((b) => b.valeur === 0)) return null
+  return (
+    <Figure légende={`Éléments du diagnostic : ${barres.map((b) => `${b.libellé} ${b.valeur}`).join(', ')}.`}>
+      <BarresCouchées barres={barres} unité="Éléments" />
+    </Figure>
+  )
+}
+
+/** Les options par croisement de la TOWS ; celui de l'option retenue en turquoise. */
+export function ComptesDeLaTows({ tows }: { tows: VueDeLaTows }) {
+  const barres: Barre[] = TYPES_DE_TOWS.map((t) => ({
+    libellé: t.type,
+    valeur: tows.parType[t.type].length,
+    teinte: tows.candidate && tows.parType[t.type].some((o) => o.candidate) ? 'turquoise' : 'ardoise',
+  }))
+  if (barres.every((b) => b.valeur === 0)) return null
+  return (
+    <Figure visible légende={`Options par croisement : ${TYPES_DE_TOWS.map((t) => `${t.type} ${tows.parType[t.type].length}`).join(' · ')}${tows.candidate ? ' ; en turquoise, celui de l’option retenue' : ''}.`}>
+      <BarresVerticales barres={barres} unité="Options" hauteur="h-40" />
+    </Figure>
+  )
+}
+
+/** Les faits d'un axe par semaine de parution, sur treize semaines ; la dernière en turquoise. */
+export function FaitsParSemaine({ faits, fin }: { faits: readonly { readonly date: string }[]; fin: string }) {
+  const semaines = semainesJusquÀ(fin, 13)
+  const barres: Barre[] = semaines.map((lundi, i) => ({
+    libellé: dateCourte(lundi),
+    valeur: faits.filter((f) => lundiDeLaSemaine(f.date) === lundi).length,
+    teinte: i === semaines.length - 1 ? 'turquoise' : 'ardoise',
+  }))
+  return (
+    <Figure visible légende={`${pluriel(faits.length, 'fait')} sur treize semaines, semaine par semaine`}>
+      <BarresVerticales barres={barres} unité="Faits" hauteur="h-40" />
+    </Figure>
+  )
+}
+
+/** Les faits d'un concurrent par mois, du plus ancien au plus récent ; le dernier mois en turquoise. */
+export function FaitsParMois({ faits }: { faits: readonly { readonly date: string }[] }) {
+  if (faits.length === 0) return null
+  const parMois = new Map<string, number>()
+  for (const f of faits) parMois.set(f.date.slice(0, 7), (parMois.get(f.date.slice(0, 7)) ?? 0) + 1)
+  const mois = [...parMois.keys()].sort()
+  const nom = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+  const barres: Barre[] = mois.map((m, i) => ({ libellé: nom(m), valeur: parMois.get(m)!, teinte: i === mois.length - 1 ? 'turquoise' : 'ardoise' }))
+  return (
+    <Figure visible légende={`${pluriel(faits.length, 'fait')} daté${faits.length > 1 ? 's' : ''}, mois par mois : ${barres.map((b) => `${b.libellé} ${b.valeur}`).join(', ')}`}>
+      <BarresVerticales barres={barres} unité="Faits" hauteur="h-36" />
+    </Figure>
+  )
+}
+
+/** Les sources de la veille par thème, en barres couchées. */
+export function SourcesParThème({ familles }: { familles: readonly { readonly nom: string; readonly sources: readonly unknown[] }[] }) {
+  if (familles.length === 0) return null
+  const barres: Barre[] = familles.map((f) => ({ libellé: f.nom, valeur: f.sources.length }))
+  return (
+    <Figure légende={`Sources par thème : ${barres.map((b) => `${b.libellé} ${b.valeur}`).join(', ')}.`}>
+      <BarresCouchées barres={barres} unité="Sources" />
+    </Figure>
+  )
+}
+
+/** Les échéances des douze prochains mois, en barres ocre : l'ocre est la couleur du temps. */
+export function ÉchéancesParMois({ mois }: { mois: readonly { readonly libellé: string; readonly échéances: readonly unknown[] }[] }) {
+  const barres: Barre[] = mois.map((m) => ({ libellé: m.libellé, valeur: m.échéances.length, teinte: 'ocre' }))
+  return (
+    <Figure visible légende={`${pluriel(barres.reduce((n, b) => n + b.valeur, 0), 'échéance')} sur douze mois, mois par mois ; le détail suit`}>
+      <BarresVerticales barres={barres} unité="Échéances" hauteur="h-40" />
+    </Figure>
+  )
+}
+
+/** Le corpus en anneau : concurrents, acteurs de l'environnement, parties prenantes. */
+export function AnneauDuCorpus({ concurrents, écosystème, partiesPrenantes }: { concurrents: number; écosystème: number; partiesPrenantes: number }) {
+  const parts: Barre[] = [
+    { libellé: 'Concurrents', valeur: concurrents, teinte: 'encre' },
+    { libellé: 'Environnement', valeur: écosystème, teinte: 'ardoise' },
+    { libellé: 'Parties prenantes', valeur: partiesPrenantes, teinte: 'turquoise' },
+  ].filter((p) => p.valeur > 0) as Barre[]
+  const total = concurrents + écosystème + partiesPrenantes
+  if (total === 0) return null
+  return (
+    <figure className="flex flex-col items-center gap-3 sm:flex-row sm:gap-8">
+      <div className="w-full max-w-60">
+        <Anneau parts={parts} total={total} unité="suivis" />
+      </div>
+      <figcaption>
+        <ul className="flex flex-col gap-2" aria-label="Le corpus de votre veille">
+          {parts.map((p) => (
+            <li key={p.libellé} className="flex items-center gap-2">
+              <span aria-hidden="true" className={`size-3 ${p.teinte === 'encre' ? 'bg-encre' : p.teinte === 'turquoise' ? 'bg-turquoise' : 'bg-ardoise'}`} />
+              <span className="text-encre">{p.libellé}</span>
+              <span className="font-mono text-label text-ardoise">{p.valeur}</span>
+            </li>
+          ))}
+        </ul>
+      </figcaption>
+    </figure>
   )
 }

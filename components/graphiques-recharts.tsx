@@ -1,7 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Label, Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from 'recharts'
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 
 /**
@@ -205,6 +205,117 @@ export function BarresHorizontales({ lignes }: { lignes: readonly LigneDeBenchma
           ))}
         </Bar>
       </BarChart>
+    </ChartContainer>
+  )
+}
+
+// ── Formes génériques des autres écrans (30 octobre 2026) ───────────────────
+
+/** Les couleurs qu'un écran peut demander, toutes des tokens de la charte. */
+export type Teinte = 'ardoise' | 'encre' | 'turquoise' | 'ocre' | 'rose'
+const TEINTES: Readonly<Record<Teinte, string>> = { ardoise: ARDOISE, encre: ENCRE, turquoise: TURQUOISE, ocre: OCRE, rose: 'var(--color-rose)' }
+
+export type Bulle = { readonly x: number; readonly y: number; readonly n: number; readonly teinte: Teinte; readonly libellé: string }
+
+/** Une matrice en bulles : une bulle par case occupée, sa taille dit combien de sujets elle porte. */
+export function Bulles({ bulles, axeX, axeY }: { bulles: readonly Bulle[]; axeX: { libellé: string; crans: readonly string[] }; axeY: { libellé: string; crans: readonly string[] } }) {
+  const animation = useAnimation()
+  const config = { n: { label: 'Sujets', color: ARDOISE } } satisfies ChartConfig
+  const max = Math.max(...bulles.map((b) => b.n), 1)
+  return (
+    <ChartContainer config={config} className="h-72 w-full" aria-hidden="true">
+      <ScatterChart margin={{ top: 16, right: 24, bottom: 24, left: 24 }}>
+        <CartesianGrid strokeDasharray="2 4" />
+        <XAxis type="number" dataKey="x" domain={[0.5, axeX.crans.length + 0.5]} ticks={axeX.crans.map((_, i) => i + 1)} tickFormatter={(v: number) => axeX.crans[v - 1] ?? ''} tickLine={false} axisLine={false}>
+          <Label value={axeX.libellé} position="bottom" offset={8} className="fill-ardoise" />
+        </XAxis>
+        <YAxis type="number" dataKey="y" domain={[0.5, axeY.crans.length + 0.5]} ticks={axeY.crans.map((_, i) => i + 1)} tickFormatter={(v: number) => axeY.crans[v - 1] ?? ''} tickLine={false} axisLine={false} width={96}>
+          <Label value={axeY.libellé} angle={-90} position="insideLeft" offset={-12} className="fill-ardoise" />
+        </YAxis>
+        {/* L'aire de la bulle est proportionnelle au nombre de sujets : deux sujets, deux fois l'aire d'un seul. */}
+        <ZAxis type="number" dataKey="n" domain={[0, max]} range={[0, Math.min(400, 1600 / max) * max]} />
+        <ChartTooltip cursor={false} isAnimationActive={false} content={<ChartTooltipContent hideIndicator labelKey="libellé" formatter={(_v, _n, item) => (item.payload as Bulle).libellé} />} />
+        <Scatter data={bulles.map((b) => ({ ...b }))} {...animation}>
+          {bulles.map((b) => (
+            <Cell key={`${b.x}:${b.y}`} fill={TEINTES[b.teinte]} fillOpacity={0.85} stroke="var(--color-blanc)" strokeWidth={2} />
+          ))}
+        </Scatter>
+      </ScatterChart>
+    </ChartContainer>
+  )
+}
+
+export type Barre = { readonly libellé: string; readonly valeur: number; readonly teinte?: Teinte }
+
+/** Des barres verticales, une teinte par barre (ardoise par défaut). */
+export function BarresVerticales({ barres, unité, hauteur = 'h-48' }: { barres: readonly Barre[]; unité: string; hauteur?: string }) {
+  const animation = useAnimation()
+  const config = { valeur: { label: unité, color: ARDOISE } } satisfies ChartConfig
+  return (
+    <ChartContainer config={config} className={`${hauteur} w-full`} aria-hidden="true">
+      <BarChart data={barres.map((b) => ({ ...b }))} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+        <CartesianGrid vertical={false} strokeDasharray="2 4" />
+        <XAxis dataKey="libellé" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" minTickGap={12} />
+        <YAxis hide allowDecimals={false} />
+        <ChartTooltip cursor isAnimationActive={false} content={<ChartTooltipContent hideIndicator />} />
+        <Bar dataKey="valeur" radius={0} {...animation}>
+          {barres.map((b) => (
+            <Cell key={b.libellé} fill={TEINTES[b.teinte ?? 'ardoise']} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  )
+}
+
+/** Des barres horizontales, le libellé à gauche, la valeur au bout de la barre. */
+export function BarresCouchées({ barres, unité }: { barres: readonly Barre[]; unité: string }) {
+  const animation = useAnimation()
+  const config = { valeur: { label: unité, color: ARDOISE } } satisfies ChartConfig
+  return (
+    <ChartContainer config={config} className="w-full" style={{ height: Math.max(barres.length * 32 + 16, 80) }} aria-hidden="true">
+      <BarChart data={barres.map((b) => ({ ...b }))} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 8 }}>
+        <XAxis type="number" hide allowDecimals={false} />
+        <YAxis type="category" dataKey="libellé" width={180} tickLine={false} axisLine={false} />
+        <ChartTooltip cursor={false} isAnimationActive={false} content={<ChartTooltipContent hideIndicator />} />
+        <Bar dataKey="valeur" radius={0} barSize={16} label={{ position: 'right', className: 'fill-encre' }} {...animation}>
+          {barres.map((b) => (
+            <Cell key={b.libellé} fill={TEINTES[b.teinte ?? 'ardoise']} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  )
+}
+
+/** Un anneau de parts, le total au centre. */
+export function Anneau({ parts, total, unité }: { parts: readonly Barre[]; total: number; unité: string }) {
+  const animation = useAnimation()
+  const config = Object.fromEntries(parts.map((p) => [p.libellé, { label: p.libellé, color: TEINTES[p.teinte ?? 'ardoise'] }])) satisfies ChartConfig
+  return (
+    <ChartContainer config={config} className="mx-auto aspect-square w-full max-w-60" aria-hidden="true">
+      <PieChart>
+        <ChartTooltip cursor={false} isAnimationActive={false} content={<ChartTooltipContent nameKey="libellé" hideLabel />} />
+        <Pie data={parts.map((p) => ({ ...p }))} dataKey="valeur" nameKey="libellé" innerRadius="62%" outerRadius="92%" strokeWidth={2} stroke="var(--color-blanc)" {...animation}>
+          {parts.map((p) => (
+            <Cell key={p.libellé} fill={TEINTES[p.teinte ?? 'ardoise']} />
+          ))}
+          <Label
+            content={({ viewBox }) =>
+              viewBox && 'cx' in viewBox && 'cy' in viewBox ? (
+                <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                  <tspan x={viewBox.cx} y={viewBox.cy} className="fill-encre font-titre text-h2 font-bold">
+                    {total}
+                  </tspan>
+                  <tspan x={viewBox.cx} y={(viewBox.cy ?? 0) + 22} className="fill-ardoise">
+                    {unité}
+                  </tspan>
+                </text>
+              ) : null
+            }
+          />
+        </Pie>
+      </PieChart>
     </ChartContainer>
   )
 }
