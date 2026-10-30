@@ -27,6 +27,7 @@ import {
   organisationPourLesOutils,
   posterLaGrille,
   remplacerLesÉtiquettes,
+  réglerLEspaceRéorganisé,
   réglerLesOutilsStratégiques,
   synthèsePrécédente,
   validerLaGrille,
@@ -126,11 +127,22 @@ describe('outils stratégiques en base', () => {
         nom: 'Infralliance',
         registreNotion: registre(1),
         outilsStratégiques: false,
+        espaceRéorganisé: false,
       })
       expect(await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
       expect((await organisationPourLesOutils({ slug: 'infralliance' }, db))!.outilsStratégiques).toBe(true)
       expect(await réglerLesOutilsStratégiques({ slug: 'inconnue', actif: true }, db)).toBe('organisation-inconnue')
       expect(await organisationPourLesOutils({ registreNotion: registre(9) }, db)).toBeNull()
+    })
+
+    it('l’espace réorganisé ne s’ouvre que dans le pilote, et se referme sans rien supprimer', async () => {
+      expect(await réglerLEspaceRéorganisé({ slug: 'infralliance', actif: true }, db)).toBe('hors-pilote')
+      expect(await réglerLEspaceRéorganisé({ slug: 'inconnue', actif: true }, db)).toBe('organisation-inconnue')
+      await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+      expect(await réglerLEspaceRéorganisé({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
+      expect((await organisationPourLesOutils({ slug: 'infralliance' }, db))!.espaceRéorganisé).toBe(true)
+      expect(await réglerLEspaceRéorganisé({ slug: 'infralliance', actif: false }, db)).toBe('réglé')
+      expect((await organisationPourLesOutils({ slug: 'infralliance' }, db))!.espaceRéorganisé).toBe(false)
     })
 
     it('hors du pilote, rien ne s’écrit', async () => {
