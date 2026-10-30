@@ -118,8 +118,11 @@ synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 demande ; la lecture stratégique a quitté toutes les vues d'ensemble), et non plus une case par écran ; le
 détail de chaque carte (ses écrans et leur chiffre clé) tient sur deux colonnes ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
 `/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
-avec leur chiffre clé, sur deux colonnes elle aussi ; le rail garde ses écrans et le nom de la rubrique y
-mène (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
+avec leur chiffre clé, sur deux colonnes elle aussi ; le rail garde ses écrans, chaque rubrique en
+**accordéon** (`details` natif, ouvert d'office sur la rubrique de l'écran courant,
+`grouperParRubrique` et `groupeCourant`, `lib/portail/onglet.ts`), dans le rail
+comme dans la liste « Plus » du menu de pied, et l'écran de la rubrique en est le
+premier lien, « Vue de la rubrique » (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
 (`lib/portail/tableau.ts`). Sur « PESTEL », chaque axe qui suit une dimension
 mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 `faitsDeLAxeDeLEspace`, segment comparé à la seule grille de l'organisation,

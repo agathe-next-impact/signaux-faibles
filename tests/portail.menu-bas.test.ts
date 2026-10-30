@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ongletsDe } from '@/lib/portail/semaine'
-import { ÉLÉMENTS_DU_MENU_BAS, répartirLeMenuBas } from '@/lib/portail/onglet'
+import { ÉLÉMENTS_DU_MENU_BAS, groupeCourant, grouperParRubrique, répartirLeMenuBas } from '@/lib/portail/onglet'
 
 const COMPTES = { lettres: 4, recommandations: 2, archives: 3 }
 
@@ -34,5 +34,30 @@ describe('menu de pied mobile : trois éléments au plus (25 octobre 2026)', () 
     const { directs, autres } = répartirLeMenuBas(quatre)
     expect(directs).toHaveLength(2)
     expect(autres).toHaveLength(2)
+  })
+})
+
+describe('rubriques en accordéons, rail et menu de pied (30 octobre 2026)', () => {
+  it('l’espace réorganisé : un groupe par rubrique, dans l’ordre du rail, avec l’écran de la rubrique', () => {
+    const groupes = grouperParRubrique(ongletsDe('client', COMPTES, 'complète', { réorganisé: true }))
+    expect(groupes.map((g) => g.rubrique)).toEqual(['Cette semaine', 'Le marché', 'L’environnement', 'Stratégie', 'Votre veille'])
+    expect(groupes.find((g) => g.rubrique === 'Le marché')).toMatchObject({ rubriqueHref: '/client/marche' })
+    expect(groupes.find((g) => g.rubrique === 'Cette semaine')?.rubriqueHref).toBeNull()
+    expect(groupes.flatMap((g) => g.onglets)).toEqual(ongletsDe('client', COMPTES, 'complète', { réorganisé: true }))
+  })
+
+  it('ouvre d’office la rubrique de l’écran courant, ou de l’écran de la rubrique', () => {
+    const groupes = grouperParRubrique(ongletsDe('client', COMPTES, 'complète', { réorganisé: true }))
+    const ouverts = (chemin: string) => groupes.filter((g) => groupeCourant(g, chemin)).map((g) => g.rubrique)
+    expect(ouverts('/client')).toEqual(['Cette semaine'])
+    expect(ouverts('/client/forces')).toEqual(['Le marché'])
+    expect(ouverts('/client/strategie')).toEqual(['Stratégie'])
+    expect(ouverts('/client/lettres/abc')).toEqual(['Cette semaine'])
+  })
+
+  it('sans rubrique, un seul groupe sans nom : le rail reste une liste simple', () => {
+    const groupes = grouperParRubrique(ongletsDe('client', COMPTES))
+    expect(groupes).toHaveLength(1)
+    expect(groupes[0]?.rubrique).toBeNull()
   })
 })

@@ -211,8 +211,8 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     parOutil = réorganisé && (await page.getByRole('heading', { name: 'Où en êtes-vous' }).isVisible())
     test.skip(!parOutil, 'écrans par outil absents : lot 3 non déployé ou espace non réorganisé')
     await expect(page.getByRole('heading', { name: 'Votre situation' })).toBeVisible()
-    // « Stratégie » seul jusqu'au 30 octobre 2026, puis « Stratégie → », lien vers l'écran de la rubrique.
-    await expect(page.locator('nav[aria-label="Sections"]').first().getByText(/^Stratégie( →)?$/)).toBeVisible()
+    // Le nom de la rubrique, en tête de son accordéon depuis le 30 octobre 2026 (« Stratégie → » avant).
+    await expect(page.locator('nav[aria-label="Sections"]').first().getByText(/^Stratégie( →)?$/).first()).toBeVisible()
     await page.screenshot({ path: `${SORTIES}/diagnostic.png`, fullPage: true })
     await ouvrir(`/${SLUG}/scenarios`, 'scenarios')
     await expect(page.getByRole('heading', { name: 'Trois scénarios' })).toBeVisible()
@@ -278,7 +278,17 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     expect([2, 6]).toContain(await page.getByRole('list', { name: 'Les écrans de la rubrique Votre veille' }).getByRole('listitem').count())
     await ouvrir(`/${SLUG}`, 'tableau-de-bord-rubriques')
     await expect(page.getByRole('list', { name: 'Les rubriques de votre espace' }).getByRole('listitem')).toHaveCount(4)
-    await expect(page.locator('nav[aria-label="Sections"]').first().getByRole('link', { name: 'Stratégie →' })).toBeVisible()
+    // Rubriques en accordéons (30 octobre 2026) : fermée hors de son écran, « Stratégie » s'ouvre au clic
+    // et mène à l'écran de sa rubrique ; avant, le nom était lui-même le lien « Stratégie → ».
+    const rail = page.locator('nav[aria-label="Sections"]').first()
+    const accordéon = rail.locator('summary', { hasText: /^Stratégie/ })
+    if ((await accordéon.count()) > 0) {
+      await expect(rail.getByRole('link', { name: 'Vue de la rubrique Stratégie' })).toBeHidden()
+      await accordéon.click()
+      await expect(rail.getByRole('link', { name: 'Vue de la rubrique Stratégie' })).toBeVisible()
+    } else {
+      await expect(rail.getByRole('link', { name: 'Stratégie →' })).toBeVisible()
+    }
   })
 
   test('PESTEL : chaque axe qui suit une dimension mène à l’écran de ses faits', async () => {

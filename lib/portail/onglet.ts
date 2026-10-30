@@ -30,3 +30,31 @@ export function répartirLeMenuBas(onglets: readonly Onglet[]): { directs: reado
   if (onglets.length <= ÉLÉMENTS_DU_MENU_BAS) return { directs: onglets, autres: [] }
   return { directs: onglets.slice(0, ÉLÉMENTS_DU_MENU_BAS - 1), autres: onglets.slice(ÉLÉMENTS_DU_MENU_BAS - 1) }
 }
+
+/**
+ * Les onglets groupés par rubrique, pour les accordéons du rail et du menu de
+ * pied (30 octobre 2026) : un groupe par suite d'onglets consécutifs de même
+ * rubrique, dans l'ordre du rail. Un onglet sans rubrique (espace d'avant la
+ * réorganisation) forme un groupe sans nom, rendu en liste simple.
+ */
+export type GroupeDOnglets = {
+  readonly rubrique: string | null
+  readonly rubriqueHref: string | null
+  readonly onglets: readonly Onglet[]
+}
+
+export function grouperParRubrique(onglets: readonly Onglet[]): readonly GroupeDOnglets[] {
+  const groupes: { rubrique: string | null; rubriqueHref: string | null; onglets: Onglet[] }[] = []
+  for (const onglet of onglets) {
+    const rubrique = onglet.rubrique ?? null
+    const dernier = groupes.at(-1)
+    if (dernier && dernier.rubrique === rubrique) dernier.onglets.push(onglet)
+    else groupes.push({ rubrique, rubriqueHref: onglet.rubriqueHref ?? null, onglets: [onglet] })
+  }
+  return groupes
+}
+
+/** Un accordéon s'ouvre de lui-même sur la rubrique de l'écran courant, ou sur l'écran de la rubrique. */
+export function groupeCourant(groupe: GroupeDOnglets, chemin: string): boolean {
+  return chemin === groupe.rubriqueHref || groupe.onglets.some((onglet) => estOngletCourant(onglet, chemin))
+}
