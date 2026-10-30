@@ -882,13 +882,27 @@ dernière période entièrement publiée (mois sur « Acteurs » et
 « Recommandations », trimestre en dessous). Réponses : `publiée`, `retirée` ou
 `proposée` (200, avec `éléments` et `positions`), `hors-pilote` (200),
 `aucune` et `organisation-inconnue` (404), `invalide` (400). N'expire aucun
-tag : les écrans relisent Postgres à chaque requête, bornés à 400 ms.
+tag : les écrans relisent Postgres à chaque requête, bornés à 1 500 ms.
 Le même geste existe pour l'opératrice dans son navigateur depuis le
 29 octobre 2026 : section « Synthèses stratégiques » de `/espaces/abonnements`,
 une ligne par période et par organisation du pilote, avec son état (proposée,
 publiée, retirée, ou publiée en partie, que les écrans ne lisent pas) et un
 bouton « Publier » ou « Retirer » (`publierUnePériode`, même
 `publierLaSynthèseDuPilote`).
+
+**Retoucher un énoncé avant publication** (30 octobre 2026) :
+`{ "slug": "hermitage", "periode": "2026-10", "element": "<uuid>", "enonce": "…", "titre": "…" }`,
+`titre` pour un scénario seulement. L'identifiant de l'élément est celui que
+rend la page de relecture ; seul le texte change, jamais les faits cités, la
+case, le rang ni les crans. Mêmes bornes que la porte de la synthèse (240
+caractères, 400 pour un scénario, ni « FAIBLE », ni « référentiel », ni
+« § »). Réponses : `modifié` (200), `refusé` (422, avec `refus`),
+`déjà-publiée` (409 : une ligne de la période est publiée, la retirer
+d'abord), `introuvable` et `organisation-inconnue` (404), `sans-énoncé` (422),
+`hors-pilote` (200). Dans le navigateur, la même chose depuis
+`/espaces/syntheses/<slug>/<periode>` (lien « Relire et modifier » du tableau),
+un formulaire par élément et le bouton « Publier » en tête
+(`modifierUnÉnoncéDeSynthèse`, garde opérateur avant l'écriture).
 
 ### `GET /api/veille/calculs?slug&fin&departements&texte` : les chiffres du trimestre (lot 7, 28 octobre 2026)
 

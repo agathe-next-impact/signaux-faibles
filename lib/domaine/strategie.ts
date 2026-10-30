@@ -663,6 +663,28 @@ export type ContrôleDeSynthèse = {
   readonly avertissements: readonly Refus[]
 }
 
+/**
+ * La porte d'un énoncé retouché par l'opératrice avant publication (30 octobre
+ * 2026) : les mêmes bornes que `contrôlerLaSynthèse` pour le texte (240
+ * caractères, 400 pour un scénario, aucun mot interdit) et pour le titre d'un
+ * scénario. Les faits cités, les cases et les références ne bougent pas : seul
+ * le texte change.
+ */
+export function contrôlerUnÉnoncé(entrée: { readonly outil: string; readonly énoncé: string; readonly titre?: string | null }): readonly Refus[] {
+  const refus: Refus[] = []
+  const max = entrée.outil === 'scenario' ? BORNES.scénarioMax : BORNES.énoncéMax
+  if (entrée.énoncé.trim().length === 0 || entrée.énoncé.length > max) refus.push({ code: 'longueur', message: `énoncé vide ou de plus de ${max} caractères` })
+  const interdit = vocabulaireInterdit(entrée.énoncé)
+  if (interdit) refus.push({ code: 'vocabulaire-interdit', message: interdit })
+  if (entrée.titre != null) {
+    if (entrée.outil !== 'scenario') refus.push({ code: 'titre-hors-scénario', message: 'seul un scénario porte un titre' })
+    else if (entrée.titre.trim().length === 0 || entrée.titre.length > BORNES.libelléMax * 2) refus.push({ code: 'longueur', message: `titre vide ou de plus de ${BORNES.libelléMax * 2} caractères` })
+    const titreInterdit = vocabulaireInterdit(entrée.titre)
+    if (titreInterdit) refus.push({ code: 'vocabulaire-interdit', message: titreInterdit })
+  }
+  return refus
+}
+
 export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: ContexteDeSynthèse): ContrôleDeSynthèse {
   const refus: Refus[] = []
   const avertissements: Refus[] = []

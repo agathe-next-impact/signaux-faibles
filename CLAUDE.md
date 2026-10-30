@@ -55,7 +55,14 @@ période** (`PATCH /api/veille/syntheses`, `etat: publie`, ou, depuis le
 29 octobre 2026, le bouton « Publier » de la section « Synthèses
 stratégiques » de `/espaces/abonnements` : `listerLesSynthèses`, garde dans
 la fonction, et l'action `lib/portail/publication.ts`, privilège vérifié avant
-d'écrire). Une période
+d'écrire). Depuis le 30 octobre 2026, l'opératrice **retouche le texte** d'une
+période non publiée avant de la publier, sur `/espaces/syntheses/[slug]/[periode]`
+(`lireUneSynthèseÀRelire`, garde dans la fonction ; action
+`lib/portail/relecture.ts`, privilège avant l'écriture ; porte
+`contrôlerUnÉnoncé`, mêmes bornes que la synthèse) ou par `PATCH
+/api/veille/syntheses` avec `element` : seul l'énoncé change (et le titre d'un
+scénario), jamais les faits, cases ou crans ; une période dont une ligne est
+publiée est refusée, la retirer d'abord. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

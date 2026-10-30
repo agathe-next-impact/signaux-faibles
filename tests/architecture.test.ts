@@ -684,6 +684,25 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(garde.indexOf('exigerOpérateur()')).toBeLessThan(garde.indexOf('tableauDesSynthèses('))
   })
 
+  it('la relecture d’une synthèse ne se lit et ne s’écrit que derrière le privilège opérateur', () => {
+    // 30 octobre 2026 : retoucher un énoncé avant publication, depuis la page de
+    // relecture (garde dans lireUneSynthèseÀRelire, action qui vérifie le
+    // privilège avant d'écrire) ou par la route des tâches.
+    expect(appelants('lireUneSynthèseÀRelire')).toEqual(['app/(portail)/espaces/syntheses/[slug]/[periode]/page.tsx', 'lib/auth/appartenance.ts'])
+    expect(appelants('synthèseÀRelire')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/strategie.ts'])
+    expect(appelants('modifierLÉnoncéDuPilote')).toEqual(['app/api/veille/syntheses/route.ts', 'lib/portail/relecture.ts', 'lib/portail/strategie.ts'])
+    expect(appelants('modifierUnÉnoncé')).toEqual(['lib/base/strategie.ts', 'lib/portail/strategie.ts'])
+    const action = readFileSync(join(process.cwd(), 'lib', 'portail', 'relecture.ts'), 'utf8')
+    expect(action.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(action.indexOf('exigerOpérateur()')).toBeLessThan(action.indexOf('modifierLÉnoncéDuPilote('))
+    const lecture = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    const garde = lecture.slice(lecture.indexOf('export async function lireUneSynthèseÀRelire'))
+    expect(garde.indexOf('exigerOpérateur()')).toBeLessThan(garde.indexOf('synthèseÀRelire('))
+    const orchestration = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
+    const porte = orchestration.slice(orchestration.indexOf('export async function modifierLÉnoncéDuPilote'))
+    expect(porte.indexOf('contrôlerUnÉnoncé(')).toBeLessThan(porte.indexOf('modifierUnÉnoncé('))
+  })
+
   it('la file ne se lit à l’écran que par listerLaFile, gardée par le privilège opérateur', () => {
     expect(appelants('listerLaFile')).toEqual(['app/(portail)/espaces/file/page.tsx', 'lib/auth/appartenance.ts'])
     expect(appelants('lireLaFile')).toEqual(['app/api/veille/travaux/route.ts', 'lib/auth/appartenance.ts', 'lib/portail/file.ts'])

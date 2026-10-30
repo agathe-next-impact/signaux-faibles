@@ -27,6 +27,8 @@ const {
   publierLaSynthèseDuPilote,
   tableauDesSynthèses,
   synthèseDeLEspace,
+  synthèseÀRelire,
+  modifierLÉnoncéDuPilote,
   recevoirLaGrille,
   recevoirLaSynthèse,
   recevoirLesÉtiquettes,
@@ -600,6 +602,40 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       } finally {
         vi.unstubAllEnvs()
       }
+    })
+
+    it('relecture : un énoncé se retouche avant publication, jamais après, et passe la porte', async () => {
+      await recevoir()
+      const lue = await synthèseÀRelire({ slug: 'infralliance', période: '2026-10' }, db)
+      expect(lue.sorte).toBe('lue')
+      if (lue.sorte !== 'lue') return
+      expect(lue.publiée).toBe(false)
+      const force = lue.éléments.find((é) => é.outil === 'swot' && é.clé === 'forces')!
+      expect(force).toMatchObject({ énoncé: 'La fédération réunit trois couches du numérique.', origine: 'declaratif', titre: null })
+
+      const énoncé = 'La fédération réunit les trois couches du numérique, du câble au logiciel.'
+      expect(await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-10', élément: force.id, énoncé: `  ${énoncé}  ` }, db)).toEqual({ sorte: 'modifié' })
+      const relue = await synthèseÀRelire({ slug: 'infralliance', période: '2026-10' }, db)
+      const après = relue.sorte === 'lue' ? relue.éléments.find((é) => é.id === force.id) : undefined
+      // Le texte change ; les faits cités, la case et l'origine non.
+      expect(après).toMatchObject({ énoncé, clé: 'forces', origine: 'declaratif', faits: force.faits })
+
+      // La porte de l'énoncé : bornes et vocabulaire, rien d'écrit.
+      const refus = await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-10', élément: force.id, énoncé: 'Signal FAIBLE au référentiel.' }, db)
+      expect(refus.sorte === 'refusé' && refus.refus.map((r) => r.code)).toEqual(['vocabulaire-interdit'])
+      expect((await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-10', élément: force.id, énoncé: 'x'.repeat(241) }, db)).sorte).toBe('refusé')
+      expect((await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-10', élément: force.id, énoncé: 'Un titre ?', titre: 'Titre' }, db)).sorte).toBe('refusé')
+      // Un élément d'une autre période, ou inconnu.
+      expect(await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-09', élément: force.id, énoncé }, db)).toEqual({ sorte: 'introuvable' })
+      expect(await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-10', élément: '00000000-0000-4000-8000-000000000000', énoncé }, db)).toEqual({ sorte: 'introuvable' })
+
+      // Publiée : plus de retouche, il faut retirer d'abord.
+      await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)
+      expect(await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-10', élément: force.id, énoncé: 'Autre texte daté du 3 octobre.' }, db)).toEqual({ sorte: 'déjà-publiée' })
+      expect((await synthèseÀRelire({ slug: 'infralliance', période: '2026-10' }, db)).sorte === 'lue').toBe(true)
+      await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)
+      expect(await modifierLÉnoncéDuPilote({ slug: 'infralliance', période: '2026-10', élément: force.id, énoncé: 'Autre texte daté du 3 octobre.' }, db)).toEqual({ sorte: 'modifié' })
+      expect(await synthèseÀRelire({ slug: 'inconnue', période: '2026-10' }, db)).toEqual({ sorte: 'organisation-inconnue' })
     })
 
     it('l’onglet PESTEL : les comptes de la fenêtre, les phrases-titres des lettres déjà lues', async () => {

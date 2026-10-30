@@ -646,6 +646,53 @@ export async function publierLaSynthèse(
 }
 
 /**
+ * Retouche le texte d'un élément d'une synthèse avant sa publication (30 octobre
+ * 2026) : l'énoncé, et pour un scénario son titre, rangé dans `références`. La
+ * période ne doit avoir **aucune** ligne publiée : ce qui est montré au client
+ * ne change pas sous ses yeux ; pour corriger une période publiée, la retirer
+ * d'abord. Faits, case, rang et filiation ne bougent pas. Le texte a passé
+ * `contrôlerUnÉnoncé` avant d'arriver ici.
+ */
+export async function modifierUnÉnoncé(
+  entrée: { readonly organisationId: string; readonly période: string; readonly élémentId: string; readonly énoncé: string; readonly titre?: string | null },
+  db: Base = base(),
+): Promise<{ readonly sorte: 'modifié'; readonly outil: string } | { readonly sorte: 'introuvable' | 'sans-énoncé' | 'déjà-publiée' }> {
+  if (!estUuid(entrée.élémentId)) return { sorte: 'introuvable' }
+  return protéger('modification d’un énoncé de synthèse', () =>
+    db.transaction(async (tx) => {
+      const vivantes = (table: typeof élémentsSynthèse | typeof positions) =>
+        and(eq(table.organisationId, entrée.organisationId), eq(table.période, entrée.période), isNull(table.archivéeLe))
+      const [élément] = await tx
+        .select({ id: élémentsSynthèse.id, outil: élémentsSynthèse.outil, énoncé: élémentsSynthèse.énoncé, références: élémentsSynthèse.références })
+        .from(élémentsSynthèse)
+        .where(and(vivantes(élémentsSynthèse), eq(élémentsSynthèse.id, entrée.élémentId)))
+        .limit(1)
+      if (!élément) return { sorte: 'introuvable' } as const
+      if (élément.énoncé === null) return { sorte: 'sans-énoncé' } as const
+      const [publiéÉlément] = await tx
+        .select({ id: élémentsSynthèse.id })
+        .from(élémentsSynthèse)
+        .where(and(vivantes(élémentsSynthèse), eq(élémentsSynthèse.étatPublication, 'publie')))
+        .limit(1)
+      const [publiéePosition] = await tx
+        .select({ id: positions.id })
+        .from(positions)
+        .where(and(vivantes(positions), eq(positions.étatPublication, 'publie')))
+        .limit(1)
+      if (publiéÉlément || publiéePosition) return { sorte: 'déjà-publiée' } as const
+      await tx
+        .update(élémentsSynthèse)
+        .set({
+          énoncé: entrée.énoncé,
+          ...(entrée.titre != null && élément.outil === 'scenario' ? { références: { ...élément.références, titre: entrée.titre } } : {}),
+        })
+        .where(eq(élémentsSynthèse.id, élément.id))
+      return { sorte: 'modifié', outil: élément.outil } as const
+    }),
+  )
+}
+
+/**
  * La dernière synthèse publiée d'une granularité (`mois` ou `trimestre`),
  * strictement avant `avant` quand il est donné : c'est ce que les écrans du
  * client lisent, et rien d'autre. Une période dont une seule ligne n'est pas
