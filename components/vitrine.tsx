@@ -25,7 +25,7 @@ const LIENS: ReadonlyArray<{ href: string; libellé: string; page: PageVitrine }
 export function EnTêteVitrine({ courante }: { courante: PageVitrine }) {
   return (
     <header className="border-b border-gris-ligne">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-6">
         <Link href="/" aria-label="signauxfaibles, accueil" aria-current={courante === 'accueil' ? 'page' : undefined}>
           <Logo />
         </Link>
@@ -59,8 +59,8 @@ export function EnTêteVitrine({ courante }: { courante: PageVitrine }) {
 
 export function PiedVitrine() {
   return (
-    <footer className="mt-24 border-t border-gris-ligne">
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-start sm:justify-between">
+    <footer className="mt-12 border-t border-gris-ligne">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-12 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
           <Logo className="text-corps" />
           <p className="voix">Votre veille, rédigée.</p>
@@ -87,7 +87,7 @@ export function CoquilleVitrine({ courante, children }: { courante: PageVitrine;
   return (
     <div className="flex min-h-dvh flex-col">
       <EnTêteVitrine courante={courante} />
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-20 px-6 pt-12 sm:pt-16">{children}</main>
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-6 pt-12 sm:pt-12">{children}</main>
       <PiedVitrine />
     </div>
   )
@@ -120,7 +120,7 @@ export function SectionVitrine({
 /** Le bouton primaire des pages vitrines : un seul par page, fond encre. */
 export function BoutonDémo({ libellé = 'Demander une démo' }: { libellé?: string }) {
   return (
-    <Link href="/demo" className="self-start rounded-douce bg-encre px-5 py-3 font-medium text-blanc hover:bg-encre/90">
+    <Link href="/demo" className="self-start rounded-douce bg-encre px-6 py-3 font-medium text-blanc hover:bg-encre/90">
       {libellé}
     </Link>
   )

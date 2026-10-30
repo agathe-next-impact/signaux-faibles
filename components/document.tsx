@@ -67,7 +67,7 @@ function RenduBloc({ bloc }: { bloc: Bloc }) {
       const Liste = bloc.ordonnée ? 'ol' : 'ul'
       return (
         <Liste
-          className={`flex flex-col gap-1 pl-5 ${bloc.ordonnée ? 'list-decimal' : 'list-disc'}`}
+          className={`flex flex-col gap-1 pl-6 ${bloc.ordonnée ? 'list-decimal' : 'list-disc'}`}
         >
           {bloc.éléments.map((élément, index) => (
             <li key={index} className="text-encre">

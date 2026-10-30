@@ -51,7 +51,7 @@ export default async function FileDeTravaux() {
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-4">
         <Logo />
-        <p className="label-mono text-rose">accès opérateur · {accès.nom}</p>
+        <p className="label-mono text-rose-texte">accès opérateur · {accès.nom}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">File de travaux</h1>
         <p className="text-ardoise">
           Ce que le portail a décidé de faire produire, et où chaque lettre en est. Un travail

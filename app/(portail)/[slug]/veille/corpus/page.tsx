@@ -9,9 +9,9 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 /** Une liste de noms en colonnes ; `slug` donné, chaque nom mène à la fiche du concurrent. */
 function Liste({ noms, slug }: { noms: readonly string[]; slug?: string }) {
   return (
-    <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
       {noms.map((nom) => (
-        <li key={nom} className="flex gap-2.5">
+        <li key={nom} className="flex gap-3">
           <span aria-hidden="true" className="mt-[0.6em] size-1.5 shrink-0 bg-ardoise" />
           {slug ? (
             <Link href={`/${slug}/concurrents/${enSlug(nom)}`} className="text-encre underline decoration-gris-ligne underline-offset-2 hover:decoration-encre">
@@ -49,10 +49,10 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
     <>
       <EntêteÉcran surtitre="votre veille" titre="Qui nous suivons" état={grille ? `${grille.entités.length} entités` : undefined} />
       {!grille ? (
-        <p className="mt-5 text-ardoise">Le corpus de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
+        <p className="mt-6 text-ardoise">Le corpus de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
       ) : (
         <>
-          <p className="mt-5 max-w-[68ch] text-ardoise">Les entités que votre veille suit nommément, et les parties prenantes dont elle lit le pouvoir et l’intérêt. Un concurrent mène à sa fiche.</p>
+          <p className="mt-6 max-w-[68ch] text-ardoise">Les entités que votre veille suit nommément, et les parties prenantes dont elle lit le pouvoir et l’intérêt. Un concurrent mène à sa fiche.</p>
           <section className="mt-8 flex flex-col gap-4">
             <h2 className="font-titre text-h2 font-bold text-encre">Concurrents suivis</h2>
             {concurrents.length > 0 ? <Liste noms={concurrents} slug={accès.slug} /> : <p className="text-ardoise">Aucun concurrent nommé dans votre veille.</p>}
@@ -62,7 +62,7 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
               <h2 className="font-titre text-h2 font-bold text-encre">Ce qui les place sur la carte</h2>
               <dl className="grid grid-cols-1 border-t border-l border-gris-ligne sm:grid-cols-2">
                 {grille.axesGroupes.map((a) => (
-                  <div key={a.clé} className="flex flex-col gap-1.5 border-r border-b border-gris-ligne p-4">
+                  <div key={a.clé} className="flex flex-col gap-2 border-r border-b border-gris-ligne p-4">
                     <dt className="label-mono text-encre">{a.libellé}</dt>
                     <dd className="text-sm text-ardoise">{a.crans.map((c, i) => `${i + 1} · ${c}`).join('  ·  ')}</dd>
                   </div>
@@ -87,7 +87,7 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
           ) : null}
         </>
       )}
-      <p className="mt-10">
+      <p className="mt-12">
         <LienFlèche href={`/${accès.slug}/concurrents`}>Voir la carte des concurrents</LienFlèche>
       </p>
     </>

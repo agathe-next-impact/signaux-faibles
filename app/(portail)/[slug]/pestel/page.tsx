@@ -45,9 +45,9 @@ export default async function Pestel({ params }: { params: Promise<{ slug: strin
           </div>
         </>
       ) : (
-        <p className="mt-5 text-ardoise">Aucun fait étiqueté sur les treize dernières semaines, ou la lecture n’a pas abouti. Réessayez dans quelques minutes.</p>
+        <p className="mt-6 text-ardoise">Aucun fait étiqueté sur les treize dernières semaines, ou la lecture n’a pas abouti. Réessayez dans quelques minutes.</p>
       )}
-      <div className="mt-10">
+      <div className="mt-12">
         <LienFlèche href={`/${accès.slug}/axes`}>Voir les axes de la veille</LienFlèche>
       </div>
     </>

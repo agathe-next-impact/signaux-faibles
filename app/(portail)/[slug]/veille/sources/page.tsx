@@ -26,12 +26,12 @@ export default async function Sources({ params }: { params: Promise<{ slug: stri
     <>
       <EntêteÉcran surtitre="votre veille" titre="Où nous regardons" état={lue?.fiche ? `${total} source${total > 1 ? 's' : ''}` : undefined} />
       {!lue ? (
-        <p className="mt-5 text-ardoise">Les sources de votre veille ne peuvent pas être affichées pour l’instant. Réessayez dans quelques minutes.</p>
+        <p className="mt-6 text-ardoise">Les sources de votre veille ne peuvent pas être affichées pour l’instant. Réessayez dans quelques minutes.</p>
       ) : !lue.fiche ? (
         <PasEncorePubliée quoi="La liste des sources" />
       ) : (
         <>
-          <p className="mt-5 max-w-[68ch] text-ardoise">Les sources que votre veille ouvre, thème par thème. Une lettre cite toujours la sienne ; celles-ci sont celles que nous regardons, qu’elles aient parlé ou non.</p>
+          <p className="mt-6 max-w-[68ch] text-ardoise">Les sources que votre veille ouvre, thème par thème. Une lettre cite toujours la sienne ; celles-ci sont celles que nous regardons, qu’elles aient parlé ou non.</p>
           {VEILLES_AFFICHÉES.map(({ veille, titre }) => {
             const siennes = familles.filter((f) => f.veille === veille)
             return siennes.length === 0 ? null : (
@@ -41,12 +41,12 @@ export default async function Sources({ params }: { params: Promise<{ slug: stri
                   {siennes.map((f) => (
                     <section key={`${f.veille}-${f.numéro}`} className="grid grid-cols-1 gap-2 py-4 sm:grid-cols-[16rem_minmax(0,1fr)] sm:gap-6">
                       <h3 className="text-encre">
-                        <span className="mr-1.5 font-mono text-label font-medium text-ardoise">{f.numéro}</span>
+                        <span className="mr-2 font-mono text-label font-medium text-ardoise">{f.numéro}</span>
                         {f.nom}
                       </h3>
-                      <ul className="flex flex-col gap-1.5">
+                      <ul className="flex flex-col gap-2">
                         {f.sources.map((s) => (
-                          <li key={`${s.nom}-${s.site ?? ''}`} className="flex gap-2.5">
+                          <li key={`${s.nom}-${s.site ?? ''}`} className="flex gap-3">
                             <span aria-hidden="true" className="mt-[0.6em] size-1.5 shrink-0 bg-ardoise" />
                             {s.site ? (
                               <a href={s.site} target="_blank" rel="noopener noreferrer" className="text-encre underline decoration-gris-ligne underline-offset-2 hover:decoration-encre">
@@ -66,7 +66,7 @@ export default async function Sources({ params }: { params: Promise<{ slug: stri
           })}
         </>
       )}
-      <p className="mt-10">
+      <p className="mt-12">
         <LienFlèche href={`/${accès.slug}/veille/themes`}>Voir les thèmes de votre veille</LienFlèche>
       </p>
     </>

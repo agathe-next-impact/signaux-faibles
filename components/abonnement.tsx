@@ -82,7 +82,7 @@ function Formule({
   détail: string
 }) {
   return (
-    <form action={souscrire} className="flex flex-col gap-3 border-b border-r border-gris-ligne bg-blanc p-5">
+    <form action={souscrire} className="flex flex-col gap-3 border-b border-r border-gris-ligne bg-blanc p-6">
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="formule" value={formule} />
       <p className="label-mono text-ardoise">{intitulé}</p>

@@ -31,7 +31,7 @@ export default async function FaitsDUnAxe({ params }: { params: Promise<{ slug: 
   if (lu?.sorte === 'inconnu') notFound()
 
   const retour = (
-    <p className="mt-5">
+    <p className="mt-6">
       <LienFlèche href={`/${accès.slug}/pestel`}>Retour au PESTEL</LienFlèche>
     </p>
   )
@@ -39,7 +39,7 @@ export default async function FaitsDUnAxe({ params }: { params: Promise<{ slug: 
     return (
       <>
         <EntêteÉcran surtitre="axe de votre veille" titre="Faits indisponibles" />
-        <p className="mt-5 text-ardoise">Les faits de cet axe ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes.</p>
+        <p className="mt-6 text-ardoise">Les faits de cet axe ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes.</p>
         {retour}
       </>
     )

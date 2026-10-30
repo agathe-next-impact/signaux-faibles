@@ -61,7 +61,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
         état={`${suivis.length} dossier${suivis.length > 1 ? 's' : ''} suivi${suivis.length > 1 ? 's' : ''}`}
       />
 
-      <p className="mt-5 text-ardoise">
+      <p className="mt-6 text-ardoise">
         {réorganisé
           ? 'Les administrations, financeurs, réseaux et organisations du secteur que la veille rouvre d’une lettre à l’autre. Les concurrents ont leur écran.'
           : 'Les concurrents, administrations et organisations du secteur que la veille rouvre d’une lettre à l’autre.'}{' '}
@@ -85,11 +85,11 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
       {synthèse?.mois ? (
         <>
           <SynthèseDesActeurs période={synthèse.mois.période} carte={réorganisé ? null : synthèse.mois.carte} mendelow={synthèse.mois.mendelow} />
-          <h2 className="mt-10 font-titre text-h2 font-bold text-encre">Le suivi des dossiers</h2>
+          <h2 className="mt-12 font-titre text-h2 font-bold text-encre">Le suivi des dossiers</h2>
         </>
       ) : null}
 
-      <div className="mt-5">
+      <div className="mt-6">
         <LégendeFraicheur />
       </div>
 
@@ -143,7 +143,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
 /** Un dossier suivi : son nom vers sa page, sa fraîcheur, sa précision et ses relevés semaine par semaine. */
 function DossierSuivi({ slug, dossier }: { slug: string; dossier: ReturnType<typeof suivreLesDossiers>[number] }) {
   return (
-    <li className="flex flex-col gap-3 py-5">
+    <li className="flex flex-col gap-3 py-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-titre text-h3 font-semibold text-encre">
           <LienFlèche href={`/${slug}/acteurs/${enSlug(dossier.nom)}`}>

@@ -40,7 +40,7 @@ export function LectureStratégique({
 }) {
   const Titre = niveauDeTitre === 3 ? 'h3' : 'h2'
   return (
-    <section className="mt-10 flex flex-col gap-4">
+    <section className="mt-12 flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <Titre className="font-titre text-h2 font-bold text-encre">Lecture stratégique</Titre>
         <p className="label-mono text-ardoise">outil en test</p>
@@ -65,7 +65,7 @@ export function LectureStratégique({
           <p className="label-mono text-ardoise">Concurrence · cinq forces</p>
           <div className="flex flex-col gap-2">
             {lecture.forces.map((f) => (
-              <div key={f.clé} className="flex flex-col gap-0.5">
+              <div key={f.clé} className="flex flex-col gap-1">
                 <Ligne libellé={f.libellé} faits={f.faits} />
                 {f.entités.length > 0 ? <p className="text-ardoise">{f.entités.join(', ')}</p> : null}
               </div>
@@ -83,10 +83,10 @@ export function LectureStratégique({
           {lecture.ruptures.length > 0 ? (
             <ul className="flex flex-col gap-2">
               {lecture.ruptures.map((r) => (
-                <li key={`${r.date}:${r.titre}`} className="flex gap-2.5">
+                <li key={`${r.date}:${r.titre}`} className="flex gap-3">
                   {/* Puce carrée : la grille est à angle droit, ses puces aussi. */}
                   <span aria-hidden="true" className="mt-[0.5em] size-1.5 shrink-0 bg-ardoise" />
-                  <span className="flex flex-col gap-0.5">
+                  <span className="flex flex-col gap-1">
                     <span className="text-encre">{écourter(r.titre, LONGUEUR_DE_RUPTURE)}</span>
                     <span className="label-mono text-ardoise">{dateCourte(r.date)}</span>
                   </span>

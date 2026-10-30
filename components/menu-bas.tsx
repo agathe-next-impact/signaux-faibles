@@ -56,12 +56,12 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
               rubrique ? (
                 onglet.rubriqueHref ? (
                   <li key={`rubrique-${rubrique}`} className="border-b border-gris-ligne bg-fond-neutre">
-                    <Link href={onglet.rubriqueHref} onClick={fermer} className="label-mono block px-6 py-1.5 text-ardoise">
+                    <Link href={onglet.rubriqueHref} onClick={fermer} className="label-mono block px-6 py-2 text-ardoise">
                       {rubrique} →
                     </Link>
                   </li>
                 ) : (
-                  <li key={`rubrique-${rubrique}`} aria-hidden="true" className="label-mono border-b border-gris-ligne bg-fond-neutre px-6 py-1.5 text-ardoise">
+                  <li key={`rubrique-${rubrique}`} aria-hidden="true" className="label-mono border-b border-gris-ligne bg-fond-neutre px-6 py-2 text-ardoise">
                     {rubrique}
                   </li>
                 )
@@ -94,7 +94,7 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
                 href={onglet.href}
                 aria-current={courant ? 'page' : undefined}
                 onClick={fermer}
-                className={`flex flex-col items-center gap-1 px-1 py-2.5 text-center ${
+                className={`flex flex-col items-center gap-1 px-1 py-3 text-center ${
                   courant ? 'text-encre' : 'text-ardoise'
                 }`}
               >
@@ -115,7 +115,7 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
               aria-expanded={ouvert}
               aria-controls="menu-bas-plus"
               onClick={() => setOuvertSur(ouvert ? null : chemin)}
-              className={`flex w-full flex-col items-center gap-1 px-1 py-2.5 text-center ${
+              className={`flex w-full flex-col items-center gap-1 px-1 py-3 text-center ${
                 surUnAutre || ouvert ? 'text-encre' : 'text-ardoise'
               }`}
             >

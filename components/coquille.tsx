@@ -89,10 +89,10 @@ export function Coquille({
           role="status"
           className="sticky top-0 z-40 flex h-[var(--bandeau)] shrink-0 flex-wrap items-center justify-between gap-x-4 overflow-hidden border-b border-rose bg-fond-rose px-6"
         >
-          <p className="label-mono text-rose">
+          <p className="label-mono text-rose-texte">
             accès opérateur · vous consultez l’espace de {organisation}
           </p>
-          <Link href="/espaces" className="label-mono text-rose underline underline-offset-2">
+          <Link href="/espaces" className="label-mono text-rose-texte underline underline-offset-2">
             changer d’espace
           </Link>
         </div>
@@ -127,7 +127,7 @@ export function Coquille({
         </RailRétractable>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>
+          <main className="min-w-0 flex-1 px-6 py-8 lg:px-12">{children}</main>
           <div className="flex flex-col gap-2 px-6 pb-6 lg:hidden">
             <LienMonAbonnement slug={slug} />
             {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
@@ -156,13 +156,13 @@ export function EntêteÉcran({
   état?: string
 }) {
   return (
-    <header className="flex flex-wrap items-baseline justify-between gap-4 border-b border-gris-ligne pb-5">
+    <header className="flex flex-wrap items-baseline justify-between gap-4 border-b border-gris-ligne pb-6">
       <div className="flex flex-col gap-1">
         <p className="label-mono text-ardoise">{surtitre}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">{titre}</h1>
       </div>
       {état ? (
-        <p className="flex items-center gap-2 rounded-full border border-gris-ligne px-3 py-1.5 label-mono text-ardoise">
+        <p className="flex items-center gap-2 rounded-full border border-gris-ligne px-3 py-2 label-mono text-ardoise">
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-rose" />
           {état}
         </p>
@@ -228,7 +228,7 @@ export function Case({
 }) {
   return (
     <li
-      className={`group relative flex flex-col gap-3 border-r border-b border-gris-ligne p-5 ${
+      className={`group relative flex flex-col gap-3 border-r border-b border-gris-ligne p-6 ${
         accent ? 'bg-fond-rose' : 'bg-blanc'
       }`}
     >
@@ -271,7 +271,7 @@ export function Panneau({
 }) {
   const fond =
     ton === 'rose' ? 'bg-fond-rose' : ton === 'ardoise' ? 'bg-fond-ardoise' : 'bg-blanc'
-  return <section className={`border border-gris-ligne p-5 ${fond}`}>{children}</section>
+  return <section className={`border border-gris-ligne p-6 ${fond}`}>{children}</section>
 }
 
 /**

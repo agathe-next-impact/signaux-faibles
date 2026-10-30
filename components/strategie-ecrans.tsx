@@ -51,7 +51,7 @@ function TitreDeSection({ titre, mention }: { titre: string; mention: string }) 
 }
 
 function Numéro({ n }: { n: number }) {
-  return <span className="mr-1.5 font-mono text-label font-medium text-ardoise">{n}</span>
+  return <span className="mr-2 font-mono text-label font-medium text-ardoise">{n}</span>
 }
 
 // ── Acteurs ──────────────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ export function CarteDesGroupes({ carte, lien }: { carte: VueDeLaCarte; lien?: (
                   <div
                     key={c.cran}
                     role="cell"
-                    className={`flex min-h-[104px] flex-col gap-1.5 border-r border-b border-gris-ligne p-3 ${vous ? 'bg-fond-ardoise' : mouvement ? 'bg-fond-rose' : 'bg-blanc'}`}
+                    className={`flex min-h-[104px] flex-col gap-2 border-r border-b border-gris-ligne p-3 ${vous ? 'bg-fond-ardoise' : mouvement ? 'bg-fond-rose' : 'bg-blanc'}`}
                   >
                     {occupants.map((o) => (
                       <div key={o.sujet} className="flex flex-col gap-1">
@@ -139,7 +139,7 @@ export function CarteDesGroupes({ carte, lien }: { carte: VueDeLaCarte; lien?: (
           ))}
         </div>
       </div>
-      <ul className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Légende de la carte">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Légende de la carte">
         <li className="flex items-center gap-2"><Pastille couleur="encre" /><span className="label-mono text-ardoise">Votre position</span></li>
         <li className="flex items-center gap-2"><Pastille couleur="rose" /><span className="label-mono text-ardoise">A bougé</span></li>
         <li className="flex items-center gap-2"><Pastille couleur="ardoise" /><span className="label-mono text-ardoise">Sans mouvement</span></li>
@@ -166,10 +166,10 @@ export function MatriceDeMendelow({ mendelow }: { mendelow: VueDeMendelow }) {
               const sujets = mendelow.cases.get(`${p}:${i}`) ?? []
               const coin = STRATÉGIES_MENDELOW[`${p}:${i}`]
               return (
-                <div key={i} role="cell" className={`flex min-h-[120px] flex-col gap-1.5 border-r border-b border-gris-ligne p-3 ${p === 3 && i === 3 ? 'bg-fond-ardoise' : 'bg-blanc'}`}>
+                <div key={i} role="cell" className={`flex min-h-[120px] flex-col gap-2 border-r border-b border-gris-ligne p-3 ${p === 3 && i === 3 ? 'bg-fond-ardoise' : 'bg-blanc'}`}>
                   {coin ? <p className="label-mono text-ardoise">{coin}</p> : null}
                   {sujets.map((s) => (
-                    <div key={s.sujet} className="flex flex-col gap-0.5">
+                    <div key={s.sujet} className="flex flex-col gap-1">
                       <p className="flex gap-2 leading-snug"><Pastille couleur={s.aBougé ? 'rose' : 'ardoise'} /><span className="text-encre">{s.sujet}</span></p>
                       {s.aBougé && s.fait ? <p className="label-mono text-ardoise">Fait du {dateCourte(s.fait.date)}</p> : null}
                     </div>
@@ -193,7 +193,7 @@ function déclarés(n: number, total: number): string {
 /** Les deux outils de la synthèse publiée, en tête de l'écran « Acteurs ». */
 export function SynthèseDesActeurs({ période, carte, mendelow }: { période: string; carte: VueDeLaCarte | null; mendelow: VueDeMendelow }) {
   return (
-    <div className="mt-8 flex flex-col gap-10">
+    <div className="mt-8 flex flex-col gap-12">
       {carte && carte.placés > 0 ? (
         <section className="flex flex-col gap-4">
           <TitreDeSection titre="Carte des groupes stratégiques" mention="Outil en test" />
@@ -266,7 +266,7 @@ const montant = (n: number | null) => (n === null ? 'n.d.' : `${new Intl.NumberF
 /** La position, l'historique et les chiffres d'une fiche concurrent ; les faits et les passages sont rendus par la page. */
 export function PositionDuConcurrent({ fiche }: { fiche: FicheDuConcurrent }) {
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-12">
       <section className="flex flex-col gap-4">
         <TitreDeSection titre="Sa position" mention="Carte des groupes stratégiques" />
         {fiche.position ? (
@@ -325,9 +325,9 @@ export function PositionDuConcurrent({ fiche }: { fiche: FicheDuConcurrent }) {
 /** Les codes des éléments SWOT qu'une option croise ; avec `diagnostic`, chacun mène à son élément sur l'écran « Diagnostic ». */
 function Références({ codes, diagnostic }: { codes: readonly string[]; diagnostic?: string }) {
   if (codes.length === 0) return null
-  const classe = 'rounded-full border border-gris-ligne px-2 py-0.5 font-mono text-label text-ardoise'
+  const classe = 'rounded-full border border-gris-ligne px-2 py-1 font-mono text-label text-ardoise'
   return (
-    <p className="flex flex-wrap items-center gap-1.5">
+    <p className="flex flex-wrap items-center gap-2">
       {codes.map((c) =>
         diagnostic ? (
           <Link key={c} href={`${diagnostic}#${c}`} className={`${classe} hover:border-encre hover:text-encre`}>
@@ -344,7 +344,7 @@ function Références({ codes, diagnostic }: { codes: readonly string[]; diagnos
 /** L'option retenue et la matrice TOWS. `diagnostic` : le chemin de l'écran « Diagnostic », vers lequel mènent les codes (espace réorganisé). */
 export function OptionsStratégiques({ période, tows, diagnostic }: { période: string; tows: VueDeLaTows; diagnostic?: string }) {
   return (
-    <div className="mt-8 flex flex-col gap-10">
+    <div className="mt-8 flex flex-col gap-12">
       {tows.candidate ? (
         <section className="flex flex-col gap-3 border border-gris-ligne bg-fond-rose p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -376,7 +376,7 @@ export function OptionsStratégiques({ période, tows, diagnostic }: { période:
                 </div>
                 {options.length === 0 ? <p className="text-ardoise">Aucune option ce mois-ci.</p> : null}
                 {options.map((o) => (
-                  <div key={o.énoncé} className="flex flex-col gap-1.5">
+                  <div key={o.énoncé} className="flex flex-col gap-2">
                     {o.candidate ? <p className="flex items-center gap-2 label-mono text-encre"><Pastille couleur="rose" />Option retenue</p> : null}
                     <p className="text-encre">{o.énoncé}</p>
                     <Références codes={o.croise} diagnostic={diagnostic} />
@@ -421,8 +421,8 @@ export function MatriceSwot({ swot, lettre }: { swot: VueDeLaSwot; lettre?: (éd
             {swot[c].length === 0 ? <p className="text-ardoise">Rien de daté ce mois-ci.</p> : null}
             {swot[c].map((é) => (
               <div key={é.code} id={é.code} className="flex scroll-mt-6 gap-3">
-                <span className="w-7 shrink-0 pt-0.5 font-mono text-label text-ardoise">{é.code}</span>
-                <span className="flex flex-col gap-0.5">
+                <span className="w-7 shrink-0 pt-1 font-mono text-label text-ardoise">{é.code}</span>
+                <span className="flex flex-col gap-1">
                   <span className="text-encre">{é.énoncé}</span>
                   {(() => {
                     const href = é.édition ? (lettre?.(é.édition) ?? null) : null
@@ -448,7 +448,7 @@ export function SynthèseDesRecommandations({ période, swot, tows }: { période
   return (
     <>
       <OptionsStratégiques période={période} tows={tows} />
-      <div className="mt-10">
+      <div className="mt-12">
         <MatriceSwot swot={swot} />
       </div>
     </>
@@ -504,7 +504,7 @@ export function TroisScénarios({ scénarios }: { scénarios: readonly Scénario
 export function LectureDuTrimestre({ période, forces, scénarios }: { période: string; forces: readonly ForceLue[]; scénarios: readonly ScénarioLu[] }) {
   if (forces.length === 0 && scénarios.length === 0) return null
   return (
-    <div className="mt-10 flex flex-col gap-10">
+    <div className="mt-12 flex flex-col gap-12">
       {forces.length > 0 ? <CinqForces période={période} forces={forces} /> : null}
       {scénarios.length > 0 ? <TroisScénarios scénarios={scénarios} /> : null}
     </div>
@@ -531,7 +531,7 @@ export function VuePestel({ vue, barres = false, axe }: { vue: VueDuPestel; barr
       <Grille étiquette="Les six dimensions">
         {vue.dimensions.map((d) => (
           <Case key={d.lettre}>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-1">
               <p className="label-mono text-encre">{d.initiale} · {d.libellé}</p>
               {barres ? null : <p className="label-mono text-ardoise">{d.parMois.map((m) => `${m.mois} ${m.faits}`).join(' · ')}</p>}
             </div>
@@ -545,7 +545,7 @@ export function VuePestel({ vue, barres = false, axe }: { vue: VueDuPestel; barr
             {d.trou ? (
               <p className="text-ardoise">Aucune famille de votre veille ne suit cette dimension.</p>
             ) : (
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 <p className="label-mono text-ardoise">Suivie par</p>
                 {d.suiviePar.map((a) =>
                   axe ? (
@@ -565,10 +565,10 @@ export function VuePestel({ vue, barres = false, axe }: { vue: VueDuPestel; barr
       </Grille>
 
       {vue.trous.length > 0 ? (
-        <section className="flex flex-col gap-2.5 border border-gris-ligne bg-fond-neutre p-5">
+        <section className="flex flex-col gap-3 border border-gris-ligne bg-fond-neutre p-6">
           <h2 className="label-mono text-ardoise">Trous de couverture</h2>
           {vue.trous.map((t) => (
-            <p key={t.libellé} className="flex gap-2.5">
+            <p key={t.libellé} className="flex gap-3">
               <Pastille couleur="ardoise" />
               <span>
                 <strong className="font-medium">{t.libellé}.</strong>{' '}
@@ -588,22 +588,22 @@ export function VuePestel({ vue, barres = false, axe }: { vue: VueDuPestel; barr
               <thead>
                 <tr>
                   {['Date', 'Dimension', 'Fait', 'Axe'].map((t) => (
-                    <th key={t} className="border-b border-gris-ligne px-4 py-2.5 text-left font-normal label-mono text-ardoise">{t}</th>
+                    <th key={t} className="border-b border-gris-ligne px-4 py-3 text-left font-normal label-mono text-ardoise">{t}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {vue.faits.slice(0, LIMITE_DES_FAITS).map((f) => (
                   <tr key={`${f.date}-${f.titre}`}>
-                    <td className="border-b border-gris-ligne px-4 py-3.5 align-top label-mono text-ardoise">{dateCourte(f.date)}</td>
-                    <td className="border-b border-gris-ligne px-4 py-3.5 align-top">{f.dimension}</td>
-                    <td className="border-b border-gris-ligne px-4 py-3.5 align-top">
+                    <td className="border-b border-gris-ligne px-4 py-4 align-top label-mono text-ardoise">{dateCourte(f.date)}</td>
+                    <td className="border-b border-gris-ligne px-4 py-4 align-top">{f.dimension}</td>
+                    <td className="border-b border-gris-ligne px-4 py-4 align-top">
                       <span className="flex flex-col gap-1">
                         <span>{f.titre}</span>
                         {f.rupture ? <span className="flex items-center gap-2 label-mono text-encre"><Pastille couleur="rose" />Rupture</span> : null}
                       </span>
                     </td>
-                    <td className="border-b border-gris-ligne px-4 py-3.5 align-top text-ardoise">{f.axe ?? ''}</td>
+                    <td className="border-b border-gris-ligne px-4 py-4 align-top text-ardoise">{f.axe ?? ''}</td>
                   </tr>
                 ))}
               </tbody>

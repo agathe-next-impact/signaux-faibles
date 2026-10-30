@@ -34,9 +34,9 @@ export default async function Scénarios({ params }: { params: Promise<{ slug: s
           </div>
         </>
       ) : (
-        <p className="mt-5 text-ardoise">Aucun scénario n’est publié pour l’instant. Ils paraissent avec la revue de chaque trimestre.</p>
+        <p className="mt-6 text-ardoise">Aucun scénario n’est publié pour l’instant. Ils paraissent avec la revue de chaque trimestre.</p>
       )}
-      <div className="mt-10 flex flex-col gap-2">
+      <div className="mt-12 flex flex-col gap-2">
         <p>
           <LienFlèche href={`/${accès.slug}/forces`}>Voir les forces du marché sur le trimestre</LienFlèche>
         </p>

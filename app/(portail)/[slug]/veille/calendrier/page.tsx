@@ -28,7 +28,7 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
     <>
       <EntêteÉcran surtitre="votre veille" titre="Ce que nous attendons" état={lue?.fiche ? `${à} échéance${à > 1 ? 's' : ''} en douze mois` : undefined} />
       {!lue ? (
-        <p className="mt-5 text-ardoise">Le calendrier de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
+        <p className="mt-6 text-ardoise">Le calendrier de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
       ) : !lue.fiche ? (
         <PasEncorePubliée quoi="Le calendrier de votre veille" />
       ) : (
@@ -39,10 +39,10 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
             <div className="relative overflow-x-auto border-t border-l border-gris-ligne">
               <ol className="grid min-w-[960px] grid-cols-12" aria-label="Échéances des douze prochains mois">
                 {mois.map((m) => (
-                  <li key={m.mois} className={`flex min-h-[160px] flex-col gap-2 border-r border-b border-gris-ligne p-2.5 ${m.échéances.length > 0 ? 'bg-blanc' : 'bg-fond-neutre'}`}>
+                  <li key={m.mois} className={`flex min-h-[160px] flex-col gap-2 border-r border-b border-gris-ligne p-3 ${m.échéances.length > 0 ? 'bg-blanc' : 'bg-fond-neutre'}`}>
                     <p className="label-mono text-encre">{m.libellé}</p>
                     {m.échéances.map((é) => (
-                      <div key={`${é.date}-${é.libellé}`} className="flex flex-col gap-0.5 border-t-2 border-ocre pt-1.5">
+                      <div key={`${é.date}-${é.libellé}`} className="flex flex-col gap-1 border-t-2 border-ocre pt-2">
                         <p className="font-mono text-label text-ocre-texte">{dateCourte(é.date)}</p>
                         <p className="text-sm leading-snug text-encre">{é.libellé}</p>
                         {é.famille ? <p className="font-mono text-label text-ardoise">{é.famille}</p> : null}
@@ -54,7 +54,7 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
             </div>
           </section>
           {lue.fiche.niches.length > 0 ? (
-            <section className="mt-10 flex flex-col gap-4">
+            <section className="mt-12 flex flex-col gap-4">
               <h2 className="font-titre text-h2 font-bold text-encre">Niches et signaux</h2>
               <p className="max-w-[68ch] text-ardoise">Ce que votre veille guette au-delà de l’actualité, et le signal qui en ferait un fait.</p>
               <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
@@ -72,7 +72,7 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
           ) : null}
         </>
       )}
-      <p className="mt-10">
+      <p className="mt-12">
         <LienFlèche href={`/${accès.slug}/veille/themes`}>Voir les thèmes de votre veille</LienFlèche>
       </p>
     </>

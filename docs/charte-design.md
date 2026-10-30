@@ -65,6 +65,7 @@ jamais un décor.** »
 | Gris ligne | `#dee3e6` | filets, axes, bordures |
 | Blanc | `#ffffff` | **fond unique du site** |
 | Ocre | `#b07a2a` | le temps : échéances, seconde série d'un graphique (amendement du 30 octobre 2026) |
+| Rose lisible | `#b4485e` | le seul rose qui porte un mot : badge `SIGNAL FORT`, labels mono d'alerte (amendement du 30 octobre 2026) |
 
 Teintes dérivées, « réservées aux fonds de cartes et surlignages, jamais pour
 du texte » : `#fbeef1` fond rose, `#eef1f4` fond ardoise, `#f7f8f9` fond neutre,
@@ -95,8 +96,23 @@ Contraste et accessibilité, tels que la charte les donne :
 | Rose sur blanc | 2,9 : 1 | graphique seul |
 | Ocre sur blanc | 3,71 : 1 | graphique seul |
 | Ocre foncé sur blanc | 5,91 : 1 | AA (dates, labels mono) |
+| Rose lisible sur fond rose | 4,62 : 1 | AA (badge, labels mono) |
 
 « Le rose ne porte jamais de texte courant : il marque, il ne raconte pas. »
+
+**Amendement du 30 octobre 2026 : le rose lisible.** Le rose marque `#dd768a`
+reste celui des formes (curseur, flèches, impulsions, pastille « nouveau ») ; un
+mot en rose, badge `SIGNAL FORT` ou label mono d'alerte, prend `#b4485e`
+(`text-rose-texte`). Le point à arbitrer ci-dessous est ainsi tranché.
+
+**Amendement du 30 octobre 2026 : le mode sombre.** Les mêmes tokens, déclinés
+pour un fond encre, selon le réglage du système du lecteur
+(`prefers-color-scheme: dark`, `app/globals.css` seul) : blanc `#111418`,
+encre `#eef1f4`, ardoise `#9aa6b6`, gris ligne `#343b44`, fonds rose `#3a2229`,
+ardoise `#1d232b`, neutre `#181c21`, ocre `#33281a` ; rose lisible `#e8a0af`,
+ocre foncé `#d9a650`. Les noms gardent leur rôle (« blanc » est le fond,
+« encre » le texte) : un bouton `bg-encre text-blanc` devient clair sur fond
+sombre, comme la version négative du logo. Les courriels ne changent pas.
 
 Proportions d'usage visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
 **rose 2 %, ocre 1 %** (rose 3 % avant l'amendement du 30 octobre 2026).
@@ -133,6 +149,30 @@ Deux règles encadrées, à traiter comme des interdits :
 
 « Les briques récurrentes du site et des lettres. Rayons de 8 à 10 px, bordures
 gris ligne, **aucune ombre portée forte**. »
+
+**Échelle d'espacement (amendement du 30 octobre 2026).** Sept valeurs, et
+elles seules, pour les marges, retraits et écarts : 4, 8, 12, 16, 24, 32 et
+48 px, soit les utilitaires Tailwind `1`, `2`, `3`, `4`, `6`, `8` et `12` (plus
+`0` et `px`). Le passage s'est fait au plus proche, à égalité vers le haut
+(20 px devient 24, 40 devient 48) ; les grands blancs de page (64 à 96 px)
+sont ramenés à 48. Une valeur entre crochets n'est admise que pour aligner sur
+la police (`em`) ou l'appareil (`env()`, `var()`).
+`tests/charte.espacement.test.ts` refuse toute autre valeur.
+
+**Infobulles chiffrées (même jour).** Sur l'activité des semaines et la carte de
+chaleur, la valeur exacte et sa date, en mono, sur fond encre, au survol et au
+clavier (la marque est focalisable) ; elles doublent un texte lu par les
+lecteurs d'écran et apparaissent sans animation.
+
+**Squelette (même jour).** Un écran de l'espace qui attend ses lectures montre
+sa forme (en-tête, grille de cases) au lieu d'un vide :
+`components/squelette.tsx`, `app/(portail)/[slug]/loading.tsx`.
+
+**Mini graphique des cartes de rubrique (même jour).** Sur la vue d'ensemble de
+l'espace réorganisé, chaque carte porte ses faits sur huit semaines, la dernière
+en encre : le marché compte les faits des lettres concurrentielles,
+l'environnement ceux qui portent une dimension PESTEL, la stratégie les
+ruptures, votre veille tous les faits (`activitéParRubrique`).
 
 **Boutons.** Primaire sur fond encre, texte blanc. Secondaire en filet. Lien
 avec flèche rose. « **Un seul bouton primaire par écran.** »
@@ -181,6 +221,8 @@ graphiques de l'espace (`components/graphiques-strategie.tsx`), par les classes
 | Hors charte | ni boucle, ni rebond, ni animation au défilement ou au survol d'une donnée | |
 
 Un chiffre ne s'anime jamais : il s'affiche à sa valeur, seule la marque bouge.
+Seule boucle admise : la lueur du squelette de chargement, qui ne porte aucune
+donnée et s'arrête aussi quand le système demande moins de mouvement.
 
 ## Ce que la transcription oblige à corriger dans le portail
 
@@ -202,7 +244,8 @@ Un chiffre ne s'anime jamais : il s'affiche à sa valeur, seule la marque bouge.
 conforme à la charte. Le portail ne code aucun domaine en dur : `PORTAIL_URL`
 est une variable d'environnement.
 
-**Le contraste du badge `SIGNAL FORT`.** La charte pose que le rose ne porte
+**Le contraste du badge `SIGNAL FORT`, tranché le 30 octobre 2026** par le rose
+lisible `#b4485e` (§02). Le constat d'origine : la charte pose que le rose ne porte
 jamais de texte courant, mais compose ce badge en rose sur fond rose. Mesuré,
 `#dd768a` sur `#fbeef1` donne environ 2,2 : 1, sous le seuil AA même pour du
 gras. La charte est cohérente avec elle-même — un label mono n'est pas du texte

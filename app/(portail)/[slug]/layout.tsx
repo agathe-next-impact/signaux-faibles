@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { Suspense } from 'react'
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { Coquille } from '@/components/coquille'
+import { SqueletteDÉcran } from '@/components/squelette'
 import { COOKIE_DU_RAIL } from '@/lib/portail/rail'
 import { ongletsDe, semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
@@ -98,8 +99,8 @@ async function Garde({
 
 function Chargement() {
   return (
-    <div className="px-6 py-8 text-ardoise">
-      <p>Chargement…</p>
+    <div className="px-6 py-8">
+      <SqueletteDÉcran />
     </div>
   )
 }

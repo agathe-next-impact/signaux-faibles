@@ -50,7 +50,7 @@ export default async function UnAxe({
         état={`${passages.length} lettre${passages.length > 1 ? 's' : ''} sur ${LETTRES_SUIVIES}`}
       />
 
-      <p className="mt-5">
+      <p className="mt-6">
         <LienFlèche href={`/${accès.slug}/axes`}>Retour aux axes</LienFlèche>
       </p>
 

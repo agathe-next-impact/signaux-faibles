@@ -1,4 +1,4 @@
-import { libelléDePériode, mouvementsDeLaCarte, TYPES_DE_TOWS, type SynthèseVue } from '@/lib/domaine/strategie-vues'
+import { libelléDePériode, mouvementsDeLaCarte, TYPES_DE_TOWS, type ActivitéDeRubrique, type SynthèseVue } from '@/lib/domaine/strategie-vues'
 
 /**
  * Le tableau de bord en cases de l'espace réorganisé (lot 4 de
@@ -179,6 +179,8 @@ export type CarteDeRubrique = {
   readonly href: string
   /** Ses écrans, chacun avec son chiffre clé : la carte se lit sans s'ouvrir. */
   readonly écrans: readonly { readonly écran: string; readonly valeur: string }[]
+  /** Les faits de la rubrique sur huit semaines (mini graphique), `null` sans faits étiquetés. */
+  readonly activité: ActivitéDeRubrique | null
 }
 
 /** Les cases d'une rubrique, dans l'ordre du rail. */
@@ -187,11 +189,16 @@ export function casesDeLaRubrique(cases: readonly CaseDÉcran[], clé: CléDeRub
   return cases.filter((c) => c.rubrique === titre)
 }
 
-export function cartesDesRubriques(slug: string, cases: readonly CaseDÉcran[]): readonly CarteDeRubrique[] {
+export function cartesDesRubriques(
+  slug: string,
+  cases: readonly CaseDÉcran[],
+  parRubrique: Readonly<Record<string, ActivitéDeRubrique>> | null = null,
+): readonly CarteDeRubrique[] {
   return RUBRIQUES.map((r) => ({
     clé: r.clé,
     titre: r.titre,
     href: `/${slug}/${r.clé}`,
     écrans: casesDeLaRubrique(cases, r.clé).map((c) => ({ écran: c.écran, valeur: c.valeur })),
+    activité: parRubrique?.[r.clé] ?? null,
   }))
 }

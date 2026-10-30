@@ -36,7 +36,7 @@ export function TableauDeBordDeDémonstration({ démonstration }: { démonstrati
   const acteurs = ordonnerLesDossiers(acteursEnVue(synthèse.dossiers, [document]))
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-12">
       <Grille étiquette="Chiffres de la semaine" colonnes={4}>
         <Tuile intitulé="axes suivis" valeur={synthèse.axesTotal} />
         <Tuile intitulé="signal fort" valeur={synthèse.parNiveau.FORT} accent={synthèse.parNiveau.FORT > 0} />

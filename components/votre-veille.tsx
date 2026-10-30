@@ -13,7 +13,7 @@ export const VEILLES_AFFICHÉES: readonly { readonly veille: Veille; readonly ti
 /** Ce qu'un écran dit tant que l'opératrice n'a pas publié la fiche de veille. */
 export function PasEncorePubliée({ quoi }: { quoi: string }) {
   return (
-    <p className="mt-5 max-w-[68ch] border border-gris-ligne bg-fond-neutre p-4 text-ardoise">
+    <p className="mt-6 max-w-[68ch] border border-gris-ligne bg-fond-neutre p-4 text-ardoise">
       {quoi} n’est pas encore publié. La fiche de votre veille est rédigée à la revue du mois, relue, puis publiée ici.
     </p>
   )

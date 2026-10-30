@@ -1,6 +1,7 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import {
   dateCourte,
+  type ActivitéDeRubrique,
   type CarteDeChaleur,
   type DimensionDuPestel,
   type SemaineDActivité,
@@ -29,13 +30,34 @@ import {
 /** Le rang d'une marque dans la cascade, plafonné pour qu'une longue liste n'attende pas. */
 const rang = (i: number, plafond = 12): CSSProperties => ({ '--i': Math.min(i, plafond) }) as CSSProperties
 
+/**
+ * L'infobulle chiffrée (30 octobre 2026) : la valeur exacte et sa date, en mono,
+ * au survol et au clavier (la marque qui la porte est `group relative` et
+ * focalisable). Elle double le texte `sr-only` de la marque, d'où `aria-hidden`.
+ * Elle apparaît sans animation : le mouvement signale une arrivée de donnée,
+ * pas un survol. Aux bords, elle s'aligne sur la marque pour ne pas déborder.
+ */
+function Infobulle({ bord, children }: { bord?: 'gauche' | 'droite'; children: ReactNode }) {
+  const place = bord === 'gauche' ? 'left-0' : bord === 'droite' ? 'right-0' : 'left-1/2 -translate-x-1/2'
+  return (
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap bg-encre px-2 py-1 font-mono text-label text-blanc group-hover:block group-focus-visible:block ${place}`}
+    >
+      {children}
+    </span>
+  )
+}
+
+const bordDe = (i: number, n: number) => (i === 0 ? 'gauche' : i === n - 1 ? 'droite' : undefined)
+
 const largeur = (valeur: number, max: number) => `${max > 0 ? Math.max((valeur / max) * 100, valeur > 0 ? 2 : 0) : 0}%`
 
 // ── PESTEL : les faits par mois d'une dimension, zéro compris ────────────────
 
 export function BarresMensuelles({ dimension, max }: { dimension: DimensionDuPestel; max: number }) {
   return (
-    <ul className="flex items-end gap-1.5" aria-label={`${dimension.libellé}, faits par mois`}>
+    <ul className="flex items-end gap-2" aria-label={`${dimension.libellé}, faits par mois`}>
       {dimension.parMois.map((m, i) => (
         <li key={m.mois} className="flex flex-1 flex-col items-center gap-1">
           <span className="font-mono text-label text-encre">{m.faits}</span>
@@ -107,17 +129,29 @@ export function CarteDeChaleurDesAxes({ chaleur }: { chaleur: CarteDeChaleur }) 
             {chaleur.lignes.map((l) => (
               <tr key={l.clé}>
                 <th scope="row" className="border-r border-b border-gris-ligne px-3 py-2 text-left font-normal">
-                  <span className="mr-1.5 font-mono text-label font-medium text-ardoise">{l.numéro}</span>
+                  <span className="mr-2 font-mono text-label font-medium text-ardoise">{l.numéro}</span>
                   <span className="text-sm text-encre">{l.nom}</span>
                 </th>
                 {l.cases.map((c, i) => (
                   <td
                     key={c.lundi}
-                    className={`h-9 w-14 border-r border-b border-gris-ligne text-center font-mono text-label ${c.niveau ? `anime-decouvre ${FOND_DE_NIVEAU[c.niveau]} text-encre` : 'bg-blanc'}`}
+                    className={`group relative h-9 w-14 border-r border-b border-gris-ligne text-center font-mono text-label ${c.niveau ? `anime-decouvre ${FOND_DE_NIVEAU[c.niveau]} text-encre` : 'bg-blanc'}`}
                     style={c.niveau ? rang(i) : undefined}
-                    title={c.niveau ? `${c.niveau}, ${c.faits} fait${c.faits > 1 ? 's' : ''}` : 'RAS ou sans lettre'}
+                    tabIndex={c.niveau ? 0 : undefined}
                   >
-                    {c.niveau ? LETTRE_DE_NIVEAU[c.niveau] : <span className="sr-only">RAS ou sans lettre</span>}
+                    {c.niveau ? (
+                      <>
+                        {LETTRE_DE_NIVEAU[c.niveau]}
+                        <span className="sr-only">
+                          {c.niveau}, {c.faits} fait{c.faits > 1 ? 's' : ''}, semaine du {dateCourte(c.lundi)}
+                        </span>
+                        <Infobulle bord={bordDe(i, l.cases.length) === 'droite' ? 'droite' : undefined}>
+                          Sem. du {dateCourte(c.lundi)} · {c.niveau} · {c.faits} fait{c.faits > 1 ? 's' : ''}
+                        </Infobulle>
+                      </>
+                    ) : (
+                      <span className="sr-only">RAS ou sans lettre</span>
+                    )}
                   </td>
                 ))}
               </tr>
@@ -125,12 +159,39 @@ export function CarteDeChaleurDesAxes({ chaleur }: { chaleur: CarteDeChaleur }) 
           </tbody>
         </table>
       </div>
-      <ul className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Légende de la carte de chaleur">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Légende de la carte de chaleur">
         <li className="flex items-center gap-2"><span aria-hidden="true" className="inline-block h-3 w-3 bg-fond-rose" /><span className="label-mono text-ardoise">F · Fort</span></li>
         <li className="flex items-center gap-2"><span aria-hidden="true" className="inline-block h-3 w-3 bg-fond-ardoise" /><span className="label-mono text-ardoise">M · Moyen</span></li>
         <li className="flex items-center gap-2"><span aria-hidden="true" className="inline-block h-3 w-3 border border-gris-ligne bg-blanc" /><span className="label-mono text-ardoise">RAS ou sans lettre</span></li>
       </ul>
     </div>
+  )
+}
+
+// ── Tableau de bord : le mini graphique d'une carte de rubrique ─────────────
+
+/** Huit semaines, la dernière en encre : la carte dit si son sujet s'anime avant d'être ouverte. */
+export function MiniActivité({ activité }: { activité: ActivitéDeRubrique }) {
+  const max = Math.max(...activité.semaines.map((s) => s.faits), 0)
+  const total = activité.semaines.reduce((n, s) => n + s.faits, 0)
+  const dernière = activité.semaines.length - 1
+  return (
+    <figure className="flex flex-col gap-1">
+      <span aria-hidden="true" className="flex h-8 items-end gap-1">
+        {activité.semaines.map((s, i) => (
+          <span key={s.lundi} className="flex h-full flex-1 items-end">
+            <span
+              className={`w-full ${s.faits === 0 ? 'bg-gris-ligne' : i === dernière ? 'anime-monte bg-encre' : 'anime-monte bg-ardoise'}`}
+              style={{ ...rang(i), height: s.faits > 0 ? largeur(s.faits, max) : '1px' }}
+            />
+          </span>
+        ))}
+      </span>
+      <figcaption className="font-mono text-label text-ardoise">
+        {total} {total > 1 ? activité.libellé : activité.singulier} en {activité.semaines.length} semaines
+        {activité.semaines[dernière] ? `, ${activité.semaines[dernière].faits} la dernière` : ''}
+      </figcaption>
+    </figure>
   )
 }
 
@@ -143,7 +204,10 @@ export function ActivitéDesSemaines({ activité }: { activité: readonly Semain
     <figure className="flex flex-col gap-2">
       <ul className="relative flex h-20 items-end gap-1" aria-label={`Faits relevés par semaine, ${total} sur ${activité.length} semaines`}>
         {activité.map((s, i) => (
-          <li key={s.lundi} className="flex h-full flex-1 flex-col justify-end" title={`Semaine du ${dateCourte(s.lundi)} : ${s.faits} fait${s.faits > 1 ? 's' : ''}`}>
+          <li key={s.lundi} className="group relative flex h-full flex-1 flex-col justify-end" tabIndex={0}>
+            <Infobulle bord={bordDe(i, activité.length)}>
+              Sem. du {dateCourte(s.lundi)} · {s.faits} fait{s.faits > 1 ? 's' : ''}
+            </Infobulle>
             <span className="sr-only">
               Semaine du {dateCourte(s.lundi)} : {s.faits} fait{s.faits > 1 ? 's' : ''}
             </span>

@@ -34,9 +34,9 @@ export default async function ForcesDuMarché({ params }: { params: Promise<{ sl
           </div>
         </>
       ) : (
-        <p className="mt-5 text-ardoise">Les cinq forces ne sont pas encore publiées. Elles paraissent avec la revue de chaque trimestre.</p>
+        <p className="mt-6 text-ardoise">Les cinq forces ne sont pas encore publiées. Elles paraissent avec la revue de chaque trimestre.</p>
       )}
-      <div className="mt-10 flex flex-col gap-2">
+      <div className="mt-12 flex flex-col gap-2">
         <p>
           <LienFlèche href={`/${accès.slug}/concurrents`}>Voir les concurrents et leur carte</LienFlèche>
         </p>

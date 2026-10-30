@@ -30,6 +30,7 @@ import {
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
+  activitéParRubrique,
   activitéParSemaine,
   nomsDesConcurrents,
   pestelDesFaits,
@@ -1142,6 +1143,8 @@ export type FaitsRécentsDeLEspace = {
   readonly activité: readonly SemaineDActivité[]
   /** Les axes de la grille sur les huit dernières semaines, au niveau de leur fait le plus fort ; `null` sans grille. */
   readonly chaleur: CarteDeChaleur | null
+  /** Les faits de chaque rubrique sur huit semaines, pour le mini graphique de sa carte. */
+  readonly parRubrique: ReturnType<typeof activitéParRubrique>
   /** Les mêmes faits par dimension PESTEL, pour la case de l'écran « PESTEL ». */
   readonly pestel: readonly { readonly libellé: string; readonly faits: number }[]
 }
@@ -1170,6 +1173,7 @@ export async function faitsRécentsDeLEspace(
     const faits = lignes.map((l) => ({ dateÉdition: l.dateÉdition, famille: l.familleÉdition, axe: l.numéroAxe, impact: l.impact, rupture: l.rupture, pestel: l.pestel }))
     return {
       activité: activitéParSemaine(faits, entrée.fin),
+      parRubrique: activitéParRubrique(faits, entrée.fin),
       chaleur: grille ? vueDeLaChaleur(faits, grille.grille, entrée.fin) : null,
       pestel: pestelDesFaits(faits),
     }

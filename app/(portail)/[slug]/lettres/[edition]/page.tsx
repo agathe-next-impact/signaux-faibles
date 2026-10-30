@@ -34,7 +34,7 @@ export default async function UneLettre({
         état={lettre.édition.numéro !== null ? `n° ${lettre.édition.numéro}` : undefined}
       />
 
-      <p className="mt-5">
+      <p className="mt-6">
         <LienFlèche href={`/${accès.slug}/lettres`}>Retour à toutes les lettres</LienFlèche>
       </p>
 

@@ -32,7 +32,7 @@ export default async function UneSemaine({
         état={`${semaine.éditions.length} note${semaine.éditions.length > 1 ? 's' : ''}`}
       />
 
-      <p className="mt-5">
+      <p className="mt-6">
         <LienFlèche href={`/${accès.slug}/archives`}>Retour à toutes les semaines</LienFlèche>
       </p>
 

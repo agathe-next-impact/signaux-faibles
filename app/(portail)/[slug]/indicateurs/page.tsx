@@ -32,7 +32,7 @@ export default async function Indicateurs({ params }: { params: Promise<{ slug: 
           <EnBref chiffres={enBrefDesIndicateurs(vue)} />
 
           {vue.indice ? (
-            <section className="mt-10 flex flex-col gap-4">
+            <section className="mt-12 flex flex-col gap-4">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <h2 className="font-titre text-h2 font-bold text-encre">Entrées et sorties du marché</h2>
                 <p className="label-mono text-ardoise">BODACC · outil en test</p>
@@ -55,7 +55,7 @@ export default async function Indicateurs({ params }: { params: Promise<{ slug: 
           )}
 
           {vue.benchmark ? (
-            <section className="mt-10 flex flex-col gap-4">
+            <section className="mt-12 flex flex-col gap-4">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <h2 className="font-titre text-h2 font-bold text-encre">Chiffres d’affaires publiés</h2>
                 <p className="label-mono text-ardoise">Registre des entreprises · outil en test</p>
@@ -76,9 +76,9 @@ export default async function Indicateurs({ params }: { params: Promise<{ slug: 
           ) : null}
         </>
       ) : (
-        <p className="mt-5 text-ardoise">Les indicateurs ne sont pas encore publiés. Ils paraissent avec la revue de chaque trimestre.</p>
+        <p className="mt-6 text-ardoise">Les indicateurs ne sont pas encore publiés. Ils paraissent avec la revue de chaque trimestre.</p>
       )}
-      <div className="mt-10 flex flex-col gap-2">
+      <div className="mt-12 flex flex-col gap-2">
         <p>
           <LienFlèche href={`/${accès.slug}/forces`}>Voir les forces du marché</LienFlèche>
         </p>

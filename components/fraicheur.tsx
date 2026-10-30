@@ -36,7 +36,7 @@ export function Fraicheur({
         aria-hidden="true"
         className={`size-1.5 shrink-0 ${COULEUR[fraîcheur]}`}
       />
-      <span className={`label-mono ${fraîcheur === 'nouveau' ? 'text-rose' : 'text-ardoise'}`}>
+      <span className={`label-mono ${fraîcheur === 'nouveau' ? 'text-rose-texte' : 'text-ardoise'}`}>
         {libellé}
       </span>
     </p>
@@ -51,7 +51,7 @@ export function Fraicheur({
  */
 export function LégendeFraicheur() {
   return (
-    <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+    <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
       {(
         [
           ['nouveau', 'du nouveau cette semaine'],

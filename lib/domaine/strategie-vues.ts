@@ -809,6 +809,35 @@ export function activitéParSemaine(faits: readonly FaitDeLActivité[], fin: str
   })
 }
 
+/**
+ * Les faits de chaque rubrique du tableau de bord sur huit semaines, pour le
+ * mini graphique de sa carte (30 octobre 2026) : le marché compte les faits des
+ * lettres concurrentielles, l'environnement ceux qui portent une dimension
+ * PESTEL, la stratégie les ruptures, votre veille tous les faits. Un fait peut
+ * compter dans plusieurs rubriques : chacune dit si son sujet s'anime.
+ */
+export const RUBRIQUES_DES_FAITS = {
+  marche: { libellé: 'faits des lettres concurrentielles', singulier: 'fait des lettres concurrentielles', retient: (f: FaitDeLActivité) => familleDe(f.famille) === 'concurrentiel' },
+  environnement: { libellé: 'faits rattachés au PESTEL', singulier: 'fait rattaché au PESTEL', retient: (f: FaitDeLActivité) => f.pestel != null },
+  strategie: { libellé: 'ruptures relevées', singulier: 'rupture relevée', retient: (f: FaitDeLActivité) => f.rupture },
+  veille: { libellé: 'faits relevés', singulier: 'fait relevé', retient: () => true },
+} as const
+
+export type ActivitéDeRubrique = { readonly libellé: string; readonly singulier: string; readonly semaines: readonly SemaineDActivité[] }
+
+export function activitéParRubrique(
+  faits: readonly FaitDeLActivité[],
+  fin: string,
+  n = SEMAINES_DE_CHALEUR,
+): Readonly<Record<keyof typeof RUBRIQUES_DES_FAITS, ActivitéDeRubrique>> {
+  const vue = (r: keyof typeof RUBRIQUES_DES_FAITS): ActivitéDeRubrique => ({
+    libellé: RUBRIQUES_DES_FAITS[r].libellé,
+    singulier: RUBRIQUES_DES_FAITS[r].singulier,
+    semaines: activitéParSemaine(faits.filter(RUBRIQUES_DES_FAITS[r].retient), fin, n),
+  })
+  return { marche: vue('marche'), environnement: vue('environnement'), strategie: vue('strategie'), veille: vue('veille') }
+}
+
 /** `null` : aucun fait étiqueté cette semaine-là, que l'axe ait été RAS ou absent de la lettre. */
 export type CaseDeChaleur = { readonly lundi: string; readonly niveau: 'FORT' | 'MOYEN' | null; readonly faits: number }
 export type LigneDeChaleur = { readonly clé: string; readonly numéro: number; readonly nom: string; readonly cases: readonly CaseDeChaleur[] }

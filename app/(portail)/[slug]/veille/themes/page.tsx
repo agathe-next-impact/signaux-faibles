@@ -27,11 +27,11 @@ export default async function ThèmesSuivis({ params }: { params: Promise<{ slug
     <>
       <EntêteÉcran surtitre="votre veille" titre="Ce que nous surveillons pour vous" état={lue ? `${thèmes.length} thèmes` : undefined} />
       {!lue ? (
-        <p className="mt-5 text-ardoise">Les thèmes de votre veille ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes.</p>
+        <p className="mt-6 text-ardoise">Les thèmes de votre veille ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes.</p>
       ) : (
         <>
           {lue.fiche ? (
-            <p className="mt-5 max-w-[68ch] text-ardoise">Chaque thème de votre veille, ce qu’il suit et ce qui rend un de ses faits fort. Chaque case ouvre les faits que vos lettres ont relevés pour lui.</p>
+            <p className="mt-6 max-w-[68ch] text-ardoise">Chaque thème de votre veille, ce qu’il suit et ce qui rend un de ses faits fort. Chaque case ouvre les faits que vos lettres ont relevés pour lui.</p>
           ) : (
             <PasEncorePubliée quoi="Ce que suit chaque thème" />
           )}
@@ -74,7 +74,7 @@ export default async function ThèmesSuivis({ params }: { params: Promise<{ slug
           })}
         </>
       )}
-      <p className="mt-10">
+      <p className="mt-12">
         <LienFlèche href={`/${accès.slug}/veille/sources`}>Voir les sources de votre veille</LienFlèche>
       </p>
     </>

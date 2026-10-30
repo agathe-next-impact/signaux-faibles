@@ -19,7 +19,7 @@ import {
 import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat'
 import { espaceDeLOrganisation, lectureStratégiqueDeLEspace } from '@/lib/portail/strategie'
 import { tableauDeLEspace } from '@/lib/portail/tableau'
-import { ActivitéDesSemaines } from '@/components/graphiques-strategie'
+import { ActivitéDesSemaines, MiniActivité } from '@/components/graphiques-strategie'
 import { cartesDesRubriques } from '@/lib/domaine/tableau-de-bord'
 import { normaliserTitre } from '@/lib/domaine/strategie'
 
@@ -142,7 +142,7 @@ export default async function VueDEnsemble({
         })
       : null,
   ])
-  const cartes = tableau ? cartesDesRubriques(accès.slug, tableau.cases) : null
+  const cartes = tableau ? cartesDesRubriques(accès.slug, tableau.cases, tableau.parRubrique) : null
   const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
 
   // Le portail ne devine pas un format qu'il ne reconnaît pas — mais il ne doit
@@ -227,7 +227,7 @@ export default async function VueDEnsemble({
         </div>
       ) : null}
 
-      <section className="mt-10 flex flex-col gap-4">
+      <section className="mt-12 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">À la une</h2>
           <LienFlèche href={`/${accès.slug}/acteurs`}>Voir tout le suivi</LienFlèche>
@@ -302,11 +302,11 @@ export default async function VueDEnsemble({
       </section>
 
       {cartes ? (
-        <section className="mt-10 flex flex-col gap-4">
+        <section className="mt-12 flex flex-col gap-4">
           <h2 className="font-titre text-h2 font-bold text-encre">Votre espace</h2>
           <p className="max-w-[68ch] text-ardoise">Quatre rubriques. Chaque carte ouvre la sienne, qui réunit ses écrans ; leurs chiffres clés se lisent sans l’ouvrir.</p>
           {tableau?.activité ? (
-            <div className="border border-gris-ligne p-5">
+            <div className="border border-gris-ligne p-6">
               <p className="mb-3 label-mono text-ardoise">Faits relevés par vos lettres, semaine par semaine</p>
               <ActivitéDesSemaines activité={tableau.activité} />
             </div>
@@ -315,7 +315,8 @@ export default async function VueDEnsemble({
             {cartes.map((r) => (
               <Case key={r.href}>
                 <h3 className="font-titre text-h3 font-semibold text-encre">{r.titre}</h3>
-                <dl className="flex flex-col gap-1.5">
+                {r.activité ? <MiniActivité activité={r.activité} /> : null}
+                <dl className="flex flex-col gap-2">
                   {r.écrans.map((é) => (
                     <div key={é.écran} className="flex flex-col">
                       <dt className="label-mono text-ardoise">{é.écran}</dt>
@@ -337,7 +338,7 @@ export default async function VueDEnsemble({
       {/* L'espace réorganisé n'affiche pas l'écosystème (demande de l'opératrice du
           30 octobre 2026) : les axes ont leur écran, dans la rubrique « L'environnement ». */}
       {espace?.réorganisé ? null : (
-        <section className="mt-10 flex flex-col gap-4">
+        <section className="mt-12 flex flex-col gap-4">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="font-titre text-h2 font-bold text-encre">L’écosystème</h2>
             <LienFlèche href={`/${accès.slug}/axes`}>Voir tous les axes</LienFlèche>

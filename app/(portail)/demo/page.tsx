@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'Demander une démo — signauxfaible
  */
 export default function Demo() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-6 px-6 py-16">
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-6 px-6 py-12">
       <header className="flex flex-col gap-6">
         <LogoEmpile />
         <h2 className="font-titre text-h2 font-bold text-encre">Demander une démo</h2>

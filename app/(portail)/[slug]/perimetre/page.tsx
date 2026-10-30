@@ -42,12 +42,12 @@ export default async function Périmètre({ params }: { params: Promise<{ slug: 
         état={`${LETTRES_SUIVIES} dernières lettres`}
       />
 
-      <p className="mt-5 text-ardoise">
+      <p className="mt-6 text-ardoise">
         Ce que votre veille surveille, et ce que nous proposons d’y changer. Deux questions
         de périmètre, tenues à l’écart des faits de la semaine.
       </p>
 
-      <section className="mt-10 flex flex-col gap-4">
+      <section className="mt-12 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">Les acteurs que nous suivons</h2>
           <LienFlèche href={`/${accès.slug}/acteurs`}>Voir le suivi dossier par dossier</LienFlèche>
@@ -81,7 +81,7 @@ export default async function Périmètre({ params }: { params: Promise<{ slug: 
         )}
       </section>
 
-      <section className="mt-10 flex flex-col gap-4">
+      <section className="mt-12 flex flex-col gap-4">
         <h2 className="font-titre text-h2 font-bold text-encre">
           Ce que nous proposons d’ajuster
         </h2>

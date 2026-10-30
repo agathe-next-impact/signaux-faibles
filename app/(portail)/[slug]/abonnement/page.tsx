@@ -137,7 +137,7 @@ export default async function MonAbonnement({
                       : 'Non précisée'}
                   </p>
                   {étape?.étape === 'abonnee' && étape.paiementEnRetard ? (
-                    <p className="label-mono text-rose">paiement en retard · stripe relance</p>
+                    <p className="label-mono text-rose-texte">paiement en retard · stripe relance</p>
                   ) : null}
                 </Case>
               </Grille>
@@ -209,7 +209,7 @@ export default async function MonAbonnement({
               ) : (
                 <ul className="flex flex-col divide-y divide-gris-ligne border border-gris-ligne">
                   {situation.lecteurs.map((lecteur) => (
-                    <li key={lecteur.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                    <li key={lecteur.id} className="flex items-center justify-between gap-4 px-6 py-3">
                       <span className="text-encre">{lecteur.nom}</span>
                       {gestion ? (
                         <form action={retirerLecteur}>
@@ -241,7 +241,7 @@ export default async function MonAbonnement({
                 d’abord.
               </p>
             ) : (
-              <form action={ajouterLecteur} className="flex flex-col gap-3 border border-gris-ligne bg-blanc p-5">
+              <form action={ajouterLecteur} className="flex flex-col gap-3 border border-gris-ligne bg-blanc p-6">
                 <input type="hidden" name="slug" value={accès.slug} />
                 <p className="label-mono text-ardoise">ajouter un lecteur</p>
                 <label className="flex flex-col gap-1 text-ardoise">

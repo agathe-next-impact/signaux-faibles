@@ -68,7 +68,7 @@ export default async function Recommandations({
           ) : null}
         </>
       )}
-      {synthèse ? <h2 className="mt-10 font-titre text-h2 font-bold text-encre">Les actions de vos lettres</h2> : null}
+      {synthèse ? <h2 className="mt-12 font-titre text-h2 font-bold text-encre">Les actions de vos lettres</h2> : null}
 
       {avecAction.length === 0 ? (
         <p className="mt-8 text-ardoise">

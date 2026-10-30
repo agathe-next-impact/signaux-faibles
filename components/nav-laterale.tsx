@@ -48,7 +48,7 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
           >
             <span>{onglet.libellé}</span>
             {onglet.compte ? (
-              <span className="label-mono rounded-full bg-fond-neutre px-2 py-0.5 text-ardoise">
+              <span className="label-mono rounded-full bg-fond-neutre px-2 py-1 text-ardoise">
                 {onglet.compte}
               </span>
             ) : null}
