@@ -175,6 +175,8 @@ describe('en bref', () => {
       ['Opportunités', 2, 'tirées des faits de vos lettres'],
       ['Menaces', 1, 'tirées des faits de vos lettres'],
     ])
+    // Opportunités et menaces mènent à leur case de la matrice.
+    expect(enBrefDeLaSwot(SYNTHÈSE.mois!.swot).map((c) => c.ancre ?? null)).toEqual([null, 'swot-opportunites', 'swot-menaces'])
   })
 
   it('les concurrents et le PESTEL', () => {

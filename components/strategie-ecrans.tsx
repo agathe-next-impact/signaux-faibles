@@ -3,6 +3,7 @@ import { Case, Grille, LienFlèche, Tuile } from '@/components/coquille'
 import {
   dateCourte,
   LIBELLÉS_MENDELOW,
+  ancreDeLaSwot,
   LIBELLÉS_SWOT,
   libelléDePériode,
   STRATÉGIES_MENDELOW,
@@ -403,7 +404,7 @@ export function EnBref({ chiffres }: { chiffres: readonly ChiffreEnBref[] }) {
     <section aria-label="En bref" className="mt-6">
       <Grille étiquette="En bref" colonnes={chiffres.length === 2 ? 2 : 3}>
         {chiffres.map((c) => (
-          <Tuile key={c.intitulé} intitulé={c.intitulé} valeur={c.valeur} mention={c.mention ?? null} />
+          <Tuile key={c.intitulé} intitulé={c.intitulé} valeur={c.valeur} mention={c.mention ?? null} href={c.ancre ? `#${c.ancre}` : undefined} />
         ))}
       </Grille>
     </section>
@@ -423,7 +424,7 @@ export function MatriceSwot({ swot, lettre }: { swot: VueDeLaSwot; lettre?: (éd
       <ComptesDeLaSwot swot={swot} />
       <Grille étiquette="Matrice SWOT" colonnes={2}>
         {CASES_SWOT.map((c) => (
-          <Case key={c}>
+          <Case key={c} id={ancreDeLaSwot(c)}>
             <p className="label-mono text-encre">{LIBELLÉS_SWOT[c]}</p>
             {swot[c].length === 0 ? <p className="text-ardoise">Rien de daté ce mois-ci.</p> : null}
             {swot[c].map((é) => (

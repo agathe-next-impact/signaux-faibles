@@ -691,7 +691,8 @@ export function périodesAPublier(comptes: readonly ComptesDePériode[]): Synth�
  * jamais rédigés pour l'écran, jamais une note. Un chiffre que la synthèse ne
  * porte pas n'est pas inventé ; la case dit alors « n.d. ».
  */
-export type ChiffreEnBref = { readonly intitulé: string; readonly valeur: number | string; readonly mention?: string | null }
+/** `ancre` : l'identifiant de la section de l'écran que le chiffre compte ; la tuile y mène. */
+export type ChiffreEnBref = { readonly intitulé: string; readonly valeur: number | string; readonly mention?: string | null; readonly ancre?: string }
 
 const pluriel = (n: number, mot: string, mots = `${mot}s`) => `${n} ${n > 1 ? mots : mot}`
 
@@ -701,13 +702,16 @@ export function mouvementsDeLaCarte(carte: VueDeLaCarte | null): number {
   return [...carte.cases.values()].flat().filter((o) => o.aBougé && !o.organisation).length
 }
 
+/** L'ancre d'une case de la SWOT : `swot-opportunites`, distincte des codes d'éléments (« O1 »). */
+export const ancreDeLaSwot = (c: CaseSwot) => `swot-${c}`
+
 export function enBrefDeLaSwot(swot: VueDeLaSwot): readonly ChiffreEnBref[] {
   const tous = CASES_SWOT.flatMap((c) => swot[c])
   const déclaratifs = tous.filter((é) => é.édition === null && é.source.startsWith('Déclaratif')).length
   return [
     { intitulé: 'Éléments de la SWOT', valeur: tous.length, mention: `${pluriel(déclaratifs, 'déclaratif')}, ${tous.length - déclaratifs} datés` },
-    { intitulé: 'Opportunités', valeur: swot.opportunites.length, mention: 'tirées des faits de vos lettres' },
-    { intitulé: 'Menaces', valeur: swot.menaces.length, mention: 'tirées des faits de vos lettres' },
+    { intitulé: 'Opportunités', valeur: swot.opportunites.length, mention: 'tirées des faits de vos lettres', ancre: ancreDeLaSwot('opportunites') },
+    { intitulé: 'Menaces', valeur: swot.menaces.length, mention: 'tirées des faits de vos lettres', ancre: ancreDeLaSwot('menaces') },
   ]
 }
 
