@@ -891,6 +891,7 @@ export async function pestelDeLEspace(
         famille: l.familleÉdition,
         axe: l.numéroAxe,
         titre: titres.get(`${l.éditionNotion}:${l.empreinteTitre}`) ?? null,
+        source: l.sourceUrl,
       })),
       grille.grille,
       noms,

@@ -3,6 +3,7 @@ import {
   FORCES_PORTER,
   LIBELLÉS_PORTER,
   normaliserTitre,
+  normaliserUrl,
   PESTEL,
   trousDuPestel,
   type CaseSwot,
@@ -317,6 +318,8 @@ export type FaitPourLePestel = {
   readonly axe: number | null
   /** La phrase-titre relue dans une lettre que l'écran a déjà lue, sinon `null`. */
   readonly titre: string | null
+  /** L'URL de la source : avec la date et la dimension, elle dit si deux faits sont le même événement. */
+  readonly source?: string | null
 }
 
 export type DimensionDuPestel = {
@@ -337,7 +340,7 @@ export type VueDuPestel = {
   readonly dimensions: readonly DimensionDuPestel[]
   /** Dimensions qu'aucune famille ne couvre, ou qu'une seule couvre. */
   readonly trous: readonly { readonly libellé: string; readonly familles: number; readonly nom: string | null }[]
-  /** Les faits dont la phrase-titre est relue, du plus récent au plus ancien. */
+  /** Les faits dont la phrase-titre est relue, une ligne par événement (même source, même date, même dimension), du plus récent au plus ancien. */
   readonly faits: readonly { readonly date: string; readonly dimension: string; readonly titre: string; readonly rupture: boolean; readonly axe: string | null }[]
 }
 
@@ -393,19 +396,28 @@ export function vueDuPestel(
     trous: dimensions
       .filter((d) => d.suiviePar.length <= 1)
       .map((d) => ({ libellé: d.libellé, familles: d.suiviePar.length, nom: d.suiviePar[0] ? `${d.suiviePar[0].numéro} ${d.suiviePar[0].nom}` : null })),
-    faits: faits
-      .filter((f): f is FaitPourLePestel & { pestel: Pestel; titre: string } => !!f.pestel && !!f.titre)
-      .sort((a, b) => b.dateFait.localeCompare(a.dateFait))
-      .map((f) => {
+    faits: (() => {
+      // Une ligne par événement : même source, même date, même dimension. Les
+      // deux lettres d'une semaine relèvent souvent le même fait, chacune sous
+      // son angle ; la ligne garde la première phrase-titre et nomme les axes
+      // des deux (même règle que les ruptures de la lecture stratégique).
+      const lignes = new Map<string, { date: string; dimension: string; titre: string; rupture: boolean; axes: string[] }>()
+      for (const f of faits
+        .filter((f): f is FaitPourLePestel & { pestel: Pestel; titre: string } => !!f.pestel && !!f.titre)
+        .sort((a, b) => b.dateFait.localeCompare(a.dateFait))) {
         const veille = familleDe(f.famille)
-        return {
-          date: f.dateFait,
-          dimension: libellés.get(f.pestel) ?? f.pestel,
-          titre: f.titre,
-          rupture: f.rupture,
-          axe: veille && f.axe !== null ? `${f.axe} ${nom(veille, f.axe)}` : null,
+        const axe = veille && f.axe !== null ? `${f.axe} ${nom(veille, f.axe)}` : null
+        const clé = `${f.dateFait}:${f.pestel}:${f.source ? normaliserUrl(f.source) : normaliserTitre(f.titre)}`
+        const déjà = lignes.get(clé)
+        if (déjà) {
+          déjà.rupture ||= f.rupture
+          if (axe && !déjà.axes.includes(axe)) déjà.axes.push(axe)
+          continue
         }
-      }),
+        lignes.set(clé, { date: f.dateFait, dimension: libellés.get(f.pestel) ?? f.pestel, titre: f.titre, rupture: f.rupture, axes: axe ? [axe] : [] })
+      }
+      return [...lignes.values()].map(({ axes, ...ligne }) => ({ ...ligne, axe: axes.length > 0 ? axes.join(' · ') : null }))
+    })(),
   }
 }
 
