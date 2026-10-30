@@ -948,6 +948,63 @@ Autres réponses : `hors-pilote` (200), `organisation-inconnue` (404),
 `grille-absente` (409), `refusée` (422, paramètres du cycle), `invalide` (400),
 `erreur` (502).
 
+## La fiche de veille pour le lecteur (lot 6, 30 octobre 2026)
+
+Les écrans « Votre veille » de l'espace réorganisé (`/[slug]/veille/themes`,
+`/sources`, `/corpus`, `/calendrier`) montrent ce que la veille suit pour le
+client. Le portail ne lit pas les référentiels : la revue mensuelle rédige,
+depuis le référentiel, une **fiche de veille pour le lecteur** et la poste ici
+(option A de `docs/proposition-reorganisation-espace.md`, §6). Pour les seules
+organisations du pilote des outils stratégiques. Le corpus (entités, parties
+prenantes, variables de la carte) vient de la grille déjà postée et n'est pas
+dans la fiche.
+
+### `POST /api/veille/fiche` : poster la fiche
+
+```json
+{
+  "slug": "hermitage",
+  "grilleVersion": 1,
+  "fiche": {
+    "themes": [{ "veille": "ecosysteme", "numero": 1, "suit": "…", "fort": "…" }],
+    "sources": [{ "veille": "ecosysteme", "numero": 1, "nom": "…", "site": "https://…" }],
+    "niches": [{ "enonce": "…", "signal": "…" }],
+    "echeances": [{ "date": "2026-11-19", "libelle": "…", "veille": null, "numero": null }]
+  }
+}
+```
+
+- `themes` : une ligne par famille de la grille (au plus une), ce qu'elle suit
+  et ce qui rend un de ses faits FORT, 120 caractères chacun ;
+- `sources` : un nom (80 caractères) et l'adresse du site (`http` ou `https`,
+  sans identifiants), `null` sans site ; **jamais une note d'accès** ;
+  80 sources au plus ;
+- `niches` : l'énoncé et le signal déclencheur, 120 caractères chacun,
+  12 au plus ;
+- `echeances` : une date réelle et un libellé de 80 caractères, rattachée à une
+  famille ou non, 24 au plus.
+
+Porte (`contrôlerLaFiche`, `lib/domaine/fiche-veille.ts`) : `famille-inconnue`,
+`thème-en-double`, `fiche-vide`, `texte-hors-bornes`, `vocabulaire-interdit`
+(« faible »), `note-interne` (mot de passe, identifiant, « à valider », point
+de validation…), `site-invalide`, `date-invalide`, `trop-de-lignes`. Refusée :
+422 avec `refus` et `message` de reprise. `grille-absente` et `grille-périmée`
+(409, avec la version `attendue`). Acceptée : 201, une **nouvelle version
+proposée**, et `texte`, à recopier dans le courriel « [Relecture] ». Rien n'est
+montré au client avant la publication.
+
+### `GET /api/veille/fiche?slug=<slug>` : la dernière version
+
+`{ "état": "lue", "version", "publication": "propose" | "publie" | "retire", "texte", "fiche" }`,
+ou `aucune`.
+
+### `PATCH /api/veille/fiche` : publier ou retirer
+
+`{ "slug": "hermitage", "etat": "publie" }` (ou `retire`, `propose`) règle la
+dernière version reçue ; `retire` retire aussi toute version publiée plus
+ancienne. Réponse `{ "état": "réglée", "version", "publication" }`. Les écrans
+lisent la plus récente version publiée.
+
 ## La file de travaux (palier 2, 21 octobre 2026)
 
 Le palier 2 de la décision du 15 octobre (`docs/decision-portail-moteur.md`,

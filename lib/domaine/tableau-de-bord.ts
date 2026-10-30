@@ -30,6 +30,14 @@ export type DonnéesDuTableau = {
   readonly synthèse: SynthèseVue | null
   /** Les faits étiquetés des treize dernières semaines par dimension PESTEL, comme l'écran « PESTEL » les compte. */
   readonly pestel: readonly { readonly libellé: string; readonly faits: number }[] | null
+  /** Votre veille (lot 6) : la grille, et la fiche de veille quand elle est publiée ; `null` dans le doute. */
+  readonly veille: {
+    readonly thèmes: number
+    readonly concurrents: number
+    readonly entités: number
+    readonly partiesPrenantes: number
+    readonly fiche: { readonly sources: number; readonly thèmesAvecSources: number; readonly prochaine: { readonly date: string; readonly libellé: string } | null } | null
+  } | null
 }
 
 const pluriel = (n: number, mot: string, mots = `${mot}s`) => `${n} ${n > 1 ? mots : mot}`
@@ -111,6 +119,36 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
       valeur: indice && indice.entrées !== null ? pluriel(indice.entrées, 'entrée') : 'n.d.',
       mention: indice ? (indice.sorties !== null ? `${pluriel(indice.sorties, 'procédure')} au registre` : 'procédures n.d.') : trimestre ? 'indice non calculé' : pasEncore,
     },
+    {
+      rubrique: 'Votre veille',
+      écran: 'Thèmes suivis',
+      href: href('/veille/themes'),
+      valeur: d.veille ? pluriel(d.veille.thèmes, 'thème') : 'n.d.',
+      mention: d.veille?.fiche ? 'ce que chacun suit, ce qui le rend fort' : pasEncore,
+    },
+    {
+      rubrique: 'Votre veille',
+      écran: 'Sources',
+      href: href('/veille/sources'),
+      valeur: d.veille?.fiche ? pluriel(d.veille.fiche.sources, 'source') : 'n.d.',
+      mention: d.veille?.fiche ? `pour ${pluriel(d.veille.fiche.thèmesAvecSources, 'thème')}` : pasEncore,
+    },
+    {
+      rubrique: 'Votre veille',
+      écran: 'Corpus',
+      href: href('/veille/corpus'),
+      valeur: d.veille ? pluriel(d.veille.entités, 'entité') : 'n.d.',
+      mention: d.veille
+        ? `${pluriel(d.veille.concurrents, 'concurrent')}, ${pluriel(d.veille.partiesPrenantes, 'partie prenante', 'parties prenantes')}`
+        : 'les acteurs suivis',
+    },
+    {
+      rubrique: 'Votre veille',
+      écran: 'Calendrier',
+      href: href('/veille/calendrier'),
+      valeur: d.veille?.fiche?.prochaine ? `le ${d.veille.fiche.prochaine.date.slice(8, 10)}/${d.veille.fiche.prochaine.date.slice(5, 7)}` : 'n.d.',
+      mention: d.veille?.fiche ? (d.veille.fiche.prochaine?.libellé ?? 'aucune échéance à venir') : pasEncore,
+    },
     { rubrique: 'Votre veille', écran: 'Périmètre', href: href('/perimetre'), valeur: 'Ce qui est suivi', mention: 'et ce que nous proposons d’y changer' },
     { rubrique: 'Votre veille', écran: 'Archives', href: href('/archives'), valeur: pluriel(d.archives, 'semaine'), mention: 'une entrée par semaine' },
   ]
@@ -130,7 +168,7 @@ export const RUBRIQUES = [
   { clé: 'marche', titre: 'Le marché', question: 'Qui bouge sur votre marché', présentation: 'Qui vous dispute vos clients, qui pèse sur votre activité, et si le marché se durcit.' },
   { clé: 'environnement', titre: 'L’environnement', question: 'Ce qui change autour de vous', présentation: 'De quoi parle votre veille, et quelles dimensions de votre environnement bougent.' },
   { clé: 'strategie', titre: 'Stratégie', question: 'Où vous en êtes, et que faire', présentation: 'Votre situation, les options qui s’en déduisent, ce qui peut arriver et ce que disent les registres.' },
-  { clé: 'veille', titre: 'Votre veille', question: 'Ce que nous suivons pour vous', présentation: 'Le périmètre de votre veille et l’archive de vos lettres.' },
+  { clé: 'veille', titre: 'Votre veille', question: 'Ce que nous suivons pour vous', présentation: 'Ce que votre veille suit, où elle regarde, qui elle suit et ce qu’elle attend, puis son périmètre et l’archive de vos lettres.' },
 ] as const
 
 export type CléDeRubrique = (typeof RUBRIQUES)[number]['clé']

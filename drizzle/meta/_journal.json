@@ -120,6 +120,13 @@
       "when": 1793338877273,
       "tag": "0016_espace_reorganise",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793349627571,
+      "tag": "0017_fiches_de_veille",
+      "breakpoints": true
     }
   ]
 }

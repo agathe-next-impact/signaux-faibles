@@ -70,6 +70,13 @@ const DONNÉES: DonnéesDuTableau = {
     { libellé: 'Politique', faits: 2 },
     { libellé: 'Économique', faits: 5 },
   ],
+  veille: {
+    thèmes: 14,
+    concurrents: 36,
+    entités: 40,
+    partiesPrenantes: 6,
+    fiche: { sources: 22, thèmesAvecSources: 12, prochaine: { date: '2026-11-19', libellé: 'Journée régionale des tiers-lieux à Roubaix' } },
+  },
 }
 
 describe('casesDuTableauDeBord', () => {
@@ -86,6 +93,10 @@ describe('casesDuTableauDeBord', () => {
       '/hermitage/recommandations',
       '/hermitage/scenarios',
       '/hermitage/indicateurs',
+      '/hermitage/veille/themes',
+      '/hermitage/veille/sources',
+      '/hermitage/veille/corpus',
+      '/hermitage/veille/calendrier',
       '/hermitage/perimetre',
       '/hermitage/archives',
     ])
@@ -98,6 +109,10 @@ describe('casesDuTableauDeBord', () => {
     expect(par.get('Diagnostic')).toMatchObject({ valeur: '5 éléments', mention: '1 menace, 2 opportunités' })
     expect(par.get('Options')).toMatchObject({ valeur: '2 options', mention: 'retenue : saisir, forces × opportunités' })
     expect(par.get('Scénarios')).toMatchObject({ valeur: '3 scénarios' })
+    expect(par.get('Thèmes suivis')).toMatchObject({ valeur: '14 thèmes' })
+    expect(par.get('Sources')).toMatchObject({ valeur: '22 sources', mention: 'pour 12 thèmes' })
+    expect(par.get('Corpus')).toMatchObject({ valeur: '40 entités', mention: '36 concurrents, 6 parties prenantes' })
+    expect(par.get('Calendrier')).toMatchObject({ valeur: 'le 19/11', mention: 'Journée régionale des tiers-lieux à Roubaix' })
     // Le trimestre ne porte pas d'indicateurs : la case le dit.
     expect(par.get('Indicateurs')).toMatchObject({ valeur: 'n.d.', mention: 'indice non calculé' })
   })
@@ -125,9 +140,12 @@ describe('casesDuTableauDeBord', () => {
   })
 
   it('sans synthèse publiée ni étiquettes, les cases le disent au lieu d’inventer un chiffre', () => {
-    const par = new Map(casesDuTableauDeBord({ ...DONNÉES, synthèse: null, pestel: null, axes: null }).map((c) => [c.écran, c]))
+    const par = new Map(casesDuTableauDeBord({ ...DONNÉES, synthèse: null, pestel: null, axes: null, veille: { ...DONNÉES.veille!, fiche: null } }).map((c) => [c.écran, c]))
     for (const écran of ['Forces du marché', 'Diagnostic', 'Options', 'Scénarios', 'Indicateurs', 'PESTEL', 'Les axes']) expect(par.get(écran)?.valeur, écran).toBe('n.d.')
     expect(par.get('Concurrents')?.mention).toBe('pas encore publié')
+    // Sans fiche publiée, les thèmes se comptent dans la grille, le reste attend la publication.
+    expect(par.get('Thèmes suivis')).toMatchObject({ valeur: '14 thèmes', mention: 'pas encore publié' })
+    for (const écran of ['Sources', 'Calendrier']) expect(par.get(écran), écran).toMatchObject({ valeur: 'n.d.', mention: 'pas encore publié' })
   })
 })
 
@@ -139,7 +157,7 @@ describe('les rubriques', () => {
       ['Le marché', '/hermitage/marche', ['Concurrents', 'Acteurs', 'Forces du marché']],
       ['L’environnement', '/hermitage/environnement', ['Les axes', 'PESTEL']],
       ['Stratégie', '/hermitage/strategie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
-      ['Votre veille', '/hermitage/veille', ['Périmètre', 'Archives']],
+      ['Votre veille', '/hermitage/veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Calendrier', 'Périmètre', 'Archives']],
     ])
     expect(cartes[0]!.écrans[0]).toEqual({ écran: 'Concurrents', valeur: '36 suivis' })
     // Chaque écran hors « Cette semaine » est dans une rubrique, et une seule.
