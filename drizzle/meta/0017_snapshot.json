@@ -1,0 +1,2759 @@
+{
+  "id": "d649d483-f85f-426a-9379-73f1e00139d2",
+  "prevId": "c247e192-32dc-4595-a5ee-2fe6f9c1eb08",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.abonnements": {
+      "name": "abonnements",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_stripe": {
+          "name": "client_stripe",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "abonnement_stripe": {
+          "name": "abonnement_stripe",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état": {
+          "name": "état",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "formule": {
+          "name": "formule",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "période_fin": {
+          "name": "période_fin",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dernier_événement": {
+          "name": "dernier_événement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "événement_le": {
+          "name": "événement_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dernier_type": {
+          "name": "dernier_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reçu_le": {
+          "name": "reçu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "abonnements_organisation": {
+          "name": "abonnements_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "abonnements_organisation_id_organisations_id_fk": {
+          "name": "abonnements_organisation_id_organisations_id_fk",
+          "tableFrom": "abonnements",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "abonnements_abonnement_stripe_unique": {
+          "name": "abonnements_abonnement_stripe_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "abonnement_stripe"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "abonnements_client_stripe_forme": {
+          "name": "abonnements_client_stripe_forme",
+          "value": "\"abonnements\".\"client_stripe\" ~ '^cus_'"
+        },
+        "abonnements_abonnement_stripe_forme": {
+          "name": "abonnements_abonnement_stripe_forme",
+          "value": "\"abonnements\".\"abonnement_stripe\" ~ '^sub_'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.courriers": {
+      "name": "courriers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "sorte": {
+          "name": "sorte",
+          "type": "sorte_courrier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lecteur_id": {
+          "name": "lecteur_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "destinataire_empreinte": {
+          "name": "destinataire_empreinte",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "déclencheur": {
+          "name": "déclencheur",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état": {
+          "name": "état",
+          "type": "état_courrier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'prevu'"
+        },
+        "message_gmail": {
+          "name": "message_gmail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "erreur": {
+          "name": "erreur",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prévu_le": {
+          "name": "prévu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "conclu_le": {
+          "name": "conclu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "clé": {
+          "name": "clé",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "courriers_prevu_le": {
+          "name": "courriers_prevu_le",
+          "columns": [
+            {
+              "expression": "prévu_le",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "courriers_organisation": {
+          "name": "courriers_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "courriers_parcours_unique": {
+          "name": "courriers_parcours_unique",
+          "columns": [
+            {
+              "expression": "sorte",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"lecteur_id\", '00000000-0000-0000-0000-000000000000'::uuid)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"courriers\".\"sorte\" in ('essai_derniere_parution', 'essai_tronquee') and \"courriers\".\"état\" <> 'echec'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "courriers_commerciaux_unique": {
+          "name": "courriers_commerciaux_unique",
+          "columns": [
+            {
+              "expression": "sorte",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"lecteur_id\", '00000000-0000-0000-0000-000000000000'::uuid)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "clé",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"courriers\".\"clé\" is not null and \"courriers\".\"état\" <> 'echec'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "courriers_organisation_id_organisations_id_fk": {
+          "name": "courriers_organisation_id_organisations_id_fk",
+          "tableFrom": "courriers",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "courriers_lecteur_id_lecteurs_id_fk": {
+          "name": "courriers_lecteur_id_lecteurs_id_fk",
+          "tableFrom": "courriers",
+          "tableTo": "lecteurs",
+          "columnsFrom": [
+            "lecteur_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "courriers_empreinte_forme": {
+          "name": "courriers_empreinte_forme",
+          "value": "\"courriers\".\"destinataire_empreinte\" ~ '^[0-9a-f]{8}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.faits_etiquetes": {
+      "name": "faits_etiquetes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "édition_notion": {
+          "name": "édition_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "famille_édition": {
+          "name": "famille_édition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_édition": {
+          "name": "date_édition",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section": {
+          "name": "section",
+          "type": "section_de_fait",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numéro_axe": {
+          "name": "numéro_axe",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rang": {
+          "name": "rang",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "empreinte_titre": {
+          "name": "empreinte_titre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_fait": {
+          "name": "date_fait",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pestel": {
+          "name": "pestel",
+          "type": "pestel",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "force_porter": {
+          "name": "force_porter",
+          "type": "force_porter",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ansoff": {
+          "name": "ansoff",
+          "type": "ansoff",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entité": {
+          "name": "entité",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rupture": {
+          "name": "rupture",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "impact": {
+          "name": "impact",
+          "type": "impact_de_fait",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nouveauté": {
+          "name": "nouveauté",
+          "type": "nouveauté_de_fait",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archivée_le": {
+          "name": "archivée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "faits_etiquetes_place_unique": {
+          "name": "faits_etiquetes_place_unique",
+          "columns": [
+            {
+              "expression": "édition_notion",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "section",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"numéro_axe\", 0)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "rang",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"faits_etiquetes\".\"archivée_le\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "faits_etiquetes_organisation": {
+          "name": "faits_etiquetes_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "date_édition",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "faits_etiquetes_organisation_id_organisations_id_fk": {
+          "name": "faits_etiquetes_organisation_id_organisations_id_fk",
+          "tableFrom": "faits_etiquetes",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "faits_etiquetes_run_id_runs_id_fk": {
+          "name": "faits_etiquetes_run_id_runs_id_fk",
+          "tableFrom": "faits_etiquetes",
+          "tableTo": "runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "faits_etiquetes_edition_forme": {
+          "name": "faits_etiquetes_edition_forme",
+          "value": "\"faits_etiquetes\".\"édition_notion\" ~ '^[0-9a-f]{32}$'"
+        },
+        "faits_etiquetes_empreinte_forme": {
+          "name": "faits_etiquetes_empreinte_forme",
+          "value": "\"faits_etiquetes\".\"empreinte_titre\" ~ '^[0-9a-f]{8}$'"
+        },
+        "faits_etiquetes_axe": {
+          "name": "faits_etiquetes_axe",
+          "value": "(\"faits_etiquetes\".\"section\" = 'axe') = (\"faits_etiquetes\".\"numéro_axe\" is not null)"
+        },
+        "faits_etiquetes_rang": {
+          "name": "faits_etiquetes_rang",
+          "value": "\"faits_etiquetes\".\"rang\" >= 1 and (\"faits_etiquetes\".\"numéro_axe\" is null or \"faits_etiquetes\".\"numéro_axe\" >= 1)"
+        },
+        "faits_etiquetes_date": {
+          "name": "faits_etiquetes_date",
+          "value": "\"faits_etiquetes\".\"date_fait\" <= \"faits_etiquetes\".\"date_édition\""
+        },
+        "faits_etiquetes_un_cadre": {
+          "name": "faits_etiquetes_un_cadre",
+          "value": "(\"faits_etiquetes\".\"pestel\" is null) <> (\"faits_etiquetes\".\"force_porter\" is null)"
+        },
+        "faits_etiquetes_ansoff": {
+          "name": "faits_etiquetes_ansoff",
+          "value": "\"faits_etiquetes\".\"ansoff\" is null or (\"faits_etiquetes\".\"force_porter\" in ('rivalite', 'nouveaux_entrants') and \"faits_etiquetes\".\"entité\" is not null)"
+        },
+        "faits_etiquetes_entite": {
+          "name": "faits_etiquetes_entite",
+          "value": "\"faits_etiquetes\".\"entité\" is null or length(\"faits_etiquetes\".\"entité\") between 1 and 120"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.fiches_de_veille": {
+      "name": "fiches_de_veille",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "grille_version": {
+          "name": "grille_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contenu": {
+          "name": "contenu",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état_publication": {
+          "name": "état_publication",
+          "type": "état_de_publication",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'propose'"
+        },
+        "reçue_le": {
+          "name": "reçue_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "publiée_le": {
+          "name": "publiée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "fiches_de_veille_version_unique": {
+          "name": "fiches_de_veille_version_unique",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "fiches_de_veille_organisation_id_organisations_id_fk": {
+          "name": "fiches_de_veille_organisation_id_organisations_id_fk",
+          "tableFrom": "fiches_de_veille",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "fiches_de_veille_version": {
+          "name": "fiches_de_veille_version",
+          "value": "\"fiches_de_veille\".\"version\" >= 1"
+        },
+        "fiches_de_veille_grille_version": {
+          "name": "fiches_de_veille_grille_version",
+          "value": "\"fiches_de_veille\".\"grille_version\" >= 1"
+        },
+        "fiches_de_veille_taille": {
+          "name": "fiches_de_veille_taille",
+          "value": "length(\"fiches_de_veille\".\"contenu\"::text) <= 40000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.grilles": {
+      "name": "grilles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "empreinte": {
+          "name": "empreinte",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "référentiel_notion": {
+          "name": "référentiel_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "axes_groupes": {
+          "name": "axes_groupes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "familles": {
+          "name": "familles",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entités": {
+          "name": "entités",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parties_prenantes": {
+          "name": "parties_prenantes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "offres": {
+          "name": "offres",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "validée_le": {
+          "name": "validée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "créée_le": {
+          "name": "créée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archivée_le": {
+          "name": "archivée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "grilles_version_unique": {
+          "name": "grilles_version_unique",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "grilles_organisation_id_organisations_id_fk": {
+          "name": "grilles_organisation_id_organisations_id_fk",
+          "tableFrom": "grilles",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "grilles_version": {
+          "name": "grilles_version",
+          "value": "\"grilles\".\"version\" >= 1"
+        },
+        "grilles_empreinte_forme": {
+          "name": "grilles_empreinte_forme",
+          "value": "\"grilles\".\"empreinte\" ~ '^[0-9a-f]{8}$'"
+        },
+        "grilles_referentiel_forme": {
+          "name": "grilles_referentiel_forme",
+          "value": "\"grilles\".\"référentiel_notion\" ~ '^[0-9a-f]{32}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.lecteurs": {
+      "name": "lecteurs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nom": {
+          "name": "nom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "identifiant_acces": {
+          "name": "identifiant_acces",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actif": {
+          "name": "actif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "tous_les_espaces": {
+          "name": "tous_les_espaces",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "rôle": {
+          "name": "rôle",
+          "type": "rôle_lecteur",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'lecteur'"
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dernière_visite_le": {
+          "name": "dernière_visite_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "lecteurs_organisation_email": {
+          "name": "lecteurs_organisation_email",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"email\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "lecteurs_organisation_id_organisations_id_fk": {
+          "name": "lecteurs_organisation_id_organisations_id_fk",
+          "tableFrom": "lecteurs",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "lecteurs_identifiant_acces_unique": {
+          "name": "lecteurs_identifiant_acces_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "identifiant_acces"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "lecteurs_identifiant_non_vide": {
+          "name": "lecteurs_identifiant_non_vide",
+          "value": "length(trim(\"lecteurs\".\"identifiant_acces\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.organisations": {
+      "name": "organisations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nom": {
+          "name": "nom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url_site": {
+          "name": "url_site",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "page_organisation_notion": {
+          "name": "page_organisation_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registre_notion": {
+          "name": "registre_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "état": {
+          "name": "état",
+          "type": "état_organisation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "demandée_le": {
+          "name": "demandée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activée_le": {
+          "name": "activée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "essai_ouvert_le": {
+          "name": "essai_ouvert_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entrée_par_prospection": {
+          "name": "entrée_par_prospection",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "suspendue_le": {
+          "name": "suspendue_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "offre": {
+          "name": "offre",
+          "type": "offre_organisation",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'standard'"
+        },
+        "parutions_d_essai": {
+          "name": "parutions_d_essai",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 2
+        },
+        "recommandée_par": {
+          "name": "recommandée_par",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recommandée_le": {
+          "name": "recommandée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "partage_avec_prescripteur": {
+          "name": "partage_avec_prescripteur",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "outils_strategiques": {
+          "name": "outils_strategiques",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "espace_reorganise": {
+          "name": "espace_reorganise",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "relecture_requise": {
+          "name": "relecture_requise",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "email_relecture": {
+          "name": "email_relecture",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "créée_le": {
+          "name": "créée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "modifiée_le": {
+          "name": "modifiée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archivée_le": {
+          "name": "archivée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "organisations_recommandée_par_prescripteurs_id_fk": {
+          "name": "organisations_recommandée_par_prescripteurs_id_fk",
+          "tableFrom": "organisations",
+          "tableTo": "prescripteurs",
+          "columnsFrom": [
+            "recommandée_par"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organisations_slug_unique": {
+          "name": "organisations_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        },
+        "organisations_registre_notion_unique": {
+          "name": "organisations_registre_notion_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "registre_notion"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "organisations_slug_non_vide": {
+          "name": "organisations_slug_non_vide",
+          "value": "length(trim(\"organisations\".\"slug\")) > 0"
+        },
+        "organisations_registre_notion_forme": {
+          "name": "organisations_registre_notion_forme",
+          "value": "\"organisations\".\"registre_notion\" is null or \"organisations\".\"registre_notion\" ~ '^[0-9a-f]{32}$'"
+        },
+        "organisations_parutions_d_essai": {
+          "name": "organisations_parutions_d_essai",
+          "value": "\"organisations\".\"parutions_d_essai\" between 1 and 8"
+        },
+        "organisations_recommandée_hors_prospection": {
+          "name": "organisations_recommandée_hors_prospection",
+          "value": "not (\"organisations\".\"entrée_par_prospection\" and \"organisations\".\"recommandée_par\" is not null)"
+        },
+        "organisations_recommandée_datée": {
+          "name": "organisations_recommandée_datée",
+          "value": "(\"organisations\".\"recommandée_par\" is null) = (\"organisations\".\"recommandée_le\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.positions": {
+      "name": "positions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "période": {
+          "name": "période",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outil": {
+          "name": "outil",
+          "type": "outil_de_position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sujet": {
+          "name": "sujet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "axe": {
+          "name": "axe",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cran": {
+          "name": "cran",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "non_suivi": {
+          "name": "non_suivi",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "tendance": {
+          "name": "tendance",
+          "type": "tendance_de_force",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "faits": {
+          "name": "faits",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::uuid[]"
+        },
+        "origine": {
+          "name": "origine",
+          "type": "origine_d_élément",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'faits'"
+        },
+        "référence": {
+          "name": "référence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grille_version": {
+          "name": "grille_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état_publication": {
+          "name": "état_publication",
+          "type": "état_de_publication",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'propose'"
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archivée_le": {
+          "name": "archivée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "positions_place_unique": {
+          "name": "positions_place_unique",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "période",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "outil",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sujet",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "axe",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"positions\".\"archivée_le\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "positions_organisation_id_organisations_id_fk": {
+          "name": "positions_organisation_id_organisations_id_fk",
+          "tableFrom": "positions",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "positions_reference": {
+          "name": "positions_reference",
+          "value": "\"positions\".\"référence\" is null or length(\"positions\".\"référence\") between 1 and 120"
+        },
+        "positions_periode_forme": {
+          "name": "positions_periode_forme",
+          "value": "\"positions\".\"période\" ~ '^[0-9]{4}(-(0[1-9]|1[0-2])|-T[1-4])?$'"
+        },
+        "positions_sujet": {
+          "name": "positions_sujet",
+          "value": "length(\"positions\".\"sujet\") between 1 and 80"
+        },
+        "positions_axe": {
+          "name": "positions_axe",
+          "value": "length(\"positions\".\"axe\") between 1 and 40"
+        },
+        "positions_cran": {
+          "name": "positions_cran",
+          "value": "(\"positions\".\"non_suivi\" and \"positions\".\"cran\" is null) or (not \"positions\".\"non_suivi\" and \"positions\".\"cran\" between 1 and 5)"
+        },
+        "positions_tendance": {
+          "name": "positions_tendance",
+          "value": "\"positions\".\"tendance\" is null or \"positions\".\"outil\" = 'forces'"
+        },
+        "positions_grille_version": {
+          "name": "positions_grille_version",
+          "value": "\"positions\".\"grille_version\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.prescripteurs": {
+      "name": "prescripteurs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "type_prescripteur",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actif": {
+          "name": "actif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "modifié_le": {
+          "name": "modifié_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "prescripteurs_organisation_id_organisations_id_fk": {
+          "name": "prescripteurs_organisation_id_organisations_id_fk",
+          "tableFrom": "prescripteurs",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "prescripteurs_organisation_id_unique": {
+          "name": "prescripteurs_organisation_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organisation_id"
+          ]
+        },
+        "prescripteurs_code_unique": {
+          "name": "prescripteurs_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "prescripteurs_code_forme": {
+          "name": "prescripteurs_code_forme",
+          "value": "\"prescripteurs\".\"code\" ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(\"prescripteurs\".\"code\") between 3 and 40"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.prospections": {
+      "name": "prospections",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lecteur_id": {
+          "name": "lecteur_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "destinataire_empreinte": {
+          "name": "destinataire_empreinte",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "campagne_lemlist": {
+          "name": "campagne_lemlist",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lead_lemlist": {
+          "name": "lead_lemlist",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact_lemlist": {
+          "name": "contact_lemlist",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "statut": {
+          "name": "statut",
+          "type": "statut_prospection",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'envoye'"
+        },
+        "statut_le": {
+          "name": "statut_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "séquence_arrêtée_le": {
+          "name": "séquence_arrêtée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synchronisé_statut": {
+          "name": "synchronisé_statut",
+          "type": "statut_prospection",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synchronisé_le": {
+          "name": "synchronisé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "erreur_synchro": {
+          "name": "erreur_synchro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dernier_événement_le": {
+          "name": "dernier_événement_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "créée_le": {
+          "name": "créée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "modifiée_le": {
+          "name": "modifiée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "prospections_empreinte": {
+          "name": "prospections_empreinte",
+          "columns": [
+            {
+              "expression": "destinataire_empreinte",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "prospections_organisation": {
+          "name": "prospections_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "prospections_organisation_id_organisations_id_fk": {
+          "name": "prospections_organisation_id_organisations_id_fk",
+          "tableFrom": "prospections",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "prospections_lecteur_id_lecteurs_id_fk": {
+          "name": "prospections_lecteur_id_lecteurs_id_fk",
+          "tableFrom": "prospections",
+          "tableTo": "lecteurs",
+          "columnsFrom": [
+            "lecteur_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "prospections_lead_lemlist_unique": {
+          "name": "prospections_lead_lemlist_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "lead_lemlist"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "prospections_empreinte_forme": {
+          "name": "prospections_empreinte_forme",
+          "value": "\"prospections\".\"destinataire_empreinte\" ~ '^[0-9a-f]{8}$'"
+        },
+        "prospections_lead_forme": {
+          "name": "prospections_lead_forme",
+          "value": "\"prospections\".\"lead_lemlist\" is null or \"prospections\".\"lead_lemlist\" ~ '^lea_'"
+        },
+        "prospections_campagne_forme": {
+          "name": "prospections_campagne_forme",
+          "value": "\"prospections\".\"campagne_lemlist\" is null or \"prospections\".\"campagne_lemlist\" ~ '^cam_'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.runs": {
+      "name": "runs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "travail_id": {
+          "name": "travail_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "début": {
+          "name": "début",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fin": {
+          "name": "fin",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exécuteur": {
+          "name": "exécuteur",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "résultat": {
+          "name": "résultat",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portes": {
+          "name": "portes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepté": {
+          "name": "accepté",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page_notion": {
+          "name": "page_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "coût": {
+          "name": "coût",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "runs_travail": {
+          "name": "runs_travail",
+          "columns": [
+            {
+              "expression": "travail_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "runs_travail_id_travaux_id_fk": {
+          "name": "runs_travail_id_travaux_id_fk",
+          "tableFrom": "runs",
+          "tableTo": "travaux",
+          "columnsFrom": [
+            "travail_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "runs_page_notion_forme": {
+          "name": "runs_page_notion_forme",
+          "value": "\"runs\".\"page_notion\" is null or \"runs\".\"page_notion\" ~ '^[0-9a-f]{32}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.travaux": {
+      "name": "travaux",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "type": {
+          "name": "type",
+          "type": "type_travail",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "veille_id": {
+          "name": "veille_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "échéance": {
+          "name": "échéance",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état": {
+          "name": "état",
+          "type": "état_travail",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'a_faire'"
+        },
+        "pris_le": {
+          "name": "pris_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pris_par": {
+          "name": "pris_par",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tentatives": {
+          "name": "tentatives",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "contexte": {
+          "name": "contexte",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "résultat_run_id": {
+          "name": "résultat_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "travaux_échéance": {
+          "name": "travaux_échéance",
+          "columns": [
+            {
+              "expression": "état",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "échéance",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "travaux_organisation": {
+          "name": "travaux_organisation",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "travaux_ouvert_unique": {
+          "name": "travaux_ouvert_unique",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"veille_id\", '00000000-0000-0000-0000-000000000000'::uuid)",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"travaux\".\"état\" in ('a_faire', 'pris', 'refuse')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "travaux_organisation_id_organisations_id_fk": {
+          "name": "travaux_organisation_id_organisations_id_fk",
+          "tableFrom": "travaux",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "travaux_veille_id_veilles_id_fk": {
+          "name": "travaux_veille_id_veilles_id_fk",
+          "tableFrom": "travaux",
+          "tableTo": "veilles",
+          "columnsFrom": [
+            "veille_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "travaux_tentatives": {
+          "name": "travaux_tentatives",
+          "value": "\"travaux\".\"tentatives\" between 0 and 3"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.veilles": {
+      "name": "veilles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "libellé": {
+          "name": "libellé",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referentiel_notion": {
+          "name": "referentiel_notion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jour_parution": {
+          "name": "jour_parution",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "heure_parution": {
+          "name": "heure_parution",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cadence": {
+          "name": "cadence",
+          "type": "cadence_veille",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numéro_courant": {
+          "name": "numéro_courant",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "état": {
+          "name": "état",
+          "type": "état_veille",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        }
+      },
+      "indexes": {
+        "veilles_organisation_type": {
+          "name": "veilles_organisation_type",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "veilles_organisation_id_organisations_id_fk": {
+          "name": "veilles_organisation_id_organisations_id_fk",
+          "tableFrom": "veilles",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "veilles_jour_parution": {
+          "name": "veilles_jour_parution",
+          "value": "\"veilles\".\"jour_parution\" between 1 and 7"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.elements_synthese": {
+      "name": "elements_synthese",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "période": {
+          "name": "période",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fenêtre_début": {
+          "name": "fenêtre_début",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fenêtre_fin": {
+          "name": "fenêtre_fin",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outil": {
+          "name": "outil",
+          "type": "outil_de_synthèse",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clé": {
+          "name": "clé",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rang": {
+          "name": "rang",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "énoncé": {
+          "name": "énoncé",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "état": {
+          "name": "état",
+          "type": "état_d_élément",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origine": {
+          "name": "origine",
+          "type": "origine_d_élément",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'faits'"
+        },
+        "hypothèse": {
+          "name": "hypothèse",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "filiation": {
+          "name": "filiation",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "faits": {
+          "name": "faits",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::uuid[]"
+        },
+        "références": {
+          "name": "références",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "valeur": {
+          "name": "valeur",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "candidate_recommandation": {
+          "name": "candidate_recommandation",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "grille_version": {
+          "name": "grille_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "état_publication": {
+          "name": "état_publication",
+          "type": "état_de_publication",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'propose'"
+        },
+        "créé_le": {
+          "name": "créé_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archivée_le": {
+          "name": "archivée_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "elements_synthese_place_unique": {
+          "name": "elements_synthese_place_unique",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "période",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "outil",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "clé",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "rang",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"elements_synthese\".\"archivée_le\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "elements_synthese_candidate_unique": {
+          "name": "elements_synthese_candidate_unique",
+          "columns": [
+            {
+              "expression": "organisation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "période",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"elements_synthese\".\"candidate_recommandation\" and \"elements_synthese\".\"archivée_le\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "elements_synthese_organisation_id_organisations_id_fk": {
+          "name": "elements_synthese_organisation_id_organisations_id_fk",
+          "tableFrom": "elements_synthese",
+          "tableTo": "organisations",
+          "columnsFrom": [
+            "organisation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "elements_synthese_filiation_elements_synthese_id_fk": {
+          "name": "elements_synthese_filiation_elements_synthese_id_fk",
+          "tableFrom": "elements_synthese",
+          "tableTo": "elements_synthese",
+          "columnsFrom": [
+            "filiation"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "elements_synthese_periode_forme": {
+          "name": "elements_synthese_periode_forme",
+          "value": "\"elements_synthese\".\"période\" ~ '^[0-9]{4}(-(0[1-9]|1[0-2])|-T[1-4])?$'"
+        },
+        "elements_synthese_fenetre": {
+          "name": "elements_synthese_fenetre",
+          "value": "\"elements_synthese\".\"fenêtre_début\" <= \"elements_synthese\".\"fenêtre_fin\""
+        },
+        "elements_synthese_cle": {
+          "name": "elements_synthese_cle",
+          "value": "length(\"elements_synthese\".\"clé\") between 1 and 40"
+        },
+        "elements_synthese_rang": {
+          "name": "elements_synthese_rang",
+          "value": "\"elements_synthese\".\"rang\" >= 1"
+        },
+        "elements_synthese_enonce": {
+          "name": "elements_synthese_enonce",
+          "value": "\"elements_synthese\".\"énoncé\" is null or length(\"elements_synthese\".\"énoncé\") <= case when \"elements_synthese\".\"outil\" = 'scenario' then 400 else 240 end"
+        },
+        "elements_synthese_etat_swot": {
+          "name": "elements_synthese_etat_swot",
+          "value": "(\"elements_synthese\".\"outil\" = 'swot') = (\"elements_synthese\".\"état\" is not null)"
+        },
+        "elements_synthese_declaratif": {
+          "name": "elements_synthese_declaratif",
+          "value": "\"elements_synthese\".\"origine\" = 'faits' or (\"elements_synthese\".\"outil\" = 'swot' and \"elements_synthese\".\"clé\" in ('forces', 'faiblesses'))"
+        },
+        "elements_synthese_candidate": {
+          "name": "elements_synthese_candidate",
+          "value": "not \"elements_synthese\".\"candidate_recommandation\" or \"elements_synthese\".\"outil\" = 'tows'"
+        },
+        "elements_synthese_grille_version": {
+          "name": "elements_synthese_grille_version",
+          "value": "\"elements_synthese\".\"grille_version\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.événements_prospection": {
+      "name": "événements_prospection",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "prospection_id": {
+          "name": "prospection_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activité_lemlist": {
+          "name": "activité_lemlist",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "étape": {
+          "name": "étape",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "survenu_le": {
+          "name": "survenu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reçu_le": {
+          "name": "reçu_le",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "événements_prospection_prospection": {
+          "name": "événements_prospection_prospection",
+          "columns": [
+            {
+              "expression": "prospection_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "événements_prospection_prospection_id_prospections_id_fk": {
+          "name": "événements_prospection_prospection_id_prospections_id_fk",
+          "tableFrom": "événements_prospection",
+          "tableTo": "prospections",
+          "columnsFrom": [
+            "prospection_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "événements_prospection_activité_lemlist_unique": {
+          "name": "événements_prospection_activité_lemlist_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "activité_lemlist"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.cadence_veille": {
+      "name": "cadence_veille",
+      "schema": "public",
+      "values": [
+        "hebdomadaire",
+        "bimensuelle",
+        "mensuelle"
+      ]
+    },
+    "public.force_porter": {
+      "name": "force_porter",
+      "schema": "public",
+      "values": [
+        "rivalite",
+        "nouveaux_entrants",
+        "substituts",
+        "pouvoir_clients",
+        "pouvoir_fournisseurs"
+      ]
+    },
+    "public.impact_de_fait": {
+      "name": "impact_de_fait",
+      "schema": "public",
+      "values": [
+        "FORT",
+        "MOYEN"
+      ]
+    },
+    "public.ansoff": {
+      "name": "ansoff",
+      "schema": "public",
+      "values": [
+        "penetration",
+        "developpement_produit",
+        "developpement_marche",
+        "diversification"
+      ]
+    },
+    "public.nouveauté_de_fait": {
+      "name": "nouveauté_de_fait",
+      "schema": "public",
+      "values": [
+        "nouveau",
+        "contexte"
+      ]
+    },
+    "public.offre_organisation": {
+      "name": "offre_organisation",
+      "schema": "public",
+      "values": [
+        "standard",
+        "fondateur",
+        "gratuite"
+      ]
+    },
+    "public.origine_d_élément": {
+      "name": "origine_d_élément",
+      "schema": "public",
+      "values": [
+        "faits",
+        "declaratif"
+      ]
+    },
+    "public.outil_de_position": {
+      "name": "outil_de_position",
+      "schema": "public",
+      "values": [
+        "groupes",
+        "mendelow",
+        "forces",
+        "ge"
+      ]
+    },
+    "public.outil_de_synthèse": {
+      "name": "outil_de_synthèse",
+      "schema": "public",
+      "values": [
+        "pestel",
+        "swot",
+        "tows",
+        "scenario",
+        "indice_cycle",
+        "benchmark",
+        "ge"
+      ]
+    },
+    "public.pestel": {
+      "name": "pestel",
+      "schema": "public",
+      "values": [
+        "politique",
+        "economique",
+        "socioculturel",
+        "technologique",
+        "ecologique",
+        "legal"
+      ]
+    },
+    "public.rôle_lecteur": {
+      "name": "rôle_lecteur",
+      "schema": "public",
+      "values": [
+        "lecteur",
+        "relecteur",
+        "operateur"
+      ]
+    },
+    "public.section_de_fait": {
+      "name": "section_de_fait",
+      "schema": "public",
+      "values": [
+        "axe",
+        "acteurs"
+      ]
+    },
+    "public.sorte_courrier": {
+      "name": "sorte_courrier",
+      "schema": "public",
+      "values": [
+        "lien_acces",
+        "essai_derniere_parution",
+        "essai_tronquee",
+        "alerte_espaces",
+        "demande_demo",
+        "lettre",
+        "lettre_filiere",
+        "essai_rappel_j7",
+        "essai_suspendu",
+        "abonnement_confirme",
+        "paiement_echec",
+        "abonnement_renouvellement",
+        "abonnement_resilie"
+      ]
+    },
+    "public.statut_prospection": {
+      "name": "statut_prospection",
+      "schema": "public",
+      "values": [
+        "envoye",
+        "actif",
+        "abonne",
+        "expire",
+        "resilie",
+        "rebondi",
+        "desinscrit"
+      ]
+    },
+    "public.tendance_de_force": {
+      "name": "tendance_de_force",
+      "schema": "public",
+      "values": [
+        "hausse",
+        "stable",
+        "baisse"
+      ]
+    },
+    "public.type_prescripteur": {
+      "name": "type_prescripteur",
+      "schema": "public",
+      "values": [
+        "conseil",
+        "expertise_comptable",
+        "juridique",
+        "chambre_consulaire",
+        "developpement_economique",
+        "cluster_federation",
+        "ess_financeur",
+        "autre"
+      ]
+    },
+    "public.type_travail": {
+      "name": "type_travail",
+      "schema": "public",
+      "values": [
+        "referentiel",
+        "premiere_lettre",
+        "lettre",
+        "revue"
+      ]
+    },
+    "public.état_courrier": {
+      "name": "état_courrier",
+      "schema": "public",
+      "values": [
+        "prevu",
+        "envoye",
+        "echec",
+        "brouillon"
+      ]
+    },
+    "public.état_de_publication": {
+      "name": "état_de_publication",
+      "schema": "public",
+      "values": [
+        "propose",
+        "publie",
+        "retire"
+      ]
+    },
+    "public.état_d_élément": {
+      "name": "état_d_élément",
+      "schema": "public",
+      "values": [
+        "nouveau",
+        "renforce",
+        "inchange",
+        "affaibli"
+      ]
+    },
+    "public.état_organisation": {
+      "name": "état_organisation",
+      "schema": "public",
+      "values": [
+        "demande",
+        "generation",
+        "essai",
+        "abonnee",
+        "suspendue",
+        "ecartee",
+        "test"
+      ]
+    },
+    "public.état_travail": {
+      "name": "état_travail",
+      "schema": "public",
+      "values": [
+        "a_faire",
+        "pris",
+        "accepte",
+        "refuse",
+        "abandonne"
+      ]
+    },
+    "public.état_veille": {
+      "name": "état_veille",
+      "schema": "public",
+      "values": [
+        "active",
+        "suspendue",
+        "archivée"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -906,6 +906,40 @@ export const positions = pgTable(
   ],
 )
 
+/**
+ * La fiche de veille pour le lecteur (lot 6, 30 octobre 2026, option A de
+ * `docs/proposition-reorganisation-espace.md`) : thèmes suivis, sources,
+ * niches et échéances, écrits pour le client par la revue mensuelle. Exception
+ * bornée de `CLAUDE.md` : des textes courts tirés du référentiel (120 caractères
+ * par thème et par critère, 80 par échéance, nom et site d'une source), jamais
+ * le référentiel lui-même ; la porte est `contrôlerLaFiche`. Une version par
+ * envoi ; les écrans ne lisent que la plus récente version publiée.
+ */
+export const fichesDeVeille = pgTable(
+  'fiches_de_veille',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    version: integer('version').notNull(),
+    grilleVersion: integer('grille_version').notNull(),
+    contenu: jsonb('contenu').$type<Record<string, unknown>>().notNull(),
+    étatPublication: étatDePublication('état_publication').notNull().default('propose'),
+    reçueLe: horodatage('reçue_le').notNull().defaultNow(),
+    publiéeLe: horodatage('publiée_le'),
+  },
+  (table) => [
+    uniqueIndex('fiches_de_veille_version_unique').on(table.organisationId, table.version),
+    check('fiches_de_veille_version', sql`${table.version} >= 1`),
+    check('fiches_de_veille_grille_version', sql`${table.grilleVersion} >= 1`),
+    // Une borne d'ensemble, en plus de celles de la porte : jamais un document.
+    check('fiches_de_veille_taille', sql`length(${table.contenu}::text) <= 40000`),
+  ],
+)
+
+export type LigneDeFiche = typeof fichesDeVeille.$inferSelect
+
 export type FaitÉtiqueté = typeof faitsÉtiquetés.$inferSelect
 export type LigneDeGrille = typeof grilles.$inferSelect
 export type ÉlémentDeSynthèse = typeof élémentsSynthèse.$inferSelect

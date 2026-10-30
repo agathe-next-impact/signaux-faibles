@@ -274,7 +274,8 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await ouvrir(`/${SLUG}/environnement`, 'rubrique-environnement')
     await expect(page.getByRole('list', { name: 'Les écrans de la rubrique L’environnement' }).getByRole('listitem')).toHaveCount(2)
     await ouvrir(`/${SLUG}/veille`, 'rubrique-veille')
-    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique Votre veille' }).getByRole('listitem')).toHaveCount(2)
+    // Deux écrans avant le lot 6, six après (thèmes, sources, corpus, calendrier).
+    expect([2, 6]).toContain(await page.getByRole('list', { name: 'Les écrans de la rubrique Votre veille' }).getByRole('listitem').count())
     await ouvrir(`/${SLUG}`, 'tableau-de-bord-rubriques')
     await expect(page.getByRole('list', { name: 'Les rubriques de votre espace' }).getByRole('listitem')).toHaveCount(4)
     await expect(page.locator('nav[aria-label="Sections"]').first().getByRole('link', { name: 'Stratégie →' })).toBeVisible()
@@ -294,6 +295,28 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     // Un segment absent de la grille ne mène à rien.
     await page.goto(`/${SLUG}/pestel/axe-qui-n-existe-pas`)
     await expect(page.getByRole('heading', { name: 'Rien à cette adresse' })).toBeVisible()
+  })
+
+  test('votre veille : thèmes, sources, corpus et calendrier, publiés ou annoncés', async () => {
+    test.skip(!parOutil, 'écrans par outil absents')
+    await page.goto(`/${SLUG}/veille/themes`)
+    const déployé = await page.getByRole('heading', { name: 'Ce que nous surveillons pour vous' }).isVisible()
+    test.skip(!déployé, 'lot 6 non déployé : pas d’écrans « Votre veille »')
+    await page.screenshot({ path: `${SORTIES}/veille-themes.png`, fullPage: true })
+    // Une case par famille de la grille, chacune menant aux faits de son axe.
+    expect(await page.locator('a[href^="/' + SLUG + '/pestel/"]').count()).toBeGreaterThan(0)
+    await ouvrir(`/${SLUG}/veille/corpus`, 'veille-corpus')
+    await expect(page.getByRole('heading', { name: 'Concurrents suivis' })).toBeVisible()
+    await expect(page.locator('a[href^="/' + SLUG + '/concurrents/"]').first()).toBeVisible()
+    for (const [chemin, titre] of [
+      ['sources', 'Où nous regardons'],
+      ['calendrier', 'Ce que nous attendons'],
+    ] as const) {
+      await ouvrir(`/${SLUG}/veille/${chemin}`, `veille-${chemin}`)
+      await expect(page.getByRole('heading', { name: titre })).toBeVisible()
+      // Publiée ou non, l'écran dit quelque chose : la fiche, ou qu'elle n'est pas encore publiée.
+      await expect(page.locator('main')).toContainText(/n’est pas encore publié|Votre environnement|Votre concurrence|Les douze prochains mois/)
+    }
   })
 
   test('recommandations : l’option retenue de septembre, et le reste selon l’espace', async () => {

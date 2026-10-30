@@ -879,7 +879,7 @@ export async function modifierLÉnoncéDuPilote(
 }
 
 /** Une lecture bornée dans le temps : `null` au-delà du délai, ou sur toute erreur, sans faire tomber l'écran. */
-async function bornée<T>(nom: string, lecture: () => Promise<T | null>, ms: number = DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS): Promise<T | null> {
+export async function bornée<T>(nom: string, lecture: () => Promise<T | null>, ms: number = DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS): Promise<T | null> {
   if (!baseConfigurée() || sourceAccès() === 'notion') return null
   let minuterie: ReturnType<typeof setTimeout> | undefined
   const délai = new Promise<null>((résoudre) => {

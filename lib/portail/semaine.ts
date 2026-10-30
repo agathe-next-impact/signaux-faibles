@@ -100,7 +100,7 @@ export function ongletsDe(
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
   espace: { readonly réorganisé: boolean } = { réorganisé: false },
 ): Onglet[] {
-  // L'espace réorganisé (lots 2, 3 et 5, 30 octobre 2026, pilote sur L'Hermitage) :
+  // L'espace réorganisé (lots 2, 3, 5 et 6, 30 octobre 2026, pilote sur L'Hermitage) :
   // un écran par outil, groupés en rubriques ; ailleurs, le rail garde ses sept écrans.
   if (espace.réorganisé) {
     const réorganisé = [
@@ -115,6 +115,10 @@ export function ongletsDe(
       { href: `/${slug}/recommandations`, libellé: 'Options', libelléCourt: 'Options', compte: comptes.recommandations, rubrique: 'Stratégie', rubriqueHref: `/${slug}/strategie` },
       { href: `/${slug}/scenarios`, libellé: 'Scénarios', libelléCourt: 'Scénar.', rubrique: 'Stratégie', rubriqueHref: `/${slug}/strategie` },
       { href: `/${slug}/indicateurs`, libellé: 'Indicateurs', libelléCourt: 'Indic.', rubrique: 'Stratégie', rubriqueHref: `/${slug}/strategie` },
+      { href: `/${slug}/veille/themes`, libellé: 'Thèmes suivis', libelléCourt: 'Thèmes', rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
+      { href: `/${slug}/veille/sources`, libellé: 'Sources', libelléCourt: 'Sources', rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
+      { href: `/${slug}/veille/corpus`, libellé: 'Corpus', libelléCourt: 'Corpus', rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
+      { href: `/${slug}/veille/calendrier`, libellé: 'Calendrier', libelléCourt: 'Calend.', rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
       { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.', rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
       { href: `/${slug}/archives`, libellé: 'Archives', libelléCourt: 'Archives', compte: comptes.archives, rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
     ]

@@ -168,7 +168,7 @@ d'accès), les variables du §2 déjà dans la grille, 80 caractères par éché
 | 3 | Écrans Stratégie et PESTEL sortis de leurs écrans actuels, rail en rubriques | rien |
 | 4 | Tableau de bord en cases, liens internes partout, bandeaux « En bref » | lots 2 et 3 |
 | 5 | Graphiques, dont l'écran Indicateurs (livré le 30/10/2026) | lot 3 |
-| 6 | Écrans « Votre veille » | votre choix au §6, puis la revue |
+| 6 | Écrans « Votre veille » (livré le 30/10/2026, option A) | votre choix au §6, puis la revue |
 
 Chaque lot passe par la recette Playwright (`pnpm recette`), qui recevra un
 contrôle par nouvel écran et le contrôle de cloisonnement sur chacun.
@@ -279,6 +279,26 @@ famille en `enSlug` (`segmentDeFamille`), à défaut sa veille et son numéro ; 
 n'est comparé qu'à la grille de l'organisation, et un segment inconnu répond
 404. Lecture bornée `faitsDeLAxeDeLEspace`, Postgres seulement, plus les quatre
 dernières lettres déjà en cache.
+
+**Lot 6, ce qui est livré (30 octobre 2026).** Option A : la revue mensuelle
+rédige une **fiche de veille pour le lecteur** et la poste au portail
+(`POST /api/veille/fiche`, `docs/api-veille.md`) ; la porte `contrôlerLaFiche`
+tient les bornes du §6 (120 caractères par thème, critère, niche et signal,
+80 par nom de source et par échéance, une source n'a qu'un nom et l'adresse de
+son site, refus de « faible » et de ce qui ressemble à une note interne) ; une
+version par envoi, en proposition, dans `fiches_de_veille` (migration 0017),
+écrite par `lib/base/fiche-veille.ts` depuis la seule orchestration
+`lib/portail/fiche-veille.ts` ; l'opératrice la publie après relecture
+(`PATCH /api/veille/fiche`). Quatre écrans sous `/[slug]/veille/` : « Thèmes
+suivis » (une case par famille de la grille, cadence et cadre, ce qu'elle suit et
+ce qui rend un fait fort, chaque case menant aux faits de l'axe), « Sources »
+(par thème, liens vers les sites), « Corpus » (concurrents menant à leur fiche,
+variables de la carte, acteurs de l'environnement, parties prenantes : la
+grille seule, sans attendre la fiche) et « Calendrier » (frise des douze
+prochains mois, mois vides compris, puis les niches et leurs signaux). Tant que
+la fiche n'est pas publiée, les écrans le disent. Le rail passe à dix-sept
+écrans ; la rubrique « Votre veille » et sa carte en comptent six. L'exception
+de données est écrite dans `CLAUDE.md`.
 
 ## 8. Ce qu'il faut trancher
 

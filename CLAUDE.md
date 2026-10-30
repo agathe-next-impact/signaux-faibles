@@ -29,7 +29,17 @@ noms courts des familles depuis le 29 octobre 2026, même borne, noms d'entités
 et de parties prenantes ; les critères complets restent dans
 Notion), et `elements_synthese` porte les **énoncés de synthèse** (240
 caractères au plus, 400 pour un scénario), analyse nouvelle et non texte de
-lettre ou de référentiel. Rien d'autre : un fait étiqueté (`faits_etiquetes`)
+lettre ou de référentiel. **Extension du 30 octobre 2026** (décision de
+l'opératrice, option A du §6 de `docs/proposition-reorganisation-espace.md` ;
+migration 0017) : `fiches_de_veille` porte la **fiche de veille pour le
+lecteur**, rédigée par la revue mensuelle depuis le référentiel et non recopiée
+de lui : ce que suit chaque famille et ce qui rend un de ses faits FORT (120
+caractères chacun), le nom (80) et l'adresse de site d'une source, jamais une
+note d'accès, les niches et leur signal (120), les échéances datées (80) ; porte
+`contrôlerLaFiche` (`lib/domaine/fiche-veille.ts`), seul écrivain
+`lib/base/fiche-veille.ts`, seule orchestration `lib/portail/fiche-veille.ts`,
+rien montré avant la publication par l'opératrice (`PATCH /api/veille/fiche`).
+Rien d'autre : un fait étiqueté (`faits_etiquetes`)
 ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
 `lib/base/strategie.ts`, lui-même appelé par la seule orchestration
 `lib/portail/strategie.ts`, qui passe la porte de `lib/domaine/strategie.ts`
@@ -109,7 +119,11 @@ mène (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
 (`lib/portail/tableau.ts`). Sur « PESTEL », chaque axe qui suit une dimension
 mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 `faitsDeLAxeDeLEspace`, segment comparé à la seule grille de l'organisation,
-404 sinon). Une période
+404 sinon). Le lot 6 (même jour) ajoute à la rubrique « Votre veille » quatre
+écrans (`/[slug]/veille/themes`, `/sources`, `/corpus`, `/calendrier`, dix-sept
+écrans au rail) : thèmes, sources et calendrier lisent la fiche de veille
+publiée (`ficheDeLEspace`, bornée, Postgres seulement, et le disent tant
+qu'elle ne l'est pas) ; le corpus lit la seule grille. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

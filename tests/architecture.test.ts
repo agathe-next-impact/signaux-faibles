@@ -279,8 +279,13 @@ describe('Postgres ne se lit que par lib/base, l’appartenance que par la faça
       }
     }
     for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) parcourir(join(process.cwd(), racine))
-    expect(importateurs.filter((chemin) => chemin !== 'lib/portail/strategie.ts')).toEqual([])
+    // La fiche de veille (lot 6, 30 octobre 2026) lit la grille et l'organisation, et rien d'autre : aucune écriture stratégique.
+    expect(importateurs.filter((chemin) => chemin !== 'lib/portail/strategie.ts' && chemin !== 'lib/portail/fiche-veille.ts')).toEqual([])
+    const fiche = readFileSync(join(process.cwd(), 'lib', 'portail', 'fiche-veille.ts'), 'utf8')
+    const importés = /import \{([^}]*)\} from '@\/lib\/base\/strategie'/.exec(fiche)?.[1]?.split(',').map((x) => x.trim()).filter(Boolean)
+    expect(importés).toEqual(['lireLaGrille', 'organisationPourLesOutils'])
   })
+
 
   it('les lectures Postgres d’appartenance ne sont appelées que par la façade', () => {
     for (const fonction of ['lireLecteurParIdentifiant', 'lireLecteurActifParEmail']) {
@@ -543,7 +548,11 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/recommandations/page.tsx',
       'app/(portail)/[slug]/scenarios/page.tsx',
       'app/(portail)/[slug]/strategie/page.tsx',
+      'app/(portail)/[slug]/veille/calendrier/page.tsx',
+      'app/(portail)/[slug]/veille/corpus/page.tsx',
       'app/(portail)/[slug]/veille/page.tsx',
+      'app/(portail)/[slug]/veille/sources/page.tsx',
+      'app/(portail)/[slug]/veille/themes/page.tsx',
       'lib/portail/strategie.ts',
     ])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
@@ -568,13 +577,59 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       join('strategie', 'page.tsx'),
       join('veille', 'page.tsx'),
       join('pestel', '[axe]', 'page.tsx'),
+      join('veille', 'themes', 'page.tsx'),
+      join('veille', 'sources', 'page.tsx'),
+      join('veille', 'corpus', 'page.tsx'),
+      join('veille', 'calendrier', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
     }
+  })
+
+  /**
+   * La fiche de veille (lot 6, 30 octobre 2026) : sa table ne s'écrit que par
+   * `lib/base/fiche-veille.ts`, appelé par la seule orchestration
+   * `lib/portail/fiche-veille.ts`, qui passe la porte `contrôlerLaFiche` avant
+   * `enregistrerLaFiche`. Les écrans ne lisent que par `ficheDeLEspace`, bornée.
+   */
+  it('la fiche de veille : un écrivain, la porte avant l’écriture, une lecture bornée pour les écrans', () => {
+    // La table elle-même : nommée dans le schéma et dans son seul accès, nulle part ailleurs.
+    const tableNommée: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && readFileSync(chemin, 'utf8').includes('fichesDeVeille')) tableNommée.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) parcourir(join(process.cwd(), racine))
+    expect(tableNommée.sort()).toEqual(['lib/base/fiche-veille.ts', 'lib/base/schema.ts'])
+    for (const nom of ['enregistrerLaFiche', 'réglerLaPublicationDeLaFiche', 'fichePubliée', 'dernièreFiche']) {
+      expect(appelants(nom), nom).toEqual(['lib/base/fiche-veille.ts', 'lib/portail/fiche-veille.ts'])
+    }
+    expect(appelants('recevoirLaFiche')).toEqual(['app/api/veille/fiche/route.ts', 'lib/portail/fiche-veille.ts'])
+    expect(appelants('publierLaFicheDuPilote')).toEqual(['app/api/veille/fiche/route.ts', 'lib/portail/fiche-veille.ts'])
+    expect(appelants('ficheDeLEspace')).toEqual([
+      'app/(portail)/[slug]/veille/calendrier/page.tsx',
+      'app/(portail)/[slug]/veille/corpus/page.tsx',
+      'app/(portail)/[slug]/veille/sources/page.tsx',
+      'app/(portail)/[slug]/veille/themes/page.tsx',
+      'lib/portail/fiche-veille.ts',
+      'lib/portail/tableau.ts',
+    ])
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'fiche-veille.ts'), 'utf8')
+    const recevoir = source.slice(source.indexOf('export async function recevoirLaFiche'))
+    expect(recevoir.indexOf('contrôlerLaFiche(')).toBeGreaterThan(0)
+    expect(recevoir.indexOf('contrôlerLaFiche(')).toBeLessThan(recevoir.indexOf('enregistrerLaFiche('))
+    const écrans = source.slice(source.indexOf('export async function ficheDeLEspace'))
+    expect(écrans.indexOf("bornée('")).toBeGreaterThan(0)
+    expect(écrans.indexOf('espaceRéorganisé')).toBeGreaterThan(0)
+    expect(écrans).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
   })
 
   it('les étiquettes : pilote, règle 2, porte, puis écriture, sans invalidation', () => {
@@ -1013,11 +1068,11 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     }
   })
 
-  it('l’espace réorganisé : treize écrans en rubriques, chacun avec sa route', async () => {
+  it('l’espace réorganisé : dix-sept écrans en rubriques, chacun avec sa route', async () => {
     const { ongletsDe } = await import('@/lib/portail/semaine')
     const comptes = { lettres: 2, recommandations: 0, archives: 1 }
     const onglets = ongletsDe('client', comptes, 'complète', { réorganisé: true })
-    expect(onglets).toHaveLength(13)
+    expect(onglets).toHaveLength(17)
     for (const onglet of onglets) {
       const segment = onglet.href.replace(/^\/client\/?/, '')
       const chemin = join(process.cwd(), 'app', '(portail)', '[slug]', ...(segment ? [segment] : []), 'page.tsx')
