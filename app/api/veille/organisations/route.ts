@@ -11,7 +11,7 @@ import {
 } from '@/lib/base/organisations'
 import { codeDePrescripteurValide } from '@/lib/domaine/prescripteurs'
 import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
-import { réglerLePilote } from '@/lib/portail/strategie'
+import { réglerLEspace, réglerLePilote } from '@/lib/portail/strategie'
 
 /**
  * Ouvre une nouvelle organisation en essai (18 octobre 2026).
@@ -55,12 +55,18 @@ import { réglerLePilote } from '@/lib/portail/strategie'
  *   { "slug": "acme", "action": "parutions", "parutions": 3 }
  *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
  *   { "slug": "acme", "action": "outils", "actif": true | false }
+ *   { "slug": "acme", "action": "espace", "actif": true | false }
  *
  * `outils` (26 octobre 2026, `docs/plan-outils-strategiques.md`, lot 4) fait
  * entrer l'organisation dans le pilote des outils stratégiques, ou l'en fait
  * sortir : `pilote-réglé` (200) ou `inconnue` (404). Ce n'est pas un réglage
  * du parcours, et il passe par l'orchestration des outils, seule à toucher
  * leurs tables.
+ *
+ * `espace` (30 octobre 2026, `docs/proposition-reorganisation-espace.md`, lot 2)
+ * ouvre l'espace réorganisé (écrans par outil, « Concurrents » et sa fiche), ou
+ * le referme : `espace-réglé` (200), `hors-pilote` (409, l'organisation n'est pas
+ * dans le pilote des outils) ou `inconnue` (404).
  *
  * Les deux réglages de l'opératrice sur un parcours d'essai (`réglerLeParcours`) :
  * décaler J0, jamais au-delà d'aujourd'hui, ou faire partir les courriers de fin
@@ -77,6 +83,7 @@ const demande = z.object({
 })
 
 const pilote = z.object({ slug: z.string().trim().min(1), action: z.literal('outils'), actif: z.boolean() })
+const espace = z.object({ slug: z.string().trim().min(1), action: z.literal('espace'), actif: z.boolean() })
 
 const réglage = z.discriminatedUnion('action', [
   z.object({
@@ -173,6 +180,22 @@ export async function PATCH(requête: NextRequest): Promise<NextResponse> {
       console.info(`[veille/organisations] ${slug} : outils stratégiques ${actif ? 'ouverts' : 'fermés'}, ${résultat}.`)
       return résultat === 'réglé'
         ? NextResponse.json({ état: 'pilote-réglé', actif })
+        : NextResponse.json({ état: 'inconnue' }, { status: 404 })
+    } catch (erreur) {
+      console.error(`[veille/organisations] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return NextResponse.json({ état: 'échec' }, { status: 502 })
+    }
+  }
+
+  const réorganisation = espace.safeParse(corps)
+  if (réorganisation.success) {
+    const { slug, actif } = réorganisation.data
+    try {
+      const résultat = await réglerLEspace({ slug, actif })
+      console.info(`[veille/organisations] ${slug} : espace réorganisé ${actif ? 'ouvert' : 'refermé'}, ${résultat}.`)
+      if (résultat === 'réglé') return NextResponse.json({ état: 'espace-réglé', actif })
+      return résultat === 'hors-pilote'
+        ? NextResponse.json({ état: 'hors-pilote' }, { status: 409 })
         : NextResponse.json({ état: 'inconnue' }, { status: 404 })
     } catch (erreur) {
       console.error(`[veille/organisations] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

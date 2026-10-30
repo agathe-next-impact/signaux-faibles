@@ -133,6 +133,14 @@ export const organisations = pgTable(
    * registre Notion. Posé par l'opératrice.
    */
   outilsStratégiques: boolean('outils_strategiques').notNull().default(false),
+  /**
+   * L'espace réorganisé (30 octobre 2026, `docs/proposition-reorganisation-espace.md`,
+   * lots 2 à 6) : tant que faux, l'espace garde ses sept écrans. Vrai, il ouvre
+   * les écrans par outil (« Concurrents » et sa fiche, puis les suivants) et
+   * recentre « Acteurs ». Pilote sur L'Hermitage seulement ; posé par
+   * l'opératrice, et seulement pour une organisation du pilote des outils.
+   */
+  espaceRéorganisé: boolean('espace_reorganise').notNull().default(false),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),
   emailRelecture: text('email_relecture'),

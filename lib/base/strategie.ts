@@ -29,6 +29,8 @@ export type OrganisationDesOutils = {
   readonly nom: string
   readonly registreNotion: string | null
   readonly outilsStratégiques: boolean
+  /** L'espace réorganisé (lots 2 à 6 de la proposition du 30 octobre 2026). */
+  readonly espaceRéorganisé: boolean
 }
 
 /**
@@ -50,6 +52,7 @@ export async function organisationPourLesOutils(
         nom: organisations.nom,
         registreNotion: organisations.registreNotion,
         outilsStratégiques: organisations.outilsStratégiques,
+        espaceRéorganisé: organisations.espaceRéorganisé,
       })
       .from(organisations)
       .where(and(critère, isNull(organisations.archivéeLe)))
@@ -71,6 +74,29 @@ export async function réglerLesOutilsStratégiques(
       .where(and(eq(organisations.slug, entrée.slug), isNull(organisations.archivéeLe)))
       .returning({ id: organisations.id })
     return lignes.length > 0 ? 'réglé' : 'organisation-inconnue'
+  })
+}
+
+/**
+ * Ouvre l'espace réorganisé d'une organisation, ou le referme (30 octobre 2026).
+ * Il suppose le pilote des outils : ses écrans lisent la grille et les synthèses.
+ * Le refermer ne supprime rien, l'espace retrouve ses sept écrans.
+ */
+export async function réglerLEspaceRéorganisé(
+  entrée: { readonly slug: string; readonly actif: boolean },
+  db: Base = base(),
+  maintenant: Date = new Date(),
+): Promise<'réglé' | 'organisation-inconnue' | 'hors-pilote'> {
+  return protéger('réglage de l’espace réorganisé', async () => {
+    const [ligne] = await db
+      .select({ id: organisations.id, outils: organisations.outilsStratégiques })
+      .from(organisations)
+      .where(and(eq(organisations.slug, entrée.slug), isNull(organisations.archivéeLe)))
+      .limit(1)
+    if (!ligne) return 'organisation-inconnue'
+    if (entrée.actif && !ligne.outils) return 'hors-pilote'
+    await db.update(organisations).set({ espaceRéorganisé: entrée.actif, modifiéeLe: maintenant }).where(eq(organisations.id, ligne.id))
+    return 'réglé'
   })
 }
 
@@ -240,6 +266,45 @@ export async function faitsConnus(
         ),
       )
     return new Map(lignes.map((l) => [l.id, { date: l.date, entite: l.entite, édition: l.édition }]))
+  })
+}
+
+/** Les faits vivants qui nomment une entité de la grille, du plus récent au plus ancien. */
+export async function faitsDUneEntité(
+  entrée: { readonly organisationId: string; readonly entité: string },
+  db: Base = base(),
+): Promise<FaitÉtiqueté[]> {
+  return protéger('lecture des faits d’une entité', () =>
+    db
+      .select()
+      .from(faitsÉtiquetés)
+      .where(
+        and(
+          eq(faitsÉtiquetés.organisationId, entrée.organisationId),
+          isNull(faitsÉtiquetés.archivéeLe),
+          eq(faitsÉtiquetés.entité, entrée.entité),
+        ),
+      )
+      .orderBy(desc(faitsÉtiquetés.dateFait), desc(faitsÉtiquetés.dateÉdition), asc(faitsÉtiquetés.rang)),
+  )
+}
+
+/** Combien de faits vivants nomment chaque entité, et la date du plus récent. */
+export async function faitsParEntité(
+  entrée: { readonly organisationId: string },
+  db: Base = base(),
+): Promise<Map<string, { readonly nombre: number; readonly dernier: string }>> {
+  return protéger('compte des faits par entité', async () => {
+    const lignes = await db
+      .select({
+        entité: faitsÉtiquetés.entité,
+        nombre: sql<number>`count(*)::int`,
+        dernier: sql<string>`max(${faitsÉtiquetés.dateFait})::text`,
+      })
+      .from(faitsÉtiquetés)
+      .where(and(eq(faitsÉtiquetés.organisationId, entrée.organisationId), isNull(faitsÉtiquetés.archivéeLe), sql`${faitsÉtiquetés.entité} is not null`))
+      .groupBy(faitsÉtiquetés.entité)
+    return new Map(lignes.flatMap((l) => (l.entité ? [[l.entité, { nombre: l.nombre, dernier: l.dernier }] as const] : [])))
   })
 }
 
@@ -730,6 +795,32 @@ export async function dernièreSynthèsePubliée(
     const toutPublié = lue.éléments.every((é) => é.étatPublication === 'publie') && lue.positions.every((x) => x.étatPublication === 'publie')
     return toutPublié ? lue : null
   })
+}
+
+/**
+ * Les positions publiées d'un outil sur toutes les périodes mensuelles, de la
+ * plus ancienne à la plus récente : l'historique des crans d'une fiche. Seules
+ * les lignes publiées et non archivées : ce que le client a déjà vu.
+ */
+export async function positionsPubliées(
+  entrée: { readonly organisationId: string; readonly outil: Position['outil'] },
+  db: Base = base(),
+): Promise<Position[]> {
+  return protéger('lecture des positions publiées', () =>
+    db
+      .select()
+      .from(positions)
+      .where(
+        and(
+          eq(positions.organisationId, entrée.organisationId),
+          eq(positions.outil, entrée.outil),
+          isNull(positions.archivéeLe),
+          eq(positions.étatPublication, 'publie'),
+          sql`${positions.période} ~ '^[0-9]{4}-[0-9]{2}$'`,
+        ),
+      )
+      .orderBy(asc(positions.période), asc(positions.sujet), asc(positions.axe)),
+  )
 }
 
 /** Une période de synthèse d'une organisation du pilote, et l'état de publication de ses lignes. */

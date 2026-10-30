@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { Coquille } from '@/components/coquille'
 import { ongletsDe, semainesPubliées } from '@/lib/portail/semaine'
+import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
 /**
  * Le cadre de l'espace client : le rail latéral et les cinq écrans.
@@ -43,7 +44,9 @@ async function Garde({
 
   // Les compteurs du rail se lisent dans la requête de liste, déjà nécessaire :
   // aucun corps de note n'est chargé pour les afficher.
-  const semaines = await semainesPubliées(accès.organisationId)
+  // L'espace réorganisé (lot 2) ajoute « Concurrents » au rail ; lu en même
+  // temps que la liste, mémoïsé pour la page, borné à 400 ms, et absent dans le doute.
+  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
 
   // Un accès valide qui ne voit aucune édition n'est pas forcément une
   // anomalie — un client fraîchement équipé attend sa première lettre. Mais
@@ -79,7 +82,7 @@ async function Garde({
         lettres: semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
         recommandations,
         archives: semaines.length,
-      }, lecture)}
+      }, lecture, { réorganisé: espace?.réorganisé ?? false })}
     >
       {children}
     </Coquille>

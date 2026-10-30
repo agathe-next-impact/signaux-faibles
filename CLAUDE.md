@@ -67,7 +67,15 @@ publiée est refusée, la retirer d'abord. Depuis le 30 octobre 2026 (lot 1 de
 position de la carte ou de Mendelow peut être **déclarative**
 (`origine: declaratif`, `reference` vers sa ligne du §2, migration 0015) : elle
 place sans fait, ne déplace jamais (`mouvement-sans-fait` tient), et l'écran
-dit combien de positions sont lues dans le corpus de la veille. Une période
+dit combien de positions sont lues dans le corpus de la veille. Depuis le même
+jour (lot 2), un **espace réorganisé** (`organisations.espace_reorganise`,
+migration 0016, `PATCH /api/veille/organisations` `action: espace`, refusé hors
+du pilote des outils ; L'Hermitage seulement) ajoute au rail « Concurrents »
+(`/[slug]/concurrents`, carte et concurrents de la grille) et la fiche de chacun
+(`/[slug]/concurrents/[concurrent]`), et recentre « Acteurs » sur Mendelow et
+les dossiers hors concurrents ; ailleurs, les sept écrans restent
+(`espaceDeLOrganisation`, `concurrentsDeLEspace`, `ficheDuConcurrent`, 404 avant
+toute lecture hors de l'espace réorganisé, garde d'architecture). Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

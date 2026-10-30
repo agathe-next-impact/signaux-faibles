@@ -71,6 +71,7 @@ const ÉCRANS = [
   { nom: 'vue-d-ensemble', chemin: `/${SLUG}` },
   { nom: 'lettres', chemin: `/${SLUG}/lettres` },
   { nom: 'axes', chemin: `/${SLUG}/axes` },
+  { nom: 'concurrents', chemin: `/${SLUG}/concurrents` },
   { nom: 'acteurs', chemin: `/${SLUG}/acteurs` },
   { nom: 'recommandations', chemin: `/${SLUG}/recommandations` },
   { nom: 'archives', chemin: `/${SLUG}/archives` },
@@ -150,12 +151,42 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await expect(page.getByText('outil en test').first()).toBeVisible()
   })
 
-  test('acteurs : carte des groupes stratégiques et Mendelow de septembre', async () => {
-    await ouvrir(`/${SLUG}/acteurs`, 'acteurs')
+  /**
+   * L'espace réorganisé (lot 2, 30 octobre 2026) : la carte passe sur
+   * « Concurrents », Mendelow reste sur « Acteurs ». Tant que l'espace de
+   * L'Hermitage n'est pas réorganisé, « Concurrents » répond 404 et la carte est
+   * attendue sur « Acteurs », comme avant.
+   */
+  let réorganisé = false
+
+  test('concurrents : carte, liste et fiche d’un concurrent, si l’espace est réorganisé', async () => {
+    const réponse = await page.goto(`/${SLUG}/concurrents`)
+    réorganisé = réponse?.status() === 200
+    test.skip(!réorganisé, 'espace de L’Hermitage non réorganisé : écran absent, la carte est vérifiée sur « Acteurs »')
+    await expect(page.getByRole('heading', { name: 'Qui vous dispute vos clients' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Carte des groupes stratégiques' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Parties prenantes' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Les concurrents suivis' })).toBeVisible()
     await expect(page.getByText('synthèse de septembre 2026')).toBeVisible()
-    await expect(page.getByText('Château du Feÿ').first()).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Concurrents' }).first()).toBeVisible()
+    await page.screenshot({ path: `${SORTIES}/concurrents.png`, fullPage: true })
+    await ouvrir(`/${SLUG}/concurrents/chateau-du-fey`, 'fiche-concurrent')
+    await expect(page.getByRole('heading', { name: 'Château du Feÿ', level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sa position' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Ses faits datés' })).toBeVisible()
+    expect((await page.request.get(`/${SLUG}/concurrents/un-concurrent-qui-n-existe-pas`, { maxRedirects: 0 })).status()).toBe(404)
+  })
+
+  test('acteurs : Mendelow de septembre, et la carte si l’espace n’est pas réorganisé', async () => {
+    await ouvrir(`/${SLUG}/acteurs`, 'acteurs')
+    await expect(page.getByRole('heading', { name: 'Parties prenantes' })).toBeVisible()
+    if (réorganisé) {
+      await expect(page.getByRole('heading', { name: 'Qui pèse sur votre activité' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Carte des groupes stratégiques' })).toHaveCount(0)
+    } else {
+      await expect(page.getByRole('heading', { name: 'Carte des groupes stratégiques' })).toBeVisible()
+      await expect(page.getByText('synthèse de septembre 2026')).toBeVisible()
+      await expect(page.getByText('Château du Feÿ').first()).toBeVisible()
+    }
   })
 
   test('recommandations : septembre, puis le trimestre de juillet à septembre', async () => {

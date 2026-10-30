@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest'
 import type { Grille } from '@/lib/domaine/strategie'
 import {
   libelléDePériode,
+  nomsDesConcurrents,
   périodesAPublier,
   vueDeLaCarte,
+  vueDeLaFiche,
+  vueDesConcurrents,
   vueDeLaSwot,
   vueDeLaTows,
   vueDeMendelow,
   vueDesForces,
   vueDesScénarios,
   vueDuPestel,
+  type PositionDatée,
   type ÉlémentLu,
   type PositionLue,
 } from '@/lib/domaine/strategie-vues'
@@ -88,6 +92,81 @@ describe('vueDeLaCarte', () => {
 
   it('sans les deux axes de la grille, pas de carte', () => {
     expect(vueDeLaCarte({ ...GRILLE, axesGroupes: [] }, [], [], 'X', FAITS)).toBeNull()
+  })
+})
+
+describe('concurrents (lot 2)', () => {
+  const MARCHÉ: Grille = {
+    ...GRILLE,
+    entités: [
+      { nom: 'Tolmen Mécanique', veille: 'concurrentiel', siren: '123456789' },
+      { nom: 'Précimeca', veille: 'concurrentiel', siren: null },
+      { nom: 'Usinor', veille: 'concurrentiel', siren: null },
+      { nom: 'Pôle Aéro', veille: 'ecosysteme', siren: null },
+    ],
+  }
+  const déclarée = (sujet: string, axe: string, cran: number): PositionLue => ({ ...position('groupes', sujet, axe, cran), origine: 'declaratif' })
+
+  it('liste les concurrents de la grille sans l’organisation ni l’écosystème : ce qui a bougé, puis les plus cités', () => {
+    const vue = vueDesConcurrents(
+      MARCHÉ,
+      [
+        position('groupes', 'Précimeca', 'specialisation', 3, ['f1']),
+        position('groupes', 'Précimeca', 'capacite', 3, ['f1']),
+        déclarée('Usinor', 'specialisation', 1),
+        déclarée('Usinor', 'capacite', 2),
+      ],
+      [position('groupes', 'Précimeca', 'specialisation', 2), position('groupes', 'Précimeca', 'capacite', 3)],
+      new Map([['Usinor', { nombre: 4, dernier: '2026-10-20' }], ['Précimeca', { nombre: 1, dernier: '2026-10-15' }]]),
+      'Tolmen Mécanique',
+    )
+    expect(vue.concurrents.map((c) => c.nom)).toEqual(['Précimeca', 'Usinor'])
+    expect(vue.concurrents[0]).toMatchObject({ segment: 'precimeca', aBougé: true, déclaratif: false, faits: 1 })
+    expect(vue.concurrents[0]!.crans).toEqual([
+      { axe: 'Spécialisation', cran: 3, libellé: 'aéronautique dominante' },
+      { axe: 'Capacité technique', cran: 3, libellé: 'rectification' },
+    ])
+    expect(vue.concurrents[1]).toMatchObject({ aBougé: false, déclaratif: true, faits: 4, dernierFait: '2026-10-20' })
+    expect(vue.mouvements.map((c) => c.nom)).toEqual(['Précimeca'])
+    expect(vue.nonPlacés).toBe(0)
+    expect(nomsDesConcurrents(MARCHÉ, 'Tolmen Mécanique')).toEqual(['Précimeca', 'Usinor'])
+  })
+
+  it('un concurrent sans position n’est pas placé, et compte parmi les non placés', () => {
+    const vue = vueDesConcurrents(MARCHÉ, [], [], new Map(), 'Tolmen Mécanique')
+    expect(vue.nonPlacés).toBe(2)
+    expect(vue.concurrents.every((c) => c.crans.length === 0 && !c.aBougé && !c.déclaratif)).toBe(true)
+  })
+
+  it('la fiche : position de la dernière période, historique du plus récent au plus ancien, faits et chiffres', () => {
+    const datée = (période: string, p: PositionLue, référence: string | null = null): PositionDatée => ({ ...p, période, référence })
+    const fiche = vueDeLaFiche(
+      MARCHÉ,
+      'precimeca',
+      [
+        datée('2026-08', déclarée('Précimeca', 'specialisation', 2), '§2, famille 1'),
+        datée('2026-08', déclarée('Précimeca', 'capacite', 3), '§2, famille 1'),
+        datée('2026-09', position('groupes', 'Précimeca', 'specialisation', 3, ['f1'])),
+        datée('2026-09', position('groupes', 'Précimeca', 'capacite', 3, ['f1'])),
+        datée('2026-09', position('groupes', 'Usinor', 'capacite', 1)),
+      ],
+      [{ date: '2026-09-12', édition: 'e1', empreinte: 'abcd1234', pestel: null, porter: 'rivalite', impact: 'FORT', rupture: true }],
+      { période: '2026-T3', lignes: [{ nom: 'Précimeca', siren: '987654321', organisation: false, fiche: 'lue', active: true, trancheEffectif: '11', année: '2025', chiffreDAffaires: 1200000, résultatNet: 30000 }] },
+    )!
+    expect(fiche.nom).toBe('Précimeca')
+    expect(fiche.position).toMatchObject({ période: '2026-09', déclaratif: false, référence: null })
+    expect(fiche.historique.map((h) => [h.période, h.aBougé, h.déclaratif])).toEqual([
+      ['2026-09', true, false],
+      ['2026-08', false, true],
+    ])
+    expect(fiche.faits[0]).toMatchObject({ dimension: 'Rivalité entre acteurs', rupture: true })
+    expect(fiche.chiffres).toMatchObject({ période: '2026-T3', chiffreDAffaires: 1200000 })
+  })
+
+  it('un segment qui ne désigne pas un concurrent de la grille ne donne pas de fiche', () => {
+    expect(vueDeLaFiche(MARCHÉ, 'pole-aero', [], [], null)).toBeNull()
+    expect(vueDeLaFiche(MARCHÉ, 'inconnu', [], [], null)).toBeNull()
+    expect(vueDeLaFiche(MARCHÉ, 'usinor', [], [], null)).toMatchObject({ position: null, historique: [], chiffres: null })
   })
 })
 

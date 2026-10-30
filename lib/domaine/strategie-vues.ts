@@ -1,6 +1,7 @@
 import {
   CASES_SWOT,
   FORCES_PORTER,
+  LIBELLÉS_PESTEL,
   LIBELLÉS_PORTER,
   normaliserTitre,
   normaliserUrl,
@@ -9,8 +10,10 @@ import {
   type CaseSwot,
   type ForcePorter,
   type Grille,
+  type LigneDeBenchmark,
   type Pestel,
 } from '@/lib/domaine/strategie'
+import { enSlug } from '@/lib/domaine/slug'
 import { sansAccent } from '@/lib/domaine/texte'
 
 /**
@@ -150,6 +153,181 @@ export function vueDeLaCarte(
   }
   for (const occupants of cases.values()) occupants.sort((x, y) => Number(y.organisation) - Number(x.organisation) || x.sujet.localeCompare(y.sujet, 'fr'))
   return { colonnes: { clé: colonnes.clé, libellé: colonnes.libellé, crans: colonnes.crans }, lignes: { clé: lignes.clé, libellé: lignes.libellé, crans: lignes.crans }, cases, anciennes, placés, déclaratifs }
+}
+
+// ── Concurrents (lot 2 de la réorganisation, 30 octobre 2026) ────────────────
+
+/** Une position lue avec sa période et sa référence, pour l'historique d'une fiche. */
+export type PositionDatée = PositionLue & { readonly période: string; readonly référence?: string | null }
+
+/** Un cran nommé : l'axe de la grille et le libellé du cran. */
+export type CranNommé = { readonly axe: string; readonly cran: number; readonly libellé: string }
+
+export type ConcurrentVu = {
+  readonly nom: string
+  /** Le segment d'URL de sa fiche, `enSlug` du nom. */
+  readonly segment: string
+  readonly siren: string | null
+  /** Les crans du mois, dans l'ordre des axes de la grille ; vide si la synthèse ne le place pas. */
+  readonly crans: readonly CranNommé[]
+  /** Toutes ses positions du mois sont lues dans le corpus de la veille, sans fait daté. */
+  readonly déclaratif: boolean
+  /** Un cran a changé depuis la synthèse publiée précédente. */
+  readonly aBougé: boolean
+  /** Les faits étiquetés qui le nomment, sur toute l'archive, et la date du plus récent. */
+  readonly faits: number
+  readonly dernierFait: string | null
+}
+
+export type VueDesConcurrents = {
+  readonly concurrents: readonly ConcurrentVu[]
+  /** Ceux dont un cran a bougé ce mois-ci : les mouvements du mois. */
+  readonly mouvements: readonly ConcurrentVu[]
+  /** Ceux qu'aucune position du mois ne place. */
+  readonly nonPlacés: number
+}
+
+function cransNommés(grille: Grille, positions: readonly PositionLue[]): CranNommé[] {
+  return grille.axesGroupes.flatMap((axe) => {
+    const p = positions.find((x) => x.axe === axe.clé && x.cran !== null)
+    return p && p.cran !== null ? [{ axe: axe.libellé, cran: p.cran, libellé: axe.crans[p.cran - 1] ?? `cran ${p.cran}` }] : []
+  })
+}
+
+/**
+ * Les concurrents de la grille (veille `concurrentiel`), l'organisation exclue :
+ * elle a sa place sur la carte, pas dans la liste de ses concurrents. Ordre : ce
+ * qui a bougé, puis ce dont les lettres parlent le plus, puis le nom.
+ */
+export function vueDesConcurrents(
+  grille: Grille,
+  positionsDuMois: readonly PositionLue[],
+  précédentes: readonly PositionLue[],
+  faits: ReadonlyMap<string, { readonly nombre: number; readonly dernier: string }>,
+  organisation: string,
+): VueDesConcurrents {
+  const elle = normaliserTitre(organisation)
+  const parSujet = (liste: readonly PositionLue[]) => {
+    const m = new Map<string, PositionLue[]>()
+    for (const p of liste) if (p.outil === 'groupes') m.set(normaliserTitre(p.sujet), [...(m.get(normaliserTitre(p.sujet)) ?? []), p])
+    return m
+  }
+  const maintenant = parSujet(positionsDuMois)
+  const avant = parSujet(précédentes)
+  const faitsNormalisés = new Map([...faits].map(([nom, f]) => [normaliserTitre(nom), f]))
+  const concurrents = grille.entités
+    .filter((e) => e.veille === 'concurrentiel' && normaliserTitre(e.nom) !== elle)
+    .map((e): ConcurrentVu => {
+      const clé = normaliserTitre(e.nom)
+      const siennes = maintenant.get(clé) ?? []
+      const crans = cransNommés(grille, siennes)
+      const anciennes = avant.get(clé) ?? []
+      const aBougé =
+        crans.length > 0 &&
+        anciennes.length > 0 &&
+        siennes.some((p) => {
+          const a = anciennes.find((x) => x.axe === p.axe)
+          return !!a && a.cran !== null && a.cran !== p.cran
+        })
+      const f = faitsNormalisés.get(clé)
+      return {
+        nom: e.nom,
+        segment: enSlug(e.nom),
+        siren: e.siren ?? null,
+        crans,
+        déclaratif: siennes.length > 0 && siennes.every((p) => p.origine === 'declaratif'),
+        aBougé,
+        faits: f?.nombre ?? 0,
+        dernierFait: f?.dernier ?? null,
+      }
+    })
+    .sort((a, b) => Number(b.aBougé) - Number(a.aBougé) || b.faits - a.faits || a.nom.localeCompare(b.nom, 'fr'))
+  return { concurrents, mouvements: concurrents.filter((c) => c.aBougé), nonPlacés: concurrents.filter((c) => c.crans.length === 0).length }
+}
+
+/** Un fait étiqueté tel qu'une fiche le montre, réduit à ce que la base en garde. */
+export type FaitDeLaFiche = {
+  readonly date: string
+  readonly édition: string
+  /** L'empreinte de sa phrase-titre : l'écran la relit dans les lettres qu'il a déjà lues. */
+  readonly empreinte: string
+  readonly pestel: string | null
+  readonly porter: string | null
+  readonly impact: string
+  readonly rupture: boolean
+}
+
+export type FicheDuConcurrent = {
+  readonly nom: string
+  readonly siren: string | null
+  /** La position de la dernière synthèse publiée qui le place, ou `null`. */
+  readonly position: {
+    readonly période: string
+    readonly crans: readonly CranNommé[]
+    readonly déclaratif: boolean
+    readonly référence: string | null
+  } | null
+  /** Une ligne par période publiée qui le place, de la plus récente à la plus ancienne ; `aBougé` par rapport à la précédente. */
+  readonly historique: readonly { readonly période: string; readonly crans: readonly CranNommé[]; readonly déclaratif: boolean; readonly aBougé: boolean }[]
+  /** Ses faits étiquetés, du plus récent au plus ancien, avec le libellé de leur dimension. */
+  readonly faits: readonly (FaitDeLaFiche & { readonly dimension: string | null })[]
+  /** Ses chiffres publiés au registre, tels que le benchmark du dernier trimestre publié les a lus. */
+  readonly chiffres: (LigneDeBenchmark & { readonly période: string }) | null
+}
+
+/**
+ * La fiche d'un concurrent de la grille : sa position et son historique, ses
+ * faits étiquetés, ses chiffres du registre. `null` si le nom n'est pas un
+ * concurrent de la grille : un segment d'URL inventé ne mène à rien.
+ */
+export function vueDeLaFiche(
+  grille: Grille,
+  segment: string,
+  positions: readonly PositionDatée[],
+  faits: readonly FaitDeLaFiche[],
+  benchmark: { readonly période: string; readonly lignes: readonly LigneDeBenchmark[] } | null,
+): FicheDuConcurrent | null {
+  const entité = grille.entités.find((e) => e.veille === 'concurrentiel' && enSlug(e.nom) === segment)
+  if (!entité) return null
+  const clé = normaliserTitre(entité.nom)
+  const parPériode = new Map<string, PositionDatée[]>()
+  for (const p of positions) {
+    if (p.outil !== 'groupes' || normaliserTitre(p.sujet) !== clé) continue
+    parPériode.set(p.période, [...(parPériode.get(p.période) ?? []), p])
+  }
+  const chronologie = [...parPériode.keys()].sort().flatMap((période) => {
+    const siennes = parPériode.get(période)!
+    const crans = cransNommés(grille, siennes)
+    return crans.length > 0 ? [{ période, siennes, crans, déclaratif: siennes.every((p) => p.origine === 'declaratif') }] : []
+  })
+  const historique = chronologie
+    .map((h, i) => {
+      const avant = chronologie[i - 1]
+      const aBougé = !!avant && h.crans.some((c) => avant.crans.some((a) => a.axe === c.axe && a.cran !== c.cran))
+      return { période: h.période, crans: h.crans, déclaratif: h.déclaratif, aBougé }
+    })
+    .reverse()
+  const dernière = chronologie.at(-1)
+  const ligne = benchmark?.lignes.find((l) => normaliserTitre(l.nom) === clé) ?? null
+  return {
+    nom: entité.nom,
+    siren: entité.siren ?? null,
+    position: dernière
+      ? { période: dernière.période, crans: dernière.crans, déclaratif: dernière.déclaratif, référence: dernière.siennes.find((p) => p.référence)?.référence ?? null }
+      : null,
+    historique,
+    faits: faits.map((f) => ({
+      ...f,
+      dimension: f.pestel ? (LIBELLÉS_PESTEL[f.pestel as Pestel] ?? null) : f.porter ? (LIBELLÉS_PORTER[f.porter as ForcePorter] ?? null) : null,
+    })),
+    chiffres: ligne && benchmark ? { ...ligne, période: benchmark.période } : null,
+  }
+}
+
+/** Les noms des concurrents de la grille, l'organisation exclue : ce qu'« Acteurs » laisse à « Concurrents ». */
+export function nomsDesConcurrents(grille: Grille, organisation: string): readonly string[] {
+  const elle = normaliserTitre(organisation)
+  return grille.entités.filter((e) => e.veille === 'concurrentiel' && normaliserTitre(e.nom) !== elle).map((e) => e.nom)
 }
 
 // ── Matrice de Mendelow ──────────────────────────────────────────────────────

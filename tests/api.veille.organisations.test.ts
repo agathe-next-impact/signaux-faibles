@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const organisations = vi.hoisted(() => ({ ouvrirEnEssai: vi.fn(), réglerLeParcours: vi.fn() }))
 const client = vi.hoisted(() => ({ baseConfigurée: vi.fn() }))
-const strategie = vi.hoisted(() => ({ réglerLePilote: vi.fn() }))
+const strategie = vi.hoisted(() => ({ réglerLePilote: vi.fn(), réglerLEspace: vi.fn() }))
 vi.mock('@/lib/base/organisations', () => organisations)
 vi.mock('@/lib/portail/strategie', () => strategie)
 vi.mock('@/lib/base/client', () => client)
@@ -188,6 +188,26 @@ describe('PATCH /api/veille/organisations', () => {
     const panne = await régler({ slug: 'infralliance', action: 'outils', actif: true })
     expect(panne.status).toBe(502)
     expect(await panne.json()).toEqual({ état: 'échec' })
+  })
+
+  it('espace : ouvre l’espace réorganisé d’une organisation du pilote, ou le referme', async () => {
+    strategie.réglerLEspace.mockResolvedValueOnce('réglé')
+    const ouverte = await régler({ slug: 'hermitage', action: 'espace', actif: true })
+    expect(ouverte.status).toBe(200)
+    expect(await ouverte.json()).toEqual({ état: 'espace-réglé', actif: true })
+    expect(strategie.réglerLEspace).toHaveBeenCalledWith({ slug: 'hermitage', actif: true })
+
+    strategie.réglerLEspace.mockResolvedValueOnce('hors-pilote')
+    const hors = await régler({ slug: 'acme', action: 'espace', actif: true })
+    expect(hors.status).toBe(409)
+    expect(await hors.json()).toEqual({ état: 'hors-pilote' })
+    strategie.réglerLEspace.mockResolvedValueOnce('organisation-inconnue')
+    expect((await régler({ slug: 'inconnue', action: 'espace', actif: false })).status).toBe(404)
+    expect((await régler({ slug: 'hermitage', action: 'espace', actif: 'oui' })).status).toBe(400)
+    expect((await régler({ slug: 'hermitage', action: 'espace', actif: true }, 'mauvais')).status).toBe(401)
+    expect(strategie.réglerLEspace).toHaveBeenCalledTimes(3)
+    expect(strategie.réglerLePilote).not.toHaveBeenCalled()
+    expect(organisations.réglerLeParcours).not.toHaveBeenCalled()
   })
 
   it('une erreur de base rend 502 sans détail', async () => {

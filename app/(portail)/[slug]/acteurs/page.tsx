@@ -3,9 +3,10 @@ import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Fraicheur, LégendeFraicheur } from '@/components/fraicheur'
 import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
+import { normaliserTitre } from '@/lib/domaine/strategie'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import { semainesPubliées } from '@/lib/portail/semaine'
-import { synthèseDeLEspace } from '@/lib/portail/strategie'
+import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 import { SynthèseDesActeurs } from '@/components/strategie-ecrans'
 
 /**
@@ -26,12 +27,17 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  // L'espace réorganisé (lot 2, pilote sur L'Hermitage) envoie les concurrents
+  // de la grille et leur carte sur « Concurrents » : ici restent les
+  // institutions, réseaux et parties prenantes, et les dossiers sans entité.
+  const réorganisé = espace?.réorganisé ?? false
+  const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
   // `suivreLesDossiers` range du plus enlisé au plus récent — l'ordre d'un
   // journal de bord, pas celui d'une lecture. On regroupe par fraîcheur : ce
   // qui a bougé d'abord, ce qui dort en dernier. Le tri est stable, l'ordre
   // d'origine continue donc de classer à l'intérieur de chaque groupe.
-  const suivis = [...suivreLesDossiers(semaines)].sort(
+  const suivis = [...suivreLesDossiers(semaines).filter((d) => !concurrents.has(normaliserTitre(d.nom)))].sort(
     (a, b) => rangDeFraîcheur(fraîcheurDUnDossier(a)) - rangDeFraîcheur(fraîcheurDUnDossier(b)),
   )
   // Pilote des outils stratégiques (lot 11) : la carte et Mendelow de la
@@ -46,14 +52,15 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
   return (
     <>
       <EntêteÉcran
-        surtitre="acteurs et concurrents"
-        titre="Qui bouge, qui dort"
+        surtitre={réorganisé ? 'le marché' : 'acteurs et concurrents'}
+        titre={réorganisé ? 'Qui pèse sur votre activité' : 'Qui bouge, qui dort'}
         état={`${suivis.length} dossier${suivis.length > 1 ? 's' : ''} suivi${suivis.length > 1 ? 's' : ''}`}
       />
 
       <p className="mt-5 text-ardoise">
-        Les concurrents, administrations et organisations du secteur que la veille rouvre
-        d’une lettre à l’autre.{' '}
+        {réorganisé
+          ? 'Les administrations, financeurs, réseaux et organisations du secteur que la veille rouvre d’une lettre à l’autre. Les concurrents ont leur écran.'
+          : 'Les concurrents, administrations et organisations du secteur que la veille rouvre d’une lettre à l’autre.'}{' '}
         {suivis.length > 0
           ? enMouvement > 0
             ? `${enMouvement} ${enMouvement > 1 ? 'ont bougé' : 'a bougé'} cette semaine.`
@@ -63,7 +70,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
 
       {synthèse?.mois ? (
         <>
-          <SynthèseDesActeurs période={synthèse.mois.période} carte={synthèse.mois.carte} mendelow={synthèse.mois.mendelow} />
+          <SynthèseDesActeurs période={synthèse.mois.période} carte={réorganisé ? null : synthèse.mois.carte} mendelow={synthèse.mois.mendelow} />
           <h2 className="mt-10 font-titre text-h2 font-bold text-encre">Le suivi des dossiers</h2>
         </>
       ) : null}
@@ -134,6 +141,11 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
       </section>
 
       <div className="mt-8 flex flex-col gap-2">
+        {réorganisé ? (
+          <p>
+            <LienFlèche href={`/${accès.slug}/concurrents`}>Voir les concurrents et leur carte</LienFlèche>
+          </p>
+        ) : null}
         <p>
           <LienFlèche href={`/${accès.slug}/axes`}>Voir les axes de l’écosystème</LienFlèche>
         </p>

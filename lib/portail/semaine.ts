@@ -97,11 +97,15 @@ export function ongletsDe(
   slug: string,
   comptes: { lettres: number; recommandations: number; archives: number },
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
+  espace: { readonly réorganisé: boolean } = { réorganisé: false },
 ) {
   const tous = [
     { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true },
     { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres },
     { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes' },
+    // L'espace réorganisé (lot 2, 30 octobre 2026, pilote sur L'Hermitage) sépare
+    // les concurrents des autres acteurs ; ailleurs, le rail garde ses sept écrans.
+    ...(espace.réorganisé ? [{ href: `/${slug}/concurrents`, libellé: 'Concurrents', libelléCourt: 'Concurr.' }] : []),
     { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs' },
     {
       href: `/${slug}/recommandations`,
