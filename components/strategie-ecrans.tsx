@@ -19,7 +19,7 @@ import {
   type VueDuPestel,
 } from '@/lib/domaine/strategie-vues'
 import { CASES_SWOT } from '@/lib/domaine/strategie'
-import { BarresMensuelles, CransDeForce } from '@/components/graphiques-strategie'
+import { BarresMensuelles, CransDeForce, RadarDesForces, RadarDuPestel } from '@/components/graphiques-strategie'
 
 /**
  * Les outils stratégiques sur les écrans du client (lot 11), selon les
@@ -461,6 +461,7 @@ export function CinqForces({ période, forces, barres = false }: { période: str
     <section className="flex flex-col gap-4">
       <TitreDeSection titre="Intensité des cinq forces" mention={`Trimestre ${libelléDePériode(période)} · outil en test`} />
       <p className="max-w-[68ch] text-ardoise">Trois crans par force, et la tendance sur le trimestre. Une force qu’aucune famille de votre veille ne suit est dite non suivie : elle n’est pas faible pour autant.</p>
+      {barres ? <RadarDesForces forces={forces} /> : null}
       <Grille étiquette="Cinq forces" colonnes={3}>
         {forces.map((f) => (
           <Case key={f.force}>
@@ -527,6 +528,8 @@ export function VuePestel({ vue, barres = false, axe }: { vue: VueDuPestel; barr
         </p>
         <p className="label-mono text-ardoise">Outil en test</p>
       </div>
+
+      {barres ? <RadarDuPestel dimensions={vue.dimensions} /> : null}
 
       <Grille étiquette="Les six dimensions">
         {vue.dimensions.map((d) => (

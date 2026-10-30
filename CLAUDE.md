@@ -151,7 +151,19 @@ faits des huit dernières semaines) ; des **infobulles chiffrées** au survol et
 au clavier sur l'activité et la carte de chaleur ; un **squelette** pendant
 qu'un écran de l'espace lit (`components/squelette.tsx`, `loading.tsx`) ; une
 **échelle d'espacement** de sept valeurs (1 2 3 4 6 8 12), tenue par
-`tests/charte.espacement.test.ts`. Une période
+`tests/charte.espacement.test.ts`. Le même jour encore, à la demande de
+l'opératrice, des **graphiques Recharts** (3.8.0) par le composant chart de
+shadcn/ui (`components/ui/chart.tsx`, adapté aux tokens de la charte, `cn` dans
+`lib/cn.ts`) : aire d'activité et mini aires des cartes de rubrique, radars des
+cinq forces et des six dimensions PESTEL, barres groupées entrées et procédures,
+barres horizontales du benchmark, barres mensuelles du PESTEL
+(`components/graphiques-recharts.tsx`, composants client ; les enveloppes de
+`components/graphiques-strategie.tsx` leur passent des données calculées et
+posent le texte lu par les lecteurs d'écran) ; animation de 600 ms au
+chargement, aucune en mouvement réduit ; la carte de chaleur et les crans
+restent en HTML. Couleur d'**accent turquoise** (#0FA3A3, tokens `turquoise`,
+`turquoise-texte`, `fond-turquoise`, charte §02) pour la série mise en avant,
+jamais un impact ni un « favorable ». Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

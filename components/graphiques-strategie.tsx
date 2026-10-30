@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { AireDActivité, BarresDuMois, BarresGroupées, BarresHorizontales, MiniAire, RadarDeValeurs } from '@/components/graphiques-recharts'
 import {
   dateCourte,
   type ActivitéDeRubrique,
@@ -10,21 +11,22 @@ import {
 
 /**
  * Les graphiques de l'espace réorganisé (lot 5 de
- * `docs/proposition-reorganisation-espace.md`, 30 octobre 2026). En HTML et
- * CSS, comme ceux de la vitrine (`components/graphiques-vitrine.tsx`), sans
- * bibliothèque : une barre en pourcentage reste nette à toutes les largeurs, et
- * ses libellés restent du texte de la charte.
+ * `docs/proposition-reorganisation-espace.md`, 30 octobre 2026), rendus côté
+ * serveur. Depuis le même jour, les courbes, barres et radars sont des
+ * graphiques Recharts (`components/graphiques-recharts.tsx`, composants
+ * client) ; ces enveloppes leur passent des données déjà calculées et posent le
+ * texte que lisent les lecteurs d'écran, le graphique lui-même étant masqué
+ * pour eux. La carte de chaleur et les crans des forces restent en HTML.
  *
- * Charte tenue ici : angles droits ; marques en ardoise, l'organisation en
- * encre ; le rose n'apparaît que dans la carte de chaleur, où il est le fond du
- * badge FORT, et l'ardoise celui du badge MOYEN : aucune couleur d'impact
- * nouvelle. Chaque marque porte son chiffre en texte : la couleur ne porte
- * jamais seule l'information.
+ * Charte tenue ici : angles droits ; marques en ardoise, la série mise en avant
+ * en turquoise, l'organisation en encre ; le rose n'apparaît que dans la carte
+ * de chaleur, où il est le fond du badge FORT, et l'ardoise celui du badge
+ * MOYEN : aucune couleur d'impact nouvelle. Chaque marque porte son chiffre en
+ * texte : la couleur ne porte jamais seule l'information.
  *
- * Mouvement (30 octobre 2026, charte §05) : chaque marque porte une classe
- * `anime-…` de `app/globals.css` et son rang dans `--i` ; le CSS fait le
- * reste, au chargement seulement, et rien quand le système demande moins de
- * mouvement. Les marques à zéro ne bougent pas : il n'y a rien à faire arriver.
+ * Mouvement (charte §05) : la carte de chaleur et les crans portent une classe
+ * `anime-…` de `app/globals.css` et leur rang dans `--i` ; les graphiques
+ * Recharts s'animent eux-mêmes, aux mêmes règles.
  */
 
 /** Le rang d'une marque dans la cascade, plafonné pour qu'une longue liste n'attende pas. */
@@ -51,23 +53,30 @@ function Infobulle({ bord, children }: { bord?: 'gauche' | 'droite'; children: R
 
 const bordDe = (i: number, n: number) => (i === 0 ? 'gauche' : i === n - 1 ? 'droite' : undefined)
 
-const largeur = (valeur: number, max: number) => `${max > 0 ? Math.max((valeur / max) * 100, valeur > 0 ? 2 : 0) : 0}%`
 
 // ── PESTEL : les faits par mois d'une dimension, zéro compris ────────────────
 
 export function BarresMensuelles({ dimension, max }: { dimension: DimensionDuPestel; max: number }) {
   return (
-    <ul className="flex items-end gap-2" aria-label={`${dimension.libellé}, faits par mois`}>
-      {dimension.parMois.map((m, i) => (
-        <li key={m.mois} className="flex flex-1 flex-col items-center gap-1">
-          <span className="font-mono text-label text-encre">{m.faits}</span>
-          <span aria-hidden="true" className="flex h-10 w-full items-end">
-            <span className={`w-full ${m.faits > 0 ? 'anime-monte bg-ardoise' : 'bg-gris-ligne'}`} style={{ ...rang(i), height: m.faits > 0 ? largeur(m.faits, max) : '1px' }} />
-          </span>
-          <span className="font-mono text-label text-ardoise">{m.mois}</span>
-        </li>
-      ))}
-    </ul>
+    <figure className="flex flex-col gap-1">
+      <BarresDuMois points={dimension.parMois.map((m) => ({ mois: m.mois, faits: m.faits }))} max={max} />
+      <figcaption className="sr-only">
+        {dimension.libellé}, faits par mois : {dimension.parMois.map((m) => `${m.mois} ${m.faits}`).join(', ')}
+      </figcaption>
+    </figure>
+  )
+}
+
+/** Les six dimensions en radar (30 octobre 2026) : la forme de l'environnement lu sur la fenêtre. */
+export function RadarDuPestel({ dimensions }: { dimensions: readonly DimensionDuPestel[] }) {
+  const max = Math.max(...dimensions.map((d) => d.faits), 0)
+  return (
+    <figure className="flex flex-col gap-2">
+      <RadarDeValeurs branches={dimensions.map((d) => ({ libellé: d.libellé, valeur: d.faits }))} max={max} unité="Faits" />
+      <figcaption className="text-center font-mono text-label text-ardoise">
+        Faits par dimension : {dimensions.map((d) => `${d.libellé} ${d.faits}`).join(' · ')}
+      </figcaption>
+    </figure>
   )
 }
 
@@ -99,6 +108,18 @@ export function CransDeForce({ cran, tendance }: { cran: number | null; tendance
         </span>
       ) : null}
     </div>
+  )
+}
+
+/** Les cinq forces en radar (30 octobre 2026), en crans de 0 à 3 ; une force non suivie est posée à zéro et dite telle. */
+export function RadarDesForces({ forces }: { forces: readonly { readonly libellé: string; readonly cran: number | null }[] }) {
+  return (
+    <figure className="flex flex-col gap-2">
+      <RadarDeValeurs branches={forces.map((f) => ({ libellé: f.libellé, valeur: f.cran ?? 0 }))} max={3} unité="Cran" />
+      <figcaption className="text-center font-mono text-label text-ardoise">
+        Cran de 1 à 3 : {forces.map((f) => `${f.libellé} ${f.cran ?? 'non suivie'}`).join(' · ')}
+      </figcaption>
+    </figure>
   )
 }
 
@@ -172,24 +193,14 @@ export function CarteDeChaleurDesAxes({ chaleur }: { chaleur: CarteDeChaleur }) 
 
 /** Huit semaines, la dernière en encre : la carte dit si son sujet s'anime avant d'être ouverte. */
 export function MiniActivité({ activité }: { activité: ActivitéDeRubrique }) {
-  const max = Math.max(...activité.semaines.map((s) => s.faits), 0)
   const total = activité.semaines.reduce((n, s) => n + s.faits, 0)
-  const dernière = activité.semaines.length - 1
+  const dernière = activité.semaines.at(-1)
   return (
     <figure className="flex flex-col gap-1">
-      <span aria-hidden="true" className="flex h-8 items-end gap-1">
-        {activité.semaines.map((s, i) => (
-          <span key={s.lundi} className="flex h-full flex-1 items-end">
-            <span
-              className={`w-full ${s.faits === 0 ? 'bg-gris-ligne' : i === dernière ? 'anime-monte bg-encre' : 'anime-monte bg-ardoise'}`}
-              style={{ ...rang(i), height: s.faits > 0 ? largeur(s.faits, max) : '1px' }}
-            />
-          </span>
-        ))}
-      </span>
+      <MiniAire points={activité.semaines.map((s) => ({ libellé: dateCourte(s.lundi), faits: s.faits }))} />
       <figcaption className="font-mono text-label text-ardoise">
         {total} {total > 1 ? activité.libellé : activité.singulier} en {activité.semaines.length} semaines
-        {activité.semaines[dernière] ? `, ${activité.semaines[dernière].faits} la dernière` : ''}
+        {dernière ? `, ${dernière.faits} la dernière` : ''}
       </figcaption>
     </figure>
   )
@@ -202,25 +213,16 @@ export function ActivitéDesSemaines({ activité }: { activité: readonly Semain
   const total = activité.reduce((n, s) => n + s.faits, 0)
   return (
     <figure className="flex flex-col gap-2">
-      <ul className="relative flex h-20 items-end gap-1" aria-label={`Faits relevés par semaine, ${total} sur ${activité.length} semaines`}>
-        {activité.map((s, i) => (
-          <li key={s.lundi} className="group relative flex h-full flex-1 flex-col justify-end" tabIndex={0}>
-            <Infobulle bord={bordDe(i, activité.length)}>
-              Sem. du {dateCourte(s.lundi)} · {s.faits} fait{s.faits > 1 ? 's' : ''}
-            </Infobulle>
-            <span className="sr-only">
-              Semaine du {dateCourte(s.lundi)} : {s.faits} fait{s.faits > 1 ? 's' : ''}
-            </span>
-            <span aria-hidden="true" className={`w-full ${s.faits > 0 ? 'anime-monte bg-ardoise' : 'bg-gris-ligne'}`} style={{ ...rang(i, 13), height: s.faits > 0 ? largeur(s.faits, max) : '1px' }} />
+      <AireDActivité points={activité.map((s) => ({ libellé: dateCourte(s.lundi), faits: s.faits }))} />
+      <ul className="sr-only" aria-label={`Faits relevés par semaine, ${total} sur ${activité.length} semaines`}>
+        {activité.map((s) => (
+          <li key={s.lundi}>
+            Semaine du {dateCourte(s.lundi)} : {s.faits} fait{s.faits > 1 ? 's' : ''}
           </li>
         ))}
       </ul>
-      <figcaption className="flex justify-between font-mono text-label text-ardoise">
-        <span>{activité[0] ? dateCourte(activité[0].lundi) : ''}</span>
-        <span>
-          {total} fait{total > 1 ? 's' : ''} sur {activité.length} semaines, {max} au plus en une semaine
-        </span>
-        <span>{activité.at(-1) ? dateCourte(activité.at(-1)!.lundi) : ''}</span>
+      <figcaption className="text-center font-mono text-label text-ardoise">
+        {total} fait{total > 1 ? 's' : ''} sur {activité.length} semaines, {max} au plus en une semaine
       </figcaption>
     </figure>
   )
@@ -232,45 +234,31 @@ const nombre = (x: number | null) => (x === null ? 'n.d.' : new Intl.NumberForma
 const euros = (x: number | null) => (x === null ? 'n.d.' : `${new Intl.NumberFormat('fr-FR').format(x)} €`)
 const période = (p: { readonly du: string; readonly au: string }) => `${dateCourte(p.du)}/${p.du.slice(2, 4)} au ${dateCourte(p.au)}/${p.au.slice(2, 4)}`
 
-// L'ocre porte la seconde série (charte §02, amendement du 30 octobre 2026) : l'encre reste la couleur de « vous ».
-function Barre({ valeur, max, encre = false, seconde = false, i = 0 }: { valeur: number | null; max: number; encre?: boolean; seconde?: boolean; i?: number }) {
-  return (
-    <span className="relative block h-4 bg-transparent">
-      {valeur !== null && valeur > 0 ? <span aria-hidden="true" className={`anime-etire absolute inset-y-0 left-0 ${encre ? 'bg-encre' : seconde ? 'bg-ocre' : 'bg-ardoise'}`} style={{ ...rang(i, 8), width: largeur(valeur, max) }} /> : null}
-    </span>
-  )
-}
-
 export function EntréesEtSorties({ indice }: { indice: NonNullable<VueDesIndicateurs['indice']>['valeurs'] }) {
-  const max = Math.max(indice.entrées ?? 0, indice.sorties ?? 0, indice.entréesAvant ?? 0, indice.sortiesAvant ?? 0)
   const lignes = [
-    { libellé: 'Douze derniers mois', dates: indice.période, entrées: indice.entrées, sorties: indice.sorties },
     { libellé: 'Douze mois précédents', dates: indice.périodePrécédente, entrées: indice.entréesAvant, sorties: indice.sortiesAvant },
+    { libellé: 'Douze derniers mois', dates: indice.période, entrées: indice.entrées, sorties: indice.sorties },
   ]
   return (
     <div className="flex flex-col gap-4">
-      <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-        {lignes.map((l, n) => (
-          <li key={l.libellé} className="grid grid-cols-1 gap-2 py-4 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-6">
-            <div className="flex flex-col">
-              <span className="text-encre">{l.libellé}</span>
-              <span className="font-mono text-label text-ardoise">{période(l.dates)}</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-[8.5rem_minmax(0,1fr)_4rem] items-center gap-3">
-                <span className="label-mono text-ardoise">Entrées</span>
-                <Barre valeur={l.entrées} max={max} i={n * 2} />
-                <span className="text-right font-mono text-label text-encre">{nombre(l.entrées)}</span>
-              </div>
-              <div className="grid grid-cols-[8.5rem_minmax(0,1fr)_4rem] items-center gap-3">
-                <span className="label-mono text-ardoise">Procédures</span>
-                <Barre valeur={l.sorties} max={max} seconde i={n * 2 + 1} />
-                <span className="text-right font-mono text-label text-encre">{nombre(l.sorties)}</span>
-              </div>
-            </div>
-          </li>
+      <figure className="flex flex-col gap-2">
+        <BarresGroupées périodes={lignes.map((l) => ({ période: période(l.dates), entrées: l.entrées, procédures: l.sorties }))} />
+        <figcaption className="sr-only">
+          {lignes.map((l) => `${l.libellé}, du ${période(l.dates)} : ${nombre(l.entrées)} entrées, ${nombre(l.sorties)} procédures.`).join(' ')}
+        </figcaption>
+      </figure>
+      <dl className="grid grid-cols-1 gap-3 border-y border-gris-ligne py-4 sm:grid-cols-2">
+        {lignes.map((l) => (
+          <div key={l.libellé} className="flex flex-col gap-1">
+            <dt className="text-encre">
+              {l.libellé} <span className="font-mono text-label text-ardoise">{période(l.dates)}</span>
+            </dt>
+            <dd className="font-mono text-label text-encre">
+              {nombre(l.entrées)} entrées · {nombre(l.sorties)} procédures
+            </dd>
+          </div>
         ))}
-      </ul>
+      </dl>
       <p className="text-ardoise">
         Départements {indice.départements.join(', ')}, activité « {indice.texte} ». Solde {nombre(indice.solde)}
         {indice.ratio !== null ? `, ${indice.ratio.toLocaleString('fr-FR')} entrées pour une procédure` : ''}.
@@ -282,22 +270,33 @@ export function EntréesEtSorties({ indice }: { indice: NonNullable<VueDesIndica
 export function BarresDuBenchmark({ benchmark }: { benchmark: NonNullable<VueDesIndicateurs['benchmark']>['valeurs'] }) {
   // Les entités qui publient un chiffre d'affaires d'abord, du plus élevé au plus bas ; puis les autres, n.d.
   const lignes = [...benchmark.lignes].sort((a, b) => (b.chiffreDAffaires ?? -1) - (a.chiffreDAffaires ?? -1))
-  const max = Math.max(...lignes.map((l) => l.chiffreDAffaires ?? 0), 0)
+  const publiées = lignes.filter((l) => l.chiffreDAffaires !== null)
+  const autres = lignes.filter((l) => l.chiffreDAffaires === null)
   return (
-    <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne" aria-label="Chiffre d’affaires publié, par entité">
-      {lignes.map((l, i) => (
-        <li key={l.siren} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[14rem_minmax(0,1fr)_9rem] sm:items-center sm:gap-4">
-          <span className={l.organisation ? 'font-medium text-encre' : 'text-encre'}>
-            {l.nom}
-            {l.organisation ? <span className="label-mono text-ardoise"> · vous</span> : null}
-          </span>
-          <Barre valeur={l.chiffreDAffaires} max={max} encre={l.organisation} i={i} />
-          <span className="font-mono text-label text-encre sm:text-right">
-            {euros(l.chiffreDAffaires)}
-            {l.année && l.chiffreDAffaires !== null ? <span className="text-ardoise"> · {l.année}</span> : null}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-4">
+      {publiées.length > 0 ? (
+        <figure className="flex flex-col gap-2">
+          <BarresHorizontales lignes={publiées.map((l) => ({ nom: l.organisation ? `${l.nom} (vous)` : l.nom, chiffreDAffaires: l.chiffreDAffaires!, organisation: l.organisation }))} />
+          <figcaption className="sr-only">
+            Chiffre d’affaires publié : {publiées.map((l) => `${l.nom}${l.organisation ? ' (vous)' : ''} ${euros(l.chiffreDAffaires)}${l.année ? ` en ${l.année}` : ''}`).join(', ')}.
+          </figcaption>
+        </figure>
+      ) : null}
+      <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne" aria-label="Chiffre d’affaires publié, par entité">
+        {lignes.map((l) => (
+          <li key={l.siren} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+            <span className={l.organisation ? 'font-medium text-encre' : 'text-encre'}>
+              {l.nom}
+              {l.organisation ? <span className="label-mono text-ardoise"> · vous</span> : null}
+            </span>
+            <span className="font-mono text-label text-encre">
+              {euros(l.chiffreDAffaires)}
+              {l.année && l.chiffreDAffaires !== null ? <span className="text-ardoise"> · {l.année}</span> : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {autres.length > 0 ? <p className="text-ardoise">{autres.length} entité{autres.length > 1 ? 's' : ''} sans chiffre d’affaires publié.</p> : null}
+    </div>
   )
 }
