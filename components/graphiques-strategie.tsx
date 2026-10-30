@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import {
   dateCourte,
   type CarteDeChaleur,
@@ -18,7 +19,15 @@ import {
  * badge FORT, et l'ardoise celui du badge MOYEN : aucune couleur d'impact
  * nouvelle. Chaque marque porte son chiffre en texte : la couleur ne porte
  * jamais seule l'information.
+ *
+ * Mouvement (30 octobre 2026, charte §05) : chaque marque porte une classe
+ * `anime-…` de `app/globals.css` et son rang dans `--i` ; le CSS fait le
+ * reste, au chargement seulement, et rien quand le système demande moins de
+ * mouvement. Les marques à zéro ne bougent pas : il n'y a rien à faire arriver.
  */
+
+/** Le rang d'une marque dans la cascade, plafonné pour qu'une longue liste n'attende pas. */
+const rang = (i: number, plafond = 12): CSSProperties => ({ '--i': Math.min(i, plafond) }) as CSSProperties
 
 const largeur = (valeur: number, max: number) => `${max > 0 ? Math.max((valeur / max) * 100, valeur > 0 ? 2 : 0) : 0}%`
 
@@ -27,11 +36,11 @@ const largeur = (valeur: number, max: number) => `${max > 0 ? Math.max((valeur /
 export function BarresMensuelles({ dimension, max }: { dimension: DimensionDuPestel; max: number }) {
   return (
     <ul className="flex items-end gap-1.5" aria-label={`${dimension.libellé}, faits par mois`}>
-      {dimension.parMois.map((m) => (
+      {dimension.parMois.map((m, i) => (
         <li key={m.mois} className="flex flex-1 flex-col items-center gap-1">
           <span className="font-mono text-label text-encre">{m.faits}</span>
           <span aria-hidden="true" className="flex h-10 w-full items-end">
-            <span className={`w-full ${m.faits > 0 ? 'bg-ardoise' : 'bg-gris-ligne'}`} style={{ height: m.faits > 0 ? largeur(m.faits, max) : '1px' }} />
+            <span className={`w-full ${m.faits > 0 ? 'anime-monte bg-ardoise' : 'bg-gris-ligne'}`} style={{ ...rang(i), height: m.faits > 0 ? largeur(m.faits, max) : '1px' }} />
           </span>
           <span className="font-mono text-label text-ardoise">{m.mois}</span>
         </li>
@@ -56,7 +65,8 @@ export function CransDeForce({ cran, tendance }: { cran: number | null; tendance
         {[1, 2, 3].map((n) => (
           <span
             key={n}
-            className={`h-2.5 w-8 ${cran === null ? 'outline-1 -outline-offset-1 outline-dashed outline-ardoise' : n <= cran ? 'bg-encre' : 'bg-gris-ligne'}`}
+            className={`h-2.5 w-8 ${cran === null ? 'outline-1 -outline-offset-1 outline-dashed outline-ardoise' : n <= cran ? 'anime-remplit bg-encre' : 'bg-gris-ligne'}`}
+            style={rang(n - 1)}
           />
         ))}
       </span>
@@ -100,10 +110,11 @@ export function CarteDeChaleurDesAxes({ chaleur }: { chaleur: CarteDeChaleur }) 
                   <span className="mr-1.5 font-mono text-label font-medium text-ardoise">{l.numéro}</span>
                   <span className="text-sm text-encre">{l.nom}</span>
                 </th>
-                {l.cases.map((c) => (
+                {l.cases.map((c, i) => (
                   <td
                     key={c.lundi}
-                    className={`h-9 w-14 border-r border-b border-gris-ligne text-center font-mono text-label ${c.niveau ? `${FOND_DE_NIVEAU[c.niveau]} text-encre` : 'bg-blanc'}`}
+                    className={`h-9 w-14 border-r border-b border-gris-ligne text-center font-mono text-label ${c.niveau ? `anime-decouvre ${FOND_DE_NIVEAU[c.niveau]} text-encre` : 'bg-blanc'}`}
+                    style={c.niveau ? rang(i) : undefined}
                     title={c.niveau ? `${c.niveau}, ${c.faits} fait${c.faits > 1 ? 's' : ''}` : 'RAS ou sans lettre'}
                   >
                     {c.niveau ? LETTRE_DE_NIVEAU[c.niveau] : <span className="sr-only">RAS ou sans lettre</span>}
@@ -131,12 +142,12 @@ export function ActivitéDesSemaines({ activité }: { activité: readonly Semain
   return (
     <figure className="flex flex-col gap-2">
       <ul className="relative flex h-20 items-end gap-1" aria-label={`Faits relevés par semaine, ${total} sur ${activité.length} semaines`}>
-        {activité.map((s) => (
+        {activité.map((s, i) => (
           <li key={s.lundi} className="flex h-full flex-1 flex-col justify-end" title={`Semaine du ${dateCourte(s.lundi)} : ${s.faits} fait${s.faits > 1 ? 's' : ''}`}>
             <span className="sr-only">
               Semaine du {dateCourte(s.lundi)} : {s.faits} fait{s.faits > 1 ? 's' : ''}
             </span>
-            <span aria-hidden="true" className={`w-full ${s.faits > 0 ? 'bg-ardoise' : 'bg-gris-ligne'}`} style={{ height: s.faits > 0 ? largeur(s.faits, max) : '1px' }} />
+            <span aria-hidden="true" className={`w-full ${s.faits > 0 ? 'anime-monte bg-ardoise' : 'bg-gris-ligne'}`} style={{ ...rang(i, 13), height: s.faits > 0 ? largeur(s.faits, max) : '1px' }} />
           </li>
         ))}
       </ul>
@@ -158,10 +169,10 @@ const euros = (x: number | null) => (x === null ? 'n.d.' : `${new Intl.NumberFor
 const période = (p: { readonly du: string; readonly au: string }) => `${dateCourte(p.du)}/${p.du.slice(2, 4)} au ${dateCourte(p.au)}/${p.au.slice(2, 4)}`
 
 // L'ocre porte la seconde série (charte §02, amendement du 30 octobre 2026) : l'encre reste la couleur de « vous ».
-function Barre({ valeur, max, encre = false, seconde = false }: { valeur: number | null; max: number; encre?: boolean; seconde?: boolean }) {
+function Barre({ valeur, max, encre = false, seconde = false, i = 0 }: { valeur: number | null; max: number; encre?: boolean; seconde?: boolean; i?: number }) {
   return (
     <span className="relative block h-4 bg-transparent">
-      {valeur !== null && valeur > 0 ? <span aria-hidden="true" className={`absolute inset-y-0 left-0 ${encre ? 'bg-encre' : seconde ? 'bg-ocre' : 'bg-ardoise'}`} style={{ width: largeur(valeur, max) }} /> : null}
+      {valeur !== null && valeur > 0 ? <span aria-hidden="true" className={`anime-etire absolute inset-y-0 left-0 ${encre ? 'bg-encre' : seconde ? 'bg-ocre' : 'bg-ardoise'}`} style={{ ...rang(i, 8), width: largeur(valeur, max) }} /> : null}
     </span>
   )
 }
@@ -175,7 +186,7 @@ export function EntréesEtSorties({ indice }: { indice: NonNullable<VueDesIndica
   return (
     <div className="flex flex-col gap-4">
       <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-        {lignes.map((l) => (
+        {lignes.map((l, n) => (
           <li key={l.libellé} className="grid grid-cols-1 gap-2 py-4 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-6">
             <div className="flex flex-col">
               <span className="text-encre">{l.libellé}</span>
@@ -184,12 +195,12 @@ export function EntréesEtSorties({ indice }: { indice: NonNullable<VueDesIndica
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-[8.5rem_minmax(0,1fr)_4rem] items-center gap-3">
                 <span className="label-mono text-ardoise">Entrées</span>
-                <Barre valeur={l.entrées} max={max} />
+                <Barre valeur={l.entrées} max={max} i={n * 2} />
                 <span className="text-right font-mono text-label text-encre">{nombre(l.entrées)}</span>
               </div>
               <div className="grid grid-cols-[8.5rem_minmax(0,1fr)_4rem] items-center gap-3">
                 <span className="label-mono text-ardoise">Procédures</span>
-                <Barre valeur={l.sorties} max={max} seconde />
+                <Barre valeur={l.sorties} max={max} seconde i={n * 2 + 1} />
                 <span className="text-right font-mono text-label text-encre">{nombre(l.sorties)}</span>
               </div>
             </div>
@@ -210,13 +221,13 @@ export function BarresDuBenchmark({ benchmark }: { benchmark: NonNullable<VueDes
   const max = Math.max(...lignes.map((l) => l.chiffreDAffaires ?? 0), 0)
   return (
     <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne" aria-label="Chiffre d’affaires publié, par entité">
-      {lignes.map((l) => (
+      {lignes.map((l, i) => (
         <li key={l.siren} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[14rem_minmax(0,1fr)_9rem] sm:items-center sm:gap-4">
           <span className={l.organisation ? 'font-medium text-encre' : 'text-encre'}>
             {l.nom}
             {l.organisation ? <span className="label-mono text-ardoise"> · vous</span> : null}
           </span>
-          <Barre valeur={l.chiffreDAffaires} max={max} encre={l.organisation} />
+          <Barre valeur={l.chiffreDAffaires} max={max} encre={l.organisation} i={i} />
           <span className="font-mono text-label text-encre sm:text-right">
             {euros(l.chiffreDAffaires)}
             {l.année && l.chiffreDAffaires !== null ? <span className="text-ardoise"> · {l.année}</span> : null}

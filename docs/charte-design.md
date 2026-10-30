@@ -158,6 +158,30 @@ montre, il ne se cache pas. »
 impulsions verticales : **rose = signal fort, ardoise = signal secondaire**.
 « Toujours horizontal, jamais plus de 7 impulsions, jamais en fond de texte. »
 
+## 05 · Mouvement (amendement du 30 octobre 2026)
+
+Décision de l'opératrice, sur les propositions visuelles du même jour. Le
+mouvement signale une arrivée, il ne décore pas. Il ne s'applique qu'aux
+graphiques de l'espace (`components/graphiques-strategie.tsx`), par les classes
+`anime-monte`, `anime-etire`, `anime-remplit` et `anime-decouvre` de
+`app/globals.css`, seul endroit où il est écrit.
+
+- **Une seule animation par graphique, au chargement de l'écran**, qui dit dans
+  quel sens lire : les barres montent ou s'étirent de gauche à droite, comme le
+  temps ; les crans des forces se remplissent un par un ; la carte de chaleur se
+  découvre semaine après semaine.
+
+| Règle | Valeur | Pourquoi |
+|---|---|---|
+| Durée | 400 à 700 ms | assez pour voir le sens de lecture, trop court pour faire attendre la lecture |
+| Courbe | départ vif, arrivée douce (`cubic-bezier(0.2, 0.7, 0.2, 1)`) | la donnée arrive à sa valeur et s'y pose, sans rebond |
+| Décalage | 45 à 180 ms par marque, plafonné | une cascade de gauche à droite suit l'ordre du temps |
+| Point de départ | une marque déjà visible (6 % de sa taille, 25 % d'opacité ; un cran part du gris d'un cran vide) | une capture prise pendant l'animation reste lisible |
+| Moins de mouvement | aucune animation | le réglage du système du lecteur prime toujours |
+| Hors charte | ni boucle, ni rebond, ni animation au défilement ou au survol d'une donnée | |
+
+Un chiffre ne s'anime jamais : il s'affiche à sa valeur, seule la marque bouge.
+
 ## Ce que la transcription oblige à corriger dans le portail
 
 1. **Les libellés des badges ne sont pas ceux des niveaux.** Notion écrit le
