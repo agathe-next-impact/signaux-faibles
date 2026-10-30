@@ -11,17 +11,25 @@
 @theme {
   /* 02 · Couleurs. « La couleur est un signal, jamais un décor. »
      Proportions visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
-     rose 3 %. Le rose ne porte jamais de texte courant. */
+     rose 2 %, ocre 1 % (depuis le 30 octobre 2026). Le rose ne porte jamais
+     de texte courant. */
   --color-encre: #111418;
   --color-rose: #dd768a;
   --color-ardoise: #5d6b7f;
   --color-gris-ligne: #dee3e6;
   --color-blanc: #ffffff;
+  /* Ocre, la couleur du temps (30 octobre 2026, docs/charte-design.md §02) :
+     échéances et seconde série d'un graphique, jamais un niveau d'impact.
+     3,71 : 1 sur blanc, marque et graphique seuls ; son ton foncé porte une
+     date ou une étiquette mono (5,91 : 1), jamais du texte courant. */
+  --color-ocre: #b07a2a;
+  --color-ocre-texte: #8a5a14;
 
   /* Teintes dérivées : fonds de cartes et surlignages, jamais du texte. */
   --color-fond-rose: #fbeef1;
   --color-fond-ardoise: #eef1f4;
   --color-fond-neutre: #f7f8f9;
+  --color-fond-ocre: #f8efe0;
 
   /* 03 · Typographie. Trois familles, trois rôles. */
   --text-h1: 2.5rem; /* 40 px */

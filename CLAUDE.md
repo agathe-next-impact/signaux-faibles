@@ -115,7 +115,7 @@ synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 « L'écosystème » (retirées le même jour, à sa demande), et non plus une case par
 écran ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
 `/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
-avec leur chiffre clé ; le rail garde ses écrans et le nom de la rubrique y
+avec leur chiffre clé, sur deux colonnes elle aussi ; le rail garde ses écrans et le nom de la rubrique y
 mène (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
 (`lib/portail/tableau.ts`). Sur « PESTEL », chaque axe qui suit une dimension
 mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
@@ -128,7 +128,10 @@ qu'elle ne l'est pas) ; le corpus lit la seule grille. Depuis le même jour, le
 rail se **replie** sur grand écran (`components/rail-retractable.tsx`, seul
 composant client de la coquille) ; le choix tient dans le cookie `rail`
 (`COOKIE_DU_RAIL`, `lib/portail/rail.ts`), lu par le layout de l'espace pour
-rendre le rail déjà replié, sans saut à l'affichage ; sur mobile, rien ne change. Une période
+rendre le rail déjà replié, sans saut à l'affichage ; sur mobile, rien ne change. L'**ocre**, troisième couleur de signal (amendement de la charte du même jour,
+`docs/charte-design.md` §02 ; tokens `ocre`, `ocre-texte`, `fond-ocre`), ne
+porte que le temps (repère et date d'une échéance du calendrier) et la seconde
+série d'un graphique (les procédures face aux entrées) ; jamais un impact. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

@@ -157,10 +157,11 @@ const nombre = (x: number | null) => (x === null ? 'n.d.' : new Intl.NumberForma
 const euros = (x: number | null) => (x === null ? 'n.d.' : `${new Intl.NumberFormat('fr-FR').format(x)} €`)
 const période = (p: { readonly du: string; readonly au: string }) => `${dateCourte(p.du)}/${p.du.slice(2, 4)} au ${dateCourte(p.au)}/${p.au.slice(2, 4)}`
 
-function Barre({ valeur, max, encre = false }: { valeur: number | null; max: number; encre?: boolean }) {
+// L'ocre porte la seconde série (charte §02, amendement du 30 octobre 2026) : l'encre reste la couleur de « vous ».
+function Barre({ valeur, max, encre = false, seconde = false }: { valeur: number | null; max: number; encre?: boolean; seconde?: boolean }) {
   return (
     <span className="relative block h-4 bg-transparent">
-      {valeur !== null && valeur > 0 ? <span aria-hidden="true" className={`absolute inset-y-0 left-0 ${encre ? 'bg-encre' : 'bg-ardoise'}`} style={{ width: largeur(valeur, max) }} /> : null}
+      {valeur !== null && valeur > 0 ? <span aria-hidden="true" className={`absolute inset-y-0 left-0 ${encre ? 'bg-encre' : seconde ? 'bg-ocre' : 'bg-ardoise'}`} style={{ width: largeur(valeur, max) }} /> : null}
     </span>
   )
 }
@@ -188,7 +189,7 @@ export function EntréesEtSorties({ indice }: { indice: NonNullable<VueDesIndica
               </div>
               <div className="grid grid-cols-[8.5rem_minmax(0,1fr)_4rem] items-center gap-3">
                 <span className="label-mono text-ardoise">Procédures</span>
-                <Barre valeur={l.sorties} max={max} encre />
+                <Barre valeur={l.sorties} max={max} seconde />
                 <span className="text-right font-mono text-label text-encre">{nombre(l.sorties)}</span>
               </div>
             </div>

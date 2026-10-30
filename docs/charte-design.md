@@ -64,9 +64,27 @@ jamais un décor.** »
 | Ardoise | `#5d6b7f` | signal secondaire, labels |
 | Gris ligne | `#dee3e6` | filets, axes, bordures |
 | Blanc | `#ffffff` | **fond unique du site** |
+| Ocre | `#b07a2a` | le temps : échéances, seconde série d'un graphique (amendement du 30 octobre 2026) |
 
 Teintes dérivées, « réservées aux fonds de cartes et surlignages, jamais pour
-du texte » : `#fbeef1` fond rose, `#eef1f4` fond ardoise, `#f7f8f9` fond neutre.
+du texte » : `#fbeef1` fond rose, `#eef1f4` fond ardoise, `#f7f8f9` fond neutre,
+`#f8efe0` fond ocre.
+
+**Amendement du 30 octobre 2026 : l'ocre, troisième couleur de signal.**
+Décision de l'opératrice, sur les propositions visuelles du même jour. La
+charte n'avait que le rose et l'ardoise ; les graphiques manquaient d'une
+seconde série (entrées face aux procédures) et le calendrier d'une couleur pour
+le temps. L'ocre est chaude là où l'ardoise est froide : elle s'en distingue par
+la teinte, sans évoquer ni une alerte ni un succès. Le bleu de Prusse (trop
+proche de l'ardoise, 1,26 : 1) et le vert lichen (lu comme « favorable », donc
+une quatrième graduation d'impact) ont été écartés.
+
+- **Deux rôles seulement** : les échéances (repère et date d'une échéance du
+  calendrier) et la seconde série d'un graphique. Jamais une couleur d'impact :
+  la règle des trois niveaux reste entière, et un badge n'est jamais ocre.
+- **Le ton marque `#b07a2a`** est réservé aux formes (barre, repère, filet).
+- **Le ton foncé `#8a5a14`** porte seul du texte, et seulement une date ou une
+  étiquette mono ; jamais du texte courant.
 
 Contraste et accessibilité, tels que la charte les donne :
 
@@ -75,11 +93,13 @@ Contraste et accessibilité, tels que la charte les donne :
 | Encre sur blanc | 17,3 : 1 | AAA |
 | Ardoise sur blanc | 5,3 : 1 | AA |
 | Rose sur blanc | 2,9 : 1 | graphique seul |
+| Ocre sur blanc | 3,71 : 1 | graphique seul |
+| Ocre foncé sur blanc | 5,91 : 1 | AA (dates, labels mono) |
 
 « Le rose ne porte jamais de texte courant : il marque, il ne raconte pas. »
 
 Proportions d'usage visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
-**rose 3 %**.
+**rose 2 %, ocre 1 %** (rose 3 % avant l'amendement du 30 octobre 2026).
 
 ## 03 · Typographie
 

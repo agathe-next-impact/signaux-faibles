@@ -5,10 +5,12 @@ import type { CaseDÉcran } from '@/lib/domaine/tableau-de-bord'
  * La grille des écrans d'une rubrique (30 octobre 2026) : une case par écran,
  * avec son chiffre clé et sa mention, cliquable en entier. Les chiffres sont
  * ceux de la carte de la rubrique sur la vue d'ensemble (`tableauDeLEspace`).
+ * Toujours sur deux colonnes, comme les cartes de la vue d'ensemble (décision
+ * de l'opératrice du 30 octobre 2026).
  */
 export function GrilleDesÉcrans({ cases, étiquette }: { cases: readonly CaseDÉcran[]; étiquette: string }) {
   return (
-    <Grille étiquette={étiquette} colonnes={cases.length >= 4 ? 4 : cases.length === 3 ? 3 : 2}>
+    <Grille étiquette={étiquette} colonnes={2}>
       {cases.map((c) => (
         <Case key={c.href}>
           <h2 className="font-titre text-h3 font-semibold text-encre">{c.écran}</h2>
