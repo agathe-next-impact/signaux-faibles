@@ -31,12 +31,12 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
             </summary>
             <div className="flex flex-col gap-1 pt-1">
               {groupe.rubriqueHref ? (
-                <LienDOnglet href={groupe.rubriqueHref} courant={chemin === groupe.rubriqueHref}>
+                <LienDOnglet petit href={groupe.rubriqueHref} courant={chemin === groupe.rubriqueHref}>
                   Vue de la rubrique<span className="sr-only"> {groupe.rubrique}</span>
                 </LienDOnglet>
               ) : null}
               {groupe.onglets.map((onglet) => (
-                <LienDOnglet key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte}>
+                <LienDOnglet petit key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte}>
                   {onglet.libellé}
                 </LienDOnglet>
               ))}
@@ -54,12 +54,25 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
   )
 }
 
-function LienDOnglet({ href, courant, compte, children }: { href: string; courant: boolean; compte?: number | null; children: React.ReactNode }) {
+/** `petit` : un écran dans le panneau d'une rubrique, en 14 px et en retrait sous son nom (30 octobre 2026). */
+function LienDOnglet({
+  href,
+  courant,
+  compte,
+  petit = false,
+  children,
+}: {
+  href: string
+  courant: boolean
+  compte?: number | null
+  petit?: boolean
+  children: React.ReactNode
+}) {
   return (
     <Link
       href={href}
       aria-current={courant ? 'page' : undefined}
-      className={`flex items-center justify-between gap-3 rounded-douce px-3 py-2 text-corps ${
+      className={`flex items-center justify-between gap-3 rounded-douce ${petit ? 'py-1 pr-3 pl-6 text-sm' : 'px-3 py-2 text-corps'} ${
         courant ? 'bg-fond-ardoise font-medium text-encre' : 'text-ardoise hover:bg-fond-neutre hover:text-encre'
       }`}
     >

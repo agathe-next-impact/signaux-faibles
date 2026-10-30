@@ -65,12 +65,12 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
                   </summary>
                   <ul>
                     {groupe.rubriqueHref ? (
-                      <ÉlémentDeListe href={groupe.rubriqueHref} courant={chemin === groupe.rubriqueHref} onClick={fermer}>
+                      <ÉlémentDeListe petit href={groupe.rubriqueHref} courant={chemin === groupe.rubriqueHref} onClick={fermer}>
                         Vue de la rubrique<span className="sr-only"> {groupe.rubrique}</span>
                       </ÉlémentDeListe>
                     ) : null}
                     {groupe.onglets.map((onglet) => (
-                      <ÉlémentDeListe key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte} onClick={fermer}>
+                      <ÉlémentDeListe petit key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte} onClick={fermer}>
                         {onglet.libellé}
                       </ÉlémentDeListe>
                     ))}
@@ -133,17 +133,19 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
   )
 }
 
-/** Un écran de la liste ouverte par « Plus ». */
+/** Un écran de la liste ouverte par « Plus » ; `petit` dans le panneau d'une rubrique, en 14 px et en retrait. */
 function ÉlémentDeListe({
   href,
   courant,
   compte,
+  petit = false,
   onClick,
   children,
 }: {
   href: string
   courant: boolean
   compte?: number | null
+  petit?: boolean
   onClick: () => void
   children: React.ReactNode
 }) {
@@ -153,7 +155,7 @@ function ÉlémentDeListe({
         href={href}
         aria-current={courant ? 'page' : undefined}
         onClick={onClick}
-        className={`flex items-center justify-between gap-4 px-6 py-3 text-corps ${courant ? 'bg-fond-neutre text-encre' : 'text-ardoise'}`}
+        className={`flex items-center justify-between gap-4 py-3 pr-6 ${petit ? 'pl-8 text-sm' : 'pl-6 text-corps'} ${courant ? 'bg-fond-neutre text-encre' : 'text-ardoise'}`}
       >
         <span>{children}</span>
         {compte ? <span className="label-mono text-ardoise">{compte}</span> : null}
