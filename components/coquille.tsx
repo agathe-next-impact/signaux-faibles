@@ -221,14 +221,18 @@ export function Grille({
  */
 export function Case({
   accent = false,
+  id,
   children,
 }: {
   accent?: boolean
+  /** Ancre de la case, pour qu'un lien de l'écran y mène (la SWOT depuis son bandeau « En bref »). */
+  id?: string
   children: React.ReactNode
 }) {
   return (
     <li
-      className={`group relative flex flex-col gap-3 border-r border-b border-gris-ligne p-6 ${
+      id={id}
+      className={`group relative flex scroll-mt-6 flex-col gap-3 border-r border-b border-gris-ligne p-6 ${
         accent ? 'bg-fond-rose' : 'bg-blanc'
       }`}
     >
@@ -243,17 +247,27 @@ export function Tuile({
   valeur,
   mention,
   accent = false,
+  href,
 }: {
   intitulé: string
   valeur: number | string
   mention?: string | null
   accent?: boolean
+  /** La tuile mène à ce qu'elle compte, cliquable en entier (`LienFlèche étendu`). */
+  href?: string
 }) {
   return (
     <Case accent={accent}>
       <p className="label-mono text-ardoise">{intitulé}</p>
       <p className="font-titre text-h2 font-bold text-encre">{valeur}</p>
       {mention ? <p className="label-mono text-ardoise">{mention}</p> : null}
+      {href ? (
+        <p>
+          <LienFlèche href={href} étendu>
+            Voir<span className="sr-only"> : {intitulé.toLowerCase()}</span>
+          </LienFlèche>
+        </p>
+      ) : null}
     </Case>
   )
 }

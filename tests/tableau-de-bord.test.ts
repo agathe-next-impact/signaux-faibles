@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { cartesDesRubriques, casesDeLaRubrique, casesDuTableauDeBord, RUBRIQUES, type DonnéesDuTableau } from '@/lib/domaine/tableau-de-bord'
 import {
   enBrefDeLaSwot,
-  enBrefDesConcurrents,
-  enBrefDesForces,
-  enBrefDesScénarios,
   enBrefDuPestel,
   mouvementsDeLaCarte,
   type ConcurrentVu,
@@ -178,8 +175,8 @@ describe('en bref', () => {
       ['Opportunités', 2, 'tirées des faits de vos lettres'],
       ['Menaces', 1, 'tirées des faits de vos lettres'],
     ])
-    expect(enBrefDesForces(SYNTHÈSE.trimestre!.forces).map((c) => c.valeur)).toEqual(['2 sur 3', 1, 1])
-    expect(enBrefDesScénarios(SYNTHÈSE.trimestre!.scénarios).map((c) => c.valeur)).toEqual([3, 3, 2])
+    // Opportunités et menaces mènent à leur case de la matrice.
+    expect(enBrefDeLaSwot(SYNTHÈSE.mois!.swot).map((c) => c.ancre ?? null)).toEqual([null, 'swot-opportunites', 'swot-menaces'])
   })
 
   it('les concurrents et le PESTEL', () => {
@@ -189,11 +186,6 @@ describe('en bref', () => {
       mouvements: [],
       nonPlacés: 1,
     }
-    expect(enBrefDesConcurrents({ ...vue, mouvements: [vue.concurrents[0]!] }).map((c) => [c.valeur, c.mention])).toEqual([
-      [3, '2 placés sur la carte'],
-      [1, 'depuis la synthèse précédente'],
-      [1, '1 placé d’après le corpus seul'],
-    ])
     const pestel = {
       fenêtre: { début: '2026-07-01', fin: '2026-10-01' },
       total: 7,
@@ -204,10 +196,9 @@ describe('en bref', () => {
       trous: [{ libellé: 'Écologique', familles: 0, nom: null }],
       faits: [],
     } as unknown as VueDuPestel
-    expect(enBrefDuPestel(pestel).map((c) => [c.valeur, c.mention])).toEqual([
-      [7, 'sur treize semaines'],
-      ['Légal', '5 faits'],
-      [1, '1 dimension peu couverte'],
+    expect(enBrefDuPestel(pestel).map((c) => [c.intitulé, c.valeur, c.mention])).toEqual([
+      ['Dimension la plus citée', 'Légal', '5 faits'],
+      ['Deuxième dimension citée', 'Politique', '2 faits'],
     ])
   })
 })

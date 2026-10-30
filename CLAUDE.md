@@ -99,7 +99,11 @@ Le marché, L'environnement, Stratégie, Votre veille), douze écrans. Le lot 4
 (`casesDuTableauDeBord`, `lib/domaine/tableau-de-bord.ts`, calculé sur ce que
 l'écran lit déjà plus la synthèse publiée), un bandeau « En bref » de trois
 chiffres en tête des écrans par outil (`enBref…`, `lib/domaine/strategie-vues.ts`,
-comptés, jamais rédigés), les longues listes repliées derrière un `details`
+comptés, jamais rédigés ; retiré le même jour, à la demande de l'opératrice,
+de « Concurrents », « Acteurs », « Forces du marché » et « Scénarios », il reste
+sur « Diagnostic », « PESTEL », réduit aux deux dimensions les plus citées,
+et « Indicateurs » ; sur « Diagnostic », les tuiles Opportunités et Menaces mènent
+à leur case de la SWOT, `ancreDeLaSwot`), les longues listes repliées derrière un `details`
 natif (`components/repliable.tsx` : concurrents au-delà de six, dossiers au-delà
 de cinq, semaines d'actions au-delà de quatre) et des liens internes (un élément
 SWOT daté vers sa lettre, un dossier concurrent de l'accueil vers sa fiche). Le
@@ -774,7 +778,7 @@ Vue d'ensemble (`/[slug]`, chiffres de la semaine, action, puis **deux
 sections** : « À la une », titrée « Les acteurs » jusqu'au 23 octobre 2026, et « L'écosystème ») · Lettres
 (`/[slug]/lettres`, grille de toutes les lettres, une case par édition, plus
 `/[slug]/lettres/[edition]` pour la lire) · **Les axes** (`/[slug]/axes`,
-grille des axes avec leur mouvement) · **Acteurs** (`/[slug]/acteurs`, le
+grille des axes avec leur mouvement, sur deux colonnes depuis le 30 octobre 2026) · **Acteurs** (`/[slug]/acteurs`, le
 suivi des dossiers ouverts) · Recommandations · Archives (une entrée par
 semaine) · **Périmètre** (`/[slug]/perimetre`, décidé le 10 septembre 2026
 sous le nom « Cadrage », renommé le 14 septembre en accueillant les acteurs

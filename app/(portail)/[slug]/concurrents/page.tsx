@@ -2,10 +2,10 @@ import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Repliable } from '@/components/repliable'
-import { CarteDesGroupes, EnBref, ListeDesConcurrents } from '@/components/strategie-ecrans'
+import { CarteDesGroupes, ListeDesConcurrents } from '@/components/strategie-ecrans'
 import { enSlug } from '@/lib/domaine/slug'
 import { normaliserTitre } from '@/lib/domaine/strategie'
-import { enBrefDesConcurrents, libelléDePériode } from '@/lib/domaine/strategie-vues'
+import { libelléDePériode } from '@/lib/domaine/strategie-vues'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import { semainesPubliées } from '@/lib/portail/semaine'
 import { concurrentsDeLEspace, espaceDeLOrganisation } from '@/lib/portail/strategie'
@@ -62,8 +62,6 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
               : 'Aucun n’a changé de case depuis la synthèse précédente.'}
             {lus.vue.nonPlacés > 0 ? ` ${lus.vue.nonPlacés} ne sont pas encore placés, faute de capacité ou de récit connus.` : ''}
           </p>
-
-          <EnBref chiffres={enBrefDesConcurrents(lus.vue)} />
 
           {lus.carte && lus.carte.placés > 0 ? (
             <section className="mt-8 flex flex-col gap-4">

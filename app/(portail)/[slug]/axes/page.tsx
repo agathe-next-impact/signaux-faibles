@@ -72,7 +72,7 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
           prochaine parution.
         </p>
       ) : (
-        <Grille étiquette="Axes de la semaine">
+        <Grille étiquette="Axes de la semaine" colonnes={2}>
           {axes.map((axe) => (
             <CaseAxe
               key={axe.titre}

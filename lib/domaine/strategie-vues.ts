@@ -691,7 +691,8 @@ export function périodesAPublier(comptes: readonly ComptesDePériode[]): Synth�
  * jamais rédigés pour l'écran, jamais une note. Un chiffre que la synthèse ne
  * porte pas n'est pas inventé ; la case dit alors « n.d. ».
  */
-export type ChiffreEnBref = { readonly intitulé: string; readonly valeur: number | string; readonly mention?: string | null }
+/** `ancre` : l'identifiant de la section de l'écran que le chiffre compte ; la tuile y mène. */
+export type ChiffreEnBref = { readonly intitulé: string; readonly valeur: number | string; readonly mention?: string | null; readonly ancre?: string }
 
 const pluriel = (n: number, mot: string, mots = `${mot}s`) => `${n} ${n > 1 ? mots : mot}`
 
@@ -701,54 +702,27 @@ export function mouvementsDeLaCarte(carte: VueDeLaCarte | null): number {
   return [...carte.cases.values()].flat().filter((o) => o.aBougé && !o.organisation).length
 }
 
-export function enBrefDesConcurrents(vue: VueDesConcurrents): readonly ChiffreEnBref[] {
-  const placés = vue.concurrents.length - vue.nonPlacés
-  const déclaratifs = vue.concurrents.filter((c) => c.déclaratif).length
-  const cités = vue.concurrents.filter((c) => c.faits > 0).length
-  return [
-    { intitulé: 'Concurrents suivis', valeur: vue.concurrents.length, mention: `${placés} placés sur la carte` },
-    { intitulé: 'Ont changé de case', valeur: vue.mouvements.length, mention: 'depuis la synthèse précédente' },
-    { intitulé: 'Cités par vos lettres', valeur: cités, mention: déclaratifs > 0 ? `${pluriel(déclaratifs, 'placé')} d’après le corpus seul` : null },
-  ]
-}
+/** L'ancre d'une case de la SWOT : `swot-opportunites`, distincte des codes d'éléments (« O1 »). */
+export const ancreDeLaSwot = (c: CaseSwot) => `swot-${c}`
 
 export function enBrefDeLaSwot(swot: VueDeLaSwot): readonly ChiffreEnBref[] {
   const tous = CASES_SWOT.flatMap((c) => swot[c])
   const déclaratifs = tous.filter((é) => é.édition === null && é.source.startsWith('Déclaratif')).length
   return [
     { intitulé: 'Éléments de la SWOT', valeur: tous.length, mention: `${pluriel(déclaratifs, 'déclaratif')}, ${tous.length - déclaratifs} datés` },
-    { intitulé: 'Opportunités', valeur: swot.opportunites.length, mention: 'tirées des faits de vos lettres' },
-    { intitulé: 'Menaces', valeur: swot.menaces.length, mention: 'tirées des faits de vos lettres' },
+    { intitulé: 'Opportunités', valeur: swot.opportunites.length, mention: 'tirées des faits de vos lettres', ancre: ancreDeLaSwot('opportunites') },
+    { intitulé: 'Menaces', valeur: swot.menaces.length, mention: 'tirées des faits de vos lettres', ancre: ancreDeLaSwot('menaces') },
   ]
 }
 
-export function enBrefDesForces(forces: readonly ForceLue[]): readonly ChiffreEnBref[] {
-  const suivies = forces.filter((f) => !f.nonSuivi)
-  return [
-    { intitulé: 'Forces suivies', valeur: `${suivies.length} sur ${forces.length}`, mention: forces.length - suivies.length > 0 ? `${pluriel(forces.length - suivies.length, 'non suivie')}` : null },
-    { intitulé: 'Intenses', valeur: suivies.filter((f) => f.cran === 3).length, mention: 'au troisième cran' },
-    { intitulé: 'En hausse', valeur: suivies.filter((f) => f.tendance === 'hausse').length, mention: 'sur le trimestre' },
-  ]
-}
-
+/** Les deux dimensions les plus citées seulement (30 octobre 2026, demande de l'opératrice) ; une dimension sans fait n'y figure pas. */
 export function enBrefDuPestel(vue: VueDuPestel): readonly ChiffreEnBref[] {
-  const tête = [...vue.dimensions].sort((a, b) => b.faits - a.faits)[0]
-  const ruptures = vue.dimensions.reduce((n, d) => n + d.ruptures, 0)
-  return [
-    { intitulé: 'Faits datés', valeur: vue.total, mention: 'sur treize semaines' },
-    { intitulé: 'Dimension la plus citée', valeur: tête && tête.faits > 0 ? tête.libellé : 'n.d.', mention: tête && tête.faits > 0 ? pluriel(tête.faits, 'fait') : null },
-    { intitulé: 'Ruptures', valeur: ruptures, mention: vue.trous.length > 0 ? `${pluriel(vue.trous.length, 'dimension')} peu couverte${vue.trous.length > 1 ? 's' : ''}` : null },
-  ]
-}
-
-export function enBrefDesScénarios(scénarios: readonly ScénarioLu[]): readonly ChiffreEnBref[] {
-  const indicateurs = scénarios.reduce((n, s) => n + s.indicateurs.length, 0)
-  const familles = new Set(scénarios.flatMap((s) => s.indicateurs.map((i) => i.famille))).size
-  return [
-    { intitulé: 'Scénarios', valeur: scénarios.length, mention: 'aucune probabilité' },
-    { intitulé: 'Indicateurs à guetter', valeur: indicateurs, mention: 'datables et cherchables' },
-    { intitulé: 'Thèmes qui les suivent', valeur: familles, mention: 'dans vos lettres' },
-  ]
+  const intitulés = ['Dimension la plus citée', 'Deuxième dimension citée'] as const
+  return [...vue.dimensions]
+    .filter((d) => d.faits > 0)
+    .sort((a, b) => b.faits - a.faits)
+    .slice(0, 2)
+    .map((d, rang) => ({ intitulé: intitulés[rang]!, valeur: d.libellé, mention: pluriel(d.faits, 'fait') }))
 }
 
 /** La synthèse publiée telle que les écrans la lisent : le mois et le trimestre, chacun absent s'il n'est pas publié. */
