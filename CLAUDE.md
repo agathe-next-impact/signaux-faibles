@@ -45,9 +45,11 @@ ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
 `lib/portail/strategie.ts`, qui passe la porte de `lib/domaine/strategie.ts`
 avant d'écrire ; `tests/architecture.test.ts` tient la frontière, et le pilote
 est borné par `organisations.outils_strategiques` (faux par défaut, réponse
-`hors-pilote`). **Organisations du pilote au 27 octobre 2026** : Mastora,
-Infralliance, L'Hermitage (`hermitage`), Heritech et Konica Minolta France
-(`konica-minolta-france`) ; le drapeau se pose par `PATCH
+`hors-pilote`). **Organisations du pilote au 30 octobre 2026** : Mastora,
+Infralliance, L'Hermitage (`hermitage`), Heritech, Konica Minolta France
+(`konica-minolta-france`) et, depuis le 30 octobre, Suneido ; les six grilles
+suivent les cinq forces et couvrent les six dimensions PESTEL depuis le même jour
+(décision de l'opératrice : rattachements revus et familles mensuelles ajoutées) ; le drapeau se pose par `PATCH
 /api/veille/organisations` (`action: outils`), puis `pnpm tache etiquetage
 --organisation <slug>` étiquette les lettres déjà publiées. La liste à jour,
 avec ce que chacune fait dans le pilote, est au §6 du plan. La grille (lot 5,
@@ -80,7 +82,7 @@ place sans fait, ne déplace jamais (`mouvement-sans-fait` tient), et l'écran
 dit combien de positions sont lues dans le corpus de la veille. Depuis le même
 jour (lot 2), un **espace réorganisé** (`organisations.espace_reorganise`,
 migration 0016, `PATCH /api/veille/organisations` `action: espace`, refusé hors
-du pilote des outils ; L'Hermitage seulement) ajoute au rail « Concurrents »
+du pilote des outils ; L'Hermitage, puis Infralliance et Suneido le même jour) ajoute au rail « Concurrents »
 (`/[slug]/concurrents`, carte et concurrents de la grille) et la fiche de chacun
 (`/[slug]/concurrents/[concurrent]`), et recentre « Acteurs » sur Mendelow et
 les dossiers hors concurrents ; ailleurs, les sept écrans restent
