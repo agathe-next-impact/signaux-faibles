@@ -6,7 +6,8 @@ le même jour : **le pilote se fait sur L'Hermitage** (§8, point 4). Elle tient
 lieu de la discussion que demande la règle « pas d'autre écran sans
 discussion » de `CLAUDE.md`. Lot 1 (positions déclaratives) codé le
 30 octobre 2026, lot 2 (Concurrents, fiche concurrent, Acteurs recentré) le
-même jour, derrière l'interrupteur `organisations.espace_reorganise`.
+même jour, derrière l'interrupteur `organisations.espace_reorganise`, et lot 3
+(un écran par outil, rail en rubriques) dans la foulée.
 
 ## 1. Le constat
 
@@ -189,6 +190,21 @@ dossiers des concurrents, garde Mendelow et le reste. Aucune lecture Notion de
 plus que la liste des éditions, hormis les quatre corps de la fiche, déjà en
 cache. La santé financière au BODACC, entité par entité, n'est pas encore lue :
 le benchmark donne les comptes publiés, pas les procédures.
+
+**Lot 3, ce qui est livré (30 octobre 2026).** Pour un espace réorganisé, le
+rail passe à douze écrans groupés en rubriques (`Onglet.rubrique`, rendu par
+`NavLatérale` et par la liste « Plus » du menu de pied) : Cette semaine (vue
+d'ensemble, lettres), Le marché (concurrents, acteurs, forces du marché),
+L'environnement (les axes, PESTEL), Stratégie (diagnostic, options, scénarios),
+Votre veille (périmètre, archives ; la rubrique « Archives » seule aurait répété
+son unique écran). Quatre écrans sortent de leurs écrans d'origine, sans lecture
+nouvelle : « Forces du marché » et « Scénarios » (le trimestre publié),
+« Diagnostic » (la SWOT du mois, chaque élément en ancre), « PESTEL » (l'onglet
+de « Les axes », qui ne le lit plus). « Recommandations » devient « Options » :
+l'option retenue et la TOWS, dont les codes mènent à l'élément du diagnostic,
+puis les actions des lettres. Un écran sans donnée publiée reste dans le rail et
+le dit ; le cacher demanderait au rail de lire les synthèses à chaque page. Les
+barres et graphiques sont pour le lot 5.
 
 ## 8. Ce qu'il faut trancher
 

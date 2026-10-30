@@ -75,7 +75,14 @@ du pilote des outils ; L'Hermitage seulement) ajoute au rail « Concurrents »
 (`/[slug]/concurrents/[concurrent]`), et recentre « Acteurs » sur Mendelow et
 les dossiers hors concurrents ; ailleurs, les sept écrans restent
 (`espaceDeLOrganisation`, `concurrentsDeLEspace`, `ficheDuConcurrent`, 404 avant
-toute lecture hors de l'espace réorganisé, garde d'architecture). Une période
+toute lecture hors de l'espace réorganisé, garde d'architecture). Le lot 3
+(même jour) y sort chaque outil dans son écran : « Forces du marché »
+(`/[slug]/forces`), « PESTEL » (`/[slug]/pestel`, l'onglet de « Les axes » en
+écran), « Diagnostic » (`/[slug]/diagnostic`, la SWOT, codes en ancres) et
+« Scénarios » (`/[slug]/scenarios`) ; « Recommandations » devient « Options »
+(option retenue et TOWS, codes menant au diagnostic, puis les actions des
+lettres) ; le rail est groupé en rubriques (`Onglet.rubrique` : Cette semaine,
+Le marché, L'environnement, Stratégie, Votre veille), douze écrans. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

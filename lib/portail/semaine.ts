@@ -1,3 +1,4 @@
+import type { Onglet } from '@/components/coquille'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { regrouperParSemaine, type Semaine } from '@/lib/domaine/semaines'
 import { lireBlocsDePage, listerÉditionsPubliées, type Édition } from '@/lib/documents'
@@ -98,14 +99,32 @@ export function ongletsDe(
   comptes: { lettres: number; recommandations: number; archives: number },
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
   espace: { readonly réorganisé: boolean } = { réorganisé: false },
-) {
+): Onglet[] {
+  // L'espace réorganisé (lots 2 et 3, 30 octobre 2026, pilote sur L'Hermitage) :
+  // un écran par outil, groupés en rubriques ; ailleurs, le rail garde ses sept écrans.
+  if (espace.réorganisé) {
+    const réorganisé = [
+      { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true, rubrique: 'Cette semaine' },
+      { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres, rubrique: 'Cette semaine' },
+      { href: `/${slug}/concurrents`, libellé: 'Concurrents', libelléCourt: 'Concurr.', rubrique: 'Le marché' },
+      { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs', rubrique: 'Le marché' },
+      { href: `/${slug}/forces`, libellé: 'Forces du marché', libelléCourt: 'Forces', rubrique: 'Le marché' },
+      { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes', rubrique: 'L’environnement' },
+      { href: `/${slug}/pestel`, libellé: 'PESTEL', libelléCourt: 'PESTEL', rubrique: 'L’environnement' },
+      { href: `/${slug}/diagnostic`, libellé: 'Diagnostic', libelléCourt: 'Diagnos.', rubrique: 'Stratégie' },
+      { href: `/${slug}/recommandations`, libellé: 'Options', libelléCourt: 'Options', compte: comptes.recommandations, rubrique: 'Stratégie' },
+      { href: `/${slug}/scenarios`, libellé: 'Scénarios', libelléCourt: 'Scénar.', rubrique: 'Stratégie' },
+      { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.', rubrique: 'Votre veille' },
+      { href: `/${slug}/archives`, libellé: 'Archives', libelléCourt: 'Archives', compte: comptes.archives, rubrique: 'Votre veille' },
+    ]
+    if (lecture === 'essentiel') return réorganisé.slice(0, 2)
+    if (lecture === 'aucune') return réorganisé.slice(0, 1)
+    return réorganisé
+  }
   const tous = [
     { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true },
     { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres },
     { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes' },
-    // L'espace réorganisé (lot 2, 30 octobre 2026, pilote sur L'Hermitage) sépare
-    // les concurrents des autres acteurs ; ailleurs, le rail garde ses sept écrans.
-    ...(espace.réorganisé ? [{ href: `/${slug}/concurrents`, libellé: 'Concurrents', libelléCourt: 'Concurr.' }] : []),
     { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs' },
     {
       href: `/${slug}/recommandations`,

@@ -320,18 +320,27 @@ export function PositionDuConcurrent({ fiche }: { fiche: FicheDuConcurrent }) {
 
 // ── Recommandations ──────────────────────────────────────────────────────────
 
-function Références({ codes }: { codes: readonly string[] }) {
+/** Les codes des éléments SWOT qu'une option croise ; avec `diagnostic`, chacun mène à son élément sur l'écran « Diagnostic ». */
+function Références({ codes, diagnostic }: { codes: readonly string[]; diagnostic?: string }) {
   if (codes.length === 0) return null
+  const classe = 'rounded-full border border-gris-ligne px-2 py-0.5 font-mono text-label text-ardoise'
   return (
     <p className="flex flex-wrap items-center gap-1.5">
-      {codes.map((c) => (
-        <span key={c} className="rounded-full border border-gris-ligne px-2 py-0.5 font-mono text-label text-ardoise">{c}</span>
-      ))}
+      {codes.map((c) =>
+        diagnostic ? (
+          <Link key={c} href={`${diagnostic}#${c}`} className={`${classe} hover:border-encre hover:text-encre`}>
+            {c}
+          </Link>
+        ) : (
+          <span key={c} className={classe}>{c}</span>
+        ),
+      )}
     </p>
   )
 }
 
-export function SynthèseDesRecommandations({ période, swot, tows }: { période: string; swot: VueDeLaSwot; tows: VueDeLaTows }) {
+/** L'option retenue et la matrice TOWS. `diagnostic` : le chemin de l'écran « Diagnostic », vers lequel mènent les codes (espace réorganisé). */
+export function OptionsStratégiques({ période, tows, diagnostic }: { période: string; tows: VueDeLaTows; diagnostic?: string }) {
   return (
     <div className="mt-8 flex flex-col gap-10">
       {tows.candidate ? (
@@ -343,14 +352,17 @@ export function SynthèseDesRecommandations({ période, swot, tows }: { période
           <p className="max-w-[60ch] font-titre text-h3 font-bold leading-snug text-encre">{tows.candidate.énoncé}</p>
           <div className="flex flex-wrap items-center gap-2">
             <span className="label-mono text-ardoise">Croise</span>
-            <Références codes={tows.candidate.croise} />
+            <Références codes={tows.candidate.croise} diagnostic={diagnostic} />
           </div>
         </section>
       ) : null}
 
       <section className="flex flex-col gap-4">
         <TitreDeSection titre="Options stratégiques" mention="Matrice TOWS · outil en test" />
-        <p className="max-w-[68ch] text-ardoise">Chaque option croise un élément de votre situation et un élément de votre environnement, lus plus bas. Les codes renvoient aux éléments de l’analyse.</p>
+        <p className="max-w-[68ch] text-ardoise">
+          Chaque option croise un élément de votre situation et un élément de votre environnement
+          {diagnostic ? ', détaillés sur l’écran « Diagnostic »' : ', lus plus bas'}. Les codes renvoient aux éléments de l’analyse.
+        </p>
         <Grille étiquette="Matrice TOWS" colonnes={2}>
           {TYPES_DE_TOWS.map((t) => {
             const options = tows.parType[t.type]
@@ -365,7 +377,7 @@ export function SynthèseDesRecommandations({ période, swot, tows }: { période
                   <div key={o.énoncé} className="flex flex-col gap-1.5">
                     {o.candidate ? <p className="flex items-center gap-2 label-mono text-encre"><Pastille couleur="rose" />Option retenue</p> : null}
                     <p className="text-encre">{o.énoncé}</p>
-                    <Références codes={o.croise} />
+                    <Références codes={o.croise} diagnostic={diagnostic} />
                   </div>
                 ))}
               </Case>
@@ -373,29 +385,89 @@ export function SynthèseDesRecommandations({ période, swot, tows }: { période
           })}
         </Grille>
       </section>
-
-      <section className="flex flex-col gap-4">
-        <TitreDeSection titre="Votre situation" mention="Matrice SWOT" />
-        <p className="max-w-[68ch] text-ardoise">Les opportunités et les menaces viennent des faits de vos lettres, datés. Les forces et les faiblesses peuvent venir de ce que vous nous avez déclaré : elles sont marquées comme telles.</p>
-        <Grille étiquette="Matrice SWOT" colonnes={2}>
-          {CASES_SWOT.map((c) => (
-            <Case key={c}>
-              <p className="label-mono text-encre">{LIBELLÉS_SWOT[c]}</p>
-              {swot[c].length === 0 ? <p className="text-ardoise">Rien de daté ce mois-ci.</p> : null}
-              {swot[c].map((é) => (
-                <div key={é.code} className="flex gap-3">
-                  <span className="w-7 shrink-0 pt-0.5 font-mono text-label text-ardoise">{é.code}</span>
-                  <span className="flex flex-col gap-0.5">
-                    <span className="text-encre">{é.énoncé}</span>
-                    <span className="label-mono text-ardoise">{é.source}</span>
-                  </span>
-                </div>
-              ))}
-            </Case>
-          ))}
-        </Grille>
-      </section>
     </div>
+  )
+}
+
+/** La matrice SWOT ; chaque élément porte son code en ancre, pour que les options y mènent. */
+export function MatriceSwot({ swot }: { swot: VueDeLaSwot }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <TitreDeSection titre="Votre situation" mention="Matrice SWOT" />
+      <p className="max-w-[68ch] text-ardoise">Les opportunités et les menaces viennent des faits de vos lettres, datés. Les forces et les faiblesses peuvent venir de ce que vous nous avez déclaré : elles sont marquées comme telles.</p>
+      <Grille étiquette="Matrice SWOT" colonnes={2}>
+        {CASES_SWOT.map((c) => (
+          <Case key={c}>
+            <p className="label-mono text-encre">{LIBELLÉS_SWOT[c]}</p>
+            {swot[c].length === 0 ? <p className="text-ardoise">Rien de daté ce mois-ci.</p> : null}
+            {swot[c].map((é) => (
+              <div key={é.code} id={é.code} className="flex scroll-mt-6 gap-3">
+                <span className="w-7 shrink-0 pt-0.5 font-mono text-label text-ardoise">{é.code}</span>
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-encre">{é.énoncé}</span>
+                  <span className="label-mono text-ardoise">{é.source}</span>
+                </span>
+              </div>
+            ))}
+          </Case>
+        ))}
+      </Grille>
+    </section>
+  )
+}
+
+export function SynthèseDesRecommandations({ période, swot, tows }: { période: string; swot: VueDeLaSwot; tows: VueDeLaTows }) {
+  return (
+    <>
+      <OptionsStratégiques période={période} tows={tows} />
+      <div className="mt-10">
+        <MatriceSwot swot={swot} />
+      </div>
+    </>
+  )
+}
+
+export function CinqForces({ période, forces }: { période: string; forces: readonly ForceLue[] }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <TitreDeSection titre="Intensité des cinq forces" mention={`Trimestre ${libelléDePériode(période)} · outil en test`} />
+      <p className="max-w-[68ch] text-ardoise">Trois crans par force, et la tendance sur le trimestre. Une force qu’aucune famille de votre veille ne suit est dite non suivie : elle n’est pas faible pour autant.</p>
+      <Grille étiquette="Cinq forces" colonnes={3}>
+        {forces.map((f) => (
+          <Case key={f.force}>
+            <p className="label-mono text-encre">{f.libellé}</p>
+            <p className={f.nonSuivi ? 'text-ardoise' : 'font-medium text-encre'}>{f.lecture}</p>
+          </Case>
+        ))}
+      </Grille>
+    </section>
+  )
+}
+
+export function TroisScénarios({ scénarios }: { scénarios: readonly ScénarioLu[] }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <TitreDeSection titre="Trois scénarios" mention="Indicateurs datables, aucune probabilité" />
+      <p className="max-w-[68ch] text-ardoise">Ce ne sont pas des prévisions. Chaque scénario porte les indicateurs qui le confirmeraient ; votre lettre signalera celui qui bascule.</p>
+      <Grille étiquette="Scénarios" colonnes={3}>
+        {scénarios.map((s, i) => (
+          <Case key={s.titre}>
+            <p className="label-mono text-ardoise">Scénario {String.fromCharCode(65 + i)}</p>
+            <h3 className="font-titre text-h3 font-bold text-encre">{s.titre}</h3>
+            <p className="text-encre">{s.énoncé}</p>
+            <div className="flex flex-col gap-1">
+              <p className="label-mono text-ardoise">Indicateurs</p>
+              {s.indicateurs.map((ind) => (
+                <p key={`${ind.famille}-${ind.signal}`} className="flex gap-2 leading-snug">
+                  <Pastille couleur="ardoise" />
+                  <span><Numéro n={ind.famille} />{ind.signal}</span>
+                </p>
+              ))}
+            </div>
+          </Case>
+        ))}
+      </Grille>
+    </section>
   )
 }
 
@@ -403,44 +475,8 @@ export function LectureDuTrimestre({ période, forces, scénarios }: { période:
   if (forces.length === 0 && scénarios.length === 0) return null
   return (
     <div className="mt-10 flex flex-col gap-10">
-      {forces.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <TitreDeSection titre="Intensité des cinq forces" mention={`Trimestre ${libelléDePériode(période)} · outil en test`} />
-          <p className="max-w-[68ch] text-ardoise">Trois crans par force, et la tendance sur le trimestre. Une force qu’aucune famille de votre veille ne suit est dite non suivie : elle n’est pas faible pour autant.</p>
-          <Grille étiquette="Cinq forces" colonnes={3}>
-            {forces.map((f) => (
-              <Case key={f.force}>
-                <p className="label-mono text-encre">{f.libellé}</p>
-                <p className={f.nonSuivi ? 'text-ardoise' : 'font-medium text-encre'}>{f.lecture}</p>
-              </Case>
-            ))}
-          </Grille>
-        </section>
-      ) : null}
-      {scénarios.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <TitreDeSection titre="Trois scénarios" mention="Indicateurs datables, aucune probabilité" />
-          <p className="max-w-[68ch] text-ardoise">Ce ne sont pas des prévisions. Chaque scénario porte les indicateurs qui le confirmeraient ; votre lettre signalera celui qui bascule.</p>
-          <Grille étiquette="Scénarios" colonnes={3}>
-            {scénarios.map((s, i) => (
-              <Case key={s.titre}>
-                <p className="label-mono text-ardoise">Scénario {String.fromCharCode(65 + i)}</p>
-                <h3 className="font-titre text-h3 font-bold text-encre">{s.titre}</h3>
-                <p className="text-encre">{s.énoncé}</p>
-                <div className="flex flex-col gap-1">
-                  <p className="label-mono text-ardoise">Indicateurs</p>
-                  {s.indicateurs.map((ind) => (
-                    <p key={`${ind.famille}-${ind.signal}`} className="flex gap-2 leading-snug">
-                      <Pastille couleur="ardoise" />
-                      <span><Numéro n={ind.famille} />{ind.signal}</span>
-                    </p>
-                  ))}
-                </div>
-              </Case>
-            ))}
-          </Grille>
-        </section>
-      ) : null}
+      {forces.length > 0 ? <CinqForces période={période} forces={forces} /> : null}
+      {scénarios.length > 0 ? <TroisScénarios scénarios={scénarios} /> : null}
     </div>
   )
 }

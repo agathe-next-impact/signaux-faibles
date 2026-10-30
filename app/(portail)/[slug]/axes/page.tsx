@@ -6,7 +6,7 @@ import { fraîcheurDUnAxe, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { libelléDeMouvement, suivreLesAxes } from '@/lib/domaine/tendances'
 import { notesDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
-import { pestelDeLEspace } from '@/lib/portail/strategie'
+import { espaceDeLOrganisation, pestelDeLEspace } from '@/lib/portail/strategie'
 import { Onglets } from '@/components/onglets'
 import { VuePestel } from '@/components/strategie-ecrans'
 
@@ -29,7 +29,9 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  // L'espace réorganisé (lot 3) a son écran « PESTEL » : l'onglet n'est plus lu ici.
+  const réorganisé = espace?.réorganisé ?? false
 
   const [notes, notesPrécédentes] = await Promise.all([notesDeLaSemaine(semaines[0]), notesDeLaSemaine(semaines[1])])
   const documents = notes.map((n) => n.document)
@@ -38,7 +40,7 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
   // des treize dernières semaines, et les phrases-titres des lettres déjà lues
   // ci-dessus. Aucune lecture Notion de plus ; hors du pilote, pas d'onglet.
   const fin = semaines[0]?.éditions.map((é) => é.dateÉdition).sort().at(-1)
-  const pestel = fin
+  const pestel = fin && !réorganisé
     ? await pestelDeLEspace({
         registre: accès.organisationId,
         fin,
@@ -127,7 +129,12 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
         parAxe
       )}
 
-      <p className="mt-8">
+      {réorganisé ? (
+        <p className="mt-8">
+          <LienFlèche href={`/${accès.slug}/pestel`}>Voir les dimensions PESTEL sur treize semaines</LienFlèche>
+        </p>
+      ) : null}
+      <p className={réorganisé ? 'mt-2' : 'mt-8'}>
         <LienFlèche href={`/${accès.slug}/acteurs`}>
           Voir les acteurs et les concurrents suivis
         </LienFlèche>

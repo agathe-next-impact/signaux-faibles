@@ -31,6 +31,12 @@ export type Onglet = {
   readonly exact?: boolean
   /** Nombre affiché en pastille. Omis ou nul, rien n'est affiché. */
   readonly compte?: number | null
+  /**
+   * La rubrique du rail (espace réorganisé, lot 3) : « Cette semaine », « Le
+   * marché »… Les onglets consécutifs d'une même rubrique sont groupés sous son
+   * nom ; sans rubrique, le rail reste une liste simple.
+   */
+  readonly rubrique?: string
 }
 
 export function Coquille({

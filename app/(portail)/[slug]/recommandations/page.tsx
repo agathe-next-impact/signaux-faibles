@@ -1,8 +1,8 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { semainesPubliées } from '@/lib/portail/semaine'
-import { synthèseDeLEspace } from '@/lib/portail/strategie'
-import { LectureDuTrimestre, SynthèseDesRecommandations } from '@/components/strategie-ecrans'
+import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
+import { LectureDuTrimestre, OptionsStratégiques, SynthèseDesRecommandations } from '@/components/strategie-ecrans'
 
 /**
  * Recommandations : l'action de la semaine, et celles des semaines passées.
@@ -18,7 +18,10 @@ export default async function Recommandations({
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  // L'espace réorganisé (lot 3) : cet écran devient « Options », l'option retenue
+  // et la TOWS ; la SWOT, les forces et les scénarios ont chacun leur écran.
+  const réorganisé = espace?.réorganisé ?? false
   const avecAction = semaines
     .map((semaine) => ({
       semaine,
@@ -36,15 +39,31 @@ export default async function Recommandations({
   return (
     <>
       <EntêteÉcran
-        surtitre="recommandations"
+        surtitre={réorganisé ? 'stratégie' : 'recommandations'}
         titre="Ce que nous suggérons de faire"
         état={`${avecAction.length} semaine${avecAction.length > 1 ? 's' : ''} avec action`}
       />
 
-      {synthèse?.mois ? <SynthèseDesRecommandations période={synthèse.mois.période} swot={synthèse.mois.swot} tows={synthèse.mois.tows} /> : null}
-      {synthèse?.trimestre ? (
-        <LectureDuTrimestre période={synthèse.trimestre.période} forces={synthèse.trimestre.forces} scénarios={synthèse.trimestre.scénarios} />
-      ) : null}
+      {réorganisé ? (
+        <>
+          {synthèse?.mois ? <OptionsStratégiques période={synthèse.mois.période} tows={synthèse.mois.tows} diagnostic={`/${accès.slug}/diagnostic`} /> : null}
+          <div className="mt-6 flex flex-col gap-2">
+            <p>
+              <LienFlèche href={`/${accès.slug}/diagnostic`}>Voir le diagnostic d’où partent ces options</LienFlèche>
+            </p>
+            <p>
+              <LienFlèche href={`/${accès.slug}/scenarios`}>Voir les scénarios du trimestre</LienFlèche>
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          {synthèse?.mois ? <SynthèseDesRecommandations période={synthèse.mois.période} swot={synthèse.mois.swot} tows={synthèse.mois.tows} /> : null}
+          {synthèse?.trimestre ? (
+            <LectureDuTrimestre période={synthèse.trimestre.période} forces={synthèse.trimestre.forces} scénarios={synthèse.trimestre.scénarios} />
+          ) : null}
+        </>
+      )}
       {synthèse ? <h2 className="mt-10 font-titre text-h2 font-bold text-encre">Les actions de vos lettres</h2> : null}
 
       {avecAction.length === 0 ? (

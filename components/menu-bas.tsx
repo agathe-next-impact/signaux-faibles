@@ -49,9 +49,15 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
     >
       {ouvert ? (
         <ul id="menu-bas-plus" className="absolute inset-x-0 bottom-full flex flex-col border-t border-gris-ligne bg-blanc">
-          {autres.map((onglet) => {
+          {autres.map((onglet, rang) => {
             const courant = estOngletCourant(onglet, chemin)
-            return (
+            const rubrique = onglet.rubrique && onglet.rubrique !== autres[rang - 1]?.rubrique ? onglet.rubrique : null
+            return [
+              rubrique ? (
+                <li key={`rubrique-${rubrique}`} aria-hidden="true" className="label-mono border-b border-gris-ligne bg-fond-neutre px-6 py-1.5 text-ardoise">
+                  {rubrique}
+                </li>
+              ) : null,
               <li key={onglet.href} className="border-b border-gris-ligne">
                 <Link
                   href={onglet.href}
@@ -64,8 +70,8 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
                   <span>{onglet.libellé}</span>
                   {onglet.compte ? <span className="label-mono text-ardoise">{onglet.compte}</span> : null}
                 </Link>
-              </li>
-            )
+              </li>,
+            ]
           })}
         </ul>
       ) : null}
