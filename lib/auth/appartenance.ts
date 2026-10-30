@@ -11,7 +11,7 @@ import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
 import { tableauDesPrescripteurs, type LigneDePrescripteur } from '@/lib/base/prescripteurs'
 import { lireLaFile } from '@/lib/portail/file'
-import { tableauDesSynthèses } from '@/lib/portail/strategie'
+import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
 import type { SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 import type { ÉtatDeLaFile } from '@/lib/base/travaux'
 import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
@@ -189,6 +189,22 @@ export async function listerLesSynthèses(): Promise<{
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, organisations: null }
   return { accès, organisations: await tableauDesSynthèses() }
+}
+
+/**
+ * Une période de synthèse à relire avant publication (30 octobre 2026), pour la
+ * page `/espaces/syntheses/[slug]/[periode]`. Même forme que
+ * `listerLesSynthèses` : la garde est **dans** la fonction, avant la lecture, et
+ * `synthèseÀRelire` n'a pas d'autre appelant (`tests/architecture.test.ts`).
+ * `synthèse` vaut `null` quand Postgres n'est pas en service.
+ */
+export async function lireUneSynthèseÀRelire(
+  slug: string,
+  période: string,
+): Promise<{ readonly accès: Accès; readonly synthèse: SynthèseÀRelire | null }> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, synthèse: null }
+  return { accès, synthèse: await synthèseÀRelire({ slug, période }) }
 }
 
 /**

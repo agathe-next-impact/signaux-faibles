@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const strategie = vi.hoisted(() => ({ recevoirLaSynthèse: vi.fn(), lireLaSynthèseDuPilote: vi.fn(), publierLaSynthèseDuPilote: vi.fn() }))
+const strategie = vi.hoisted(() => ({ recevoirLaSynthèse: vi.fn(), lireLaSynthèseDuPilote: vi.fn(), publierLaSynthèseDuPilote: vi.fn(), modifierLÉnoncéDuPilote: vi.fn() }))
 const client = vi.hoisted(() => ({ baseConfigurée: vi.fn() }))
 vi.mock('@/lib/portail/strategie', () => strategie)
 vi.mock('@/lib/base/client', () => client)
@@ -198,6 +198,23 @@ describe('PATCH /api/veille/syntheses', () => {
       expect((await publier({ slug: 'mastora', periode: '2026-10', etat: 'publie' })).status, (résultat as { sorte: string }).sorte).toBe(statut)
     }
     expect(strategie.publierLaSynthèseDuPilote).toHaveBeenLastCalledWith({ slug: 'mastora', période: '2026-10', état: 'publie' })
+  })
+
+  it('retouche un énoncé quand le corps nomme un élément, avec le statut de chaque issue', async () => {
+    const élément = '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b'
+    expect((await publier({ slug: 'mastora', periode: '2026-10', element: 'pas-un-uuid', enonce: 'x' })).status).toBe(400)
+    const cas: Array<[unknown, number]> = [
+      [{ sorte: 'modifié' }, 200],
+      [{ sorte: 'refusé', refus: [{ code: 'longueur', message: 'trop long' }] }, 422],
+      [{ sorte: 'déjà-publiée' }, 409],
+      [{ sorte: 'introuvable' }, 404],
+    ]
+    for (const [résultat, statut] of cas) {
+      strategie.modifierLÉnoncéDuPilote.mockResolvedValueOnce(résultat)
+      expect((await publier({ slug: 'mastora', periode: '2026-10', element: élément, enonce: 'Nouvel énoncé.', titre: null })).status, (résultat as { sorte: string }).sorte).toBe(statut)
+    }
+    expect(strategie.modifierLÉnoncéDuPilote).toHaveBeenLastCalledWith({ slug: 'mastora', période: '2026-10', élément, énoncé: 'Nouvel énoncé.', titre: null })
+    expect(strategie.publierLaSynthèseDuPilote).not.toHaveBeenCalled()
   })
 })
 

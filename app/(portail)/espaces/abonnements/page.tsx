@@ -155,7 +155,7 @@ function Synthèses({ organisations }: { organisations: SynthèsesDUneOrganisati
       <h2 className="font-titre text-h2 font-bold text-encre">Synthèses stratégiques</h2>
       <p className="text-ardoise">
         Une période n’est montrée au client qu’une fois publiée en entier, après relecture du
-        courriel « [Relecture] ». Publier la rend visible à ses lecteurs dès leur prochaine
+        courriel « [Relecture] » ; « Relire et modifier » permet d’en retoucher les énoncés avant. Publier la rend visible à ses lecteurs dès leur prochaine
         visite, sur « Acteurs » et « Recommandations » ; retirer la leur cache aussitôt.
       </p>
       {organisations.length === 0 ? (
@@ -189,6 +189,9 @@ function Synthèses({ organisations }: { organisations: SynthèsesDUneOrganisati
                     <td className="px-4 py-3">
                       <p className="text-encre">{p.granularité === 'trimestre' ? 'Trimestre' : 'Mois'} {p.libellé}</p>
                       <p className="label-mono text-ardoise">{p.période}</p>
+                      <Link href={`/espaces/syntheses/${o.slug}/${p.période}`} className="text-label text-encre underline underline-offset-2">
+                        {p.état === 'publiée' ? 'Lire' : 'Relire et modifier'}
+                      </Link>
                     </td>
                     <td className="label-mono px-4 py-3 text-ardoise">{p.lignes}</td>
                     <td className={`label-mono px-4 py-3 ${p.état === 'publiée' ? 'text-encre' : 'text-ardoise'}`}>{LIBELLÉS_D_ÉTAT[p.état]}</td>

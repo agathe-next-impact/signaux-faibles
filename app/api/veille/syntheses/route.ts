@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { baseConfigurée } from '@/lib/base/client'
 import type { SynthèseProposée } from '@/lib/domaine/strategie'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
-import { lireLaSynthèseDuPilote, publierLaSynthèseDuPilote, recevoirLaSynthèse, type RésultatDeLaSynthèse } from '@/lib/portail/strategie'
+import { lireLaSynthèseDuPilote, modifierLÉnoncéDuPilote, publierLaSynthèseDuPilote, recevoirLaSynthèse, type RésultatDeLaSynthèse } from '@/lib/portail/strategie'
 
 /**
  * La synthèse stratégique d'une période (outils stratégiques, lot 6 de
@@ -40,6 +40,13 @@ import { lireLaSynthèseDuPilote, publierLaSynthèseDuPilote, recevoirLaSynthès
  *
  * Le geste de l'opératrice après relecture (lot 11) : seule une synthèse
  * publiée est lue par les écrans « Acteurs » et « Recommandations » du client.
+ *
+ *   PATCH /api/veille/syntheses
+ *   { "slug": "hermitage", "periode": "2026-10", "element": "<uuid>", "enonce": "…", "titre": "…" }
+ *
+ * Retouche le texte d'un élément d'une période non publiée (30 octobre 2026) ;
+ * `titre` pour un scénario seulement. Mêmes bornes que la porte de la synthèse ;
+ * `refusé` (422) avec les refus, `déjà-publiée` (409) : retirer d'abord.
  */
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -228,13 +235,46 @@ const publication = z.object({
   periode: z.string().regex(PÉRIODE),
   etat: z.enum(['publie', 'retire', 'propose']),
 })
+const retouche = z.object({
+  slug: z.string().trim().regex(SLUG),
+  periode: z.string().regex(PÉRIODE),
+  element: z.string().uuid(),
+  enonce: z.string().max(2000),
+  titre: z.string().max(400).nullish(),
+})
+
+const STATUT_DE_LA_RETOUCHE: Record<string, number> = {
+  modifié: 200,
+  refusé: 422,
+  'déjà-publiée': 409,
+  introuvable: 404,
+  'sans-énoncé': 422,
+  'organisation-inconnue': 404,
+  'hors-pilote': 200,
+}
 
 export async function PATCH(requête: NextRequest): Promise<NextResponse> {
   const refus = refuserSiNonAutorisé(requête, 'syntheses')
   if (refus) return refus
   if (!baseConfigurée()) return NextResponse.json({ état: 'base-non-configurée' }, { status: 503 })
 
-  const lue = publication.safeParse(await requête.json().catch(() => null))
+  const corps: unknown = await requête.json().catch(() => null)
+  if (corps && typeof corps === 'object' && 'element' in corps) {
+    const r = retouche.safeParse(corps)
+    if (!r.success) {
+      const chemin = r.error.issues[0]?.path.join('.') ?? ''
+      return NextResponse.json({ état: 'invalide', raison: chemin ? `champ « ${chemin} »` : 'corps illisible' }, { status: 400 })
+    }
+    try {
+      const résultat = await modifierLÉnoncéDuPilote({ slug: r.data.slug, période: r.data.periode, élément: r.data.element, énoncé: r.data.enonce, titre: r.data.titre ?? null })
+      console.info(`[veille/syntheses] ${r.data.slug} ${r.data.periode} : retouche ${résultat.sorte}.`)
+      return NextResponse.json({ état: résultat.sorte, ...résultat }, { status: STATUT_DE_LA_RETOUCHE[résultat.sorte] ?? 200 })
+    } catch (erreur) {
+      console.error(`[veille/syntheses] ${r.data.slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return NextResponse.json({ état: 'erreur' }, { status: 502 })
+    }
+  }
+  const lue = publication.safeParse(corps)
   if (!lue.success) {
     const chemin = lue.error.issues[0]?.path.join('.') ?? ''
     return NextResponse.json({ état: 'invalide', raison: chemin ? `champ « ${chemin} »` : 'corps illisible' }, { status: 400 })

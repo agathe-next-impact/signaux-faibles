@@ -8,6 +8,7 @@ import {
   faitsDesÉditions,
   lireLaGrille,
   lireLaSynthèse,
+  modifierUnÉnoncé,
   organisationPourLesOutils,
   posterLaGrille,
   périodesDesSynthèses,
@@ -46,6 +47,7 @@ import {
   contrôlerLaSynthèse,
   contrôlerLesParamètresDuCycle,
   contrôlerLesÉtiquettes,
+  contrôlerUnÉnoncé,
   empreinteDeLaGrille,
   faitsDeLaLettre,
   forcesNonSuivies,
@@ -763,6 +765,93 @@ export async function publierLaSynthèseDuPilote(
   const r = await publierLaSynthèse({ organisationId: organisation.id, période: entrée.période, état: entrée.état }, db)
   if (r.éléments + r.positions === 0) return { sorte: 'aucune' }
   return { sorte: entrée.état === 'publie' ? 'publiée' : entrée.état === 'retire' ? 'retirée' : 'proposée', ...r }
+}
+
+// ── Relecture avant publication ──────────────────────────────────────────────
+
+/** Un élément d'une période, tel que l'opératrice le relit et le retouche. */
+export type ÉlémentÀRelire = {
+  readonly id: string
+  readonly outil: string
+  readonly clé: string
+  readonly rang: number
+  readonly énoncé: string | null
+  /** Le titre d'un scénario, sinon `null`. */
+  readonly titre: string | null
+  readonly origine: string
+  readonly candidate: boolean
+  readonly faits: number
+}
+
+export type SynthèseÀRelire =
+  | {
+      readonly sorte: 'lue'
+      readonly nom: string
+      readonly période: string
+      /** `true` dès qu'une ligne est publiée : la période ne se retouche plus sans être retirée. */
+      readonly publiée: boolean
+      readonly éléments: readonly ÉlémentÀRelire[]
+    }
+  | { readonly sorte: 'aucune' | 'organisation-inconnue' | 'hors-pilote' }
+
+/**
+ * Les éléments d'une période pour la page de relecture de l'opératrice
+ * (30 octobre 2026). Cette lecture n'est faite que derrière
+ * `lireUneSynthèseÀRelire` (`lib/auth/appartenance.ts`), qui vérifie le
+ * privilège avant ; `tests/architecture.test.ts` tient ce seul appelant.
+ */
+export async function synthèseÀRelire(entrée: { readonly slug: string; readonly période: string }, db?: Base): Promise<SynthèseÀRelire> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const lue = await lireLaSynthèse({ organisationId: organisation.id, période: entrée.période }, db)
+  if (lue.éléments.length === 0 && lue.positions.length === 0) return { sorte: 'aucune' }
+  return {
+    sorte: 'lue',
+    nom: organisation.nom,
+    période: entrée.période,
+    publiée: [...lue.éléments, ...lue.positions].some((l) => l.étatPublication === 'publie'),
+    éléments: lue.éléments.map((é) => ({
+      id: é.id,
+      outil: é.outil,
+      clé: é.clé,
+      rang: é.rang,
+      énoncé: é.énoncé,
+      titre: é.outil === 'scenario' && typeof é.références['titre'] === 'string' ? é.références['titre'] : null,
+      origine: é.origine,
+      candidate: é.candidateRecommandation,
+      faits: é.faits.length,
+    })),
+  }
+}
+
+export type RésultatDeLaModification =
+  | { readonly sorte: 'modifié' }
+  | { readonly sorte: 'refusé'; readonly refus: readonly Refus[] }
+  | { readonly sorte: 'introuvable' | 'sans-énoncé' | 'déjà-publiée' | 'organisation-inconnue' | 'hors-pilote' }
+
+/**
+ * Retouche l'énoncé d'un élément d'une période non publiée (30 octobre 2026) :
+ * la page de relecture de l'opératrice et `PATCH /api/veille/syntheses`. Le
+ * pilote d'abord, la porte de l'énoncé ensuite, l'écriture en dernier ; une
+ * période dont une ligne est publiée est refusée (`déjà-publiée`).
+ */
+export async function modifierLÉnoncéDuPilote(
+  entrée: { readonly slug: string; readonly période: string; readonly élément: string; readonly énoncé: string; readonly titre?: string | null },
+  db?: Base,
+): Promise<RésultatDeLaModification> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const lue = await lireLaSynthèse({ organisationId: organisation.id, période: entrée.période }, db)
+  const élément = lue.éléments.find((é) => é.id === entrée.élément)
+  if (!élément) return { sorte: 'introuvable' }
+  const énoncé = entrée.énoncé.trim()
+  const titre = entrée.titre == null ? null : entrée.titre.trim()
+  const refus = contrôlerUnÉnoncé({ outil: élément.outil, énoncé, titre })
+  if (refus.length > 0) return { sorte: 'refusé', refus }
+  const r = await modifierUnÉnoncé({ organisationId: organisation.id, période: entrée.période, élémentId: élément.id, énoncé, titre }, db)
+  return r.sorte === 'modifié' ? { sorte: 'modifié' } : r
 }
 
 /** Une lecture bornée dans le temps : `null` au-delà du délai, ou sur toute erreur, sans faire tomber l'écran. */
