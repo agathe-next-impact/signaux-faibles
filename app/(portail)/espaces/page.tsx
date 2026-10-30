@@ -29,7 +29,7 @@ export default async function Espaces() {
     <main className="mx-auto flex min-h-dvh max-w-4xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-4">
         <Logo />
-        <p className="label-mono text-rose">accès opérateur · {accès.nom}</p>
+        <p className="label-mono text-rose-texte">accès opérateur · {accès.nom}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">Choisir un espace</h1>
         <p className="text-ardoise">
           Vous ouvrez l’espace d’un client tel qu’il le voit. Chaque visite est signalée

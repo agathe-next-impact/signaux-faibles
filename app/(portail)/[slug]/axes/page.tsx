@@ -106,7 +106,7 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
         }
       />
 
-      <p className="mt-5 text-ardoise">
+      <p className="mt-6 text-ardoise">
         Les sections thématiques des lettres de la semaine, réunies. Ce qui a du nouveau
         vient en premier, et à fraîcheur égale le signal le plus fort.{' '}
         {axes.length > 0
@@ -117,7 +117,7 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
         Chaque case ouvre le suivi de son axe sur les dernières lettres.
       </p>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <LégendeFraicheur />
       </div>
 
@@ -137,7 +137,7 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
       )}
 
       {récents?.chaleur && récents.chaleur.lignes.length > 0 ? (
-        <section className="mt-10 flex flex-col gap-4">
+        <section className="mt-12 flex flex-col gap-4">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="font-titre text-h2 font-bold text-encre">Les axes sur huit semaines</h2>
             <p className="label-mono text-ardoise">Outil en test</p>

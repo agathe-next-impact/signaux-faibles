@@ -57,7 +57,7 @@ export default async function UnActeur({
 
       {/* Le même code couleur que la liste : la page d'un acteur doit se lire
           dans la continuité de l'écran d'où l'on vient. */}
-      <div className="mt-5">
+      <div className="mt-6">
         <Fraicheur
           fraîcheur={fraîcheurDUnDossier(suivi)}
           libellé={
@@ -70,7 +70,7 @@ export default async function UnActeur({
         />
       </div>
 
-      <p className="mt-5">
+      <p className="mt-6">
         <LienFlèche href={`/${accès.slug}/acteurs`}>Retour aux acteurs</LienFlèche>
       </p>
 
@@ -83,7 +83,7 @@ export default async function UnActeur({
         </div>
       ) : null}
 
-      <section className="mt-10 flex flex-col gap-4">
+      <section className="mt-12 flex flex-col gap-4">
         <h2 className="font-titre text-h2 font-bold text-encre">Ce que les lettres en disent</h2>
         <p className="text-ardoise">
           Les passages des {LETTRES_SUIVIES} dernières lettres qui nomment cet acteur.
@@ -136,7 +136,7 @@ export default async function UnActeur({
                     ) : null}
                     <ul className="flex flex-col gap-2">
                       {mention.passages.map((passage) => (
-                        <li key={passage.texte} className="flex gap-2.5">
+                        <li key={passage.texte} className="flex gap-3">
                           <span
                             aria-hidden="true"
                             className="mt-[0.5em] size-1.5 shrink-0 bg-ardoise"
@@ -164,7 +164,7 @@ export default async function UnActeur({
         )}
       </section>
 
-      <section className="mt-10 flex flex-col gap-4">
+      <section className="mt-12 flex flex-col gap-4">
         <h2 className="font-titre text-h2 font-bold text-encre">Le suivi</h2>
         <p className="text-ardoise">
           Chaque semaine où le dossier a été rouvert, et l’état où il était alors. Ce relevé

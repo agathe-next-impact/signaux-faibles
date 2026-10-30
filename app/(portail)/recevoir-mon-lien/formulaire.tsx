@@ -39,14 +39,14 @@ export function Formulaire() {
         <button
           type="submit"
           disabled={enCours}
-          className="shrink-0 rounded-douce bg-encre px-5 py-3 font-medium text-blanc disabled:opacity-60"
+          className="shrink-0 rounded-douce bg-encre px-6 py-3 font-medium text-blanc disabled:opacity-60"
         >
           {enCours ? 'Envoi…' : 'Recevoir'}
         </button>
       </div>
 
       {résultat.état === 'erreur' ? (
-        <p className="text-label text-rose">
+        <p className="text-label text-rose-texte">
           L’envoi n’a pas abouti. Réessayez dans un moment.
         </p>
       ) : null}

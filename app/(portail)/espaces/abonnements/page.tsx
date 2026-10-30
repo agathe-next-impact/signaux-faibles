@@ -92,7 +92,7 @@ export default async function Abonnements({
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-4">
         <Logo />
-        <p className="label-mono text-rose">accès opérateur · {accès.nom}</p>
+        <p className="label-mono text-rose-texte">accès opérateur · {accès.nom}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">Abonnements</h1>
         <p className="text-ardoise">
           Une ligne par organisation. L’étape est calculée comme dans l’espace du client ;
@@ -305,7 +305,7 @@ function Ligne({
           'aucun'
         )}
       </td>
-      <td className={`label-mono px-4 py-3 ${auPlafond ? 'text-rose' : 'text-ardoise'}`}>
+      <td className={`label-mono px-4 py-3 ${auPlafond ? 'text-rose-texte' : 'text-ardoise'}`}>
         {ligne.lecteursActifs} sur {LECTEURS_ACTIFS_MAX}
       </td>
       <td className="px-4 py-3">

@@ -13,7 +13,7 @@ import { libelléDImpact, type NiveauImpact } from '@/lib/domaine/impact'
  * case, parce que ce sont des labels mono.
  */
 const STYLES: Record<NiveauImpact, string> = {
-  FORT: 'bg-fond-rose text-rose',
+  FORT: 'bg-fond-rose text-rose-texte',
   MOYEN: 'bg-fond-ardoise text-ardoise',
   RAS: 'bg-fond-neutre text-ardoise',
 }
@@ -22,7 +22,7 @@ export function BadgeImpact({ niveau }: { niveau: NiveauImpact | null }) {
   if (!niveau) return null
 
   return (
-    <span className={`label-mono rounded-full px-2.5 py-1 ${STYLES[niveau]}`}>
+    <span className={`label-mono rounded-full px-3 py-1 ${STYLES[niveau]}`}>
       {libelléDImpact(niveau)}
     </span>
   )

@@ -35,7 +35,7 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
   if (lue?.sorte === 'inconnu') notFound()
 
   const retour = (
-    <p className="mt-5">
+    <p className="mt-6">
       <LienFlèche href={`/${accès.slug}/concurrents`}>Retour aux concurrents</LienFlèche>
     </p>
   )
@@ -43,7 +43,7 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
     return (
       <>
         <EntêteÉcran surtitre="concurrent suivi" titre="Fiche indisponible" />
-        <p className="mt-5 text-ardoise">Cette fiche ne peut pas être affichée pour l’instant. Réessayez dans quelques minutes.</p>
+        <p className="mt-6 text-ardoise">Cette fiche ne peut pas être affichée pour l’instant. Réessayez dans quelques minutes.</p>
         {retour}
       </>
     )
@@ -75,7 +75,7 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
         <PositionDuConcurrent fiche={fiche} />
       </div>
 
-      <section className="mt-10 flex flex-col gap-4">
+      <section className="mt-12 flex flex-col gap-4">
         <h2 className="font-titre text-h2 font-bold text-encre">Ses faits datés</h2>
         {fiche.faits.length === 0 ? (
           <p className="text-ardoise">Aucune lettre n’a encore relevé de fait daté qui le nomme.</p>
@@ -115,7 +115,7 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
         </p>
       ) : null}
 
-      <section className="mt-10 flex flex-col gap-4">
+      <section className="mt-12 flex flex-col gap-4">
         <h2 className="font-titre text-h2 font-bold text-encre">Ce que les lettres en disent</h2>
         <p className="text-ardoise">Les passages des {LETTRES_SUIVIES} dernières lettres qui le nomment.</p>
         {passages.length === 0 ? (
@@ -123,14 +123,14 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
         ) : (
           <div className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
             {passages.map(({ lettre, mentions }) => (
-              <section key={lettre.édition.pageId} className="flex flex-col gap-3 py-5">
+              <section key={lettre.édition.pageId} className="flex flex-col gap-3 py-6">
                 <p className="label-mono text-ardoise">
                   {lettre.semaine.libellé}
                   {lettre.édition.numéro !== null ? ` · n° ${lettre.édition.numéro}` : ''}
                 </p>
                 <ul className="flex flex-col gap-2">
                   {mentions.flatMap((m) => m.passages).map((passage) => (
-                    <li key={passage.texte} className="flex gap-2.5">
+                    <li key={passage.texte} className="flex gap-3">
                       <span aria-hidden="true" className="mt-[0.5em] size-1.5 shrink-0 bg-ardoise" />
                       <span className="text-encre">
                         <Texte segments={passage.segments} />

@@ -42,7 +42,7 @@ export function Formulaire({ champPiège }: { readonly champPiège: string }) {
 
   function erreur(champ: ChampDeDémo) {
     return enErreur.has(champ) ? (
-      <p id={`${champ}-erreur`} className="text-label text-rose">
+      <p id={`${champ}-erreur`} className="text-label text-rose-texte">
         {MESSAGES_D_ERREUR[champ]}
       </p>
     ) : null
@@ -55,7 +55,7 @@ export function Formulaire({ champPiège }: { readonly champPiège: string }) {
   }
 
   return (
-    <form action={envoyer} className="flex flex-col gap-5" noValidate>
+    <form action={envoyer} className="flex flex-col gap-6" noValidate>
       <div className="flex flex-col gap-2">
         <label htmlFor="nom" className="text-corps text-ardoise">Votre nom</label>
         <input id="nom" name="nom" type="text" required maxLength={120} autoComplete="name"
@@ -107,13 +107,13 @@ export function Formulaire({ champPiège }: { readonly champPiège: string }) {
       <button
         type="submit"
         disabled={enCours}
-        className="self-start rounded-douce bg-encre px-5 py-3 font-medium text-blanc disabled:opacity-60"
+        className="self-start rounded-douce bg-encre px-6 py-3 font-medium text-blanc disabled:opacity-60"
       >
         {enCours ? 'Envoi…' : 'Demander une démo'}
       </button>
 
       {résultat.état === 'erreur' ? (
-        <p className="text-label text-rose">
+        <p className="text-label text-rose-texte">
           L’envoi n’a pas abouti. Réessayez dans un moment.
         </p>
       ) : null}

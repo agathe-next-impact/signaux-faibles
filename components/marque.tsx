@@ -77,7 +77,7 @@ export function Logo({
   className?: string
 }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`inline-flex items-center gap-3 ${className}`}>
       <MarqueIcone className="h-[1.15em] w-[1.15em] shrink-0" négatif={négatif} />
       <MotSymbole négatif={négatif} />
     </span>

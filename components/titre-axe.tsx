@@ -21,7 +21,7 @@ export function TitreAxe({
   return (
     <span className={className}>
       {axe.numéro !== null ? (
-        <span className="mr-1.5 align-sub font-mono text-label font-medium text-ardoise">
+        <span className="mr-2 align-sub font-mono text-label font-medium text-ardoise">
           {axe.numéro}
         </span>
       ) : null}
@@ -52,7 +52,7 @@ export function SurtitreAxe({
       {axe.numéro !== null ? (
         <>
           {axe.numéro}
-          <span aria-hidden="true" className="mx-1.5 text-ardoise">
+          <span aria-hidden="true" className="mx-2 text-ardoise">
             ·
           </span>
         </>

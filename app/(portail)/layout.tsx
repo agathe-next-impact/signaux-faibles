@@ -50,7 +50,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#111418',
-  colorScheme: 'light',
+  colorScheme: 'light dark',
   // Le portail est un document : le lecteur doit pouvoir zoomer.
   initialScale: 1,
   width: 'device-width',

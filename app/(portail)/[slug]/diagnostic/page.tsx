@@ -38,9 +38,9 @@ export default async function Diagnostic({ params }: { params: Promise<{ slug: s
           </div>
         </>
       ) : (
-        <p className="mt-5 text-ardoise">Aucune synthèse n’est publiée pour l’instant. Le diagnostic paraît avec la première revue mensuelle relue.</p>
+        <p className="mt-6 text-ardoise">Aucune synthèse n’est publiée pour l’instant. Le diagnostic paraît avec la première revue mensuelle relue.</p>
       )}
-      <div className="mt-10 flex flex-col gap-2">
+      <div className="mt-12 flex flex-col gap-2">
         <p>
           <LienFlèche href={`/${accès.slug}/recommandations`}>Voir les options qui en découlent</LienFlèche>
         </p>

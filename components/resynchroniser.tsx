@@ -30,7 +30,7 @@ export function Resynchroniser({ slug }: { slug: string }) {
         // Zéro ne veut pas dire « rien à faire » : il veut dire « cet espace n'a
         // aucune lettre publiée ». Les deux se disaient « à jour · 0 lettres »,
         // et on cherchait la panne du côté de la synchro. Konica, 12/09/2026.
-        <p className={`label-mono ${résultat.lettres === 0 ? 'text-rose' : 'text-ardoise'}`}>
+        <p className={`label-mono ${résultat.lettres === 0 ? 'text-rose-texte' : 'text-ardoise'}`}>
           {résultat.lettres === 0
             ? 'aucune lettre publiée · rien à relire dans notion'
             : `à jour · ${résultat.lettres} lettre${résultat.lettres > 1 ? 's' : ''}`}
@@ -38,7 +38,7 @@ export function Resynchroniser({ slug }: { slug: string }) {
       ) : null}
 
       {résultat.état === 'erreur' ? (
-        <p className="label-mono text-rose">notion n’a pas répondu · espace inchangé</p>
+        <p className="label-mono text-rose-texte">notion n’a pas répondu · espace inchangé</p>
       ) : null}
     </form>
   )

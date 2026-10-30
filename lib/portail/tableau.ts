@@ -1,6 +1,6 @@
 import { casesDuTableauDeBord, type CaseDÉcran } from '@/lib/domaine/tableau-de-bord'
 import { normaliserTitre } from '@/lib/domaine/strategie'
-import type { SemaineDActivité } from '@/lib/domaine/strategie-vues'
+import type { ActivitéDeRubrique, SemaineDActivité } from '@/lib/domaine/strategie-vues'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import type { SemaineDÉditions } from '@/lib/portail/semaine'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
@@ -24,7 +24,11 @@ export async function tableauDeLEspace(entrée: {
   readonly semaines: readonly SemaineDÉditions[]
   readonly concurrents: readonly string[]
   readonly axes: { readonly total: number; readonly forts: number } | null
-}): Promise<{ readonly cases: readonly CaseDÉcran[]; readonly activité: readonly SemaineDActivité[] | null }> {
+}): Promise<{
+  readonly cases: readonly CaseDÉcran[]
+  readonly activité: readonly SemaineDActivité[] | null
+  readonly parRubrique: Readonly<Record<string, ActivitéDeRubrique>> | null
+}> {
   const { semaines } = entrée
   const courante = semaines[0]
   const fin = courante?.éditions.map((é) => é.dateÉdition).sort().at(-1)
@@ -63,5 +67,5 @@ export async function tableauDeLEspace(entrée: {
         }
       : null,
   })
-  return { cases, activité: récents?.activité ?? null }
+  return { cases, activité: récents?.activité ?? null, parRubrique: récents?.parRubrique ?? null }
 }

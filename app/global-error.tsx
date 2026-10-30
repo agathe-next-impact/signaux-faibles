@@ -25,7 +25,7 @@ export default function ErreurGlobale({
   return (
     <html lang="fr">
       <body>
-        <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-6 px-6 py-16">
+        <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-6 px-6 py-12">
           <p className="font-titre text-h3 font-bold text-encre">signauxfaibles</p>
           <h2 className="font-titre text-h2 font-bold text-encre">
             Le portail est momentanément indisponible

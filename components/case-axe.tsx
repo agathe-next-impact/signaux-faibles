@@ -56,7 +56,7 @@ export function CaseAxe({
       {points.length > 0 ? (
         <ul className="flex flex-col gap-2">
           {points.map((point) => (
-            <li key={point.texte} className="flex gap-2.5">
+            <li key={point.texte} className="flex gap-3">
               {/* Puce carrée : la grille est à angle droit, ses puces aussi. */}
               <span aria-hidden="true" className="mt-[0.5em] size-1.5 shrink-0 bg-ardoise" />
               <span className="text-encre">

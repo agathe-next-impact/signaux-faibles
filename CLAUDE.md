@@ -136,7 +136,16 @@ graphiques de l'espace s'**animent au chargement** (§05 de la charte, même jou
 une animation par graphique, 400 à 700 ms, en cascade de gauche à droite, depuis
 une marque déjà visible, en CSS seul (`anime-…` dans `app/globals.css`, rang
 dans `--i`) et sous `prefers-reduced-motion: no-preference` seulement ; jamais
-un chiffre, jamais en boucle. Une période
+un chiffre, jamais en boucle. Le même jour, les six autres
+suggestions : le **rose lisible** `rose-texte` (#B4485E) pour tout mot en rose,
+badge « signal fort » compris ; le **mode sombre** par `prefers-color-scheme`,
+les mêmes tokens redéfinis dans `app/globals.css` seulement ; un **mini
+graphique** sur chaque carte de rubrique (`MiniActivité`, `activitéParRubrique`,
+faits des huit dernières semaines) ; des **infobulles chiffrées** au survol et
+au clavier sur l'activité et la carte de chaleur ; un **squelette** pendant
+qu'un écran de l'espace lit (`components/squelette.tsx`, `loading.tsx`) ; une
+**échelle d'espacement** de sept valeurs (1 2 3 4 6 8 12), tenue par
+`tests/charte.espacement.test.ts`. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

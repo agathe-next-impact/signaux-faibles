@@ -29,7 +29,7 @@ export default async function RubriqueVeille({ params }: { params: Promise<{ slu
   return (
     <>
       <EntêteÉcran surtitre="rubrique" titre={RUBRIQUE.titre} />
-      <p className="mt-5 max-w-[68ch] text-ardoise">{RUBRIQUE.présentation}</p>
+      <p className="mt-6 max-w-[68ch] text-ardoise">{RUBRIQUE.présentation}</p>
       <div className="mt-8">
         {tableau ? (
           <GrilleDesÉcrans étiquette={`Les écrans de la rubrique ${RUBRIQUE.titre}`} cases={casesDeLaRubrique(tableau.cases, RUBRIQUE.clé)} />

@@ -48,13 +48,13 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
       />
 
       {!lus ? (
-        <p className="mt-5 text-ardoise">
+        <p className="mt-6 text-ardoise">
           Les concurrents ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes ; les
           lettres et les autres écrans restent ouverts.
         </p>
       ) : (
         <>
-          <p className="mt-5 max-w-[68ch] text-ardoise">
+          <p className="mt-6 max-w-[68ch] text-ardoise">
             Les concurrents que votre veille suit, placés sur les deux axes retenus avec vous
             {lus.période ? `, synthèse ${libelléDePériode(lus.période)}` : ''}.{' '}
             {lus.vue.mouvements.length > 0
@@ -78,7 +78,7 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
             </section>
           ) : null}
 
-          <section className="mt-10 flex flex-col gap-4">
+          <section className="mt-12 flex flex-col gap-4">
             <h2 className="font-titre text-h2 font-bold text-encre">Les concurrents suivis</h2>
             <p className="max-w-[68ch] text-ardoise">
               Ce qui a bougé d’abord, puis ceux dont les lettres parlent le plus. Chaque fiche réunit sa position,
@@ -92,7 +92,7 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
           </section>
 
           {dossiers.length > 0 ? (
-            <section className="mt-10 flex flex-col gap-3">
+            <section className="mt-12 flex flex-col gap-3">
               <h2 className="font-titre text-h2 font-bold text-encre">Dossiers ouverts sur un concurrent</h2>
               <ul className="flex flex-col gap-2">
                 {dossiers.map((d) => (
@@ -107,7 +107,7 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
         </>
       )}
 
-      <div className="mt-10 flex flex-col gap-2">
+      <div className="mt-12 flex flex-col gap-2">
         <p>
           <LienFlèche href={`/${accès.slug}/acteurs`}>Voir les autres acteurs : institutions, réseaux, parties prenantes</LienFlèche>
         </p>

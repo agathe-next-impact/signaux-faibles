@@ -15,6 +15,11 @@
      de texte courant. */
   --color-encre: #111418;
   --color-rose: #dd768a;
+  /* Le rose lisible (30 octobre 2026, docs/charte-design.md §02, point à
+     arbitrer tranché) : le seul ton de rose qui porte un mot, badge « signal
+     fort » et labels mono ; 4,62 : 1 sur le fond rose. Le rose marque reste
+     celui des formes : curseur, flèches, impulsions. */
+  --color-rose-texte: #b4485e;
   --color-ardoise: #5d6b7f;
   --color-gris-ligne: #dee3e6;
   --color-blanc: #ffffff;
@@ -43,6 +48,11 @@
   --text-label: 0.75rem; /* 12 px */
   --text-label--line-height: 1.4;
 
+  /* 04 · Espacement (30 octobre 2026) : l'unité de Tailwind, 4 px, et sept
+     valeurs admises, 1 2 3 4 6 8 12 (4 à 48 px) ; tests/charte.espacement.test.ts
+     refuse les autres. */
+  --spacing: 0.25rem;
+
   /* 04 · Composants. « Rayons de 8 à 10 px, aucune ombre portée forte. » */
   --radius-douce: 8px;
   --radius-carte: 10px;
@@ -60,6 +70,28 @@
 
 :root {
   color-scheme: light;
+}
+
+/* Le mode sombre (30 octobre 2026, docs/charte-design.md §02) : les mêmes
+   tokens, déclinés pour un fond encre, selon le réglage du système du lecteur.
+   La charte prévoit déjà la version négative du logo ; les noms ne changent
+   pas de rôle : « blanc » reste le fond, « encre » le texte, et un bouton
+   `bg-encre text-blanc` devient clair sur fond sombre. Aucun écran ne choisit
+   sa couleur selon le mode : tout passe par ces variables. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-blanc: #111418;
+    --color-encre: #eef1f4;
+    --color-ardoise: #9aa6b6;
+    --color-gris-ligne: #343b44;
+    --color-rose-texte: #e8a0af;
+    --color-ocre-texte: #d9a650;
+    --color-fond-rose: #3a2229;
+    --color-fond-ardoise: #1d232b;
+    --color-fond-neutre: #181c21;
+    --color-fond-ocre: #33281a;
+  }
 }
 
 body {
@@ -122,6 +154,25 @@ body {
   }
 }
 
+/* Le squelette d'un écran qui attend (components/squelette.tsx) : des blocs au
+   fond neutre ; la lueur qui les parcourt est la seule boucle admise, parce
+   qu'elle ne porte aucune donnée. */
+.squelette > span {
+  display: block;
+  background-color: var(--color-fond-neutre);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .squelette > span {
+    background-image: linear-gradient(90deg, var(--color-fond-neutre), var(--color-fond-ardoise), var(--color-fond-neutre));
+    background-size: 200% 100%;
+    animation: sf-lueur 1.4s linear infinite;
+  }
+}
+@keyframes sf-lueur {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
 @keyframes sf-monte {
   from { transform: scaleY(0.06); }
   to { transform: scaleY(1); }
@@ -139,8 +190,9 @@ body {
   to { opacity: 1; }
 }
 
-/* Focus visible : bordure ardoise, comme les champs de la charte. */
-:where(a, button, input, summary):focus-visible {
+/* Focus visible : bordure ardoise, comme les champs de la charte. Une marque de
+   graphique focalisable (`tabindex`, pour son infobulle) le reçoit aussi. */
+:where(a, button, input, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--color-ardoise);
   outline-offset: 2px;
 }
