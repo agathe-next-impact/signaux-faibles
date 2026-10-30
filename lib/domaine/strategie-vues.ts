@@ -701,17 +701,6 @@ export function mouvementsDeLaCarte(carte: VueDeLaCarte | null): number {
   return [...carte.cases.values()].flat().filter((o) => o.aBougé && !o.organisation).length
 }
 
-export function enBrefDesConcurrents(vue: VueDesConcurrents): readonly ChiffreEnBref[] {
-  const placés = vue.concurrents.length - vue.nonPlacés
-  const déclaratifs = vue.concurrents.filter((c) => c.déclaratif).length
-  const cités = vue.concurrents.filter((c) => c.faits > 0).length
-  return [
-    { intitulé: 'Concurrents suivis', valeur: vue.concurrents.length, mention: `${placés} placés sur la carte` },
-    { intitulé: 'Ont changé de case', valeur: vue.mouvements.length, mention: 'depuis la synthèse précédente' },
-    { intitulé: 'Cités par vos lettres', valeur: cités, mention: déclaratifs > 0 ? `${pluriel(déclaratifs, 'placé')} d’après le corpus seul` : null },
-  ]
-}
-
 export function enBrefDeLaSwot(swot: VueDeLaSwot): readonly ChiffreEnBref[] {
   const tous = CASES_SWOT.flatMap((c) => swot[c])
   const déclaratifs = tous.filter((é) => é.édition === null && é.source.startsWith('Déclaratif')).length
@@ -722,33 +711,14 @@ export function enBrefDeLaSwot(swot: VueDeLaSwot): readonly ChiffreEnBref[] {
   ]
 }
 
-export function enBrefDesForces(forces: readonly ForceLue[]): readonly ChiffreEnBref[] {
-  const suivies = forces.filter((f) => !f.nonSuivi)
-  return [
-    { intitulé: 'Forces suivies', valeur: `${suivies.length} sur ${forces.length}`, mention: forces.length - suivies.length > 0 ? `${pluriel(forces.length - suivies.length, 'non suivie')}` : null },
-    { intitulé: 'Intenses', valeur: suivies.filter((f) => f.cran === 3).length, mention: 'au troisième cran' },
-    { intitulé: 'En hausse', valeur: suivies.filter((f) => f.tendance === 'hausse').length, mention: 'sur le trimestre' },
-  ]
-}
-
+/** Les deux dimensions les plus citées seulement (30 octobre 2026, demande de l'opératrice) ; une dimension sans fait n'y figure pas. */
 export function enBrefDuPestel(vue: VueDuPestel): readonly ChiffreEnBref[] {
-  const tête = [...vue.dimensions].sort((a, b) => b.faits - a.faits)[0]
-  const ruptures = vue.dimensions.reduce((n, d) => n + d.ruptures, 0)
-  return [
-    { intitulé: 'Faits datés', valeur: vue.total, mention: 'sur treize semaines' },
-    { intitulé: 'Dimension la plus citée', valeur: tête && tête.faits > 0 ? tête.libellé : 'n.d.', mention: tête && tête.faits > 0 ? pluriel(tête.faits, 'fait') : null },
-    { intitulé: 'Ruptures', valeur: ruptures, mention: vue.trous.length > 0 ? `${pluriel(vue.trous.length, 'dimension')} peu couverte${vue.trous.length > 1 ? 's' : ''}` : null },
-  ]
-}
-
-export function enBrefDesScénarios(scénarios: readonly ScénarioLu[]): readonly ChiffreEnBref[] {
-  const indicateurs = scénarios.reduce((n, s) => n + s.indicateurs.length, 0)
-  const familles = new Set(scénarios.flatMap((s) => s.indicateurs.map((i) => i.famille))).size
-  return [
-    { intitulé: 'Scénarios', valeur: scénarios.length, mention: 'aucune probabilité' },
-    { intitulé: 'Indicateurs à guetter', valeur: indicateurs, mention: 'datables et cherchables' },
-    { intitulé: 'Thèmes qui les suivent', valeur: familles, mention: 'dans vos lettres' },
-  ]
+  const intitulés = ['Dimension la plus citée', 'Deuxième dimension citée'] as const
+  return [...vue.dimensions]
+    .filter((d) => d.faits > 0)
+    .sort((a, b) => b.faits - a.faits)
+    .slice(0, 2)
+    .map((d, rang) => ({ intitulé: intitulés[rang]!, valeur: d.libellé, mention: pluriel(d.faits, 'fait') }))
 }
 
 /** La synthèse publiée telle que les écrans la lisent : le mois et le trimestre, chacun absent s'il n'est pas publié. */

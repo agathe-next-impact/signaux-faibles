@@ -8,7 +8,7 @@ import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import { semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 import { Repliable } from '@/components/repliable'
-import { EnBref, SynthèseDesActeurs } from '@/components/strategie-ecrans'
+import { SynthèseDesActeurs } from '@/components/strategie-ecrans'
 
 /**
  * Les acteurs suivis : concurrents, administrations, organisations du secteur.
@@ -71,16 +71,6 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
             : 'Aucun n’a bougé cette semaine.'
           : ''}
       </p>
-
-      {réorganisé ? (
-        <EnBref
-          chiffres={[
-            { intitulé: 'Dossiers suivis', valeur: suivis.length, mention: 'hors concurrents' },
-            { intitulé: 'Ont bougé', valeur: enMouvement, mention: 'cette semaine' },
-            { intitulé: 'Parties prenantes placées', valeur: synthèse?.mois?.mendelow.placés ?? 'n.d.', mention: synthèse?.mois ? 'sur la matrice de Mendelow' : null },
-          ]}
-        />
-      ) : null}
 
       {synthèse?.mois ? (
         <>

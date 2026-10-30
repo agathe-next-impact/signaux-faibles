@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
-import { CinqForces, EnBref } from '@/components/strategie-ecrans'
-import { enBrefDesForces, libelléDePériode } from '@/lib/domaine/strategie-vues'
+import { CinqForces } from '@/components/strategie-ecrans'
+import { libelléDePériode } from '@/lib/domaine/strategie-vues'
 import { semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 
@@ -27,12 +27,9 @@ export default async function ForcesDuMarché({ params }: { params: Promise<{ sl
     <>
       <EntêteÉcran surtitre="le marché" titre="Le marché se durcit-il" état={trimestre ? `trimestre ${libelléDePériode(trimestre.période)}` : undefined} />
       {trimestre ? (
-        <>
-          <EnBref chiffres={enBrefDesForces(trimestre.forces)} />
-          <div className="mt-8">
-            <CinqForces période={trimestre.période} forces={trimestre.forces} barres />
-          </div>
-        </>
+        <div className="mt-8">
+          <CinqForces période={trimestre.période} forces={trimestre.forces} barres />
+        </div>
       ) : (
         <p className="mt-6 text-ardoise">Les cinq forces ne sont pas encore publiées. Elles paraissent avec la revue de chaque trimestre.</p>
       )}

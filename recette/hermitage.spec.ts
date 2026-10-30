@@ -225,7 +225,7 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await expect(page.getByText(/^Famille \d+$/)).toHaveCount(0)
   })
 
-  test('lecture rapide : tableau de bord en cases, bandeaux « En bref », listes repliées', async () => {
+  test('lecture rapide : tableau de bord en cases, bandeau « En bref » du diagnostic, listes repliées', async () => {
     test.skip(!parOutil, 'écrans par outil absents')
     await page.goto(`/${SLUG}`)
     const espace = await page.getByRole('heading', { name: 'Votre espace' }).isVisible()
@@ -236,7 +236,8 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     expect([11, 12]).toContain(cases + rubriques * 3)
     await page.screenshot({ path: `${SORTIES}/tableau-de-bord.png`, fullPage: true })
     await ouvrir(`/${SLUG}/concurrents`, 'concurrents-lot4')
-    await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
+    // Bandeau retiré des concurrents, des acteurs, des forces et des scénarios le 30 octobre 2026.
+    await expect(page.getByRole('region', { name: 'En bref' })).toHaveCount(0)
     await expect(page.getByText(/Voir les \d+ autres concurrents/)).toBeVisible()
     await ouvrir(`/${SLUG}/diagnostic`, 'diagnostic-lot4')
     await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()

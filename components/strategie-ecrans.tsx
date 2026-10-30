@@ -398,9 +398,10 @@ export function OptionsStratégiques({ période, tows, diagnostic }: { période:
 
 /** Trois chiffres en tête d'écran (lot 4) : comptés sur ce que l'écran montre, jamais rédigés pour lui. */
 export function EnBref({ chiffres }: { chiffres: readonly ChiffreEnBref[] }) {
+  if (chiffres.length === 0) return null
   return (
     <section aria-label="En bref" className="mt-6">
-      <Grille étiquette="En bref" colonnes={3}>
+      <Grille étiquette="En bref" colonnes={chiffres.length === 2 ? 2 : 3}>
         {chiffres.map((c) => (
           <Tuile key={c.intitulé} intitulé={c.intitulé} valeur={c.valeur} mention={c.mention ?? null} />
         ))}
