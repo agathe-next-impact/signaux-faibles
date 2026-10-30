@@ -2,9 +2,8 @@ import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { ÉchéancesParMois } from '@/components/graphiques-strategie'
-import { PasEncorePubliée } from '@/components/votre-veille'
+import { FriseDesÉchéances, PasEncorePubliée } from '@/components/votre-veille'
 import { vueDuCalendrier } from '@/lib/domaine/fiche-veille'
-import { dateCourte } from '@/lib/domaine/strategie-vues'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
@@ -38,22 +37,7 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
             <h2 className="font-titre text-h2 font-bold text-encre">Les douze prochains mois</h2>
             <p className="max-w-[68ch] text-ardoise">Les échéances connues que votre veille suivra. Un mois vide n’est pas un mois calme : rien n’y est encore annoncé.</p>
             {à > 0 ? <ÉchéancesParMois mois={mois} /> : null}
-            <div className="relative overflow-x-auto border-t border-l border-gris-ligne">
-              <ol className="grid min-w-[960px] grid-cols-12" aria-label="Échéances des douze prochains mois">
-                {mois.map((m) => (
-                  <li key={m.mois} className={`flex min-h-[160px] flex-col gap-2 border-r border-b border-gris-ligne p-3 ${m.échéances.length > 0 ? 'bg-blanc' : 'bg-fond-neutre'}`}>
-                    <p className="label-mono text-encre">{m.libellé}</p>
-                    {m.échéances.map((é) => (
-                      <div key={`${é.date}-${é.libellé}`} className="flex flex-col gap-1 border-t-2 border-ocre pt-2">
-                        <p className="font-mono text-label text-ocre-texte">{dateCourte(é.date)}</p>
-                        <p className="text-sm leading-snug text-encre">{é.libellé}</p>
-                        {é.famille ? <p className="font-mono text-label text-ardoise">{é.famille}</p> : null}
-                      </div>
-                    ))}
-                  </li>
-                ))}
-              </ol>
-            </div>
+            <FriseDesÉchéances mois={mois} />
           </section>
           {lue.fiche.niches.length > 0 ? (
             <section className="mt-12 flex flex-col gap-4">
