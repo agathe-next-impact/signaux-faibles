@@ -187,6 +187,30 @@ describe('vueDuPestel', () => {
       { date: '2026-10-15', dimension: 'Légal', titre: 'Norme révisée.', rupture: false, axe: '2 Qualité' },
     ])
   })
+
+  it('une ligne par événement : même source, même date, même dimension, avec les axes des deux lettres', () => {
+    const budget = 'https://www.assemblee-nationale.fr/dyn/contenu/PAP%202027%20-%20Coh%C3%A9sion.pdf'
+    const vue = vueDuPestel(
+      [
+        { ...fait('economique', '2026-10-19', 'Le document budgétaire ne nomme pas les Fabriques.', false, 1), source: budget },
+        { ...fait('economique', '2026-10-19', 'Le document budgétaire ne porte aucune ligne pour les Fabriques.', true, 2), famille: 'Concurrentiel', source: 'http://assemblee-nationale.fr/dyn/contenu/PAP 2027 - Cohésion.pdf/' },
+        // Même source et même date, autre dimension : un autre fait.
+        { ...fait('legal', '2026-10-19', 'Le texte renvoie à un décret.', false, 2), source: budget },
+        // Même date, autre source : un autre fait.
+        { ...fait('economique', '2026-10-19', 'La Région vote 3,2 millions.', false, 1), source: 'https://www.hautsdefrance.fr/patrimoine' },
+      ],
+      GRILLE,
+      new Map([['ecosysteme:1', 'Donneurs d’ordre'], ['ecosysteme:2', 'Qualité'], ['concurrentiel:2', 'Prix']]),
+      { début: '2026-07-21', fin: '2026-10-19' },
+    )
+    expect(vue.faits).toEqual([
+      { date: '2026-10-19', dimension: 'Économique', titre: 'Le document budgétaire ne nomme pas les Fabriques.', rupture: true, axe: '1 Donneurs d’ordre · 2 Prix' },
+      { date: '2026-10-19', dimension: 'Légal', titre: 'Le texte renvoie à un décret.', rupture: false, axe: '2 Qualité' },
+      { date: '2026-10-19', dimension: 'Économique', titre: 'La Région vote 3,2 millions.', rupture: false, axe: '1 Donneurs d’ordre' },
+    ])
+    // Les comptes restent ceux des faits étiquetés.
+    expect(vue.total).toBe(4)
+  })
 })
 
 describe('périodesAPublier', () => {
