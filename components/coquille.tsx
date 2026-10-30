@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Logo } from '@/components/marque'
 import { MenuBas } from '@/components/menu-bas'
 import { NavLatérale } from '@/components/nav-laterale'
+import { RailRétractable } from '@/components/rail-retractable'
 import { Quitter } from '@/components/quitter'
 import { Resynchroniser } from '@/components/resynchroniser'
 import { LienMonAbonnement } from '@/components/abonnement'
@@ -47,6 +48,7 @@ export function Coquille({
   onglets,
   enOpérateur = false,
   peutResynchroniser = false,
+  railReplié = false,
   children,
 }: {
   slug: string
@@ -59,6 +61,8 @@ export function Coquille({
    * l'opératrice n'est pas `enOpérateur` et doit pourtant garder le bouton.
    */
   peutResynchroniser?: boolean
+  /** Le rail replié à l'arrivée, selon le cookie de préférence lu par le layout. */
+  railReplié?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -95,11 +99,13 @@ export function Coquille({
       ) : null}
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        <aside className="shrink-0 border-b border-gris-ligne lg:w-64 lg:border-b-0 lg:border-r">
+        {/* Rétractable sur grand écran (30 octobre 2026) : le bouton et le cookie vivent dans
+            `RailRétractable`, qui garde le collant et la hauteur sous le bandeau. */}
+        <RailRétractable repliéAuDépart={railReplié}>
           {/* La hauteur déduit le bandeau : une hauteur d'écran entière ne
               tiendrait pas sous lui, et le rail se ferait repousser vers le
               haut au défilement — le logo repassait alors sous la bannière. */}
-          <div className="flex flex-col gap-6 p-6 lg:sticky lg:top-[var(--bandeau)] lg:h-[calc(100dvh-var(--bandeau))]">
+          <div className="flex h-full flex-col gap-6 p-6 lg:pt-0">
             <div className="flex flex-col gap-1">
               <Logo />
               <span className="label-mono text-ardoise">{organisation}</span>
@@ -118,7 +124,7 @@ export function Coquille({
               <Quitter />
             </div>
           </div>
-        </aside>
+        </RailRétractable>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <main className="min-w-0 flex-1 px-6 py-8 lg:px-10">{children}</main>

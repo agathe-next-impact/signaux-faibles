@@ -111,7 +111,8 @@ cycle de vie et benchmark du dernier trimestre publié, tels que calculés à la
 synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 à la demande de l'opératrice, la vue d'ensemble porte **une carte par rubrique**
 (Le marché, L'environnement, Stratégie, Votre veille), sur deux colonnes, sous
-« À la une », et non plus une case par
+« À la une », sans la cartouche des chiffres de la semaine ni la section
+« L'écosystème » (retirées le même jour, à sa demande), et non plus une case par
 écran ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
 `/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
 avec leur chiffre clé ; le rail garde ses écrans et le nom de la rubrique y
@@ -123,7 +124,11 @@ mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 écrans (`/[slug]/veille/themes`, `/sources`, `/corpus`, `/calendrier`, dix-sept
 écrans au rail) : thèmes, sources et calendrier lisent la fiche de veille
 publiée (`ficheDeLEspace`, bornée, Postgres seulement, et le disent tant
-qu'elle ne l'est pas) ; le corpus lit la seule grille. Une période
+qu'elle ne l'est pas) ; le corpus lit la seule grille. Depuis le même jour, le
+rail se **replie** sur grand écran (`components/rail-retractable.tsx`, seul
+composant client de la coquille) ; le choix tient dans le cookie `rail`
+(`COOKIE_DU_RAIL`, `lib/portail/rail.ts`), lu par le layout de l'espace pour
+rendre le rail déjà replié, sans saut à l'affichage ; sur mobile, rien ne change. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

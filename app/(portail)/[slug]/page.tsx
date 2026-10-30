@@ -182,31 +182,35 @@ export default async function VueDEnsemble({
         </div>
       ) : null}
 
-      <div className="mt-6">
-        <Grille étiquette="Chiffres de la semaine" colonnes={4}>
-          <Tuile
-            intitulé="axes suivis"
-            valeur={synthèse.axesTotal}
-            mention={écart(synthèse.axesTotal, précédente?.axesTotal ?? null)}
-          />
-          <Tuile
-            intitulé="signal fort"
-            valeur={synthèse.parNiveau.FORT}
-            mention={écart(synthèse.parNiveau.FORT, précédente?.parNiveau.FORT ?? null)}
-            accent={synthèse.parNiveau.FORT > 0}
-          />
-          <Tuile
-            intitulé="acteurs suivis"
-            valeur={synthèse.dossiers.length}
-            mention={écart(synthèse.dossiers.length, précédente?.dossiers.length ?? null)}
-          />
-          <Tuile
-            intitulé="sans mouvement"
-            valeur={synthèse.dossiersEnAttente}
-            mention={`sur ${synthèse.dossiers.length} acteurs`}
-          />
-        </Grille>
-      </div>
+      {/* Ni les chiffres de la semaine dans l'espace réorganisé (demande de l'opératrice
+          du 30 octobre 2026) : chaque écran porte les siens, et les cartes de rubrique les résument. */}
+      {espace?.réorganisé ? null : (
+        <div className="mt-6">
+          <Grille étiquette="Chiffres de la semaine" colonnes={4}>
+            <Tuile
+              intitulé="axes suivis"
+              valeur={synthèse.axesTotal}
+              mention={écart(synthèse.axesTotal, précédente?.axesTotal ?? null)}
+            />
+            <Tuile
+              intitulé="signal fort"
+              valeur={synthèse.parNiveau.FORT}
+              mention={écart(synthèse.parNiveau.FORT, précédente?.parNiveau.FORT ?? null)}
+              accent={synthèse.parNiveau.FORT > 0}
+            />
+            <Tuile
+              intitulé="acteurs suivis"
+              valeur={synthèse.dossiers.length}
+              mention={écart(synthèse.dossiers.length, précédente?.dossiers.length ?? null)}
+            />
+            <Tuile
+              intitulé="sans mouvement"
+              valeur={synthèse.dossiersEnAttente}
+              mention={`sur ${synthèse.dossiers.length} acteurs`}
+            />
+          </Grille>
+        </div>
+      )}
 
       {actions.length > 0 ? (
         <div className="mt-6">
@@ -330,31 +334,35 @@ export default async function VueDEnsemble({
         </section>
       ) : null}
 
-      <section className="mt-10 flex flex-col gap-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="font-titre text-h2 font-bold text-encre">L’écosystème</h2>
-          <LienFlèche href={`/${accès.slug}/axes`}>Voir tous les axes</LienFlèche>
-        </div>
-        <p className="text-ardoise">
-          Les axes de la semaine, les deux lettres réunies, du signal le plus fort au plus
-          calme.
-        </p>
+      {/* L'espace réorganisé n'affiche pas l'écosystème (demande de l'opératrice du
+          30 octobre 2026) : les axes ont leur écran, dans la rubrique « L'environnement ». */}
+      {espace?.réorganisé ? null : (
+        <section className="mt-10 flex flex-col gap-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="font-titre text-h2 font-bold text-encre">L’écosystème</h2>
+            <LienFlèche href={`/${accès.slug}/axes`}>Voir tous les axes</LienFlèche>
+          </div>
+          <p className="text-ardoise">
+            Les axes de la semaine, les deux lettres réunies, du signal le plus fort au plus
+            calme.
+          </p>
 
-        {axes.length === 0 ? (
-          <p className="text-ardoise">Les notes de cette semaine ne portent pas d’axe.</p>
-        ) : (
-          <Grille étiquette="Axes de la semaine">
-            {axes.map((axe) => (
-              <CaseAxe
-                key={axe.titre}
-                axe={axe}
-                points={axe.points}
-                href={`/${accès.slug}/axes/${enSlug(axe.titre)}`}
-              />
-            ))}
-          </Grille>
-        )}
-      </section>
+          {axes.length === 0 ? (
+            <p className="text-ardoise">Les notes de cette semaine ne portent pas d’axe.</p>
+          ) : (
+            <Grille étiquette="Axes de la semaine">
+              {axes.map((axe) => (
+                <CaseAxe
+                  key={axe.titre}
+                  axe={axe}
+                  points={axe.points}
+                  href={`/${accès.slug}/axes/${enSlug(axe.titre)}`}
+                />
+              ))}
+            </Grille>
+          )}
+        </section>
+      )}
 
       {stratégie ? <LectureStratégique lecture={stratégie} lettres={récentes.length} /> : null}
 
