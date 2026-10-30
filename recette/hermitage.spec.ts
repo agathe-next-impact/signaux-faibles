@@ -243,7 +243,13 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await expect(page.getByRole('link', { name: /^Fait du .* lettre n° \d+$/ }).first()).toBeVisible()
   })
 
-  test('graphiques : indicateurs, forces en crans, PESTEL en barres, chaleur des axes, activité', async () => {
+  /**
+   * Depuis le 30 octobre 2026, les courbes, barres et radars sont des graphiques
+   * Recharts, dessinés dans le navigateur après l'hydratation : la recette attend
+   * leur surface SVG, et le texte que l'enveloppe serveur pose pour les lecteurs
+   * d'écran.
+   */
+  test('graphiques : indicateurs, forces en crans et en radar, PESTEL en radar et en barres, chaleur des axes, activité', async () => {
     test.skip(!parOutil, 'écrans par outil absents')
     await page.goto(`/${SLUG}/indicateurs`)
     const lot5 = await page.getByRole('heading', { name: 'Le secteur grandit-il' }).isVisible()
@@ -251,15 +257,20 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await page.screenshot({ path: `${SORTIES}/indicateurs.png`, fullPage: true })
     await expect(page.getByRole('heading', { name: 'Entrées et sorties du marché' })).toBeVisible()
     await expect(page.getByRole('list', { name: 'Chiffre d’affaires publié, par entité' })).toBeVisible()
+    await expect(page.locator('.recharts-surface').first()).toBeVisible()
     await ouvrir(`/${SLUG}/forces`, 'forces-lot5')
     await expect(page.getByRole('img', { name: /^cran \d sur 3$/ }).first()).toBeVisible()
+    await expect(page.getByText(/^Cran de 1 à 3 :/)).toBeVisible()
+    await expect(page.locator('.recharts-surface').first()).toBeVisible()
     await ouvrir(`/${SLUG}/pestel`, 'pestel-lot5')
-    await expect(page.getByRole('list', { name: 'Politique, faits par mois' })).toBeVisible()
+    await expect(page.getByText(/^Faits par dimension :/)).toBeVisible()
+    await expect(page.locator('.recharts-surface').nth(1)).toBeVisible()
     await ouvrir(`/${SLUG}/axes`, 'axes-lot5')
     await expect(page.getByRole('heading', { name: 'Les axes sur huit semaines' })).toBeVisible()
     await expect(page.getByRole('table', { name: 'Niveau des axes sur les huit dernières semaines' })).toBeVisible()
     await ouvrir(`/${SLUG}`, 'tableau-de-bord-lot5')
-    await expect(page.getByRole('list', { name: /^Faits relevés par semaine/ })).toBeVisible()
+    await expect(page.getByRole('list', { name: /^Faits relevés par semaine/ })).toHaveCount(1)
+    await expect(page.locator('.recharts-surface').first()).toBeVisible()
   })
 
   test('rubriques : quatre cartes sur la vue d’ensemble, chaque écran de rubrique avec la grille de ses écrans', async () => {
