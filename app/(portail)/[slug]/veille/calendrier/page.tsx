@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
+import { ÉchéancesParMois } from '@/components/graphiques-strategie'
 import { PasEncorePubliée } from '@/components/votre-veille'
 import { vueDuCalendrier } from '@/lib/domaine/fiche-veille'
 import { dateCourte } from '@/lib/domaine/strategie-vues'
@@ -36,6 +37,7 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
           <section className="mt-8 flex flex-col gap-4">
             <h2 className="font-titre text-h2 font-bold text-encre">Les douze prochains mois</h2>
             <p className="max-w-[68ch] text-ardoise">Les échéances connues que votre veille suivra. Un mois vide n’est pas un mois calme : rien n’y est encore annoncé.</p>
+            {à > 0 ? <ÉchéancesParMois mois={mois} /> : null}
             <div className="relative overflow-x-auto border-t border-l border-gris-ligne">
               <ol className="grid min-w-[960px] grid-cols-12" aria-label="Échéances des douze prochains mois">
                 {mois.map((m) => (

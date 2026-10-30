@@ -223,6 +223,15 @@ classes `anime-remplit` et `anime-decouvre` de `app/globals.css` ; les courbes,
 barres et radars, graphiques Recharts depuis le même jour
 (`components/graphiques-recharts.tsx`), par Recharts lui-même, 600 ms, départ
 vif et arrivée douce, infobulle sans animation, rien en mouvement réduit.
+Étendu le même jour aux autres écrans de l'espace : bulles de la carte des
+groupes et de Mendelow (l'aire d'une bulle est proportionnelle au nombre de
+sujets de sa case ; encre pour vous, rose pour un mouvement), barres des cases
+de la SWOT (toutes en ardoise : aucune case n'est bonne ou mauvaise par la
+couleur) et des croisements TOWS (celui de l'option retenue en turquoise), faits
+d'un axe par semaine et d'un concurrent par mois (la dernière période en
+turquoise), sources par thème, échéances par mois (en ocre, couleur du temps)
+et anneau du corpus. Le graphique précède toujours le détail, qui reste écrit
+en dessous : il ne le remplace jamais.
 
 - **Une seule animation par graphique, au chargement de l'écran**, qui dit dans
   quel sens lire : les barres montent ou s'étirent de gauche à droite, comme le

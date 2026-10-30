@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
+import { AnneauDuCorpus } from '@/components/graphiques-strategie'
 import { enSlug } from '@/lib/domaine/slug'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
@@ -53,6 +54,9 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
       ) : (
         <>
           <p className="mt-6 max-w-[68ch] text-ardoise">Les entités que votre veille suit nommément, et les parties prenantes dont elle lit le pouvoir et l’intérêt. Un concurrent mène à sa fiche.</p>
+          <div className="mt-6">
+            <AnneauDuCorpus concurrents={concurrents.length} écosystème={écosystème.length} partiesPrenantes={grille.partiesPrenantes.length} />
+          </div>
           <section className="mt-8 flex flex-col gap-4">
             <h2 className="font-titre text-h2 font-bold text-encre">Concurrents suivis</h2>
             {concurrents.length > 0 ? <Liste noms={concurrents} slug={accès.slug} /> : <p className="text-ardoise">Aucun concurrent nommé dans votre veille.</p>}

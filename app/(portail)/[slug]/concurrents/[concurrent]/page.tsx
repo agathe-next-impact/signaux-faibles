@@ -3,6 +3,7 @@ import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Texte } from '@/components/document'
+import { FaitsParMois } from '@/components/graphiques-strategie'
 import { PositionDuConcurrent } from '@/components/strategie-ecrans'
 import { mentionsDe } from '@/lib/domaine/mentions'
 import { enSlug } from '@/lib/domaine/slug'
@@ -77,6 +78,7 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
 
       <section className="mt-12 flex flex-col gap-4">
         <h2 className="font-titre text-h2 font-bold text-encre">Ses faits datés</h2>
+        <FaitsParMois faits={fiche.faits} />
         {fiche.faits.length === 0 ? (
           <p className="text-ardoise">Aucune lettre n’a encore relevé de fait daté qui le nomme.</p>
         ) : (

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
+import { SourcesParThème } from '@/components/graphiques-strategie'
 import { PasEncorePubliée, VEILLES_AFFICHÉES } from '@/components/votre-veille'
 import { vueDesSources } from '@/lib/domaine/fiche-veille'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
@@ -32,6 +33,9 @@ export default async function Sources({ params }: { params: Promise<{ slug: stri
       ) : (
         <>
           <p className="mt-6 max-w-[68ch] text-ardoise">Les sources que votre veille ouvre, thème par thème. Une lettre cite toujours la sienne ; celles-ci sont celles que nous regardons, qu’elles aient parlé ou non.</p>
+          <div className="mt-6">
+            <SourcesParThème familles={familles} />
+          </div>
           {VEILLES_AFFICHÉES.map(({ veille, titre }) => {
             const siennes = familles.filter((f) => f.veille === veille)
             return siennes.length === 0 ? null : (
