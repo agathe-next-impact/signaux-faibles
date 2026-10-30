@@ -515,7 +515,8 @@ export function LectureDuTrimestre({ période, forces, scénarios }: { période:
 
 const LIMITE_DES_FAITS = 40
 
-export function VuePestel({ vue, barres = false }: { vue: VueDuPestel; barres?: boolean }) {
+/** `axe` : l'adresse de l'écran des faits d'un axe (espace réorganisé) ; sans lui, les noms des axes restent du texte. */
+export function VuePestel({ vue, barres = false, axe }: { vue: VueDuPestel; barres?: boolean; axe?: (segment: string) => string }) {
   // Une même échelle pour les six dimensions : deux barres de même hauteur disent le même nombre de faits.
   const max = Math.max(...vue.dimensions.flatMap((d) => d.parMois.map((m) => m.faits)), 0)
   return (
@@ -546,9 +547,16 @@ export function VuePestel({ vue, barres = false }: { vue: VueDuPestel; barres?: 
             ) : (
               <div className="flex flex-col gap-0.5">
                 <p className="label-mono text-ardoise">Suivie par</p>
-                {d.suiviePar.map((a) => (
-                  <span key={a.numéro} className="text-encre"><Numéro n={a.numéro} />{a.nom}</span>
-                ))}
+                {d.suiviePar.map((a) =>
+                  axe ? (
+                    <Link key={a.numéro} href={axe(a.segment)} className="text-encre underline decoration-gris-ligne underline-offset-2 hover:decoration-encre">
+                      <Numéro n={a.numéro} />
+                      {a.nom}
+                    </Link>
+                  ) : (
+                    <span key={a.numéro} className="text-encre"><Numéro n={a.numéro} />{a.nom}</span>
+                  ),
+                )}
               </div>
             )}
             {d.suiviePar.length === 1 ? <p className="flex items-center gap-2 label-mono text-ardoise"><Pastille couleur="rose" />Une seule famille</p> : null}

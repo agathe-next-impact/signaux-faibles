@@ -9,6 +9,7 @@ import {
   trousDuPestel,
   type Benchmark,
   type CaseSwot,
+  type FamilleDeGrille,
   type ForcePorter,
   type Grille,
   type IndiceDeCycle,
@@ -535,7 +536,8 @@ export type DimensionDuPestel = {
   readonly ruptures: number
   readonly parMois: readonly { readonly mois: string; readonly faits: number }[]
   /** Les axes qui suivent cette dimension, par le rattachement des familles de la grille. */
-  readonly suiviePar: readonly { readonly numéro: number; readonly nom: string }[]
+  /** `segment` : l'adresse de l'écran des faits de l'axe (`/[slug]/pestel/[axe]`, espace réorganisé). */
+  readonly suiviePar: readonly { readonly numéro: number; readonly nom: string; readonly segment: string }[]
   readonly trou: boolean
 }
 
@@ -589,7 +591,7 @@ export function vueDuPestel(
       faits: siens.length,
       ruptures: siens.filter((f) => f.rupture).length,
       parMois: mois.map((m) => ({ mois: MOIS_COURTS[Number(m.slice(5, 7)) - 1]!, faits: siens.filter((f) => f.dateÉdition.startsWith(m)).length })),
-      suiviePar: familles.map((f) => ({ numéro: f.numéro, nom: nom(f.veille, f.numéro) })),
+      suiviePar: familles.map((f) => ({ numéro: f.numéro, nom: nom(f.veille, f.numéro), segment: segmentDeFamille(f) })),
       trou: trous.has(lettre),
     }
   })
@@ -887,4 +889,65 @@ export function enBrefDesIndicateurs(vue: VueDesIndicateurs): readonly ChiffreEn
       mention: b ? (b.rangDeLOrganisation !== null ? `votre rang : ${b.rangDeLOrganisation}` : 'votre rang : n.d.') : 'benchmark non calculé',
     },
   ]
+}
+
+// ── L'écran des faits d'un axe (30 octobre 2026) ────────────────────────────
+
+/**
+ * Le segment d'URL d'une famille de la grille : son nom court en `enSlug`,
+ * comme pour un axe ou un acteur, jamais un identifiant ; à défaut de nom, la
+ * veille et le numéro, seuls à la distinguer.
+ */
+export function segmentDeFamille(f: FamilleDeGrille): string {
+  return f.libellé ? enSlug(f.libellé) : `famille-${f.veille}-${f.numéro}`
+}
+
+/** Un fait étiqueté tel que la base le rend, réduit à ce que l'écran d'un axe lit. */
+export type FaitDeLAxe = {
+  readonly date: string
+  readonly dateÉdition: string
+  readonly édition: string
+  /** L'empreinte de sa phrase-titre : l'écran la relit dans les lettres qu'il a déjà lues. */
+  readonly empreinte: string
+  readonly famille: string | null
+  readonly axe: number | null
+  readonly pestel: string | null
+  readonly porter: string | null
+  readonly impact: string
+  readonly rupture: boolean
+}
+
+export type VueDeLAxe = {
+  readonly nom: string
+  readonly numéro: number
+  /** Ce que la famille suit dans la grille : sa dimension PESTEL ou sa force de Porter. */
+  readonly suit: string | null
+  readonly faits: readonly (FaitDeLAxe & { readonly dimension: string | null })[]
+  readonly ruptures: number
+  readonly forts: number
+}
+
+/**
+ * Les faits d'un axe de la grille, du plus récent au plus ancien. L'axe est
+ * retrouvé par son segment **dans la grille de l'organisation** : un segment
+ * inconnu rend `null`, et rien venu de l'URL n'est comparé à autre chose.
+ */
+export function vueDeLAxe(grille: Grille, segment: string, faits: readonly FaitDeLAxe[]): VueDeLAxe | null {
+  const famille = grille.familles.find((f) => segmentDeFamille(f) === segment)
+  if (!famille) return null
+  const siens = faits
+    .filter((f) => f.axe === famille.numéro && familleDe(f.famille) === famille.veille)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.dateÉdition.localeCompare(a.dateÉdition))
+    .map((f) => ({
+      ...f,
+      dimension: f.pestel ? (LIBELLÉS_PESTEL[f.pestel as Pestel] ?? null) : f.porter ? (LIBELLÉS_PORTER[f.porter as ForcePorter] ?? null) : null,
+    }))
+  return {
+    nom: famille.libellé ?? `Famille ${famille.numéro}`,
+    numéro: famille.numéro,
+    suit: famille.pestel ? (LIBELLÉS_PESTEL[famille.pestel] ?? null) : famille.porter ? (LIBELLÉS_PORTER[famille.porter] ?? null) : null,
+    faits: siens,
+    ruptures: siens.filter((f) => f.rupture).length,
+    forts: siens.filter((f) => f.impact === 'FORT').length,
+  }
 }

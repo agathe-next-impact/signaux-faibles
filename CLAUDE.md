@@ -100,12 +100,16 @@ activité sur treize semaines de l'accueil, toutes deux tirées des faits
 cycle de vie et benchmark du dernier trimestre publié, tels que calculés à la
 synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 à la demande de l'opératrice, la vue d'ensemble porte **une carte par rubrique**
-(Le marché, L'environnement, Stratégie, Votre veille) et non plus une case par
+(Le marché, L'environnement, Stratégie, Votre veille), sur deux colonnes, sous
+« À la une », et non plus une case par
 écran ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
 `/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
 avec leur chiffre clé ; le rail garde ses écrans et le nom de la rubrique y
 mène (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
-(`lib/portail/tableau.ts`). Une période
+(`lib/portail/tableau.ts`). Sur « PESTEL », chaque axe qui suit une dimension
+mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
+`faitsDeLAxeDeLEspace`, segment comparé à la seule grille de l'organisation,
+404 sinon). Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

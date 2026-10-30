@@ -211,7 +211,8 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     parOutil = réorganisé && (await page.getByRole('heading', { name: 'Où en êtes-vous' }).isVisible())
     test.skip(!parOutil, 'écrans par outil absents : lot 3 non déployé ou espace non réorganisé')
     await expect(page.getByRole('heading', { name: 'Votre situation' })).toBeVisible()
-    await expect(page.locator('nav[aria-label="Sections"]').first().getByText('Stratégie', { exact: true })).toBeVisible()
+    // « Stratégie » seul jusqu'au 30 octobre 2026, puis « Stratégie → », lien vers l'écran de la rubrique.
+    await expect(page.locator('nav[aria-label="Sections"]').first().getByText(/^Stratégie( →)?$/)).toBeVisible()
     await page.screenshot({ path: `${SORTIES}/diagnostic.png`, fullPage: true })
     await ouvrir(`/${SLUG}/scenarios`, 'scenarios')
     await expect(page.getByRole('heading', { name: 'Trois scénarios' })).toBeVisible()
@@ -277,6 +278,22 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await ouvrir(`/${SLUG}`, 'tableau-de-bord-rubriques')
     await expect(page.getByRole('list', { name: 'Les rubriques de votre espace' }).getByRole('listitem')).toHaveCount(4)
     await expect(page.locator('nav[aria-label="Sections"]').first().getByRole('link', { name: 'Stratégie →' })).toBeVisible()
+  })
+
+  test('PESTEL : chaque axe qui suit une dimension mène à l’écran de ses faits', async () => {
+    test.skip(!parOutil, 'écrans par outil absents')
+    await ouvrir(`/${SLUG}/pestel`, 'pestel-axes')
+    const lien = page.locator('a[href^="/' + SLUG + '/pestel/"]').first()
+    test.skip((await lien.count()) === 0, 'écran des faits d’un axe non déployé')
+    const cible = await lien.getAttribute('href')
+    await lien.click()
+    await expect(page).toHaveURL(new RegExp(`${cible}$`))
+    await expect(page.getByRole('link', { name: /Retour au PESTEL/ })).toBeVisible()
+    await expect(page.getByText(/fait(s)? en treize semaines/i).first()).toBeVisible()
+    await page.screenshot({ path: `${SORTIES}/pestel-axe.png`, fullPage: true })
+    // Un segment absent de la grille ne mène à rien.
+    await page.goto(`/${SLUG}/pestel/axe-qui-n-existe-pas`)
+    await expect(page.getByRole('heading', { name: 'Rien à cette adresse' })).toBeVisible()
   })
 
   test('recommandations : l’option retenue de septembre, et le reste selon l’espace', async () => {

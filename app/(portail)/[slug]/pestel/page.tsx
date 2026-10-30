@@ -10,7 +10,8 @@ import { espaceDeLOrganisation, pestelDeLEspace } from '@/lib/portail/strategie'
  * PESTEL (lot 3 de `docs/proposition-reorganisation-espace.md`,
  * 30 octobre 2026) : quelles dimensions bougent. L'onglet PESTEL de « Les
  * axes », en écran : les faits étiquetés des treize dernières semaines, comptés
- * par dimension et par mois, et cités quand leur lettre est déjà lue.
+ * par dimension et par mois, et cités quand leur lettre est déjà lue. Chaque axe
+ * qui suit une dimension mène à l'écran de ses faits (`/[slug]/pestel/[axe]`).
  *
  * Seulement pour un espace réorganisé : ailleurs, 404 avant toute lecture. Coût
  * Notion : les corps de la semaine et de la précédente, les mêmes entrées de
@@ -40,7 +41,7 @@ export default async function Pestel({ params }: { params: Promise<{ slug: strin
         <>
           <EnBref chiffres={enBrefDuPestel(pestel)} />
           <div className="mt-8">
-            <VuePestel vue={pestel} barres />
+            <VuePestel vue={pestel} barres axe={(segment) => `/${accès.slug}/pestel/${segment}`} />
           </div>
         </>
       ) : (

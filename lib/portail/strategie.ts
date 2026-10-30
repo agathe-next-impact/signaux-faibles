@@ -36,6 +36,7 @@ import {
   périodesAPublier,
   SEMAINES_D_ACTIVITÉ,
   vueDeLaChaleur,
+  vueDeLAxe,
   vueDesIndicateurs,
   vueDeLaCarte,
   vueDeLaFiche,
@@ -50,6 +51,7 @@ import {
   type FicheDuConcurrent,
   type ForceLue,
   type SemaineDActivité,
+  type VueDeLAxe,
   type VueDesIndicateurs,
   type ScénarioLu,
   type SynthèsesDUneOrganisation,
@@ -1187,5 +1189,47 @@ export async function indicateursDeLEspace(entrée: { readonly registre: string 
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
     return trimestre ? vueDesIndicateurs(trimestre.période, trimestre.éléments) : null
+  })
+}
+
+export type AxeLu = { readonly sorte: 'axe'; readonly vue: VueDeLAxe } | { readonly sorte: 'inconnu' }
+
+/**
+ * L'écran des faits d'un axe (30 octobre 2026), atteint depuis « PESTEL » : les
+ * faits étiquetés de la famille sur treize semaines, par le registre de la
+ * session (règle 2). Le segment n'est comparé qu'à la grille de l'organisation ;
+ * inconnu, il rend `inconnu`. Aucune lecture Notion ; `null` hors de l'espace
+ * réorganisé, sans grille, ou dans le doute.
+ */
+export async function faitsDeLAxeDeLEspace(
+  entrée: { readonly registre: string; readonly segment: string; readonly fin: string },
+  db?: Base,
+): Promise<AxeLu | null> {
+  return bornée('lecture des faits d’un axe', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
+    const grille = await lireLaGrille(organisation.id, db)
+    if (!grille) return null
+    if (!vueDeLAxe(grille.grille, entrée.segment, [])) return { sorte: 'inconnu' }
+    const d = new Date(`${entrée.fin}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - (FENÊTRE_DU_PESTEL_JOURS - 1))
+    const lignes = await faitsDeLaFenêtre({ organisationId: organisation.id, début: d.toISOString().slice(0, 10), fin: entrée.fin }, db)
+    const vue = vueDeLAxe(
+      grille.grille,
+      entrée.segment,
+      lignes.map((l) => ({
+        date: l.dateFait,
+        dateÉdition: l.dateÉdition,
+        édition: l.éditionNotion,
+        empreinte: l.empreinteTitre,
+        famille: l.familleÉdition,
+        axe: l.numéroAxe,
+        pestel: l.pestel,
+        porter: l.forcePorter,
+        impact: l.impact,
+        rupture: l.rupture,
+      })),
+    )
+    return vue ? { sorte: 'axe', vue } : { sorte: 'inconnu' }
   })
 }

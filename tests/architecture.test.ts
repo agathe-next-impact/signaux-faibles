@@ -525,6 +525,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'lib/portail/tableau.ts',
     ])
     expect(appelants('indicateursDeLEspace')).toEqual(['app/(portail)/[slug]/indicateurs/page.tsx', 'lib/portail/strategie.ts'])
+    expect(appelants('faitsDeLAxeDeLEspace')).toEqual(['app/(portail)/[slug]/pestel/[axe]/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('espaceDeLOrganisation')).toEqual([
       'app/(portail)/[slug]/acteurs/page.tsx',
       'app/(portail)/[slug]/axes/page.tsx',
@@ -537,6 +538,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/layout.tsx',
       'app/(portail)/[slug]/marche/page.tsx',
       'app/(portail)/[slug]/page.tsx',
+      'app/(portail)/[slug]/pestel/[axe]/page.tsx',
       'app/(portail)/[slug]/pestel/page.tsx',
       'app/(portail)/[slug]/recommandations/page.tsx',
       'app/(portail)/[slug]/scenarios/page.tsx',
@@ -547,7 +549,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
     const section = source.slice(source.indexOf('// ── L\'espace réorganisé (lot 2'))
     expect(section).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
-    for (const nom of ['concurrentsDeLEspace', 'ficheDuConcurrent', 'faitsRécentsDeLEspace', 'indicateursDeLEspace']) {
+    for (const nom of ['concurrentsDeLEspace', 'ficheDuConcurrent', 'faitsRécentsDeLEspace', 'indicateursDeLEspace', 'faitsDeLAxeDeLEspace']) {
       const corps = section.slice(section.indexOf(`export async function ${nom}(`))
       expect(corps.indexOf("bornée('"), nom).toBeGreaterThan(0)
       expect(corps.indexOf('espaceRéorganisé'), nom).toBeGreaterThan(0)
@@ -565,12 +567,13 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       join('environnement', 'page.tsx'),
       join('strategie', 'page.tsx'),
       join('veille', 'page.tsx'),
+      join('pestel', '[axe]', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|notesDeLaSemaine|documentsDeLaSemaine)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
     }
   })
 

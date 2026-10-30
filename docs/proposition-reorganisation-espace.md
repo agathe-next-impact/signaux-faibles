@@ -252,7 +252,8 @@ section.
 
 **Tableau de bord par rubriques (30 octobre 2026, décision de l'opératrice).**
 Après le lot 5, la section « Votre espace » de la vue d'ensemble ne porte plus
-une case par écran mais **une carte par rubrique** : Le marché, L'environnement,
+une case par écran mais **une carte par rubrique**, sur deux colonnes et sous
+« À la une » (même jour, demande de l'opératrice) : Le marché, L'environnement,
 Stratégie, Votre veille (« Cette semaine » n'en a pas : c'est la vue d'ensemble
 elle-même, et « Lettres » reste au rail). Chaque carte nomme ses écrans avec leur
 chiffre clé et ouvre l'**écran de sa rubrique** (`/[slug]/marche`,
@@ -267,6 +268,17 @@ comme l'écran qu'elle ouvre, et non plus les trois dernières lettres. Seul
 l'écran « L'environnement » lit les corps de la semaine, pour compter les axes :
 les mêmes entrées de cache que « Les axes ». `/[slug]/veille` accueillera les
 écrans du lot 6 sous son segment.
+
+**Les faits d'un axe (30 octobre 2026, demande de l'opératrice).** Sur
+« PESTEL », chaque axe qui suit une dimension (« Suivie par ») mène à l'écran de
+ses faits, `/[slug]/pestel/[axe]` : les faits étiquetés de la famille sur treize
+semaines, du plus récent au plus ancien, avec leur date, leur dimension, leur
+niveau, la rupture le cas échéant, la phrase-titre relue dans les quatre
+dernières lettres et le lien vers la lettre. Le segment est le nom court de la
+famille en `enSlug` (`segmentDeFamille`), à défaut sa veille et son numéro ; il
+n'est comparé qu'à la grille de l'organisation, et un segment inconnu répond
+404. Lecture bornée `faitsDeLAxeDeLEspace`, Postgres seulement, plus les quatre
+dernières lettres déjà en cache.
 
 ## 8. Ce qu'il faut trancher
 
