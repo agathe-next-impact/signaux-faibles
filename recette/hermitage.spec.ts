@@ -149,10 +149,19 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     expect(cookie?.secure).toBe(true)
   })
 
-  test('vue d’ensemble : la lecture stratégique', async () => {
+  /**
+   * Depuis le 30 octobre 2026, l'espace réorganisé (cartes « Votre espace »)
+   * n'affiche plus la lecture stratégique ; l'espace d'avant la garde.
+   */
+  test('vue d’ensemble : la lecture stratégique, hors de l’espace réorganisé seulement', async () => {
     await ouvrir(`/${SLUG}`, 'vue-d-ensemble')
-    await expect(page.getByRole('heading', { name: 'Lecture stratégique' })).toBeVisible()
-    await expect(page.getByText('outil en test').first()).toBeVisible()
+    const titre = page.getByRole('heading', { name: 'Lecture stratégique' })
+    if (await page.getByRole('heading', { name: 'Votre espace' }).isVisible()) {
+      await expect(titre).toHaveCount(0)
+    } else {
+      await expect(titre).toBeVisible()
+      await expect(page.getByText('outil en test').first()).toBeVisible()
+    }
   })
 
   /**
