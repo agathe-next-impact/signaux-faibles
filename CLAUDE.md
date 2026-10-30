@@ -134,7 +134,7 @@ mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 écrans (`/[slug]/veille/themes`, `/sources`, `/corpus`, `/calendrier`, dix-sept
 écrans au rail) : thèmes, sources et calendrier lisent la fiche de veille
 publiée (`ficheDeLEspace`, bornée, Postgres seulement, et le disent tant
-qu'elle ne l'est pas) ; le corpus lit la seule grille. Depuis le même jour, le
+qu'elle ne l'est pas ; le calendrier en frise verticale depuis le même jour, `FriseDesÉchéances`, `components/votre-veille.tsx`, repère ocre pour un mois qui porte une échéance) ; le corpus lit la seule grille. Depuis le même jour, le
 rail se **replie** sur grand écran (`components/rail-retractable.tsx`, seul
 composant client de la coquille) ; le choix tient dans le cookie `rail`
 (`COOKIE_DU_RAIL`, `lib/portail/rail.ts`), lu par le layout de l'espace pour
