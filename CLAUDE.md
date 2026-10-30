@@ -124,7 +124,11 @@ mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 écrans (`/[slug]/veille/themes`, `/sources`, `/corpus`, `/calendrier`, dix-sept
 écrans au rail) : thèmes, sources et calendrier lisent la fiche de veille
 publiée (`ficheDeLEspace`, bornée, Postgres seulement, et le disent tant
-qu'elle ne l'est pas) ; le corpus lit la seule grille. Une période
+qu'elle ne l'est pas) ; le corpus lit la seule grille. Depuis le même jour, le
+rail se **replie** sur grand écran (`components/rail-retractable.tsx`, seul
+composant client de la coquille) ; le choix tient dans le cookie `rail`
+(`COOKIE_DU_RAIL`, `lib/portail/rail.ts`), lu par le layout de l'espace pour
+rendre le rail déjà replié, sans saut à l'affichage ; sur mobile, rien ne change. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

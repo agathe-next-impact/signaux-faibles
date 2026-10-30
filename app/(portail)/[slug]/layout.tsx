@@ -1,6 +1,8 @@
+import { cookies } from 'next/headers'
 import { Suspense } from 'react'
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { Coquille } from '@/components/coquille'
+import { COOKIE_DU_RAIL } from '@/lib/portail/rail'
 import { ongletsDe, semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
@@ -68,6 +70,10 @@ async function Garde({
     )
   }
 
+  // La préférence du rail, posée par son bouton : lue ici pour rendre le rail
+  // tel que le lecteur l'a laissé, sans ouverture puis fermeture au chargement.
+  const railReplié = (await cookies()).get(COOKIE_DU_RAIL)?.value === 'replie'
+
   const recommandations = semaines.filter((semaine) =>
     semaine.éditions.some((édition) => édition.actionDeLaSemaine.length > 0),
   ).length
@@ -77,6 +83,7 @@ async function Garde({
       slug={accès.slug}
       enOpérateur={accès.enOpérateur}
       peutResynchroniser={accès.tousLesEspaces}
+      railReplié={railReplié}
       organisation={accès.organisationLibellé || 'votre veille'}
       onglets={ongletsDe(accès.slug, {
         lettres: semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
