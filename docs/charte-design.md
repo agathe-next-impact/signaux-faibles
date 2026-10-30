@@ -65,11 +65,25 @@ jamais un décor.** »
 | Gris ligne | `#dee3e6` | filets, axes, bordures |
 | Blanc | `#ffffff` | **fond unique du site** |
 | Ocre | `#b07a2a` | le temps : échéances, seconde série d'un graphique (amendement du 30 octobre 2026) |
+| Turquoise | `#0fa3a3` | l'accent : série mise en avant d'un graphique, éléments interactifs secondaires (amendement du 30 octobre 2026) |
 | Rose lisible | `#b4485e` | le seul rose qui porte un mot : badge `SIGNAL FORT`, labels mono d'alerte (amendement du 30 octobre 2026) |
 
 Teintes dérivées, « réservées aux fonds de cartes et surlignages, jamais pour
 du texte » : `#fbeef1` fond rose, `#eef1f4` fond ardoise, `#f7f8f9` fond neutre,
-`#f8efe0` fond ocre.
+`#f8efe0` fond ocre, `#ddf3f3` fond turquoise.
+
+**Amendement du 30 octobre 2026 : le turquoise, couleur d'accent.** Décision de
+l'opératrice, entre trois propositions (orange vif, jaune soleil, turquoise vif).
+Vif et froid, opposé au rose sur le cercle des couleurs : il ne se confond avec
+aucune couleur de signal, et l'ocre garde le temps.
+
+- **Rôle** : la série mise en avant d'un graphique (la dernière semaine, la valeur
+  courante) et les éléments interactifs secondaires. Jamais une couleur d'impact ;
+  et parce qu'un vert-bleu se lit volontiers « favorable », jamais posé sur une
+  hausse, une opportunité ou un bon résultat pour le dire tel.
+- **Le ton marque `#0fa3a3`** (3,09 : 1 sur blanc) est réservé aux formes ; **le
+  ton foncé `#0b6e6e`** (6,05 : 1, AA) porte seul un mot ; en mode sombre, le ton
+  marque reste (5,97 : 1 sur encre) et le ton foncé devient `#5ccfcf`.
 
 **Amendement du 30 octobre 2026 : l'ocre, troisième couleur de signal.**
 Décision de l'opératrice, sur les propositions visuelles du même jour. La
@@ -97,6 +111,8 @@ Contraste et accessibilité, tels que la charte les donne :
 | Ocre sur blanc | 3,71 : 1 | graphique seul |
 | Ocre foncé sur blanc | 5,91 : 1 | AA (dates, labels mono) |
 | Rose lisible sur fond rose | 4,62 : 1 | AA (badge, labels mono) |
+| Turquoise sur blanc | 3,09 : 1 | graphique seul |
+| Turquoise foncé sur blanc | 6,05 : 1 | AA |
 
 « Le rose ne porte jamais de texte courant : il marque, il ne raconte pas. »
 
@@ -115,7 +131,7 @@ ocre foncé `#d9a650`. Les noms gardent leur rôle (« blanc » est le fond,
 sombre, comme la version négative du logo. Les courriels ne changent pas.
 
 Proportions d'usage visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
-**rose 2 %, ocre 1 %** (rose 3 % avant l'amendement du 30 octobre 2026).
+**rose 2 %, ocre 1 %, turquoise 1 %** (rose 3 % avant les amendements du 30 octobre 2026).
 
 ## 03 · Typographie
 
@@ -202,9 +218,11 @@ impulsions verticales : **rose = signal fort, ardoise = signal secondaire**.
 
 Décision de l'opératrice, sur les propositions visuelles du même jour. Le
 mouvement signale une arrivée, il ne décore pas. Il ne s'applique qu'aux
-graphiques de l'espace (`components/graphiques-strategie.tsx`), par les classes
-`anime-monte`, `anime-etire`, `anime-remplit` et `anime-decouvre` de
-`app/globals.css`, seul endroit où il est écrit.
+graphiques de l'espace : la carte de chaleur et les crans des forces par les
+classes `anime-remplit` et `anime-decouvre` de `app/globals.css` ; les courbes,
+barres et radars, graphiques Recharts depuis le même jour
+(`components/graphiques-recharts.tsx`), par Recharts lui-même, 600 ms, départ
+vif et arrivée douce, infobulle sans animation, rien en mouvement réduit.
 
 - **Une seule animation par graphique, au chargement de l'écran**, qui dit dans
   quel sens lire : les barres montent ou s'étirent de gauche à droite, comme le
