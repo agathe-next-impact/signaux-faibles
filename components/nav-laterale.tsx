@@ -14,10 +14,17 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
 
   return (
     <nav aria-label="Sections" className="flex flex-wrap gap-1 lg:flex-col">
-      {onglets.map((onglet) => {
+      {onglets.map((onglet, rang) => {
         const courant = estOngletCourant(onglet, chemin)
+        // Le nom de la rubrique, posé avant son premier onglet (espace réorganisé).
+        const rubrique = onglet.rubrique && onglet.rubrique !== onglets[rang - 1]?.rubrique ? onglet.rubrique : null
 
-        return (
+        return [
+          rubrique ? (
+            <p key={`rubrique-${rubrique}`} className={`label-mono w-full px-3 pb-1 text-ardoise ${rang > 0 ? 'pt-4' : ''}`}>
+              {rubrique}
+            </p>
+          ) : null,
           <Link
             key={onglet.href}
             href={onglet.href}
@@ -34,8 +41,8 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
                 {onglet.compte}
               </span>
             ) : null}
-          </Link>
-        )
+          </Link>,
+        ]
       })}
     </nav>
   )

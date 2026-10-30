@@ -73,7 +73,11 @@ const ÉCRANS = [
   { nom: 'axes', chemin: `/${SLUG}/axes` },
   { nom: 'concurrents', chemin: `/${SLUG}/concurrents` },
   { nom: 'acteurs', chemin: `/${SLUG}/acteurs` },
+  { nom: 'forces', chemin: `/${SLUG}/forces` },
+  { nom: 'pestel', chemin: `/${SLUG}/pestel` },
+  { nom: 'diagnostic', chemin: `/${SLUG}/diagnostic` },
   { nom: 'recommandations', chemin: `/${SLUG}/recommandations` },
+  { nom: 'scenarios', chemin: `/${SLUG}/scenarios` },
   { nom: 'archives', chemin: `/${SLUG}/archives` },
   { nom: 'perimetre', chemin: `/${SLUG}/perimetre` },
 ]
@@ -194,17 +198,55 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     }
   })
 
-  test('recommandations : septembre, puis le trimestre de juillet à septembre', async () => {
-    await ouvrir(`/${SLUG}/recommandations`, 'recommandations')
-    for (const titre of ['Options stratégiques', 'Votre situation', 'Intensité des cinq forces', 'Trois scénarios']) {
-      await expect(page.getByRole('heading', { name: titre })).toBeVisible()
-    }
+  /**
+   * Un écran par outil (lot 3, 30 octobre 2026) : la SWOT, les forces, les
+   * scénarios et le PESTEL sortent de « Recommandations » et de « Les axes ».
+   * Tant que le lot n'est pas déployé, « Diagnostic » n'existe pas : ces écrans
+   * sont sautés et les anciens sont vérifiés comme avant.
+   */
+  let parOutil = false
+
+  test('stratégie par outil : diagnostic, scénarios, forces et PESTEL, et le rail en rubriques', async () => {
+    await page.goto(`/${SLUG}/diagnostic`)
+    parOutil = réorganisé && (await page.getByRole('heading', { name: 'Où en êtes-vous' }).isVisible())
+    test.skip(!parOutil, 'écrans par outil absents : lot 3 non déployé ou espace non réorganisé')
+    await expect(page.getByRole('heading', { name: 'Votre situation' })).toBeVisible()
+    await expect(page.locator('nav[aria-label="Sections"]').first().getByText('Stratégie', { exact: true })).toBeVisible()
+    await page.screenshot({ path: `${SORTIES}/diagnostic.png`, fullPage: true })
+    await ouvrir(`/${SLUG}/scenarios`, 'scenarios')
+    await expect(page.getByRole('heading', { name: 'Trois scénarios' })).toBeVisible()
+    await ouvrir(`/${SLUG}/forces`, 'forces')
+    await expect(page.getByRole('heading', { name: 'Intensité des cinq forces' })).toBeVisible()
     await expect(page.getByText(/Trimestre de juillet à septembre 2026/)).toBeVisible()
-    await expect(page.getByText(/Option retenue, synthèse de septembre 2026/i)).toBeVisible()
+    await ouvrir(`/${SLUG}/pestel`, 'pestel')
+    await expect(page.getByText('Technologies et substituts').first()).toBeVisible()
+    await expect(page.getByText('Influence et parties prenantes').first()).toBeVisible()
+    await expect(page.getByText(/^Famille \d+$/)).toHaveCount(0)
   })
 
-  test('les axes : l’onglet PESTEL nomme les familles mensuelles', async () => {
+  test('recommandations : l’option retenue de septembre, et le reste selon l’espace', async () => {
+    await ouvrir(`/${SLUG}/recommandations`, 'recommandations')
+    await expect(page.getByRole('heading', { name: 'Options stratégiques' })).toBeVisible()
+    await expect(page.getByText(/Option retenue, synthèse de septembre 2026/i)).toBeVisible()
+    if (parOutil) {
+      // Les codes des options mènent au diagnostic ; la SWOT et le trimestre n'y sont plus.
+      await expect(page.getByRole('heading', { name: 'Votre situation' })).toHaveCount(0)
+      await expect(page.locator(`a[href^="/${SLUG}/diagnostic#"]`).first()).toBeVisible()
+    } else {
+      for (const titre of ['Votre situation', 'Intensité des cinq forces', 'Trois scénarios']) {
+        await expect(page.getByRole('heading', { name: titre })).toBeVisible()
+      }
+      await expect(page.getByText(/Trimestre de juillet à septembre 2026/)).toBeVisible()
+    }
+  })
+
+  test('les axes : le PESTEL nomme les familles mensuelles, en onglet ou en écran', async () => {
     await ouvrir(`/${SLUG}/axes`, 'axes')
+    if (parOutil) {
+      await expect(page.getByRole('tab', { name: 'PESTEL' })).toHaveCount(0)
+      await expect(page.getByRole('link', { name: /dimensions PESTEL/ })).toBeVisible()
+      return
+    }
     await page.getByRole('tab', { name: 'PESTEL' }).click()
     const panneau = page.getByRole('tabpanel')
     await expect(panneau.getByText('Technologies et substituts').first()).toBeVisible()

@@ -485,10 +485,13 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('les écrans des outils stratégiques : un seul écran par lecture, aucune lecture Notion', () => {
     expect(appelants('synthèseDeLEspace')).toEqual([
       'app/(portail)/[slug]/acteurs/page.tsx',
+      'app/(portail)/[slug]/diagnostic/page.tsx',
+      'app/(portail)/[slug]/forces/page.tsx',
       'app/(portail)/[slug]/recommandations/page.tsx',
+      'app/(portail)/[slug]/scenarios/page.tsx',
       'lib/portail/strategie.ts',
     ])
-    expect(appelants('pestelDeLEspace')).toEqual(['app/(portail)/[slug]/axes/page.tsx', 'lib/portail/strategie.ts'])
+    expect(appelants('pestelDeLEspace')).toEqual(['app/(portail)/[slug]/axes/page.tsx', 'app/(portail)/[slug]/pestel/page.tsx', 'lib/portail/strategie.ts'])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
     const écrans = source.slice(source.indexOf('// ── Écrans du client (lot 11)'))
     expect(écrans).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
@@ -512,9 +515,15 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('ficheDuConcurrent')).toEqual(['app/(portail)/[slug]/concurrents/[concurrent]/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('espaceDeLOrganisation')).toEqual([
       'app/(portail)/[slug]/acteurs/page.tsx',
+      'app/(portail)/[slug]/axes/page.tsx',
       'app/(portail)/[slug]/concurrents/[concurrent]/page.tsx',
       'app/(portail)/[slug]/concurrents/page.tsx',
+      'app/(portail)/[slug]/diagnostic/page.tsx',
+      'app/(portail)/[slug]/forces/page.tsx',
       'app/(portail)/[slug]/layout.tsx',
+      'app/(portail)/[slug]/pestel/page.tsx',
+      'app/(portail)/[slug]/recommandations/page.tsx',
+      'app/(portail)/[slug]/scenarios/page.tsx',
       'lib/portail/strategie.ts',
     ])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
@@ -525,11 +534,20 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       expect(corps.indexOf("bornée('"), nom).toBeGreaterThan(0)
       expect(corps.indexOf('espaceRéorganisé'), nom).toBeGreaterThan(0)
     }
-    for (const page of [join('concurrents', 'page.tsx'), join('concurrents', '[concurrent]', 'page.tsx')]) {
+    // Les écrans par outil (lots 2 et 3) : 404 hors de l'espace réorganisé, avant toute autre lecture.
+    const parOutil = [
+      join('concurrents', 'page.tsx'),
+      join('concurrents', '[concurrent]', 'page.tsx'),
+      join('forces', 'page.tsx'),
+      join('pestel', 'page.tsx'),
+      join('diagnostic', 'page.tsx'),
+      join('scenarios', 'page.tsx'),
+    ]
+    for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/concurrentsDeLEspace\(\{|ficheDuConcurrent\(\{/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|notesDeLaSemaine)\(/))
     }
   })
 
@@ -969,17 +987,24 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     }
   })
 
-  it('l’espace réorganisé ajoute « Concurrents » au rail, avant « Acteurs », et la route existe', async () => {
+  it('l’espace réorganisé : douze écrans en rubriques, chacun avec sa route', async () => {
     const { ongletsDe } = await import('@/lib/portail/semaine')
     const comptes = { lettres: 2, recommandations: 0, archives: 1 }
     const onglets = ongletsDe('client', comptes, 'complète', { réorganisé: true })
-    expect(onglets).toHaveLength(8)
-    const hrefs = onglets.map((o) => o.href)
-    expect(hrefs.indexOf('/client/concurrents')).toBe(hrefs.indexOf('/client/acteurs') - 1)
-    expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', 'concurrents', 'page.tsx'))).toBe(true)
+    expect(onglets).toHaveLength(12)
+    for (const onglet of onglets) {
+      const segment = onglet.href.replace(/^\/client\/?/, '')
+      const chemin = join(process.cwd(), 'app', '(portail)', '[slug]', ...(segment ? [segment] : []), 'page.tsx')
+      expect(existsSync(chemin), `${onglet.libellé} → ${onglet.href}`).toBe(true)
+      expect(onglet.libelléCourt.length, onglet.libelléCourt).toBeLessThanOrEqual(8)
+      expect(onglet.rubrique, onglet.libellé).toBeTruthy()
+    }
+    // Une rubrique ne revient pas après une autre : ses écrans se suivent dans le rail.
+    const rubriques = onglets.map((o) => o.rubrique)
+    expect(rubriques.filter((r, i) => r !== rubriques[i - 1])).toEqual(['Cette semaine', 'Le marché', 'L’environnement', 'Stratégie', 'Votre veille'])
     expect(existsSync(join(process.cwd(), 'app', '(portail)', '[slug]', 'concurrents', '[concurrent]', 'page.tsx'))).toBe(true)
-    expect(onglets.every((o) => o.libelléCourt.length <= 8)).toBe(true)
     expect(ongletsDe('client', comptes, 'essentiel', { réorganisé: true }).map((o) => o.href)).toEqual(['/client', '/client/lettres'])
+    expect(ongletsDe('client', comptes, 'aucune', { réorganisé: true }).map((o) => o.href)).toEqual(['/client'])
   })
 
   it('hors lecture complète, le rail ne montre que ce qui reste ouvert', async () => {
