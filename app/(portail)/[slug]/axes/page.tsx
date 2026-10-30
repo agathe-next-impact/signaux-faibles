@@ -6,9 +6,10 @@ import { fraîcheurDUnAxe, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { libelléDeMouvement, suivreLesAxes } from '@/lib/domaine/tendances'
 import { notesDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
-import { espaceDeLOrganisation, pestelDeLEspace } from '@/lib/portail/strategie'
+import { espaceDeLOrganisation, faitsRécentsDeLEspace, pestelDeLEspace } from '@/lib/portail/strategie'
 import { Onglets } from '@/components/onglets'
 import { VuePestel } from '@/components/strategie-ecrans'
+import { CarteDeChaleurDesAxes } from '@/components/graphiques-strategie'
 
 /**
  * Les axes : où en est chaque axe de la veille, et ce qui a bougé.
@@ -33,13 +34,19 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
   // L'espace réorganisé (lot 3) a son écran « PESTEL » : l'onglet n'est plus lu ici.
   const réorganisé = espace?.réorganisé ?? false
 
-  const [notes, notesPrécédentes] = await Promise.all([notesDeLaSemaine(semaines[0]), notesDeLaSemaine(semaines[1])])
+  const fin = semaines[0]?.éditions.map((é) => é.dateÉdition).sort().at(-1)
+  // La carte de chaleur (lot 5) : les niveaux des axes sur huit semaines, lus
+  // dans les faits étiquetés de Postgres, sans un corps de lettre de plus.
+  const [notes, notesPrécédentes, récents] = await Promise.all([
+    notesDeLaSemaine(semaines[0]),
+    notesDeLaSemaine(semaines[1]),
+    réorganisé && fin ? faitsRécentsDeLEspace({ registre: accès.organisationId, fin }) : null,
+  ])
   const documents = notes.map((n) => n.document)
   const documentsPrécédents = notesPrécédentes.map((n) => n.document)
   // L'onglet PESTEL (pilote des outils stratégiques, lot 11) : les étiquettes
   // des treize dernières semaines, et les phrases-titres des lettres déjà lues
   // ci-dessus. Aucune lecture Notion de plus ; hors du pilote, pas d'onglet.
-  const fin = semaines[0]?.éditions.map((é) => é.dateÉdition).sort().at(-1)
   const pestel = fin && !réorganisé
     ? await pestelDeLEspace({
         registre: accès.organisationId,
@@ -128,6 +135,19 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
       ) : (
         parAxe
       )}
+
+      {récents?.chaleur && récents.chaleur.lignes.length > 0 ? (
+        <section className="mt-10 flex flex-col gap-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="font-titre text-h2 font-bold text-encre">Les axes sur huit semaines</h2>
+            <p className="label-mono text-ardoise">Outil en test</p>
+          </div>
+          <p className="max-w-[68ch] text-ardoise">
+            Chaque case porte le niveau de l’axe dans la lettre de la semaine, celui de son fait le plus fort. Une case vide est un axe sans fait marquant, ou une semaine où son thème n’a pas paru.
+          </p>
+          <CarteDeChaleurDesAxes chaleur={récents.chaleur} />
+        </section>
+      ) : null}
 
       {réorganisé ? (
         <p className="mt-8">

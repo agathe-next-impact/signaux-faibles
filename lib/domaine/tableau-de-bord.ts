@@ -43,6 +43,7 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
   const retenue = mois?.tows.candidate ? TYPES_DE_TOWS.find((t) => t.libellé === mois.tows.candidate?.libellé) : undefined
   const pestel = d.étiquettes ? [...d.étiquettes.pestel].sort((a, b) => b.faits - a.faits)[0] : undefined
   const intenses = trimestre ? trimestre.forces.filter((f) => f.cran === 3).length : 0
+  const indice = trimestre?.indicateurs?.indice?.valeurs ?? null
   const href = (segment: string) => `/${d.slug}${segment}`
   return [
     { rubrique: 'Cette semaine', écran: 'Lettres', href: href('/lettres'), valeur: String(d.lettres), mention: d.dernièreSemaine ? `la dernière, ${d.dernièreSemaine}` : 'aucune lettre' },
@@ -95,6 +96,13 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
       href: href('/scenarios'),
       valeur: trimestre && trimestre.scénarios.length > 0 ? pluriel(trimestre.scénarios.length, 'scénario') : 'n.d.',
       mention: trimestre ? `trimestre ${libelléDePériode(trimestre.période)}` : pasEncore,
+    },
+    {
+      rubrique: 'Stratégie',
+      écran: 'Indicateurs',
+      href: href('/indicateurs'),
+      valeur: indice && indice.entrées !== null ? pluriel(indice.entrées, 'entrée') : 'n.d.',
+      mention: indice ? (indice.sorties !== null ? `${pluriel(indice.sorties, 'procédure')} au registre` : 'procédures n.d.') : trimestre ? 'indice non calculé' : pasEncore,
     },
     { rubrique: 'Votre veille', écran: 'Périmètre', href: href('/perimetre'), valeur: 'Ce qui est suivi', mention: 'et ce que nous proposons d’y changer' },
     { rubrique: 'Votre veille', écran: 'Archives', href: href('/archives'), valeur: pluriel(d.archives, 'semaine'), mention: 'une entrée par semaine' },

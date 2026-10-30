@@ -100,7 +100,7 @@ export function ongletsDe(
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
   espace: { readonly réorganisé: boolean } = { réorganisé: false },
 ): Onglet[] {
-  // L'espace réorganisé (lots 2 et 3, 30 octobre 2026, pilote sur L'Hermitage) :
+  // L'espace réorganisé (lots 2, 3 et 5, 30 octobre 2026, pilote sur L'Hermitage) :
   // un écran par outil, groupés en rubriques ; ailleurs, le rail garde ses sept écrans.
   if (espace.réorganisé) {
     const réorganisé = [
@@ -114,6 +114,7 @@ export function ongletsDe(
       { href: `/${slug}/diagnostic`, libellé: 'Diagnostic', libelléCourt: 'Diagnos.', rubrique: 'Stratégie' },
       { href: `/${slug}/recommandations`, libellé: 'Options', libelléCourt: 'Options', compte: comptes.recommandations, rubrique: 'Stratégie' },
       { href: `/${slug}/scenarios`, libellé: 'Scénarios', libelléCourt: 'Scénar.', rubrique: 'Stratégie' },
+      { href: `/${slug}/indicateurs`, libellé: 'Indicateurs', libelléCourt: 'Indic.', rubrique: 'Stratégie' },
       { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.', rubrique: 'Votre veille' },
       { href: `/${slug}/archives`, libellé: 'Archives', libelléCourt: 'Archives', compte: comptes.archives, rubrique: 'Votre veille' },
     ]

@@ -7,12 +7,15 @@ import {
   normaliserUrl,
   PESTEL,
   trousDuPestel,
+  type Benchmark,
   type CaseSwot,
   type ForcePorter,
   type Grille,
+  type IndiceDeCycle,
   type LigneDeBenchmark,
   type Pestel,
 } from '@/lib/domaine/strategie'
+import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
 import { enSlug } from '@/lib/domaine/slug'
 import { sansAccent } from '@/lib/domaine/texte'
 
@@ -755,5 +758,127 @@ export type SynthèseVue = {
     readonly swot: VueDeLaSwot
     readonly tows: VueDeLaTows
   } | null
-  readonly trimestre: { readonly période: string; readonly forces: readonly ForceLue[]; readonly scénarios: readonly ScénarioLu[] } | null
+  readonly trimestre: {
+    readonly période: string
+    readonly forces: readonly ForceLue[]
+    readonly scénarios: readonly ScénarioLu[]
+    /** L'indice de cycle de vie et le benchmark du trimestre (lot 5) ; absent d'une synthèse qui ne les porte pas. */
+    readonly indicateurs?: VueDesIndicateurs | null
+  } | null
+}
+
+// ── Graphiques (lot 5, 30 octobre 2026) ──────────────────────────────────────
+
+/** Un fait étiqueté réduit à ce que comptent l'activité et la carte de chaleur. */
+export type FaitDeLActivité = {
+  readonly dateÉdition: string
+  readonly famille: string | null
+  readonly axe: number | null
+  readonly impact: string
+  readonly rupture: boolean
+}
+
+/** Les lundis des `n` semaines qui finissent à la semaine de `fin`, du plus ancien au plus récent. */
+export function semainesJusquÀ(fin: string, n: number): readonly string[] {
+  const dernier = new Date(`${lundiDeLaSemaine(fin)}T00:00:00Z`)
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(dernier)
+    d.setUTCDate(d.getUTCDate() - 7 * (n - 1 - i))
+    return d.toISOString().slice(0, 10)
+  })
+}
+
+export const SEMAINES_D_ACTIVITÉ = 13
+export const SEMAINES_DE_CHALEUR = 8
+
+export type SemaineDActivité = { readonly lundi: string; readonly faits: number; readonly ruptures: number }
+
+/** Les faits étiquetés par semaine de parution, zéro compris : l'activité de la veille sur le tableau de bord. */
+export function activitéParSemaine(faits: readonly FaitDeLActivité[], fin: string, n = SEMAINES_D_ACTIVITÉ): readonly SemaineDActivité[] {
+  return semainesJusquÀ(fin, n).map((lundi) => {
+    const siens = faits.filter((f) => lundiDeLaSemaine(f.dateÉdition) === lundi)
+    return { lundi, faits: siens.length, ruptures: siens.filter((f) => f.rupture).length }
+  })
+}
+
+/** `null` : aucun fait étiqueté cette semaine-là, que l'axe ait été RAS ou absent de la lettre. */
+export type CaseDeChaleur = { readonly lundi: string; readonly niveau: 'FORT' | 'MOYEN' | null; readonly faits: number }
+export type LigneDeChaleur = { readonly clé: string; readonly numéro: number; readonly nom: string; readonly cases: readonly CaseDeChaleur[] }
+export type CarteDeChaleur = { readonly semaines: readonly string[]; readonly lignes: readonly LigneDeChaleur[] }
+
+/**
+ * Les axes en lignes, les semaines en colonnes, chaque case au niveau de son
+ * fait le plus fort : la porte des étiquettes tient que le niveau d'un axe est
+ * celui de son fait le plus fort, la case dit donc le niveau de l'axe. Un axe
+ * RAS n'a pas de fait étiqueté : sa case reste vide, comme celle d'une semaine
+ * où la famille n'a pas paru, et la légende le dit. Les familles de la grille
+ * d'abord, dans son ordre, chacune avec son nom court ; puis celles que les
+ * faits portent sans que la grille les nomme.
+ */
+export function vueDeLaChaleur(faits: readonly FaitDeLActivité[], grille: Grille, fin: string, n = SEMAINES_DE_CHALEUR): CarteDeChaleur {
+  const semaines = semainesJusquÀ(fin, n)
+  const clé = (veille: string | null, numéro: number) => `${veille ?? 'unique'}:${numéro}`
+  const lignes = new Map<string, { numéro: number; nom: string }>()
+  for (const f of grille.familles) lignes.set(clé(f.veille, f.numéro), { numéro: f.numéro, nom: f.libellé ?? `Famille ${f.numéro}` })
+  for (const f of faits) {
+    if (f.axe === null) continue
+    const k = clé(familleDe(f.famille), f.axe)
+    if (!lignes.has(k)) lignes.set(k, { numéro: f.axe, nom: `Famille ${f.axe}` })
+  }
+  return {
+    semaines,
+    lignes: [...lignes].map(([k, l]) => ({
+      clé: k,
+      ...l,
+      cases: semaines.map((lundi) => {
+        const siens = faits.filter((f) => f.axe !== null && clé(familleDe(f.famille), f.axe) === k && lundiDeLaSemaine(f.dateÉdition) === lundi)
+        const niveau = siens.some((f) => f.impact === 'FORT') ? 'FORT' : siens.some((f) => f.impact === 'MOYEN') ? 'MOYEN' : null
+        return { lundi, niveau, faits: siens.length }
+      }),
+    })),
+  }
+}
+
+/** Un élément du trimestre tel que la base le rend, réduit à ce que l'écran « Indicateurs » lit. */
+export type ÉlémentDIndicateur = { readonly outil: string; readonly énoncé: string | null; readonly valeur?: unknown }
+
+export type VueDesIndicateurs = {
+  readonly période: string
+  /** L'indice de cycle de vie calculé par le portail, avec l'interprétation publiée ; `null` s'il n'a pas été calculé. */
+  readonly indice: { readonly valeurs: IndiceDeCycle; readonly interprétation: string | null } | null
+  readonly benchmark: { readonly valeurs: Benchmark; readonly interprétation: string | null } | null
+}
+
+/**
+ * L'écran « Indicateurs » : l'indice de cycle de vie et le benchmark du dernier
+ * trimestre publié, tels que le portail les a calculés (`lib/portail/calculs.ts`)
+ * et les a gardés dans la valeur de leur élément. Rien n'est recalculé ici ; une
+ * valeur incomplète n'est pas montrée plutôt que complétée.
+ */
+export function vueDesIndicateurs(période: string, éléments: readonly ÉlémentDIndicateur[]): VueDesIndicateurs | null {
+  const élément = (outil: string) => éléments.find((é) => é.outil === outil)
+  const i = élément('indice_cycle')
+  const b = élément('benchmark')
+  const valeurI = (i?.valeur ?? null) as Partial<IndiceDeCycle> | null
+  const valeurB = (b?.valeur ?? null) as Partial<Benchmark> | null
+  const indice = valeurI?.période && valeurI.périodePrécédente ? { valeurs: valeurI as IndiceDeCycle, interprétation: i?.énoncé ?? null } : null
+  const benchmark = Array.isArray(valeurB?.lignes) && valeurB.lignes.length > 0 ? { valeurs: { limites: [], ...valeurB } as Benchmark, interprétation: b?.énoncé ?? null } : null
+  return indice || benchmark ? { période, indice, benchmark } : null
+}
+
+const nd = (x: number | null | undefined) => (typeof x === 'number' ? x.toLocaleString('fr-FR') : 'n.d.')
+
+export function enBrefDesIndicateurs(vue: VueDesIndicateurs): readonly ChiffreEnBref[] {
+  const i = vue.indice?.valeurs ?? null
+  const b = vue.benchmark?.valeurs ?? null
+  const évolution = (x: number | null) => (x === null ? null : `${x > 0 ? '+' : ''}${x.toLocaleString('fr-FR')} % sur un an`)
+  return [
+    { intitulé: 'Entrées au registre', valeur: i ? nd(i.entrées) : 'n.d.', mention: i ? évolution(i.évolutionDesEntrées) : 'indice non calculé' },
+    { intitulé: 'Procédures collectives', valeur: i ? nd(i.sorties) : 'n.d.', mention: i ? évolution(i.évolutionDesSorties) : 'indice non calculé' },
+    {
+      intitulé: 'Comptes publiés',
+      valeur: b ? `${b.avecComptes} sur ${b.lignes.length}` : 'n.d.',
+      mention: b ? (b.rangDeLOrganisation !== null ? `votre rang : ${b.rangDeLOrganisation}` : 'votre rang : n.d.') : 'benchmark non calculé',
+    },
+  ]
 }

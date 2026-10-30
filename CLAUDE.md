@@ -90,7 +90,15 @@ chiffres en tête des écrans par outil (`enBref…`, `lib/domaine/strategie-vue
 comptés, jamais rédigés), les longues listes repliées derrière un `details`
 natif (`components/repliable.tsx` : concurrents au-delà de six, dossiers au-delà
 de cinq, semaines d'actions au-delà de quatre) et des liens internes (un élément
-SWOT daté vers sa lettre, un dossier concurrent de l'accueil vers sa fiche). Une période
+SWOT daté vers sa lettre, un dossier concurrent de l'accueil vers sa fiche). Le
+lot 5 (même jour) y ajoute les graphiques, en HTML à la charte
+(`components/graphiques-strategie.tsx`) : forces en trois crans et tendance,
+barres mensuelles du PESTEL, carte de chaleur des axes sur huit semaines et
+activité sur treize semaines de l'accueil, toutes deux tirées des faits
+étiquetés de Postgres et non des corps (`faitsRécentsDeLEspace`), et l'écran
+« Indicateurs » (`/[slug]/indicateurs`, `indicateursDeLEspace` : indice de
+cycle de vie et benchmark du dernier trimestre publié, tels que calculés à la
+synthèse ; treize écrans au rail, garde d'architecture). Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

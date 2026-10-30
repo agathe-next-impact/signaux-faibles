@@ -91,6 +91,7 @@ describe('casesDuTableauDeBord', () => {
       '/hermitage/diagnostic',
       '/hermitage/recommandations',
       '/hermitage/scenarios',
+      '/hermitage/indicateurs',
       '/hermitage/perimetre',
       '/hermitage/archives',
     ])
@@ -103,11 +104,35 @@ describe('casesDuTableauDeBord', () => {
     expect(par.get('Diagnostic')).toMatchObject({ valeur: '5 éléments', mention: '1 menace, 2 opportunités' })
     expect(par.get('Options')).toMatchObject({ valeur: '2 options', mention: 'retenue : saisir, forces × opportunités' })
     expect(par.get('Scénarios')).toMatchObject({ valeur: '3 scénarios' })
+    // Le trimestre ne porte pas d'indicateurs : la case le dit.
+    expect(par.get('Indicateurs')).toMatchObject({ valeur: 'n.d.', mention: 'indice non calculé' })
+  })
+
+  it('la case des indicateurs reprend l’indice du trimestre publié', () => {
+    const indice = {
+      calculéLe: '2026-10-05T00:00:00Z',
+      période: { du: '2025-10-05', au: '2026-10-04' },
+      périodePrécédente: { du: '2024-10-05', au: '2025-10-04' },
+      départements: ['60'],
+      texte: 'séminaires',
+      entrées: 326,
+      sorties: 69,
+      solde: 257,
+      ratio: 4.72,
+      entréesAvant: 318,
+      sortiesAvant: 55,
+      évolutionDesEntrées: 2.5,
+      évolutionDesSorties: 25.5,
+      limites: [],
+    }
+    const synthèse = { ...SYNTHÈSE, trimestre: { ...SYNTHÈSE.trimestre!, indicateurs: { période: '2026-T3', indice: { valeurs: indice, interprétation: null }, benchmark: null } } }
+    const par = new Map(casesDuTableauDeBord({ ...DONNÉES, synthèse }).map((c) => [c.écran, c]))
+    expect(par.get('Indicateurs')).toMatchObject({ valeur: '326 entrées', mention: '69 procédures au registre' })
   })
 
   it('sans synthèse publiée ni étiquettes, les cases le disent au lieu d’inventer un chiffre', () => {
     const par = new Map(casesDuTableauDeBord({ ...DONNÉES, synthèse: null, étiquettes: null }).map((c) => [c.écran, c]))
-    for (const écran of ['Forces du marché', 'Diagnostic', 'Options', 'Scénarios', 'PESTEL']) expect(par.get(écran)?.valeur, écran).toBe('n.d.')
+    for (const écran of ['Forces du marché', 'Diagnostic', 'Options', 'Scénarios', 'Indicateurs', 'PESTEL']) expect(par.get(écran)?.valeur, écran).toBe('n.d.')
     expect(par.get('Concurrents')?.mention).toBe('pas encore publié')
   })
 })

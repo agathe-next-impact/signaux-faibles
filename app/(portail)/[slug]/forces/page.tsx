@@ -9,9 +9,9 @@ import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strateg
 /**
  * Forces du marché (lot 3 de `docs/proposition-reorganisation-espace.md`,
  * 30 octobre 2026) : le marché se durcit-il. Les cinq forces de la dernière
- * synthèse trimestrielle publiée, sorties de « Recommandations ». Les barres à
- * trois crans viendront avec les graphiques (lot 5). Seulement pour un espace
- * réorganisé : ailleurs, 404 avant toute lecture.
+ * synthèse trimestrielle publiée, sorties de « Recommandations », en barres à
+ * trois crans avec leur tendance (lot 5). Seulement pour un espace réorganisé :
+ * ailleurs, 404 avant toute lecture.
  */
 export default async function ForcesDuMarché({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -30,7 +30,7 @@ export default async function ForcesDuMarché({ params }: { params: Promise<{ sl
         <>
           <EnBref chiffres={enBrefDesForces(trimestre.forces)} />
           <div className="mt-8">
-            <CinqForces période={trimestre.période} forces={trimestre.forces} />
+            <CinqForces période={trimestre.période} forces={trimestre.forces} barres />
           </div>
         </>
       ) : (
