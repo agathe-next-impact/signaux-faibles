@@ -32,6 +32,7 @@ import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs
 import {
   activitéParSemaine,
   nomsDesConcurrents,
+  pestelDesFaits,
   périodesAPublier,
   SEMAINES_D_ACTIVITÉ,
   vueDeLaChaleur,
@@ -1139,6 +1140,8 @@ export type FaitsRécentsDeLEspace = {
   readonly activité: readonly SemaineDActivité[]
   /** Les axes de la grille sur les huit dernières semaines, au niveau de leur fait le plus fort ; `null` sans grille. */
   readonly chaleur: CarteDeChaleur | null
+  /** Les mêmes faits par dimension PESTEL, pour la case de l'écran « PESTEL ». */
+  readonly pestel: readonly { readonly libellé: string; readonly faits: number }[]
 }
 
 /**
@@ -1162,8 +1165,12 @@ export async function faitsRécentsDeLEspace(
       lireLaGrille(organisation.id, db),
     ])
     if (lignes.length === 0) return null
-    const faits = lignes.map((l) => ({ dateÉdition: l.dateÉdition, famille: l.familleÉdition, axe: l.numéroAxe, impact: l.impact, rupture: l.rupture }))
-    return { activité: activitéParSemaine(faits, entrée.fin), chaleur: grille ? vueDeLaChaleur(faits, grille.grille, entrée.fin) : null }
+    const faits = lignes.map((l) => ({ dateÉdition: l.dateÉdition, famille: l.familleÉdition, axe: l.numéroAxe, impact: l.impact, rupture: l.rupture, pestel: l.pestel }))
+    return {
+      activité: activitéParSemaine(faits, entrée.fin),
+      chaleur: grille ? vueDeLaChaleur(faits, grille.grille, entrée.fin) : null,
+      pestel: pestelDesFaits(faits),
+    }
   })
 }
 

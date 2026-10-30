@@ -21,9 +21,20 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
 
         return [
           rubrique ? (
-            <p key={`rubrique-${rubrique}`} className={`label-mono w-full px-3 pb-1 text-ardoise ${rang > 0 ? 'pt-4' : ''}`}>
-              {rubrique}
-            </p>
+            onglet.rubriqueHref ? (
+              <Link
+                key={`rubrique-${rubrique}`}
+                href={onglet.rubriqueHref}
+                aria-current={chemin === onglet.rubriqueHref ? 'page' : undefined}
+                className={`label-mono w-full px-3 pb-1 hover:text-encre ${chemin === onglet.rubriqueHref ? 'text-encre' : 'text-ardoise'} ${rang > 0 ? 'pt-4' : ''}`}
+              >
+                {rubrique} →
+              </Link>
+            ) : (
+              <p key={`rubrique-${rubrique}`} className={`label-mono w-full px-3 pb-1 text-ardoise ${rang > 0 ? 'pt-4' : ''}`}>
+                {rubrique}
+              </p>
+            )
           ) : null,
           <Link
             key={onglet.href}

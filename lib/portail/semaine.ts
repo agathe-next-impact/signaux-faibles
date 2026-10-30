@@ -106,17 +106,17 @@ export function ongletsDe(
     const réorganisé = [
       { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true, rubrique: 'Cette semaine' },
       { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres, rubrique: 'Cette semaine' },
-      { href: `/${slug}/concurrents`, libellé: 'Concurrents', libelléCourt: 'Concurr.', rubrique: 'Le marché' },
-      { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs', rubrique: 'Le marché' },
-      { href: `/${slug}/forces`, libellé: 'Forces du marché', libelléCourt: 'Forces', rubrique: 'Le marché' },
-      { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes', rubrique: 'L’environnement' },
-      { href: `/${slug}/pestel`, libellé: 'PESTEL', libelléCourt: 'PESTEL', rubrique: 'L’environnement' },
-      { href: `/${slug}/diagnostic`, libellé: 'Diagnostic', libelléCourt: 'Diagnos.', rubrique: 'Stratégie' },
-      { href: `/${slug}/recommandations`, libellé: 'Options', libelléCourt: 'Options', compte: comptes.recommandations, rubrique: 'Stratégie' },
-      { href: `/${slug}/scenarios`, libellé: 'Scénarios', libelléCourt: 'Scénar.', rubrique: 'Stratégie' },
-      { href: `/${slug}/indicateurs`, libellé: 'Indicateurs', libelléCourt: 'Indic.', rubrique: 'Stratégie' },
-      { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.', rubrique: 'Votre veille' },
-      { href: `/${slug}/archives`, libellé: 'Archives', libelléCourt: 'Archives', compte: comptes.archives, rubrique: 'Votre veille' },
+      { href: `/${slug}/concurrents`, libellé: 'Concurrents', libelléCourt: 'Concurr.', rubrique: 'Le marché', rubriqueHref: `/${slug}/marche` },
+      { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs', rubrique: 'Le marché', rubriqueHref: `/${slug}/marche` },
+      { href: `/${slug}/forces`, libellé: 'Forces du marché', libelléCourt: 'Forces', rubrique: 'Le marché', rubriqueHref: `/${slug}/marche` },
+      { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes', rubrique: 'L’environnement', rubriqueHref: `/${slug}/environnement` },
+      { href: `/${slug}/pestel`, libellé: 'PESTEL', libelléCourt: 'PESTEL', rubrique: 'L’environnement', rubriqueHref: `/${slug}/environnement` },
+      { href: `/${slug}/diagnostic`, libellé: 'Diagnostic', libelléCourt: 'Diagnos.', rubrique: 'Stratégie', rubriqueHref: `/${slug}/strategie` },
+      { href: `/${slug}/recommandations`, libellé: 'Options', libelléCourt: 'Options', compte: comptes.recommandations, rubrique: 'Stratégie', rubriqueHref: `/${slug}/strategie` },
+      { href: `/${slug}/scenarios`, libellé: 'Scénarios', libelléCourt: 'Scénar.', rubrique: 'Stratégie', rubriqueHref: `/${slug}/strategie` },
+      { href: `/${slug}/indicateurs`, libellé: 'Indicateurs', libelléCourt: 'Indic.', rubrique: 'Stratégie', rubriqueHref: `/${slug}/strategie` },
+      { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.', rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
+      { href: `/${slug}/archives`, libellé: 'Archives', libelléCourt: 'Archives', compte: comptes.archives, rubrique: 'Votre veille', rubriqueHref: `/${slug}/veille` },
     ]
     if (lecture === 'essentiel') return réorganisé.slice(0, 2)
     if (lecture === 'aucune') return réorganisé.slice(0, 1)
