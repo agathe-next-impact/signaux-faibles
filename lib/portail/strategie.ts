@@ -287,6 +287,8 @@ function àEnregistrer(synthèse: SynthèseProposée): { éléments: ÉlémentÀ
     nonSuivi: p.nonSuivi ?? false,
     tendance: p.tendance ?? null,
     faits: p.faits,
+    origine: p.origine === 'declaratif' ? 'declaratif' : 'faits',
+    référence: p.origine === 'declaratif' ? (p.référence?.trim() ?? null) : null,
   }))
   return { éléments, positions }
 }

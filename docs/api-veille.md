@@ -793,7 +793,9 @@ l'espace client (lot 11, `PATCH`).
     "casesInsuffisantes": ["opportunites"],
     "tows": [{ "type": "ST", "enonce": "…", "elements": ["S1", "T1"], "candidate": true }, …],
     "positions": [{ "outil": "groupes", "sujet": "CISPE", "axe": "couches", "cran": 3, "faits": ["<id>"] },
-                  { "outil": "mendelow", "sujet": "DGE", "axe": "pouvoir", "cran": 3, "faits": ["<id>"] }, …] } }
+                  { "outil": "mendelow", "sujet": "DGE", "axe": "pouvoir", "cran": 3, "faits": ["<id>"] },
+                  { "outil": "groupes", "sujet": "Cigref", "axe": "couches", "cran": 1, "faits": [],
+                    "origine": "declaratif", "reference": "§2, famille 1" }, …] } }
 ```
 
 `periode` : `AAAA-MM`, ou `AAAA-Tn` avec le mode `trimestriel` et lui seul. La
@@ -809,6 +811,21 @@ la section de la fiche. Deux à quatre options TOWS, chacune croisant un éléme
 interne et un externe, **une seule candidate**. Une position cite au moins un
 fait ; un cran qui bouge cite un fait de la fenêtre, qui nomme l'entité pour la
 carte des groupes. Crans de Mendelow : 1 `bas`, 2 `intermediaire`, 3 `eleve`.
+
+**Positions déclaratives** (30 octobre 2026, lot 1 de
+`docs/proposition-reorganisation-espace.md`) : une position de la carte des
+groupes ou de Mendelow, et d'elles seules (`origine-interdite` sinon), peut
+porter `origine: "declaratif"` et `reference`, la ligne du référentiel d'où
+viennent ses crans (« §2, famille 1 », 120 caractères au plus,
+`référence-manquante` sinon). Elle n'exige alors aucun fait : elle place une
+entité de la grille dont les deux variables du §2 sont connues, sans attendre
+qu'une lettre la nomme. Elle ne déplace rien : un cran qui change d'une période
+à l'autre demande toujours un fait de la fenêtre (`mouvement-sans-fait`). Une
+`reference` sans `origine: "declaratif"` est refusée
+(`référence-hors-déclaratif`). Le rendu de relecture dit « (déclaratif,
+§2, famille 1) », et les écrans du client disent combien de positions sont
+lues dans le corpus de la veille, en attendant un fait daté. Pendant le pilote,
+la revue ne pose des positions déclaratives que pour L'Hermitage.
 
 **Au trimestre** (`periode` `AAAA-Tn`, `mode: "trimestriel"`), la synthèse
 porte en plus : les cinq forces, toutes (`outil: "forces"`, `sujet` parmi

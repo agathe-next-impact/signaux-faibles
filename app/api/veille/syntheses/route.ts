@@ -17,7 +17,7 @@ import { lireLaSynthèseDuPilote, modifierLÉnoncéDuPilote, publierLaSynthèseD
  *       "pestel": [{ "lettre", "enonce" | null, "faits": [] }],
  *       "swot": [{ "id": "S1", "case", "enonce", "etat", "origine", "hypothese", "filiation", "faits", "referenceFiche" }],
  *       "casesInsuffisantes": [], "tows": [{ "type", "enonce", "elements": ["S1", "O2"], "candidate" }],
- *       "positions": [{ "outil", "sujet", "axe", "cran", "nonSuivi", "tendance", "faits" }],
+ *       "positions": [{ "outil", "sujet", "axe", "cran", "nonSuivi", "tendance", "faits", "origine", "reference" }],
  *       "scenarios": [], "interpretations": [] } }
  *
  * Au trimestre (`periode` AAAA-Tn, mode `trimestriel`), `cycle` porte les
@@ -91,6 +91,8 @@ const demande = z.object({
           nonSuivi: z.boolean().nullish(),
           tendance: texte(20).nullish(),
           faits: ids,
+          origine: z.enum(['faits', 'declaratif']).nullish(),
+          reference: texte(300).nullish(),
         }),
       )
       .max(200),
@@ -149,6 +151,8 @@ function versLeDomaine(s: z.infer<typeof demande>['synthese']): SynthèsePropos�
       nonSuivi: p.nonSuivi ?? false,
       tendance: (p.tendance ?? null) as S['positions'][number]['tendance'],
       faits: p.faits,
+      origine: p.origine ?? 'faits',
+      référence: p.reference ?? null,
     })),
     scénarios: (s.scenarios ?? []).map((x) => ({ titre: x.titre, énoncé: x.enonce, indicateurs: x.indicateurs, faits: x.faits })),
     interprétations: (s.interpretations ?? []).map((i) => ({ outil: i.outil, énoncé: i.enonce })),

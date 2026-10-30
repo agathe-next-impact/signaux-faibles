@@ -1,9 +1,11 @@
 # Proposition : réorganiser l'espace client pour la lecture rapide
 
 30 octobre 2026. Proposition acceptée par l'opératrice le même jour, avec
-l'**option A** pour les écrans « Votre veille » (§6) ; rien n'est encore codé.
-Elle tient lieu de la discussion que demande la règle « pas d'autre écran sans
-discussion » de `CLAUDE.md`. Reste ouvert le périmètre (§8, point 4).
+l'**option A** pour les écrans « Votre veille » (§6), et un périmètre tranché
+le même jour : **le pilote se fait sur L'Hermitage** (§8, point 4). Elle tient
+lieu de la discussion que demande la règle « pas d'autre écran sans
+discussion » de `CLAUDE.md`. Lot 1 (positions déclaratives) codé le
+30 octobre 2026.
 
 ## 1. Le constat
 
@@ -173,6 +175,14 @@ contrôle par nouvel écran et le contrôle de cloisonnement sur chacun.
 Décidé le 30/10/2026 : accord sur la proposition, option A pour la source des
 écrans « Votre veille ». L'extension de l'exception de données qu'elle suppose
 sera écrite dans `CLAUDE.md` avec le lot 6, bornes du §6 comprises.
+
+Décidé le 30/10/2026, point 4 : **pilote sur L'Hermitage**. Les nouveaux
+écrans ne s'ouvrent d'abord que pour elle ; les autres organisations, pilote
+des outils stratégiques compris, gardent les sept écrans jusqu'à la fin de la
+recette. Pour le lot 1, la porte admet les positions déclaratives pour toute
+organisation du pilote (c'est une règle de contrat, pas un écran), et c'est la
+revue mensuelle qui ne les pose que pour L'Hermitage. Les lots 2 à 6 auront
+leur propre interrupteur par organisation.
 
 1. Admettre les **positions déclaratives** (§2), pour que la carte et
    Mendelow montrent tout le corpus.

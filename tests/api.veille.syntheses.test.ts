@@ -107,13 +107,22 @@ describe('POST /api/veille/syntheses', () => {
         casesInsuffisantes: [],
         tows: [{ type: 'ST', énoncé: 'Faire valoir les trois couches face à la concentration.', éléments: ['S1', 'T1'], candidate: true }],
         positions: [
-          { outil: 'groupes', sujet: 'CISPE', axe: 'couches', cran: 2, nonSuivi: false, tendance: null, faits: ['f1'] },
-          { outil: 'mendelow', sujet: 'DGE', axe: 'pouvoir', cran: null, nonSuivi: true, tendance: null, faits: [] },
+          { outil: 'groupes', sujet: 'CISPE', axe: 'couches', cran: 2, nonSuivi: false, tendance: null, faits: ['f1'], origine: 'faits', référence: null },
+          { outil: 'mendelow', sujet: 'DGE', axe: 'pouvoir', cran: null, nonSuivi: true, tendance: null, faits: [], origine: 'faits', référence: null },
         ],
         scénarios: [],
         interprétations: [],
       },
     })
+  })
+
+  it('transmet une position déclarative et sa référence, la porte en juge', async () => {
+    strategie.recevoirLaSynthèse.mockResolvedValue({ sorte: 'enregistrée', éléments: 4, positions: 1, archivés: 0, avertissements: [] })
+    const positions = [{ outil: 'groupes', sujet: 'CISPE', axe: 'couches', cran: 1, faits: [], origine: 'declaratif', reference: '§2, famille 1' }]
+    expect((await envoyer({ ...corps, synthese: { ...SYNTHÈSE, positions } })).status).toBe(201)
+    const reçue = strategie.recevoirLaSynthèse.mock.calls[0]![0].synthèse.positions
+    expect(reçue).toEqual([{ outil: 'groupes', sujet: 'CISPE', axe: 'couches', cran: 1, nonSuivi: false, tendance: null, faits: [], origine: 'declaratif', référence: '§2, famille 1' }])
+    expect((await envoyer({ ...corps, synthese: { ...SYNTHÈSE, positions: [{ ...positions[0], origine: 'suppose' }] } })).status).toBe(400)
   })
 
   it('transmet les paramètres du cycle du trimestre, départements en capitales', async () => {

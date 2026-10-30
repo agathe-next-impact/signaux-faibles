@@ -63,6 +63,23 @@ describe('rendreLaSynthèse', () => {
     expect(rendu).toContain('- France compétences : pouvoir élevé, intérêt intermédiaire [2 faits : 2026-10-19, France compétences ; 2026-10-25, ISCOD]')
   })
 
+  it('dit d’une position déclarative qu’elle est lue dans le référentiel, et où', () => {
+    const texte = rendreLaSynthèse({
+      organisation: 'mastora',
+      période: '2026-10',
+      fenêtre: { début: '2026-10-01', fin: '2026-10-31' },
+      grilleVersion: 1,
+      grille: GRILLE,
+      éléments: [],
+      positions: [
+        { ...position({ outil: 'groupes', sujet: 'ISCOD', axe: 'offre', cran: 1, faits: [] }), origine: 'declaratif', référence: '§2, famille 1' },
+        { ...position({ outil: 'groupes', sujet: 'ISCOD', axe: 'distance', cran: 3, faits: [] }), origine: 'declaratif', référence: '§2, famille 1' },
+      ],
+      faits: new Map(),
+    })
+    expect(texte).toContain('- ISCOD : Offre aux entreprises : aucune offre lue ; Part de la formation à distance : 100 % à distance (déclaratif, §2, famille 1)')
+  })
+
   it('met l’option candidate en tête de la TOWS', () => {
     const tows = rendu.slice(rendu.indexOf('TOWS'))
     expect(tows.indexOf('- WO, candidate à la recommandation : Option WO.')).toBeGreaterThan(0)

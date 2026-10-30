@@ -168,6 +168,12 @@ export function MatriceDeMendelow({ mendelow }: { mendelow: VueDeMendelow }) {
   )
 }
 
+/** Combien de positions viennent du corpus de la veille plutôt que d'un fait daté. */
+function déclarés(n: number, total: number): string {
+  if (n === total) return 'Toutes les positions sont lues dans le corpus de votre veille (déclaratif), en attendant un fait daté.'
+  return `${n} position${n > 1 ? 's sont lues' : ' est lue'} dans le corpus de votre veille (déclaratif), en attendant un fait daté.`
+}
+
 /** Les deux outils de la synthèse publiée, en tête de l'écran « Acteurs ». */
 export function SynthèseDesActeurs({ période, carte, mendelow }: { période: string; carte: VueDeLaCarte | null; mendelow: VueDeMendelow }) {
   return (
@@ -177,6 +183,7 @@ export function SynthèseDesActeurs({ période, carte, mendelow }: { période: s
           <TitreDeSection titre="Carte des groupes stratégiques" mention="Outil en test" />
           <p className="max-w-[68ch] text-ardoise">
             Vos concurrents placés sur les deux axes que votre veille a retenus avec vous, synthèse {libelléDePériode(période)}. Une position ne bouge que sur un fait daté d’une lettre.
+            {carte.déclaratifs > 0 ? ` ${déclarés(carte.déclaratifs, carte.placés)}` : ''}
           </p>
           <CarteDesGroupes carte={carte} />
         </section>
@@ -186,6 +193,7 @@ export function SynthèseDesActeurs({ période, carte, mendelow }: { période: s
           <TitreDeSection titre="Parties prenantes" mention="Matrice de Mendelow" />
           <p className="max-w-[68ch] text-ardoise">
             {mendelow.placés} partie{mendelow.placés > 1 ? 's' : ''} prenante{mendelow.placés > 1 ? 's' : ''}, placée{mendelow.placés > 1 ? 's' : ''} selon leur pouvoir sur votre activité et l’intérêt qu’elles y portent. Trois crans de chaque côté : bas, intermédiaire, élevé.
+            {mendelow.déclaratifs > 0 ? ` ${déclarés(mendelow.déclaratifs, mendelow.placés)}` : ''}
           </p>
           <MatriceDeMendelow mendelow={mendelow} />
         </section>

@@ -138,6 +138,8 @@ Cycle de vie : un lot remplace les étiquettes précédentes de la même éditio
 | `axe` | text ≤ 40 | clé d'axe de la grille, ou `pouvoir`, `interet`, `intensite` |
 | `cran` | smallint, nullable | dans les bornes de l'axe ; nul si `non_suivi` |
 | `non_suivi` | boolean | |
+| `origine` | enum `origine_d_élément`, défaut `faits` | `declaratif` pour la carte et Mendelow seulement (migration 0015, 30/10/2026) : placé par le §2 du référentiel, sans fait |
+| `référence` | text ≤ 120, nullable | la ligne du référentiel d'une position déclarative, nulle sinon |
 | `tendance` | enum, nullable | 5 forces |
 | `faits` | uuid[] | au moins un ; un changement de cran par rapport à la période précédente exige un fait de la fenêtre qui nomme le sujet |
 | `grille_version` | integer | |
@@ -420,7 +422,7 @@ Pour les cinq, l'étape 4ter étiquette chaque nouvelle lettre, et le contrôle 
 
 | Risque | Parade |
 |---|---|
-| **Fausse précision** (crans arbitraires, positions sans fondement) | Crans à critère écrit dans la grille ; porte `mouvement-sans-fait` ; un acteur sans fait daté n'est pas placé ; pas de note continue |
+| **Fausse précision** (crans arbitraires, positions sans fondement) | Crans à critère écrit dans la grille ; porte `mouvement-sans-fait` ; un acteur sans fait daté n'est placé que par une position déclarative, qui nomme sa ligne du référentiel et que l'écran dit telle (30/10/2026) ; pas de note continue |
 | **Forces et faiblesses inventées** | `origine = declaratif` seulement pour F et W, `hypothèse` vraie et point de validation créé ; relecture humaine ; porte `déclaratif-hors-forces-faiblesses` |
 | **Coût de contexte** | Étiquetage dans l'exécution qui a déjà la lettre en main ; la revue lit les faits par la route (identifiants et phrases-titres), jamais les corps des lettres du mois ; mesure du lot 9 et seuil de bascule à 0,50 $ par lettre |
 | **Bruit** (étiquettes de faits faibles, SWOT remplie pour remplir) | Pas d'étiquette sur un axe RAS ; case SWOT `insuffisant` admise ; aucun élément sans fait |
