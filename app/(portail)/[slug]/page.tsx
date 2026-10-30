@@ -3,7 +3,6 @@ import { FinDEssai } from '@/components/fin-d-essai'
 import { LigneDEssai, OffreDEssai, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
-import { LectureStratégique } from '@/components/lecture-strategique'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
 import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
@@ -17,7 +16,7 @@ import {
   semainesPubliées,
 } from '@/lib/portail/semaine'
 import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat'
-import { espaceDeLOrganisation, lectureStratégiqueDeLEspace } from '@/lib/portail/strategie'
+import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 import { tableauDeLEspace } from '@/lib/portail/tableau'
 import { ActivitéDesSemaines, MiniActivité } from '@/components/graphiques-strategie'
 import { cartesDesRubriques } from '@/lib/domaine/tableau-de-bord'
@@ -116,37 +115,25 @@ export default async function VueDEnsemble({
   )
   const dormants = synthèse.dossiers.length - acteurs.length
 
-  // Les outils stratégiques (pilote du 26 octobre 2026) : les étiquettes des
-  // lettres que l'écran vient de lire, sans lecture Notion de plus. Hors du
-  // pilote, ou dans le moindre doute sur la base, la section n'existe pas.
-  // L'espace réorganisé (lot 4) : une case par écran, avec son chiffre clé.
-  // La synthèse publiée est lue en même temps que les étiquettes, sans lecture
-  // Notion de plus ; ailleurs, ni l'une ni la section n'existent.
+  // L'espace réorganisé (lot 4) : une case par écran, avec son chiffre clé ;
+  // la synthèse publiée est lue sans lecture Notion de plus ; ailleurs, rien.
   // Depuis le 30 octobre 2026, une carte par rubrique sur deux colonnes, sous
   // « À la une » (demande de l'opératrice), chacune menant à
   // l'écran qui montre la grille de ses écrans ; l'activité des treize
   // dernières semaines (lot 5) vient des faits étiquetés, lue en même temps.
-  // L'espace réorganisé n'affiche plus la lecture stratégique (demande de
-  // l'opératrice du 30 octobre 2026) : ses comptes ont leurs écrans, « PESTEL »
-  // et « Forces du marché ». Elle n'y est donc pas lue du tout.
+  // La section « Lecture stratégique » a été retirée de toutes les vues
+  // d'ensemble le 30 octobre 2026, à la demande de l'opératrice : ses comptes
+  // ont leurs écrans dans l'espace réorganisé, « PESTEL » et « Forces du marché ».
   const espace = await espaceDeLOrganisation(accès.organisationId)
-  const [stratégie, tableau] = await Promise.all([
-    espace?.réorganisé
-      ? null
-      : lectureStratégiqueDeLEspace({
-          registre: accès.organisationId,
-          lettres: récentes.map((note) => ({ pageId: note.lettre.édition.pageId, document: note.document })),
-        }),
-    espace?.réorganisé
-      ? tableauDeLEspace({
-          slug: accès.slug,
-          registre: accès.organisationId,
-          semaines,
-          concurrents: espace.concurrents,
-          axes: { total: axes.length, forts: axes.filter((a) => a.niveau === 'FORT').length },
-        })
-      : null,
-  ])
+  const tableau = espace?.réorganisé
+    ? await tableauDeLEspace({
+        slug: accès.slug,
+        registre: accès.organisationId,
+        semaines,
+        concurrents: espace.concurrents,
+        axes: { total: axes.length, forts: axes.filter((a) => a.niveau === 'FORT').length },
+      })
+    : null
   const cartes = tableau ? cartesDesRubriques(accès.slug, tableau.cases, tableau.parRubrique) : null
   const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
 
@@ -369,8 +356,6 @@ export default async function VueDEnsemble({
           )}
         </section>
       )}
-
-      {stratégie ? <LectureStratégique lecture={stratégie} lettres={récentes.length} /> : null}
 
       {essai ? (
         <OffreDEssai slug={accès.slug} parution={essai.parution} parutions={essai.parutions} offre={offre ?? 'standard'} />

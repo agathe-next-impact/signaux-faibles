@@ -115,7 +115,7 @@ synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 (Le marché, L'environnement, Stratégie, Votre veille), sur deux colonnes, sous
 « À la une », sans la cartouche des chiffres de la semaine, la section
 « L'écosystème » ni la « Lecture stratégique » (retirées le même jour, à sa
-demande ; la lecture n'y est plus faite), et non plus une case par écran ; le
+demande ; la lecture stratégique a quitté toutes les vues d'ensemble), et non plus une case par écran ; le
 détail de chaque carte (ses écrans et leur chiffre clé) tient sur deux colonnes ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
 `/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
 avec leur chiffre clé, sur deux colonnes elle aussi ; le rail garde ses écrans et le nom de la rubrique y
@@ -771,12 +771,14 @@ une analyse ; mention « outil en test ». `lectureStratégiqueDeLEspace`
 (`lib/portail/strategie.ts`) ne lit **aucun corps Notion de plus**, n'ouvre pas
 Postgres en mode `notion`, est bornée à 400 ms et rend `null` dans tout doute,
 hors du pilote (`organisations.outils_strategiques`) ou sans fait : la section
-n'existe alors pas, et l'écran reste celui d'avant. Elle n'est plus ni lue ni montrée
-sur l'espace réorganisé (L'Hermitage, 30 octobre 2026, à la demande de
-l'opératrice) : ses comptes y ont leurs écrans, « PESTEL » et « Forces du marché ». Agrégation pure dans
+n'existait alors pas. **Retirée de toutes les vues d'ensemble le 30 octobre
+2026**, à la demande de l'opératrice (L'Hermitage d'abord, puis Heritech, Konica
+et le reste du pilote) : `lectureStratégiqueDeLEspace` est supprimée ; les
+comptes ont leurs écrans dans l'espace réorganisé, « PESTEL » et « Forces du
+marché », et la vitrine garde sa démonstration. Agrégation pure dans
 `lectureDesÉtiquettes` (`lib/domaine/strategie.ts`), rendu dans
-`components/lecture-strategique.tsx` ; la vue d'ensemble est son seul appelant
-(`tests/architecture.test.ts`).
+`components/lecture-strategique.tsx`, que seule la démonstration de la vitrine
+rend encore (`components/demonstration.tsx`).
 
 **Deux écrans d'abonnement, hors des sept (19 octobre 2026).** `/[slug]/abonnement`
 (« Mon abonnement ») n'est pas un écran de veille : il ne lit aucune édition,

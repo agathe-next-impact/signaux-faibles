@@ -6,7 +6,6 @@ import {
   enregistrerLaSynthèse,
   faitsConnus,
   faitsDeLaFenêtre,
-  faitsDesÉditions,
   faitsDUneEntité,
   faitsParEntité,
   lireLaGrille,
@@ -73,7 +72,6 @@ import {
   empreinteDeLaGrille,
   faitsDeLaLettre,
   forcesNonSuivies,
-  lectureDesÉtiquettes,
   messageDeRefus,
   normaliserTitre,
   rendreLaSynthèse,
@@ -82,7 +80,6 @@ import {
   type LigneDeBenchmark,
   type ForcePorter,
   type Grille,
-  type LectureDesÉtiquettes,
   type Pestel,
   type Refus,
   type ParamètresDuCycle,
@@ -654,82 +651,14 @@ export async function contrôlerLÉtiquetage(
   return défauts
 }
 
-/** Au-delà, la section n'est pas montrée : une page ne doit pas attendre la base. */
-export const DÉLAI_DE_LECTURE_STRATÉGIQUE_MS = 400
-
 /**
- * La même borne pour « Acteurs », « Recommandations » et l'onglet PESTEL
- * (29 octobre 2026). À 400 ms, la recette sur L'Hermitage a montré que la
- * synthèse publiée et l'onglet PESTEL n'étaient jamais affichés en production :
- * l'ouverture de la connexion à Neon depuis une fonction Vercel, puis quatre à
- * cinq allers-retours, dépassent ce délai. Ces sections sont l'objet de l'écran
- * pour une organisation du pilote ; la vue d'ensemble garde 400 ms.
+ * La borne des lectures stratégiques des écrans (29 octobre 2026). À 400 ms, la
+ * recette sur L'Hermitage a montré que la synthèse publiée et l'onglet PESTEL
+ * n'étaient jamais affichés en production : l'ouverture de la connexion à Neon
+ * depuis une fonction Vercel, puis quatre à cinq allers-retours, dépassent ce
+ * délai.
  */
 export const DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS = 1500
-
-/**
- * La lecture stratégique d'un espace, pour la vue d'ensemble (26 octobre 2026) :
- * les étiquettes des lettres que l'écran vient de lire, agrégées. **Seulement
- * pour une organisation du pilote** ; ailleurs, et dans tout doute (base absente,
- * `SOURCE_ACCES=notion`, base lente ou en panne), rien : la section n'apparaît
- * pas, et l'écran reste celui d'avant.
- *
- * Aucune lecture Notion : les phrases-titres des ruptures sont relues dans les
- * documents que l'écran a déjà en main, par leur empreinte. Les éditions sont
- * celles que l'écran a lues pour la clé de cloisonnement de la session
- * (règle 2), et la base ne rend que les faits de cette organisation.
- */
-export async function lectureStratégiqueDeLEspace(
-  entrée: {
-    readonly registre: string
-    readonly lettres: readonly { readonly pageId: string; readonly document: Document }[]
-  },
-  db?: Base,
-): Promise<LectureDesÉtiquettes | null> {
-  if (!baseConfigurée() || sourceAccès() === 'notion' || entrée.lettres.length === 0) return null
-  let minuterie: ReturnType<typeof setTimeout> | undefined
-  const délai = new Promise<null>((résoudre) => {
-    minuterie = setTimeout(() => résoudre(null), DÉLAI_DE_LECTURE_STRATÉGIQUE_MS)
-  })
-  try {
-    const lecture = (async () => {
-      const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
-      if (!organisation?.outilsStratégiques) return null
-      const éditions = entrée.lettres.map((l) => normaliserIdentifiant(l.pageId))
-      const lignes = await faitsDesÉditions({ organisationId: organisation.id, éditions }, db)
-      if (lignes.length === 0) return null
-      const titres = new Map<string, string>()
-      for (const l of entrée.lettres) {
-        for (const f of faitsDeLaLettre(l.document)) titres.set(`${normaliserIdentifiant(l.pageId)}:${f.empreinte}`, f.titre)
-      }
-      return lectureDesÉtiquettes(
-        lignes.map((l) => ({
-          pestel: l.pestel,
-          porter: l.forcePorter,
-          ansoff: l.ansoff,
-          entite: l.entité,
-          rupture: l.rupture,
-          date: l.dateFait,
-          source: l.sourceUrl,
-          titre: titres.get(`${l.éditionNotion}:${l.empreinteTitre}`) ?? null,
-        })),
-      )
-    })()
-    // Une lecture qui finit après le délai ne doit pas lever sans personne pour l'écouter.
-    lecture.catch(() => undefined)
-    const résultat = await Promise.race([lecture.then((r) => ({ r })), délai])
-    if (résultat === null) {
-      console.warn(`[stratégie] lecture de l’espace en plus de ${DÉLAI_DE_LECTURE_STRATÉGIQUE_MS} ms, section non montrée.`)
-      return null
-    }
-    return résultat.r
-  } catch (erreur) {
-    console.warn(`[stratégie] lecture de l’espace impossible : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
-    return null
-  } finally {
-    clearTimeout(minuterie)
-  }
-}
 
 export type LectureDesCalculs =
   | ({ readonly sorte: 'calculé'; readonly grilleVersion: number } & Calculs)
