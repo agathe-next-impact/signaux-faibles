@@ -94,6 +94,7 @@ export const BORNES = {
   partiesPrenantesMax: 15,
   partiePrenanteMax: 80,
   énoncéMax: 240,
+  référenceMax: 120,
   scénarioMax: 400,
   élémentsParCaseMin: 3,
   élémentsParCaseMax: 5,
@@ -614,6 +615,14 @@ export type PositionProposée = {
   readonly nonSuivi?: boolean
   readonly tendance?: Tendance | null
   readonly faits: readonly string[]
+  /**
+   * `declaratif` : lue dans le corpus du référentiel (§2), sans fait exigé à la
+   * première pose ; carte des groupes et Mendelow seulement. Un mouvement de
+   * cran exige toujours un fait daté (30 octobre 2026).
+   */
+  readonly origine?: 'faits' | 'declaratif'
+  /** La ligne du référentiel d'où vient une position déclarative : « §2, famille A ». */
+  readonly référence?: string | null
 }
 
 export type LettrePestelProposée = {
@@ -833,7 +842,13 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
     }
     if (p.outil === 'forces' && nonSuivies.has(p.sujet as ForcePorter)) refuser('non-suivi-manquant', 'aucune famille ne porte cette force : elle est « non suivi »', cible)
     if (p.cran === null || !Number.isInteger(p.cran) || p.cran < 1 || (max > 0 && p.cran > max)) refuser('cran-hors-bornes', `cran ${String(p.cran)} pour 1 à ${max}`, cible)
-    vérifierFaits(p.faits, cible)
+    const déclarative = p.origine === 'declaratif'
+    if (déclarative) {
+      if (p.outil !== 'groupes' && p.outil !== 'mendelow') refuser('origine-interdite', 'seules la carte des groupes et Mendelow admettent une position déclarative', cible)
+      const référence = (p.référence ?? '').trim()
+      if (référence.length === 0 || référence.length > BORNES.référenceMax) refuser('référence-manquante', `une position déclarative nomme sa ligne du référentiel (« §2, famille A »), ${BORNES.référenceMax} caractères au plus`, cible)
+    } else if (p.référence != null) refuser('référence-hors-déclaratif', 'seule une position déclarative porte une référence', cible)
+    vérifierFaits(p.faits, cible, !déclarative)
     const avant = contexte.positionsPrécédentes.get(clé)
     if (avant !== undefined && avant !== p.cran) {
       const sujet = normaliserTitre(p.sujet)
@@ -907,6 +922,8 @@ export type PositionÀRendre = {
   readonly nonSuivi: boolean
   readonly tendance: string | null
   readonly faits: readonly string[]
+  readonly origine?: string
+  readonly référence?: string | null
 }
 
 export type SynthèseÀRendre = {
@@ -1036,6 +1053,10 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
     }
   }
 
+  const déclarée = (liste: readonly PositionÀRendre[]) => {
+    const d = liste.find((p) => p.origine === 'declaratif')
+    return d ? ` (déclaratif${d.référence ? `, ${d.référence}` : ''})` : ''
+  }
   const axes = new Map(s.grille.axesGroupes.map((a) => [a.clé, a]))
   const groupes = s.positions.filter((p) => p.outil === 'groupes')
   if (groupes.length > 0) {
@@ -1047,7 +1068,8 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
           const axe = axes.get(p.axe)
           return `${axe?.libellé ?? p.axe} : ${p.cran !== null ? (axe?.crans[p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'}`
         })
-      lignes.push(`- ${sujet} : ${crans.join(' ; ')}${faitsDe(groupes.filter((p) => p.sujet === sujet).flatMap((p) => p.faits))}`)
+      const siennes = groupes.filter((p) => p.sujet === sujet)
+      lignes.push(`- ${sujet} : ${crans.join(' ; ')}${déclarée(siennes)}${faitsDe(siennes.flatMap((p) => p.faits))}`)
     }
   }
 
@@ -1059,7 +1081,8 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
         const p = mendelow.find((x) => x.sujet === sujet && x.axe === axe)
         return p?.cran ? (LIBELLÉS_CRANS[axe]?.[p.cran - 1] ?? `cran ${p.cran}`) : 'non placé'
       }
-      lignes.push(`- ${sujet} : pouvoir ${valeur('pouvoir')}, intérêt ${valeur('interet')}${faitsDe(mendelow.filter((p) => p.sujet === sujet).flatMap((p) => p.faits))}`)
+      const siennes = mendelow.filter((p) => p.sujet === sujet)
+      lignes.push(`- ${sujet} : pouvoir ${valeur('pouvoir')}, intérêt ${valeur('interet')}${déclarée(siennes)}${faitsDe(siennes.flatMap((p) => p.faits))}`)
     }
   }
 

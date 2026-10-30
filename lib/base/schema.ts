@@ -871,12 +871,21 @@ export const positions = pgTable(
     nonSuivi: boolean('non_suivi').notNull().default(false),
     tendance: tendanceDeForce('tendance'),
     faits: uuid('faits').array().notNull().default(sql`'{}'::uuid[]`),
+    /**
+     * `declaratif` (30 octobre 2026) : une position lue dans le corpus du
+     * référentiel (§2), sans fait daté, pour la carte et Mendelow seulement ;
+     * un mouvement de cran exige toujours un fait.
+     */
+    origine: origineDÉlément('origine').notNull().default('faits'),
+    /** D'où vient une position déclarative (« §2, famille A ») ; 120 caractères au plus. */
+    référence: text('référence'),
     grilleVersion: integer('grille_version').notNull(),
     étatPublication: étatDePublication('état_publication').notNull().default('propose'),
     crééLe: horodatage('créé_le').notNull().defaultNow(),
     archivéeLe: horodatage('archivée_le'),
   },
   (table) => [
+    check('positions_reference', sql`${table.référence} is null or length(${table.référence}) between 1 and 120`),
     uniqueIndex('positions_place_unique')
       .on(table.organisationId, table.période, table.outil, table.sujet, table.axe)
       .where(sql`${table.archivéeLe} is null`),

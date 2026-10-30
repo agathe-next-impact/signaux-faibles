@@ -46,6 +46,8 @@ export type PositionLue = {
   readonly nonSuivi: boolean
   readonly tendance: string | null
   readonly faits: readonly string[]
+  /** `declaratif` : lue dans le corpus de la veille, sans fait daté (30 octobre 2026). */
+  readonly origine?: string
 }
 /** Un fait cité, pour dater une case : sa date, et la lettre qui le porte. */
 export type FaitCité = { readonly date: string; readonly édition: string }
@@ -99,6 +101,8 @@ export type VueDeLaCarte = {
   /** La position précédente d'un sujet qui a bougé, en pointillé dans sa case d'origine. */
   readonly anciennes: ReadonlyMap<string, readonly string[]>
   readonly placés: number
+  /** Les placés dont la position est déclarative : lue dans le corpus de la veille, sans fait daté. */
+  readonly déclaratifs: number
 }
 
 /** La carte : la première clé d'axe de la grille en colonnes, la seconde en lignes. Un sujet sans ses deux crans n'est pas placé. */
@@ -112,13 +116,14 @@ export function vueDeLaCarte(
   const [colonnes, lignes] = grille.axesGroupes
   if (!colonnes || !lignes) return null
   const crans = (liste: readonly PositionLue[]) => {
-    const parSujet = new Map<string, { ligne?: number; colonne?: number; faits: string[] }>()
+    const parSujet = new Map<string, { ligne?: number; colonne?: number; faits: string[]; déclaratif: boolean }>()
     for (const p of liste) {
       if (p.outil !== 'groupes' || p.cran === null) continue
-      const s = parSujet.get(p.sujet) ?? { faits: [] }
+      const s = parSujet.get(p.sujet) ?? { faits: [], déclaratif: true }
       if (p.axe === colonnes.clé) s.colonne = p.cran
       if (p.axe === lignes.clé) s.ligne = p.cran
       s.faits.push(...p.faits)
+      s.déclaratif &&= p.origine === 'declaratif'
       parSujet.set(p.sujet, s)
     }
     return parSujet
@@ -129,8 +134,10 @@ export function vueDeLaCarte(
   const cases = new Map<string, OccupantDeCase[]>()
   const anciennes = new Map<string, string[]>()
   let placés = 0
+  let déclaratifs = 0
   for (const [sujet, c] of maintenant) {
     if (c.ligne === undefined || c.colonne === undefined) continue
+    if (c.déclaratif) déclaratifs++
     const a = avant.get(sujet)
     const aBougé = !!a && a.ligne !== undefined && a.colonne !== undefined && (a.ligne !== c.ligne || a.colonne !== c.colonne)
     const clé = `${c.ligne}:${c.colonne}`
@@ -142,7 +149,7 @@ export function vueDeLaCarte(
     placés++
   }
   for (const occupants of cases.values()) occupants.sort((x, y) => Number(y.organisation) - Number(x.organisation) || x.sujet.localeCompare(y.sujet, 'fr'))
-  return { colonnes: { clé: colonnes.clé, libellé: colonnes.libellé, crans: colonnes.crans }, lignes: { clé: lignes.clé, libellé: lignes.libellé, crans: lignes.crans }, cases, anciennes, placés }
+  return { colonnes: { clé: colonnes.clé, libellé: colonnes.libellé, crans: colonnes.crans }, lignes: { clé: lignes.clé, libellé: lignes.libellé, crans: lignes.crans }, cases, anciennes, placés, déclaratifs }
 }
 
 // ── Matrice de Mendelow ──────────────────────────────────────────────────────
@@ -160,17 +167,20 @@ export type VueDeMendelow = {
   /** Clé `pouvoir:intérêt`, crans de 1 à 3. */
   readonly cases: ReadonlyMap<string, readonly { readonly sujet: string; readonly aBougé: boolean; readonly fait: FaitCité | null }[]>
   readonly placés: number
+  /** Les placés dont la position est déclarative : lue dans le corpus de la veille, sans fait daté. */
+  readonly déclaratifs: number
 }
 
 export function vueDeMendelow(positionsDuMois: readonly PositionLue[], précédentes: readonly PositionLue[], faits: ReadonlyMap<string, FaitCité>): VueDeMendelow {
   const lire = (liste: readonly PositionLue[]) => {
-    const m = new Map<string, { pouvoir?: number; interet?: number; faits: string[] }>()
+    const m = new Map<string, { pouvoir?: number; interet?: number; faits: string[]; déclaratif: boolean }>()
     for (const p of liste) {
       if (p.outil !== 'mendelow' || p.cran === null) continue
-      const s = m.get(p.sujet) ?? { faits: [] }
+      const s = m.get(p.sujet) ?? { faits: [], déclaratif: true }
       if (p.axe === 'pouvoir') s.pouvoir = p.cran
       if (p.axe === 'interet') s.interet = p.cran
       s.faits.push(...p.faits)
+      s.déclaratif &&= p.origine === 'declaratif'
       m.set(p.sujet, s)
     }
     return m
@@ -179,8 +189,10 @@ export function vueDeMendelow(positionsDuMois: readonly PositionLue[], précéde
   const avant = lire(précédentes)
   const cases = new Map<string, { sujet: string; aBougé: boolean; fait: FaitCité | null }[]>()
   let placés = 0
+  let déclaratifs = 0
   for (const [sujet, s] of maintenant) {
     if (s.pouvoir === undefined || s.interet === undefined) continue
+    if (s.déclaratif) déclaratifs++
     const a = avant.get(sujet)
     const aBougé = !a || a.pouvoir !== s.pouvoir || a.interet !== s.interet
     const clé = `${s.pouvoir}:${s.interet}`
@@ -188,7 +200,7 @@ export function vueDeMendelow(positionsDuMois: readonly PositionLue[], précéde
     placés++
   }
   for (const liste of cases.values()) liste.sort((x, y) => x.sujet.localeCompare(y.sujet, 'fr'))
-  return { cases, placés }
+  return { cases, placés, déclaratifs }
 }
 
 // ── SWOT et TOWS codées ──────────────────────────────────────────────────────

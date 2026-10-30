@@ -407,6 +407,8 @@ export type PositionÀEnregistrer = {
   readonly nonSuivi?: boolean
   readonly tendance?: Position['tendance']
   readonly faits: readonly string[]
+  readonly origine?: Position['origine']
+  readonly référence?: string | null
 }
 
 export type RésultatDeSynthèse =
@@ -531,6 +533,8 @@ export async function enregistrerLaSynthèse(
             nonSuivi: p.nonSuivi ?? false,
             tendance: p.tendance ?? null,
             faits: [...p.faits],
+            origine: p.origine ?? 'faits',
+            référence: p.origine === 'declaratif' ? (p.référence ?? null) : null,
             grilleVersion: entrée.grilleVersion,
             crééLe: maintenant,
           })),

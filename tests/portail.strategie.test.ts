@@ -604,6 +604,26 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       }
     })
 
+    it('positions déclaratives : gardées avec leur référence, dites à la relecture, comptées sur la carte publiée', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      try {
+        const déclarée = (sujet: string, axe: string, cran: number) => ({ outil: 'groupes' as const, sujet, axe, cran, faits: [], origine: 'declaratif' as const, référence: '§2, famille 1' })
+        const synthèse = { ...octobre(), positions: [...octobre().positions, déclarée('Cigref', 'couches', 1), déclarée('Cigref', 'production', 3)] }
+        expect(await recevoir(synthèse)).toMatchObject({ sorte: 'enregistrée', positions: 5 })
+        const lue = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+        if (lue.sorte !== 'lue') throw new Error(lue.sorte)
+        expect(lue.texte).toContain('- Cigref : Couches couvertes : usage seul ; Production publique : régulière (déclaratif, §2, famille 1)')
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)
+        const vue = await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)
+        expect(vue?.mois?.carte).toMatchObject({ placés: 1, déclaratifs: 1 })
+        expect(vue?.mois?.carte?.cases.get('3:1')).toEqual([{ sujet: 'Cigref', organisation: false, aBougé: false, venuDe: null, fait: null }])
+        expect(vue?.mois?.mendelow).toMatchObject({ placés: 1, déclaratifs: 0 })
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
     it('relecture : un énoncé se retouche avant publication, jamais après, et passe la porte', async () => {
       await recevoir()
       const lue = await synthèseÀRelire({ slug: 'infralliance', période: '2026-10' }, db)

@@ -62,7 +62,12 @@ période non publiée avant de la publier, sur `/espaces/syntheses/[slug]/[perio
 `contrôlerUnÉnoncé`, mêmes bornes que la synthèse) ou par `PATCH
 /api/veille/syntheses` avec `element` : seul l'énoncé change (et le titre d'un
 scénario), jamais les faits, cases ou crans ; une période dont une ligne est
-publiée est refusée, la retirer d'abord. Une période
+publiée est refusée, la retirer d'abord. Depuis le 30 octobre 2026 (lot 1 de
+`docs/proposition-reorganisation-espace.md`, pilote sur L'Hermitage), une
+position de la carte ou de Mendelow peut être **déclarative**
+(`origine: declaratif`, `reference` vers sa ligne du §2, migration 0015) : elle
+place sans fait, ne déplace jamais (`mouvement-sans-fait` tient), et l'écran
+dit combien de positions sont lues dans le corpus de la veille. Une période
 publiée s'affiche sur « Acteurs » (carte et Mendelow), « Recommandations »
 (candidate, TOWS, SWOT, puis le trimestre) et l'onglet « PESTEL » de « Les
 axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la

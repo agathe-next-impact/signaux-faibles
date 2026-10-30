@@ -327,6 +327,33 @@ describe('la porte de la synthèse', () => {
     expect(codes(contrôlerLaSynthèse({ ...SYNTHÈSE, ...modif }, contexte).refus)).toContain(code)
   })
 
+  it('accepte une position déclarative de la carte ou de Mendelow, sans fait, qui nomme sa ligne du référentiel', () => {
+    const r = contrôlerLaSynthèse(
+      {
+        ...SYNTHÈSE,
+        positions: [
+          ...SYNTHÈSE.positions,
+          { outil: 'groupes', sujet: 'Cigref', axe: 'couches', cran: 1, faits: [], origine: 'declaratif', référence: '§2, famille 1' },
+          { outil: 'mendelow', sujet: 'DGE', axe: 'pouvoir', cran: 3, faits: [], origine: 'declaratif', référence: '§2, parties prenantes' },
+        ],
+      },
+      contexte,
+    )
+    expect(r.refus).toEqual([])
+  })
+
+  it.each<[string, SynthèseProposée['positions'][number]]>([
+    ['référence-manquante', { outil: 'groupes', sujet: 'Cigref', axe: 'couches', cran: 1, faits: [], origine: 'declaratif' }],
+    ['référence-manquante', { outil: 'groupes', sujet: 'Cigref', axe: 'couches', cran: 1, faits: [], origine: 'declaratif', référence: 'x'.repeat(121) }],
+    ['origine-interdite', { outil: 'forces', sujet: 'rivalite', axe: 'intensite', cran: 2, tendance: 'hausse', faits: [], origine: 'declaratif', référence: '§2' }],
+    ['référence-hors-déclaratif', { outil: 'groupes', sujet: 'Cigref', axe: 'couches', cran: 1, faits: ['f-cigref'], référence: '§2, famille 1' }],
+    ['sans-fait', { outil: 'groupes', sujet: 'Cigref', axe: 'couches', cran: 1, faits: [] }],
+    // Le déclaratif place, il ne déplace pas : un cran qui change demande toujours un fait de la fenêtre.
+    ['mouvement-sans-fait', { outil: 'groupes', sujet: 'Hexatrust', axe: 'couches', cran: 3, faits: [], origine: 'declaratif', référence: '§2, famille 1' }],
+  ])('refuse la position %s', (code, position) => {
+    expect(codes(contrôlerLaSynthèse({ ...SYNTHÈSE, positions: [position] }, contexte).refus)).toContain(code)
+  })
+
   it('accepte un mouvement justifié par un fait de la fenêtre qui nomme l’entité, et un élément inchangé appuyé sur un fait ancien', () => {
     const r = contrôlerLaSynthèse(
       {

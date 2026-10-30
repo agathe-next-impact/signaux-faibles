@@ -66,6 +66,26 @@ describe('vueDeLaCarte', () => {
     expect(carte.anciennes.get('2:1')).toEqual(['Précimeca'])
   })
 
+  it('compte les sujets placés par le seul référentiel ; un fait sur un axe suffit à ne plus les compter', () => {
+    const déclarée = (sujet: string, axe: string, cran: number): PositionLue => ({ ...position('groupes', sujet, axe, cran), origine: 'declaratif' })
+    const carte = vueDeLaCarte(
+      GRILLE,
+      [
+        déclarée('Précimeca', 'specialisation', 1),
+        déclarée('Précimeca', 'capacite', 2),
+        déclarée('Usinor', 'specialisation', 3),
+        position('groupes', 'Usinor', 'capacite', 3, ['f1']),
+      ],
+      [],
+      'Tolmen Mécanique',
+      FAITS,
+    )!
+    expect(carte.placés).toBe(2)
+    expect(carte.déclaratifs).toBe(1)
+    const mendelow = vueDeMendelow([{ ...position('mendelow', 'DGE', 'pouvoir', 3), origine: 'declaratif' }, { ...position('mendelow', 'DGE', 'interet', 2), origine: 'declaratif' }], [], FAITS)
+    expect(mendelow).toMatchObject({ placés: 1, déclaratifs: 1 })
+  })
+
   it('sans les deux axes de la grille, pas de carte', () => {
     expect(vueDeLaCarte({ ...GRILLE, axesGroupes: [] }, [], [], 'X', FAITS)).toBeNull()
   })
