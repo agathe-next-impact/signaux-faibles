@@ -25,7 +25,15 @@ function slugDu(données: FormData): string {
   return slug
 }
 
+/** Le formulaire de la fiche d'une organisation y revient ; celui du tableau, au tableau. */
+function retourDu(données: FormData, slug: string, sorte: string): string {
+  return données.get('retour') === 'fiche'
+    ? `/espaces/abonnements/${encodeURIComponent(slug)}?reglage=${encodeURIComponent(sorte)}&section=abonnement#abonnement`
+    : `/espaces/abonnements?reglage=${sorte}&slug=${encodeURIComponent(slug)}`
+}
+
 async function appliquer(
+  données: FormData,
   slug: string,
   action: string,
   réglage: Parameters<typeof réglerLeParcours>[1],
@@ -41,28 +49,28 @@ async function appliquer(
   }
   console.info(`[réglage] ${accès.nom} : ${slug}, ${action}, ${sorte}.`)
   // `redirect` lève une exception de contrôle : hors de tout `try`.
-  redirect(`/espaces/abonnements?reglage=${sorte}&slug=${encodeURIComponent(slug)}`)
+  redirect(retourDu(données, slug, sorte))
 }
 
 export async function prolongerLEssai(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const semaines = Number(données.get('semaines'))
   if (semaines !== 1 && semaines !== 2 && semaines !== 3) notFound()
-  await appliquer(slug, `prolonger de ${semaines}`, { sorte: 'prolonger', semaines })
+  await appliquer(données, slug, `prolonger de ${semaines}`, { sorte: 'prolonger', semaines })
 }
 
 export async function poserLOffre(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const offre = données.get('offre')
   if (offre !== 'standard' && offre !== 'fondateur' && offre !== 'gratuite') notFound()
-  await appliquer(slug, `offre ${offre}`, { sorte: 'offre', offre })
+  await appliquer(données, slug, `offre ${offre}`, { sorte: 'offre', offre })
 }
 
 export async function réglerLesParutions(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const parutions = Number(données.get('parutions'))
   if (!Number.isInteger(parutions) || parutions < 1 || parutions > 8) notFound()
-  await appliquer(slug, `${parutions} parutions d'essai`, { sorte: 'parutions', parutions })
+  await appliquer(données, slug, `${parutions} parutions d'essai`, { sorte: 'parutions', parutions })
 }
 
 /** Un client historique entre dans le parcours : date de sa prochaine lettre, parutions complètes qu'il lui reste. */
@@ -72,7 +80,7 @@ export async function mettreEnParcours(données: FormData): Promise<void> {
   const restantes = Number(données.get('restantes'))
   if (typeof prochaineLettre !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(prochaineLettre)) notFound()
   if (!Number.isInteger(restantes) || restantes < 1 || restantes > 8) notFound()
-  await appliquer(slug, `mise en parcours, lettre du ${prochaineLettre}, ${restantes} restante(s)`, {
+  await appliquer(données, slug, `mise en parcours, lettre du ${prochaineLettre}, ${restantes} restante(s)`, {
     sorte: 'parcours',
     prochaineLettre,
     restantes,
@@ -83,7 +91,7 @@ export async function réglerLaRelecture(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const requise = données.get('requise')
   if (requise !== 'oui' && requise !== 'non') notFound()
-  await appliquer(slug, requise === 'oui' ? 'courriers à la relecture' : 'courriers au client', {
+  await appliquer(données, slug, requise === 'oui' ? 'courriers à la relecture' : 'courriers au client', {
     sorte: 'relecture',
     requise: requise === 'oui',
   })

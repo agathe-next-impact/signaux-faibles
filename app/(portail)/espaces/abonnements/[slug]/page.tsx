@@ -5,8 +5,12 @@ import { lireLaGestionDUneOrganisation, lireLaSantéDesEspaces } from '@/lib/aut
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
+import type { LigneDAbonnement } from '@/lib/base/situation'
+import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
-import { dateLongueDeParis } from '@/lib/domaine/parcours'
+import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
+import { mettreEnParcours, poserLOffre, prolongerLEssai, réglerLaRelecture, réglerLesParutions } from '@/lib/portail/reglages'
+import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
 import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER } from '@/lib/domaine/strategie'
 import {
   basculerLEspace,
@@ -25,7 +29,8 @@ export const metadata: Metadata = { title: 'Gérer une organisation — signauxf
 
 /**
  * La gestion d'une organisation par l'opératrice (31 octobre 2026), depuis le
- * tableau des abonnements : pilote et espace réorganisé, grille stratégique,
+ * tableau des abonnements : son abonnement et les réglages du parcours (la ligne
+ * du tableau, reprise ici le même jour), pilote et espace réorganisé, grille stratégique,
  * fiche de veille, lecteurs par leur nom, renvoi du lien d'accès, décision
  * (suspendre, écarter, réactiver), journal des courriers sur trente jours et
  * santé du contrôle du soir. Les gestes sont ceux des routes des tâches, par les
@@ -37,6 +42,17 @@ export const metadata: Metadata = { title: 'Gérer une organisation — signauxf
 export const instant = false
 
 const MESSAGES: Record<string, string> = {
+  prolongé: 'Essai prolongé : J0 est décalé.',
+  'relecture-réglée': 'Relecture des courriers réglée.',
+  'pas-en-essai': 'Cette organisation n’est pas en essai : rien à prolonger.',
+  'sans-j0': 'J0 n’est pas encore posé : rien à prolonger.',
+  'au-delà-d-aujourdhui': 'Ce décalage mettrait J0 après aujourd’hui : refusé.',
+  'offre-posée': 'Offre posée.',
+  'parutions-réglées': 'Nombre de parutions complètes réglé.',
+  'mis-en-parcours': 'Entrée dans le parcours : J0 est posé, la mécanique de fin d’essai suit.',
+  'abonnée-stripe': 'Un abonnement Stripe est ouvert : cette organisation n’entre pas dans le parcours.',
+  'parutions-invalides': 'Nombre de parutions hors bornes (1 à 8, et pas plus de restantes que de parutions).',
+  'date-invalide': 'Date de prochaine lettre invalide.',
   'pilote-ouvert': 'Pilote des outils stratégiques ouvert.',
   'pilote-fermé': 'Pilote des outils stratégiques fermé : étiquettes et synthèses restent en base.',
   'espace-ouvert': 'Espace réorganisé ouvert.',
@@ -133,7 +149,7 @@ export default async function GérerUneOrganisation({
   searchParams: Promise<{ gestion?: string | string[]; reglage?: string | string[]; section?: string | string[] }>
 }) {
   const { slug } = await params
-  const { accès, gestion } = await lireLaGestionDUneOrganisation(slug)
+  const { accès, gestion, abonnement } = await lireLaGestionDUneOrganisation(slug)
   const paramètres = await searchParams
   const code = typeof paramètres.gestion === 'string' ? paramètres.gestion : typeof paramètres.reglage === 'string' ? paramètres.reglage : undefined
   const message = code ? MESSAGES[code] : undefined
@@ -164,9 +180,157 @@ export default async function GérerUneOrganisation({
           <p className="text-encre">La base Postgres n’est pas en service sur cet environnement : rien à gérer ici.</p>
         </Panneau>
       ) : (
-        <Gestion slug={slug} gestion={gestion} statut={statut} />
+        <>
+          {abonnement ? <Abonnement ligne={abonnement} statut={statut} /> : null}
+          <Gestion slug={slug} gestion={gestion} statut={statut} />
+        </>
       )}
     </main>
+  )
+}
+
+/** Le lundi de la semaine prochaine, valeur par défaut du champ « prochaine lettre ». */
+function lundiProchain(aujourdHui: string): string {
+  const date = new Date(`${aujourdHui}T00:00:00Z`)
+  const jour = date.getUTCDay() || 7
+  date.setUTCDate(date.getUTCDate() + (8 - jour))
+  return date.toISOString().slice(0, 10)
+}
+
+function Donnée({ libellé, children }: { libellé: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="label-mono text-ardoise">{libellé}</dt>
+      <dd className="text-encre">{children}</dd>
+    </div>
+  )
+}
+
+/**
+ * L'abonnement et les réglages du parcours, repris du tableau des abonnements
+ * (31 octobre 2026) : les mêmes données, les mêmes actions (`lib/portail/reglages.ts`),
+ * qui reviennent ici par le champ `retour`. L'abonnement lui-même se modifie
+ * chez Stripe, jamais ici.
+ */
+function Abonnement({ ligne, statut }: { ligne: LigneDAbonnement; statut: Statut }) {
+  const aujourdHui = aujourdHuiÀParis()
+  const étape = étapeDuParcours({
+    organisation: { état: ligne.état, activéeLe: ligne.activéeLe, offre: ligne.offre, parutionsDEssai: ligne.parutionsDEssai },
+    abonnement: ligne.abonnement,
+    aujourdHui,
+  })
+  const prolongeable = ligne.état === 'essai' && ligne.activéeLe !== null
+  const abonnéStripe = étape.étape === 'abonnee' && étape.source === 'stripe'
+  const peutEntrer = (ligne.état === 'essai' || ligne.état === 'abonnee') && !abonnéStripe && ligne.offre !== 'gratuite'
+  const modeRéel = process.env['STRIPE_MODE'] === 'reel'
+  const retour = <input type="hidden" name="retour" value="fiche" />
+
+  return (
+    <Section id="abonnement" titre="Abonnement" statut={statut}>
+      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Donnée libellé="état">{ligne.état}</Donnée>
+        <Donnée libellé="étape">{libelléDÉtape(étape)}</Donnée>
+        <Donnée libellé="j0">
+          {ligne.activéeLe ? dateLongueDeParis(ligne.activéeLe) : 'non posé'}
+          {ligne.essaiOuvertLe && !ligne.activéeLe ? `, essai ouvert le ${dateLongueDeParis(ligne.essaiOuvertLe)}` : ''}
+        </Donnée>
+        <Donnée libellé="stripe">
+          {ligne.abonnement ? (
+            <>
+              {ligne.abonnement.état}
+              {ligne.abonnement.formule ? `, ${ligne.abonnement.formule}` : ''}
+              {ligne.abonnement.périodeFin ? `, jusqu’au ${dateLongueDeParis(ligne.abonnement.périodeFin)}` : ''}{' '}
+              <a
+                href={lienTableauDeBordStripe(ligne.abonnement.abonnementStripe, modeRéel)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-label underline underline-offset-2"
+              >
+                ouvrir dans Stripe
+              </a>
+            </>
+          ) : (
+            'aucun abonnement'
+          )}
+        </Donnée>
+        <Donnée libellé="lecteurs actifs">
+          {ligne.lecteursActifs} sur {LECTEURS_ACTIFS_MAX}
+        </Donnée>
+        <Donnée libellé="courriers de fin d’essai">{ligne.relectureRequise ? 'à la relecture' : 'au client'}</Donnée>
+      </dl>
+
+      <div className="flex flex-col gap-3">
+        <form action={poserLOffre} className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="slug" value={ligne.slug} />
+          {retour}
+          <label className="label-mono text-ardoise">
+            offre{' '}
+            <select name="offre" defaultValue={ligne.offre} className={champ}>
+              <option value="standard">standard</option>
+              <option value="fondateur">tarif fondateur</option>
+              <option value="gratuite">accès offert</option>
+            </select>
+          </label>
+          <BoutonEnvoi className={bouton}>Poser</BoutonEnvoi>
+        </form>
+        <form action={réglerLesParutions} className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="slug" value={ligne.slug} />
+          {retour}
+          <label className="label-mono text-ardoise">
+            parutions complètes{' '}
+            <select name="parutions" defaultValue={String(ligne.parutionsDEssai)} className={champ}>
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <BoutonEnvoi className={bouton}>Régler</BoutonEnvoi>
+        </form>
+        {prolongeable ? (
+          <form action={prolongerLEssai} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="slug" value={ligne.slug} />
+            {retour}
+            <label className="label-mono text-ardoise">
+              prolonger de{' '}
+              <select name="semaines" defaultValue="1" className={champ}>
+                <option value="1">1 semaine</option>
+                <option value="2">2 semaines</option>
+                <option value="3">3 semaines</option>
+              </select>
+            </label>
+            <BoutonEnvoi className={bouton}>Appliquer</BoutonEnvoi>
+          </form>
+        ) : null}
+        {peutEntrer ? (
+          <form action={mettreEnParcours} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="slug" value={ligne.slug} />
+            {retour}
+            <label className="label-mono text-ardoise">
+              prochaine lettre le <input type="date" name="prochaineLettre" defaultValue={lundiProchain(aujourdHui)} className={champ} />
+            </label>
+            <label className="label-mono text-ardoise">
+              encore{' '}
+              <select name="restantes" defaultValue="1" className={champ}>
+                {Array.from({ length: ligne.parutionsDEssai }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n} complète{n > 1 ? 's' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <BoutonEnvoi className={bouton}>Mettre en parcours</BoutonEnvoi>
+          </form>
+        ) : null}
+        <form action={réglerLaRelecture} className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="slug" value={ligne.slug} />
+          {retour}
+          <input type="hidden" name="requise" value={ligne.relectureRequise ? 'non' : 'oui'} />
+          <BoutonEnvoi className={lienDeGeste}>{ligne.relectureRequise ? 'Envoyer les courriers au client' : 'Envoyer les courriers à la relecture'}</BoutonEnvoi>
+        </form>
+      </div>
+    </Section>
   )
 }
 

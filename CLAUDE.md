@@ -847,7 +847,10 @@ sorti de `GET /api/veille/etat` dans `lib/portail/controle-du-soir.ts`, borné �
 4 s, « non lue » au-delà) et, par organisation, « Gérer » vers
 `/espaces/abonnements/[slug]` (`lireLaGestionDUneOrganisation`, garde dans la
 fonction ; gestes dans `lib/portail/gestion-actions.ts`, `exigerOpérateur` avant
-chaque lecture ou écriture) : interrupteurs « Outils stratégiques » et « Espace
+chaque lecture ou écriture) : la ligne du tableau des abonnements et ses réglages
+(état, étape, J0, Stripe, lecteurs, offre, parutions, prolongation, mise en
+parcours, relecture ; mêmes actions de `lib/portail/reglages.ts`, retour à la
+fiche par le champ `retour`), interrupteurs « Outils stratégiques » et « Espace
 réorganisé », validation de la grille, publication ou retrait de la fiche de
 veille, lecteurs **par leur nom** (jamais l'adresse) avec renvoi du lien
 d'accès (même envoi que l'activation, relecture par la façade, débit limité,

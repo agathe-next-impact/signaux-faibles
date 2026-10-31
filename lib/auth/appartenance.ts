@@ -237,8 +237,9 @@ export async function listerLesPrescripteurs(): Promise<{
  */
 /**
  * La page de gestion d'une organisation, pour l'opératrice (31 octobre 2026) :
- * pilote et espace, grille, fiche de veille, lecteurs par leur nom, décision,
- * journal des courriers et santé. Même forme que `listerLesAbonnements` : la
+ * abonnement et réglages du parcours (la ligne du tableau, depuis le
+ * 31 octobre 2026), pilote et espace, grille, fiche de veille, lecteurs par leur
+ * nom, décision, journal des courriers et santé. Même forme que `listerLesAbonnements` : la
  * garde est **dans** la fonction, avant les lectures qui traversent les
  * clients, et `gestionDUneOrganisation` n'a pas d'autre appelant
  * (`tests/architecture.test.ts`). `gestion` vaut `null` quand Postgres n'est pas
@@ -247,12 +248,14 @@ export async function listerLesPrescripteurs(): Promise<{
 export async function lireLaGestionDUneOrganisation(slug: string): Promise<{
   readonly accès: Accès
   readonly gestion: GestionDUneOrganisation | null
+  readonly abonnement: LigneDAbonnement | null
 }> {
   const accès = await exigerOpérateur()
-  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, gestion: null }
-  const gestion = await gestionDUneOrganisation(slug)
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, gestion: null, abonnement: null }
+  const [gestion, lignes] = await Promise.all([gestionDUneOrganisation(slug), tableauDesAbonnements()])
   if (!gestion) notFound()
-  return { accès, gestion }
+  // La ligne du tableau des abonnements, reprise sur la fiche (31 octobre 2026).
+  return { accès, gestion, abonnement: lignes.find((l) => l.slug === slug) ?? null }
 }
 
 /**
