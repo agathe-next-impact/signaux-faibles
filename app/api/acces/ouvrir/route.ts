@@ -132,7 +132,10 @@ async function ouvrir(email: string, origine: string | null): Promise<NextRespon
       message: { ...courrier, destinataire: accès.email },
       sorte: 'lien_acces',
       déclencheur: 'activation',
-      organisation: accès.organisationId ? { registreNotion: accès.organisationId } : null,
+      // L'opératrice (« Tous les espaces ») est journalisée sans organisation
+      // (31 octobre 2026) : sa ligne garde un slug et un identifiant que la lecture
+      // Notion exige, et ses demandes se rangeaient dans le journal de ce client.
+      organisation: accès.organisationId && !accès.tousLesEspaces ? { registreNotion: accès.organisationId } : null,
       lecteurId: null,
       unique: false,
       planifier: after,
