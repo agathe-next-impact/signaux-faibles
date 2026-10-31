@@ -160,6 +160,23 @@ describe('masquer et pointeurs', () => {
   })
 })
 
+describe('pointeur de la rétrospective', () => {
+  it('n’exécute que la section de synthèse de la revue, sans rien écrire dans Notion ni rien publier', () => {
+    const texte = POINTEURS.retrospective.texte
+    expect(texte).toContain('3d5fe829ce71819ba0d0ce67d742d652')
+    expect(texte).toContain('« SYNTHÈSE STRATÉGIQUE »')
+    expect(texte).toContain('N\'exécute que cette section')
+    expect(texte).toContain('tu ne modifies aucune page Notion')
+    expect(texte).toContain('ni le point mensuel au client (3.2)')
+    expect(texte).toContain('Rien n\'est publié')
+    expect(promptDeLaTâche('retrospective', 'konica-minolta-france', false, ['2026-09', '2026-T3'])).toBe(
+      `${texte}\n\nLimite-toi à l'organisation konica-minolta-france.\n\nPériodes, dans cet ordre : 2026-09, 2026-T3.`,
+    )
+    // Les périodes ne s'ajoutent qu'à la rétrospective.
+    expect(promptDeLaTâche('revue', 'heritech', false, ['2026-09'])).toBe(promptDeLaTâche('revue', 'heritech'))
+  })
+})
+
 describe('Gmail : deposer_courriel, le HTML ne passe pas par le modèle', () => {
   const HTML = `<html><body>${'<p>Une lettre longue.</p>'.repeat(5000)}</body></html>`
 

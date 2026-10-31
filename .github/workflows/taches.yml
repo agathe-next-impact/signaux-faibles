@@ -29,8 +29,9 @@ on:
           - balayage
           - premiere-lettre
           - etiquetage
+          - retrospective
       organisation:
-        description: Slug d'une seule organisation (facultatif, sans effet sur « controle », obligatoire pour « etiquetage »)
+        description: Slug d'une seule organisation (facultatif, sans effet sur « controle », obligatoire pour « etiquetage » et « retrospective »)
         required: false
         type: string
         default: ''
@@ -39,6 +40,11 @@ on:
         required: false
         type: boolean
         default: false
+      periodes:
+        description: « retrospective » seulement, périodes passées dans l'ordre, séparées par des virgules (2026-09,2026-T3)
+        required: false
+        type: string
+        default: ''
   # Réconciliation basculée le 25 octobre 2026 : la tâche planifiée côté Claude
   # (trig_01BXfAjwQEdmitFkuiUkv6BB) est désactivée le même jour. Revue basculée
   # le 25 octobre 2026 : la tâche planifiée côté Claude (trig_01J6j4oBrxa7LsSXY89Qnqu9)
@@ -64,6 +70,7 @@ jobs:
       TACHE: ${{ inputs.tache || (github.event.schedule == '0 4 * * 1-5' && 'lettres') || (github.event.schedule == '0 16 * * *' && 'revue') || (github.event.schedule == '0 17 * * 1-5' && 'reconciliation') || 'inconnue' }}
       ORGANISATION: ${{ inputs.organisation }}
       REPRENDRE: ${{ inputs.reprendre && 'oui' || '' }}
+      PERIODES: ${{ inputs.periodes }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       NOTION_MCP_TOKEN: ${{ secrets.NOTION_MCP_TOKEN }}
       ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
@@ -92,7 +99,9 @@ jobs:
 
       - name: Exécuter la tâche
         run: |
-          if [ -n "$ORGANISATION" ] && [ "$TACHE" = "etiquetage" ] && [ -n "$REPRENDRE" ]; then
+          if [ "$TACHE" = "retrospective" ]; then
+            pnpm tache "$TACHE" --organisation "$ORGANISATION" --periodes "$PERIODES"
+          elif [ -n "$ORGANISATION" ] && [ "$TACHE" = "etiquetage" ] && [ -n "$REPRENDRE" ]; then
             pnpm tache "$TACHE" --organisation "$ORGANISATION" --reprendre
           elif [ -n "$ORGANISATION" ] && [ "$TACHE" != "controle" ]; then
             pnpm tache "$TACHE" --organisation "$ORGANISATION"

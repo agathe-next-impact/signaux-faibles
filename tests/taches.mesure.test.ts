@@ -53,17 +53,39 @@ describe('lireLaMesure', () => {
 
 describe('ligne de commande', () => {
   it('admet les cinq tâches et le contrôle, et un slug propre', () => {
-    expect(lireLaCommande(['lettres', '--organisation', 'next-impact'])).toEqual({ tâche: 'lettres', organisation: 'next-impact', reprendre: false })
-    expect(lireLaCommande(['controle'])).toEqual({ tâche: 'controle', organisation: null, reprendre: false })
-    expect(lireLaCommande(['revue', '--organisation', ''])).toEqual({ tâche: 'revue', organisation: null, reprendre: false })
+    expect(lireLaCommande(['lettres', '--organisation', 'next-impact'])).toEqual({ tâche: 'lettres', organisation: 'next-impact', reprendre: false, périodes: [] })
+    expect(lireLaCommande(['controle'])).toEqual({ tâche: 'controle', organisation: null, reprendre: false, périodes: [] })
+    expect(lireLaCommande(['revue', '--organisation', ''])).toEqual({ tâche: 'revue', organisation: null, reprendre: false, périodes: [] })
   })
 
   it('etiquetage ne se lance que pour une organisation', () => {
-    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: false })
+    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: false, périodes: [] })
     expect(() => lireLaCommande(['etiquetage'])).toThrow(/exige --organisation/)
     expect(() => lireLaCommande(['etiquetage', '--organisation', ''])).toThrow(/exige --organisation/)
-    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance', '--reprendre'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: true })
+    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance', '--reprendre'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: true, périodes: [] })
     expect(() => lireLaCommande(['lettres', '--reprendre'])).toThrow(/ne vaut que pour la tâche « etiquetage »/)
+  })
+
+  it('retrospective ne se lance que pour une organisation et des périodes passées', () => {
+    const le31 = new Date('2026-10-31T08:00:00Z')
+    expect(lireLaCommande(['retrospective', '--organisation', 'konica-minolta-france', '--periodes', '2026-09, 2026-T3'], le31)).toEqual({
+      tâche: 'retrospective',
+      organisation: 'konica-minolta-france',
+      reprendre: false,
+      périodes: ['2026-09', '2026-T3'],
+    })
+    expect(() => lireLaCommande(['retrospective', '--periodes', '2026-09'], le31)).toThrow(/exige --organisation/)
+    expect(() => lireLaCommande(['retrospective', '--organisation', 'heritech'], le31)).toThrow(/exige --periodes/)
+    expect(() => lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', ''], le31)).toThrow(/exige --periodes/)
+    // Le mois et le trimestre en cours sont ceux de la revue ; un format libre est refusé.
+    expect(() => lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', '2026-10'], le31)).toThrow(/période refusée : 2026-10/)
+    expect(() => lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', '2026-T4'], le31)).toThrow(/période refusée/)
+    expect(() => lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', 'septembre'], le31)).toThrow(/période refusée/)
+    expect(() => lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', '2026-09,2026-09'], le31)).toThrow(/deux fois/)
+    expect(() => lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', '2026-05,2026-06,2026-07,2026-08,2026-09'], le31)).toThrow(/4 périodes au plus/)
+    expect(() => lireLaCommande(['revue', '--periodes', '2026-09'], le31)).toThrow(/ne vaut que pour la tâche « retrospective »/)
+    // Le premier novembre à Paris, octobre est passé.
+    expect(lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', '2026-10'], new Date('2026-10-31T23:30:00Z')).périodes).toEqual(['2026-10'])
   })
 
   it('refuse une tâche inconnue, un slug douteux ou un argument de trop', () => {

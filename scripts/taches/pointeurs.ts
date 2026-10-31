@@ -16,9 +16,17 @@
  * éditions déjà publiées, ou à ses brouillons si elle n'en a publié aucune
  * (décision du 26 octobre 2026, pour les deux éditions n°1 de Mastora) ; la
  * règle reste dans la page.
+ *
+ * Seconde exception, `retrospective` (31 octobre 2026, décision de
+ * l'opératrice pour Konica Minolta France, Heritech et Suneido) : elle non plus
+ * n'a pas de tâche planifiée d'origine. Elle se lance à la main, pour une
+ * organisation et une ou plusieurs périodes passées, et n'exécute que la section
+ * « SYNTHÈSE STRATÉGIQUE » de la page de la revue, comme si la revue avait
+ * tourné la veille de la première parution qui suit chaque période ; la règle
+ * reste dans la page.
  */
 
-export const TÂCHES = ['lettres', 'reconciliation', 'revue', 'balayage', 'premiere-lettre', 'etiquetage'] as const
+export const TÂCHES = ['lettres', 'reconciliation', 'revue', 'balayage', 'premiere-lettre', 'etiquetage', 'retrospective'] as const
 export type Tâche = (typeof TÂCHES)[number]
 
 export type Pointeur = {
@@ -96,19 +104,53 @@ Cette page est la seule source de vérité de l'étape. N'exécute aucune autre 
 
 Si la page est inaccessible ou ne contient pas d'étape « 4ter ÉTIQUETTES », n'improvise aucune exécution de remplacement : envoie un email à agathe@signauxfaibles.io, objet « [Veille] Prompt inaccessible — étiquetage », disant ce que tu as tenté et ce que tu as vu, puis arrête-toi.`,
   },
+  retrospective: {
+    origine: 'aucune tâche planifiée : synthèses stratégiques de périodes passées, créée le 31 octobre 2026 (outils stratégiques)',
+    texte: `Tu es l'agent de veille du cabinet Signaux faibles. Tu écris en français.
+
+Ouvre dans Notion la page « Tâche — Revue mensuelle des référentiels (prompt) » (id 3d5fe829ce71819ba0d0ce67d742d652) et lis sa section « SYNTHÈSE STRATÉGIQUE ». N'exécute que cette section, après coup, pour l'organisation et les périodes désignées à la fin de ce message, dans l'ordre donné : S.0, puis S.2 à S.7 pour chaque période, puis S.8 une seule fois, si la section la prévoit pour cette organisation. Tu ne passes pas la porte du calendrier, tu ne fais ni l'étape 1, ni S.1, ni le point mensuel au client (3.2) : tu ne modifies aucune page Notion et tu n'envoies aucun courriel à un client.
+
+Pour une période passée, l'« aujourd'hui » de la section est la veille de la première parution publiée qui suit la période (le dernier jour de la période si aucune ne la suit), et « demain » le jour de cette parution. Une période « AAAA-MM » est une synthèse mensuelle (S.2 à S.6) ; une période « AAAA-Tn » est la synthèse de ce trimestre (S.7), sur sa propre fenêtre, faite après la synthèse mensuelle de son dernier mois si celle-ci est aussi désignée. Si la grille répond « hors-pilote » en S.0, arrête-toi.
+
+À la fin, envoie un seul courriel à agathe@signauxfaibles.io, objet « [Relecture] Synthèses rétrospectives, <organisation> : <périodes> », qui recopie TELS QUELS les textes rendus en S.6 et S.7, dans l'ordre des périodes, avec les avertissements et les refus, puis celui de la fiche si S.8 en a enregistré une. Rien n'est publié : l'opératrice publie après relecture.
+
+Cette page est la seule source de vérité de la section. N'exécute aucune autre étape de la page : si ce message et la page divergent, c'est la page qui fait foi.
+
+Si la page est inaccessible ou ne contient pas de section « SYNTHÈSE STRATÉGIQUE », n'improvise aucune exécution de remplacement : envoie un email à agathe@signauxfaibles.io, objet « [Veille] Prompt inaccessible — rétrospective », disant ce que tu as tenté et ce que tu as vu, puis arrête-toi.`,
+  },
 }
 
 /**
- * Les seules phrases ajoutées au pointeur : l'organisation visée, et, pour
+ * Les seules phrases ajoutées au pointeur : l'organisation visée ; pour
  * l'étiquetage seulement, la reprise des éditions déjà étiquetées (après une
- * révision des règles de classement de l'étape 4ter, 26 octobre 2026).
+ * révision des règles de classement de l'étape 4ter, 26 octobre 2026) ; pour la
+ * rétrospective seulement, les périodes, dans l'ordre (31 octobre 2026).
  */
-export function promptDeLaTâche(tâche: Tâche, organisation: string | null, reprendre = false): string {
+export function promptDeLaTâche(tâche: Tâche, organisation: string | null, reprendre = false, périodes: readonly string[] = []): string {
   const texte = POINTEURS[tâche].texte
   const avecOrganisation = organisation ? `${texte}\n\nLimite-toi à l'organisation ${organisation}.` : texte
+  if (tâche === 'retrospective' && périodes.length > 0) return `${avecOrganisation}\n\nPériodes, dans cet ordre : ${périodes.join(', ')}.`
   return tâche === 'etiquetage' && reprendre
     ? `${avecOrganisation}\n\nReprends aussi les éditions qui ont déjà des faits : un nouveau lot remplace l'ancien.`
     : avecOrganisation
+}
+
+/** Le plus de périodes qu'une rétrospective traite en un lancement. */
+export const PÉRIODES_MAX = 4
+
+/**
+ * Une période de synthèse passée : un mois « AAAA-MM » antérieur au mois en
+ * cours, ou un trimestre « AAAA-Tn » déjà terminé, à la date de Paris donnée
+ * (« AAAA-MM-JJ »). Le mois ou le trimestre en cours est celui de la revue.
+ */
+export function périodePassée(valeur: string, aujourdhui: string): boolean {
+  const mois = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(valeur)
+  const trimestre = /^(\d{4})-T([1-4])$/.exec(valeur)
+  const courant = aujourdhui.slice(0, 7)
+  if (mois) return valeur < courant
+  if (!trimestre) return false
+  const dernierMois = `${trimestre[1]}-${String(Number(trimestre[2]) * 3).padStart(2, '0')}`
+  return dernierMois < courant
 }
 
 /** Un slug d'organisation tel que le registre l'écrit : court, sans espace ni accent. */

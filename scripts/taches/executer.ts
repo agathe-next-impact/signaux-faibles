@@ -3,6 +3,7 @@
  *
  *   pnpm tache <lettres|reconciliation|revue|balayage|premiere-lettre> [--organisation <slug>]
  *   pnpm tache etiquetage --organisation <slug> [--reprendre]
+ *   pnpm tache retrospective --organisation <slug> --periodes 2026-09,2026-T3
  *   pnpm tache controle
  *
  * Le prompt est le pointeur de la tâche en service (`pointeurs.ts`) : il dit
@@ -38,7 +39,7 @@ import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEUR
 import { lireLaMesure, résuméDeLaMesure, type RéponseDuModèle, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
-import { promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
+import { périodePassée, PÉRIODES_MAX, promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
 
 export const RACINE = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 export const LIRE_PAGE = join(RACINE, 'scripts', 'lire-page.mjs')
@@ -54,6 +55,9 @@ export const PARAMÈTRES: Readonly<Record<Tâche, { readonly modèle: string; re
   // Classer des faits déjà écrits ne demande ni recherche ni rédaction : le
   // modèle de la réconciliation suffit (plan des outils stratégiques, §3.4).
   etiquetage: { modèle: 'claude-sonnet-5-5', plafondUsd: 10 },
+  // La synthèse de la revue, sur des périodes passées : même modèle qu'elle,
+  // plafond porté à 15 $ pour un mois, un trimestre et la fiche (31 octobre 2026).
+  retrospective: { modèle: 'claude-opus-5-5', plafondUsd: 15 },
 }
 const EFFORT = 'high'
 const MODÈLE_LECTEUR = 'claude-haiku-5-5'
@@ -373,7 +377,7 @@ export function définitionDuLecteur(): AgentDefinition {
   }
 }
 
-async function exécuterUneTâche(tâche: Tâche, organisation: string | null, reprendre = false): Promise<number> {
+async function exécuterUneTâche(tâche: Tâche, organisation: string | null, reprendre = false, périodes: readonly string[] = []): Promise<number> {
   const secrets = lireLesSecrets()
   const masques = valeursSecrètes(secrets)
   const portail = variable('PORTAIL_URL') ?? 'https://www.signauxfaibles.io'
@@ -413,7 +417,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
   const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
   const maintenant = new Date()
-  const prompt = promptDeLaTâche(tâche, organisation, reprendre)
+  const prompt = promptDeLaTâche(tâche, organisation, reprendre, périodes)
   sorties.écrire('prompt.txt', prompt)
 
   const options: Options = {
@@ -461,13 +465,18 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
 
 // ── Ligne de commande ────────────────────────────────────────────────────────
 
-export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'controle'; organisation: string | null; reprendre: boolean } {
+const DATE_DE_PARIS = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+export type Commande = { tâche: Tâche | 'controle'; organisation: string | null; reprendre: boolean; périodes: string[] }
+
+export function lireLaCommande(argv: readonly string[], maintenant: Date = new Date()): Commande {
   const [premier, ...reste] = argv
   if (premier !== 'controle' && !(TÂCHES as readonly string[]).includes(premier ?? '')) {
     throw new Error(`usage : pnpm tache <${[...TÂCHES, 'controle'].join('|')}> [--organisation <slug>]`)
   }
   let organisation: string | null = null
   let reprendre = false
+  let périodes: string[] = []
   for (let i = 0; i < reste.length; i++) {
     if (reste[i] === '--reprendre') {
       reprendre = true
@@ -477,6 +486,11 @@ export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'con
       if (!valeur) continue
       if (!slugValide(valeur)) throw new Error(`slug d'organisation illisible : ${valeur}`)
       organisation = valeur
+    } else if (reste[i] === '--periodes') {
+      const valeur = (reste[i + 1] ?? '').trim()
+      i++
+      if (!valeur) continue
+      périodes = valeur.split(',').map((p) => p.trim()).filter(Boolean)
     } else {
       throw new Error(`argument inconnu : ${reste[i]}`)
     }
@@ -484,12 +498,22 @@ export function lireLaCommande(argv: readonly string[]): { tâche: Tâche | 'con
   if (premier === 'controle' && organisation) throw new Error('la tâche « controle » ne prend pas d’organisation')
   if (premier === 'etiquetage' && !organisation) throw new Error('la tâche « etiquetage » exige --organisation <slug>')
   if (reprendre && premier !== 'etiquetage') throw new Error('--reprendre ne vaut que pour la tâche « etiquetage »')
-  return { tâche: premier as Tâche | 'controle', organisation, reprendre }
+  if (périodes.length > 0 && premier !== 'retrospective') throw new Error('--periodes ne vaut que pour la tâche « retrospective »')
+  if (premier === 'retrospective') {
+    if (!organisation) throw new Error('la tâche « retrospective » exige --organisation <slug>')
+    if (périodes.length === 0) throw new Error('la tâche « retrospective » exige --periodes, par exemple 2026-09,2026-T3')
+    if (périodes.length > PÉRIODES_MAX) throw new Error(`${PÉRIODES_MAX} périodes au plus par lancement`)
+    if (new Set(périodes).size !== périodes.length) throw new Error('une période est donnée deux fois')
+    const aujourdhui = DATE_DE_PARIS.format(maintenant)
+    const refusée = périodes.find((p) => !périodePassée(p, aujourdhui))
+    if (refusée) throw new Error(`période refusée : ${refusée} (AAAA-MM ou AAAA-Tn, terminée ; la période en cours est celle de la revue)`)
+  }
+  return { tâche: premier as Tâche | 'controle', organisation, reprendre, périodes }
 }
 
 async function main(): Promise<void> {
-  const { tâche, organisation, reprendre } = lireLaCommande(process.argv.slice(2))
-  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation, reprendre)
+  const { tâche, organisation, reprendre, périodes } = lireLaCommande(process.argv.slice(2))
+  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation, reprendre, périodes)
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
