@@ -9,8 +9,6 @@ import type { LigneDAbonnement } from '@/lib/base/situation'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
-import { mettreEnParcours, poserLOffre, prolongerLEssai, réglerLaRelecture, réglerLesParutions } from '@/lib/portail/reglages'
-import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
 import { publierUnePériode } from '@/lib/portail/publication'
 import type { PériodeAPublier, SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 import type { SantéDesEspaces } from '@/lib/portail/gestion'
@@ -98,7 +96,6 @@ export default async function Abonnements({
   const périodeRéglée = typeof paramètres.periode === 'string' ? paramètres.periode : undefined
   const message = réglage ? MESSAGES[réglage] : synthèse ? MESSAGES_DE_SYNTHÈSE[synthèse] : undefined
   const aujourdHui = aujourdHuiÀParis()
-  const modeRéel = process.env['STRIPE_MODE'] === 'reel'
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-6 py-12">
@@ -108,7 +105,8 @@ export default async function Abonnements({
         <h1 className="font-titre text-h1 font-bold text-encre">Abonnements</h1>
         <p className="text-ardoise">
           Une ligne par organisation. L’étape est calculée comme dans l’espace du client ;
-          l’abonnement se modifie chez Stripe, jamais ici.{' '}
+          les réglages se font sur la fiche de chaque organisation (« Gérer »), et
+          l’abonnement chez Stripe.{' '}
           <Link href="/espaces" className="text-encre underline underline-offset-2">
             Choisir un espace
           </Link>
@@ -136,7 +134,7 @@ export default async function Abonnements({
           <table className="w-full border-collapse text-corps">
             <thead>
               <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
-                {['organisation', 'santé', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers', 'réglages'].map(
+                {['organisation', 'santé', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers'].map(
                   (entête) => (
                     <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
                       {entête}
@@ -147,7 +145,7 @@ export default async function Abonnements({
             </thead>
             <tbody>
               {lignes.map((ligne) => (
-                <Ligne key={ligne.slug} ligne={ligne} aujourdHui={aujourdHui} modeRéel={modeRéel} santé={santé} />
+                <Ligne key={ligne.slug} ligne={ligne} aujourdHui={aujourdHui} santé={santé} />
               ))}
             </tbody>
           </table>
@@ -247,15 +245,24 @@ function Synthèses({ organisations, statut }: { organisations: SynthèsesDUneOr
   )
 }
 
+const LIBELLÉS_D_OFFRE: Record<LigneDAbonnement['offre'], string> = {
+  standard: 'standard',
+  fondateur: 'tarif fondateur',
+  gratuite: 'accès offert',
+}
+
+/**
+ * Une ligne du tableau : des données seulement, et le lien « Gérer » pour seul
+ * geste (31 octobre 2026, décision de l'opératrice). Les réglages du parcours
+ * vivent sur la fiche de l'organisation, section « Abonnement ».
+ */
 function Ligne({
   ligne,
   aujourdHui,
-  modeRéel,
   santé,
 }: {
   ligne: LigneDAbonnement
   aujourdHui: string
-  modeRéel: boolean
   santé: Promise<SantéDesEspaces | null>
 }) {
   const étape = étapeDuParcours({
@@ -268,21 +275,13 @@ function Ligne({
     abonnement: ligne.abonnement,
     aujourdHui,
   })
-  const prolongeable = ligne.état === 'essai' && ligne.activéeLe !== null
-  const abonnéStripe = étape.étape === 'abonnee' && étape.source === 'stripe'
-  const peutEntrer = (ligne.état === 'essai' || ligne.état === 'abonnee') && !abonnéStripe && ligne.offre !== 'gratuite'
-  const champ = 'rounded-douce border border-gris-ligne bg-blanc px-2 py-1 text-corps text-encre'
-  const bouton = 'rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc'
   const auPlafond = ligne.lecteursActifs >= LECTEURS_ACTIFS_MAX
 
   return (
     <tr className="border-b border-gris-ligne align-top">
       <td className="px-4 py-3">
         <p className="text-encre">{ligne.nom}</p>
-        <Link href={`/${ligne.slug}/abonnement`} className="label-mono text-ardoise underline underline-offset-2">
-          {ligne.slug}
-        </Link>
-        <br />
+        <p className="label-mono text-ardoise">{ligne.slug}</p>
         <Link href={`/espaces/abonnements/${ligne.slug}`} className="text-label text-encre underline underline-offset-2">
           Gérer
         </Link>
@@ -303,110 +302,18 @@ function Ligne({
           </>
         ) : null}
       </td>
-      <td className="px-4 py-3">
-        <form action={poserLOffre} className="flex flex-wrap items-center gap-2">
-          <input type="hidden" name="slug" value={ligne.slug} />
-          <select name="offre" defaultValue={ligne.offre} className={champ} aria-label="Offre">
-            <option value="standard">standard</option>
-            <option value="fondateur">tarif fondateur</option>
-            <option value="gratuite">accès offert</option>
-          </select>
-          <BoutonEnvoi className={bouton}>
-            Poser
-          </BoutonEnvoi>
-        </form>
-      </td>
+      <td className="label-mono px-4 py-3 text-ardoise">{LIBELLÉS_D_OFFRE[ligne.offre]}</td>
       <td className="label-mono px-4 py-3 text-ardoise">
-        {ligne.abonnement ? (
-          <>
-            {ligne.abonnement.état}
-            {ligne.abonnement.formule ? ` · ${ligne.abonnement.formule}` : ''}
-            {ligne.abonnement.périodeFin ? ` · ${dateLongueDeParis(ligne.abonnement.périodeFin)}` : ''}
-            <br />
-            <a
-              href={lienTableauDeBordStripe(ligne.abonnement.abonnementStripe, modeRéel)}
-              target="_blank"
-              rel="noreferrer"
-              className="underline underline-offset-2"
-            >
-              ouvrir dans stripe
-            </a>
-          </>
-        ) : (
-          'aucun'
-        )}
+        {ligne.abonnement
+          ? `${ligne.abonnement.état}${ligne.abonnement.formule ? ` · ${ligne.abonnement.formule}` : ''}${
+              ligne.abonnement.périodeFin ? ` · ${dateLongueDeParis(ligne.abonnement.périodeFin)}` : ''
+            }`
+          : 'aucun'}
       </td>
       <td className={`label-mono px-4 py-3 ${auPlafond ? 'text-rose-texte' : 'text-ardoise'}`}>
         {ligne.lecteursActifs} sur {LECTEURS_ACTIFS_MAX}
       </td>
-      <td className="px-4 py-3">
-        <form action={réglerLaRelecture} className="flex flex-col gap-1">
-          <input type="hidden" name="slug" value={ligne.slug} />
-          <input type="hidden" name="requise" value={ligne.relectureRequise ? 'non' : 'oui'} />
-          <p className="label-mono text-ardoise">{ligne.relectureRequise ? 'à la relecture' : 'au client'}</p>
-          <BoutonEnvoi className="self-start text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
-            {ligne.relectureRequise ? 'Envoyer au client' : 'Envoyer à la relecture'}
-          </BoutonEnvoi>
-        </form>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex flex-col gap-3">
-          <form action={réglerLesParutions} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="slug" value={ligne.slug} />
-            <label className="label-mono text-ardoise">
-              parutions complètes{' '}
-              <select name="parutions" defaultValue={String(ligne.parutionsDEssai)} className={champ}>
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <BoutonEnvoi className={bouton}>
-              Régler
-            </BoutonEnvoi>
-          </form>
-          {prolongeable ? (
-            <form action={prolongerLEssai} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="slug" value={ligne.slug} />
-              <label className="label-mono text-ardoise">
-                prolonger de{' '}
-                <select name="semaines" defaultValue="1" className={champ}>
-                  <option value="1">1 semaine</option>
-                  <option value="2">2 semaines</option>
-                  <option value="3">3 semaines</option>
-                </select>
-              </label>
-              <BoutonEnvoi className={bouton}>
-                Appliquer
-              </BoutonEnvoi>
-            </form>
-          ) : null}
-          {peutEntrer ? (
-            <form action={mettreEnParcours} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="slug" value={ligne.slug} />
-              <label className="label-mono text-ardoise">
-                prochaine lettre le{' '}
-                <input type="date" name="prochaineLettre" defaultValue={lundiProchain(aujourdHui)} className={champ} />
-              </label>
-              <label className="label-mono text-ardoise">
-                encore{' '}
-                <select name="restantes" defaultValue="1" className={champ}>
-                  {Array.from({ length: ligne.parutionsDEssai }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n} complète{n > 1 ? 's' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <BoutonEnvoi className={bouton}>
-                Mettre en parcours
-              </BoutonEnvoi>
-            </form>
-          ) : null}
-        </div>
-      </td>
+      <td className="label-mono px-4 py-3 text-ardoise">{ligne.relectureRequise ? 'à la relecture' : 'au client'}</td>
     </tr>
   )
 }
@@ -418,8 +325,8 @@ async function SantéDeLaLigne({ slug, santé }: { slug: string; santé: Promise
   const défauts = parSlug.get(slug) ?? []
   if (défauts.length === 0) return 'rien à signaler'
   return (
-    <Link href={`/espaces/abonnements/${slug}#sante`} className="text-rose-texte underline underline-offset-2" title={défauts.map((d) => d.code).join(', ')}>
+    <span className="text-rose-texte" title={défauts.map((d) => d.code).join(', ')}>
       {défauts.length} défaut{défauts.length > 1 ? 's' : ''}
-    </Link>
+    </span>
   )
 }

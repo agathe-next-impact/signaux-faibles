@@ -842,7 +842,7 @@ sélecteur), avec les deux réglages déjà permis par `PATCH /api/veille/organi
 lien vers l'abonnement dans Stripe, où seul il se modifie. `tableauDesAbonnements`
 traverse les clients et n'a que ce seul appelant.
 **Gestion d'une organisation par l'opératrice** (31 octobre 2026) : le tableau
-porte une colonne « santé » (les défauts du contrôle du soir, `contrôlerLeDispositif`,
+ne garde, depuis le même jour, que des données et le lien « Gérer » par organisation (les réglages vivent sur la fiche) ; il porte une colonne « santé » (les défauts du contrôle du soir, `contrôlerLeDispositif`,
 sorti de `GET /api/veille/etat` dans `lib/portail/controle-du-soir.ts`, borné à
 4 s, « non lue » au-delà) et, par organisation, « Gérer » vers
 `/espaces/abonnements/[slug]` (`lireLaGestionDUneOrganisation`, garde dans la
