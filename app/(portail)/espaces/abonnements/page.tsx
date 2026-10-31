@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { lireLaSantéDesEspaces, listerLesAbonnements, listerLesSynthèses } from '@/lib/auth/appartenance'
+import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
 import type { LigneDAbonnement } from '@/lib/base/situation'
@@ -84,7 +86,11 @@ export default async function Abonnements({
 }: {
   searchParams: Promise<{ reglage?: string | string[]; slug?: string | string[]; synthese?: string | string[]; periode?: string | string[] }>
 }) {
-  const [{ accès, lignes }, { organisations }, { santé }] = await Promise.all([listerLesAbonnements(), listerLesSynthèses(), lireLaSantéDesEspaces()])
+  const [{ accès, lignes }, { organisations }] = await Promise.all([listerLesAbonnements(), listerLesSynthèses()])
+  // La santé arrive en flux, cellule par cellule : le contrôle des espaces
+  // dépasse souvent quatre secondes, et l'attendre figeait le tableau et ses
+  // boutons (31 octobre 2026). Une seule lecture, partagée par les lignes.
+  const santé = lireLaSantéDesEspaces().then((r) => r.santé)
   const paramètres = await searchParams
   const réglage = typeof paramètres.reglage === 'string' ? paramètres.reglage : undefined
   const slugRéglé = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
@@ -109,9 +115,9 @@ export default async function Abonnements({
         </p>
       </header>
 
-      {message ? (
+      {message && !synthèse ? (
         <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
-          {slugRéglé ? `${slugRéglé}${synthèse && périodeRéglée ? `, ${périodeRéglée}` : ''} : ` : ''}
+          {slugRéglé ? `${slugRéglé} : ` : ''}
           {message}
         </p>
       ) : null}
@@ -148,17 +154,25 @@ export default async function Abonnements({
         </div>
       )}
 
-      <Synthèses organisations={organisations} />
+      <Synthèses
+        organisations={organisations}
+        statut={message && synthèse ? `${slugRéglé ? `${slugRéglé}${périodeRéglée ? `, ${périodeRéglée}` : ''} : ` : ''}${message}` : null}
+      />
     </main>
   )
 }
 
-function Synthèses({ organisations }: { organisations: SynthèsesDUneOrganisation[] | null }) {
+function Synthèses({ organisations, statut }: { organisations: SynthèsesDUneOrganisation[] | null; statut: string | null }) {
   if (organisations === null) return null
   const bouton = 'rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc'
   return (
-    <section id="syntheses" className="flex flex-col gap-4">
+    <section id="syntheses" className="flex scroll-mt-6 flex-col gap-4">
       <h2 className="font-titre text-h2 font-bold text-encre">Synthèses stratégiques</h2>
+      {statut ? (
+        <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
+          {statut}
+        </p>
+      ) : null}
       <p className="text-ardoise">
         Une période n’est montrée au client qu’une fois publiée en entier, après relecture du
         courriel « [Relecture] » ; « Relire et modifier » permet d’en retoucher les énoncés avant. Publier la rend visible à ses lecteurs dès leur prochaine
@@ -208,16 +222,16 @@ function Synthèses({ organisations }: { organisations: SynthèsesDUneOrganisati
                         {p.état === 'publiée' ? (
                           <>
                             <input type="hidden" name="etat" value="retire" />
-                            <button type="submit" className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
+                            <BoutonEnvoi className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
                               Retirer
-                            </button>
+                            </BoutonEnvoi>
                           </>
                         ) : (
                           <>
                             <input type="hidden" name="etat" value="publie" />
-                            <button type="submit" className={bouton}>
+                            <BoutonEnvoi className={bouton}>
                               Publier
-                            </button>
+                            </BoutonEnvoi>
                           </>
                         )}
                       </form>
@@ -242,9 +256,8 @@ function Ligne({
   ligne: LigneDAbonnement
   aujourdHui: string
   modeRéel: boolean
-  santé: SantéDesEspaces | null
+  santé: Promise<SantéDesEspaces | null>
 }) {
-  const défauts = santé?.get(ligne.slug) ?? []
   const étape = étapeDuParcours({
     organisation: {
       état: ligne.état,
@@ -274,16 +287,10 @@ function Ligne({
           Gérer
         </Link>
       </td>
-      <td className={`label-mono px-4 py-3 ${défauts.length > 0 ? 'text-rose-texte' : 'text-ardoise'}`}>
-        {santé === null ? (
-          'non lue'
-        ) : défauts.length === 0 ? (
-          'rien à signaler'
-        ) : (
-          <Link href={`/espaces/abonnements/${ligne.slug}#sante`} className="underline underline-offset-2" title={défauts.map((d) => d.code).join(', ')}>
-            {défauts.length} défaut{défauts.length > 1 ? 's' : ''}
-          </Link>
-        )}
+      <td className="label-mono px-4 py-3 text-ardoise">
+        <Suspense fallback="lecture…">
+          <SantéDeLaLigne slug={ligne.slug} santé={santé} />
+        </Suspense>
       </td>
       <td className="label-mono px-4 py-3 text-ardoise">{ligne.état}</td>
       <td className="label-mono px-4 py-3 text-ardoise">{libelléDÉtape(étape)}</td>
@@ -304,9 +311,9 @@ function Ligne({
             <option value="fondateur">tarif fondateur</option>
             <option value="gratuite">accès offert</option>
           </select>
-          <button type="submit" className={bouton}>
+          <BoutonEnvoi className={bouton}>
             Poser
-          </button>
+          </BoutonEnvoi>
         </form>
       </td>
       <td className="label-mono px-4 py-3 text-ardoise">
@@ -337,9 +344,9 @@ function Ligne({
           <input type="hidden" name="slug" value={ligne.slug} />
           <input type="hidden" name="requise" value={ligne.relectureRequise ? 'non' : 'oui'} />
           <p className="label-mono text-ardoise">{ligne.relectureRequise ? 'à la relecture' : 'au client'}</p>
-          <button type="submit" className="self-start text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
+          <BoutonEnvoi className="self-start text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
             {ligne.relectureRequise ? 'Envoyer au client' : 'Envoyer à la relecture'}
-          </button>
+          </BoutonEnvoi>
         </form>
       </td>
       <td className="px-4 py-3">
@@ -356,9 +363,9 @@ function Ligne({
                 ))}
               </select>
             </label>
-            <button type="submit" className={bouton}>
+            <BoutonEnvoi className={bouton}>
               Régler
-            </button>
+            </BoutonEnvoi>
           </form>
           {prolongeable ? (
             <form action={prolongerLEssai} className="flex flex-wrap items-center gap-2">
@@ -371,9 +378,9 @@ function Ligne({
                   <option value="3">3 semaines</option>
                 </select>
               </label>
-              <button type="submit" className={bouton}>
+              <BoutonEnvoi className={bouton}>
                 Appliquer
-              </button>
+              </BoutonEnvoi>
             </form>
           ) : null}
           {peutEntrer ? (
@@ -393,13 +400,26 @@ function Ligne({
                   ))}
                 </select>
               </label>
-              <button type="submit" className={bouton}>
+              <BoutonEnvoi className={bouton}>
                 Mettre en parcours
-              </button>
+              </BoutonEnvoi>
             </form>
           ) : null}
         </div>
       </td>
     </tr>
+  )
+}
+
+/** La cellule « santé » d'une ligne, lue en flux sur la lecture partagée du contrôle. */
+async function SantéDeLaLigne({ slug, santé }: { slug: string; santé: Promise<SantéDesEspaces | null> }) {
+  const parSlug = await santé
+  if (parSlug === null) return 'non lue'
+  const défauts = parSlug.get(slug) ?? []
+  if (défauts.length === 0) return 'rien à signaler'
+  return (
+    <Link href={`/espaces/abonnements/${slug}#sante`} className="text-rose-texte underline underline-offset-2" title={défauts.map((d) => d.code).join(', ')}>
+      {défauts.length} défaut{défauts.length > 1 ? 's' : ''}
+    </Link>
   )
 }

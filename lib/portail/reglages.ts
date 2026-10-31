@@ -109,5 +109,5 @@ export async function déciderDeLOrganisation(données: FormData): Promise<void>
     sorte = 'échec'
   }
   console.info(`[réglage] ${accès.nom} : ${slug}, ${décision}, ${sorte}.`)
-  redirect(`/espaces/abonnements/${encodeURIComponent(slug)}?reglage=${encodeURIComponent(sorte)}#decision`)
+  redirect(`/espaces/abonnements/${encodeURIComponent(slug)}?reglage=${encodeURIComponent(sorte)}&section=decision#decision`)
 }

@@ -257,9 +257,9 @@ export async function lireLaGestionDUneOrganisation(slug: string): Promise<{
 
 /**
  * Les défauts du contrôle du soir par espace, pour la colonne « santé » du
- * tableau des abonnements (31 octobre 2026). Garde dans la fonction, comme
- * ci-dessus ; `santéDesEspaces` n'a pas d'autre appelant que celui-ci et la page
- * de gestion.
+ * tableau des abonnements et de la page de gestion (31 octobre 2026), lue en
+ * flux sous un `Suspense` pour ne pas retenir la page. Garde dans la fonction,
+ * comme ci-dessus ; `santéDesEspaces` n'a pas d'autre appelant.
  */
 export async function lireLaSantéDesEspaces(): Promise<{ readonly accès: Accès; readonly santé: SantéDesEspaces | null }> {
   const accès = await exigerOpérateur()
