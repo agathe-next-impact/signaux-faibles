@@ -1,8 +1,12 @@
+import Link from 'next/link'
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { FinDEssai } from '@/components/fin-d-essai'
 import { LigneDEssai, OffreDEssai, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
+import { ÀRetenir } from '@/components/a-retenir'
+import { Fraicheur } from '@/components/fraicheur'
+import { axesÀRetenir, suivreLesAxes } from '@/lib/domaine/tendances'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
 import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
@@ -134,7 +138,7 @@ export default async function VueDEnsemble({
         axes: { total: axes.length, forts: axes.filter((a) => a.niveau === 'FORT').length },
       })
     : null
-  const cartes = tableau ? cartesDesRubriques(accès.slug, tableau.cases, tableau.parRubrique) : null
+  const cartes = tableau ? cartesDesRubriques(tableau.cases, tableau.parRubrique) : null
   const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
 
   // Le portail ne devine pas un format qu'il ne reconnaît pas — mais il ne doit
@@ -150,6 +154,10 @@ export default async function VueDEnsemble({
       dossiers: synthèse.dossiers,
     }),
   )
+
+  // Les points forts de la semaine (31 octobre 2026) : axes FORT, puis nouveaux ou en hausse
+  // depuis la semaine précédente. Les mêmes corps que ci-dessus, aucune lecture de plus.
+  const pointsForts = axesÀRetenir(suivreLesAxes(documents, documentsPrécédents), { avecPrécédent: documentsPrécédents.length > 0 })
 
   const actions = courante.éditions
     .map((édition) => édition.actionDeLaSemaine)
@@ -219,6 +227,17 @@ export default async function VueDEnsemble({
         </div>
       ) : null}
 
+      {pointsForts.length > 0 ? (
+        <div className="mt-6">
+          <ÀRetenir
+            titre="Points forts de la semaine"
+            mention={documentsPrécédents.length > 0 ? 'signal fort et nouveautés depuis la semaine précédente' : 'signal fort'}
+            axes={pointsForts}
+            lien={(axe) => `/${accès.slug}/axes/${enSlug(axe.titre)}`}
+          />
+        </div>
+      ) : null}
+
       <section className="mt-12 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">À la une</h2>
@@ -268,13 +287,14 @@ export default async function VueDEnsemble({
                   <p className="text-ardoise">{acteur.précision ?? acteur.extrait}</p>
                 ) : null}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
-                  <p className="label-mono text-ardoise">
-                    {acteur.compteur === null
-                      ? 'suivi'
-                      : acteur.compteur === 0
-                        ? 'a bougé cette semaine'
-                        : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
-                  </p>
+                  {acteur.compteur === 0 ? (
+                    // La nouveauté se repère d'un coup d'œil (31 octobre 2026) : la pastille rose de la fraîcheur.
+                    <Fraicheur fraîcheur="nouveau" libellé="nouveau · a bougé cette semaine" />
+                  ) : (
+                    <p className="label-mono text-ardoise">
+                      {acteur.compteur === null ? 'suivi' : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
+                    </p>
+                  )}
                   <LienFlèche
                     href={
                       // Espace réorganisé : un concurrent de la grille mène à sa fiche.
@@ -296,7 +316,7 @@ export default async function VueDEnsemble({
       {cartes ? (
         <section className="mt-12 flex flex-col gap-4">
           <h2 className="font-titre text-h2 font-bold text-encre">Votre espace</h2>
-          <p className="max-w-[68ch] text-ardoise">Quatre rubriques. Chaque carte ouvre la sienne, qui réunit ses écrans ; leurs chiffres clés se lisent sans l’ouvrir.</p>
+          <p className="max-w-[68ch] text-ardoise">Quatre rubriques, chacune avec ses écrans et leur chiffre clé. Chaque écran s’ouvre d’ici.</p>
           {tableau?.activité ? (
             <div className="border border-gris-ligne p-6">
               <p className="mb-3 label-mono text-ardoise">Faits relevés par vos lettres, semaine par semaine</p>
@@ -305,22 +325,22 @@ export default async function VueDEnsemble({
           ) : null}
           <Grille étiquette="Les rubriques de votre espace" colonnes={2}>
             {cartes.map((r) => (
-              <Case key={r.href}>
+              <Case key={r.clé}>
                 <h3 className="font-titre text-h3 font-semibold text-encre">{r.titre}</h3>
                 {r.activité ? <MiniActivité activité={r.activité} /> : null}
+                {/* Plus d'écran de rubrique (31 octobre 2026) : chaque écran de la carte est un lien, aucun lien étendu sur la case. */}
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                   {r.écrans.map((é) => (
                     <div key={é.écran} className="flex flex-col">
-                      <dt className="label-mono text-ardoise">{é.écran}</dt>
+                      <dt className="label-mono">
+                        <Link href={é.href} className="text-ardoise underline decoration-gris-ligne underline-offset-2 hover:text-encre hover:decoration-encre">
+                          {é.écran}
+                        </Link>
+                      </dt>
                       <dd className="text-encre">{é.valeur}</dd>
                     </div>
                   ))}
                 </dl>
-                <div className="mt-auto pt-1">
-                  <LienFlèche href={r.href} étendu>
-                    Ouvrir
-                  </LienFlèche>
-                </div>
               </Case>
             ))}
           </Grille>

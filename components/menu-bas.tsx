@@ -64,11 +64,6 @@ export function MenuBas({ onglets }: { onglets: readonly Onglet[] }) {
                     </span>
                   </summary>
                   <ul>
-                    {groupe.rubriqueHref ? (
-                      <ÉlémentDeListe petit href={groupe.rubriqueHref} courant={chemin === groupe.rubriqueHref} onClick={fermer}>
-                        Vue de la rubrique<span className="sr-only"> {groupe.rubrique}</span>
-                      </ÉlémentDeListe>
-                    ) : null}
                     {groupe.onglets.map((onglet) => (
                       <ÉlémentDeListe petit key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte} onClick={fermer}>
                         {onglet.libellé}

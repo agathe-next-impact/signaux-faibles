@@ -236,11 +236,11 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     expect([11, 12]).toContain(cases + rubriques * 3)
     await page.screenshot({ path: `${SORTIES}/tableau-de-bord.png`, fullPage: true })
     await ouvrir(`/${SLUG}/concurrents`, 'concurrents-lot4')
-    // Bandeau retiré des concurrents, des acteurs, des forces et des scénarios le 30 octobre 2026.
+    // Bandeau retiré des concurrents, des acteurs, des forces et des scénarios le 30 octobre 2026, du diagnostic le 31.
     await expect(page.getByRole('region', { name: 'En bref' })).toHaveCount(0)
     await expect(page.getByText(/Voir les \d+ autres concurrents/)).toBeVisible()
     await ouvrir(`/${SLUG}/diagnostic`, 'diagnostic-lot4')
-    await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'En bref' })).toHaveCount(0)
     await expect(page.getByRole('link', { name: /^Fait du .* lettre n° \d+$/ }).first()).toBeVisible()
   })
 
@@ -274,33 +274,23 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await expect(page.locator('.recharts-surface').first()).toBeVisible()
   })
 
-  test('rubriques : quatre cartes sur la vue d’ensemble, chaque écran de rubrique avec la grille de ses écrans', async () => {
+  test('rubriques : quatre cartes sur la vue d’ensemble, chaque écran en lien direct', async () => {
     test.skip(!parOutil, 'écrans par outil absents')
+    // Écrans de rubrique retirés le 31 octobre 2026 : leur adresse ramène à la vue d'ensemble.
     await page.goto(`/${SLUG}/marche`)
-    const déployé = await page.getByRole('heading', { name: 'Le marché' }).isVisible()
-    test.skip(!déployé, 'écrans de rubrique non déployés')
-    await page.screenshot({ path: `${SORTIES}/rubrique-marche.png`, fullPage: true })
-    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique Le marché' }).getByRole('listitem')).toHaveCount(3)
-    await ouvrir(`/${SLUG}/strategie`, 'rubrique-strategie')
-    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique Stratégie' }).getByRole('listitem')).toHaveCount(4)
-    await ouvrir(`/${SLUG}/environnement`, 'rubrique-environnement')
-    await expect(page.getByRole('list', { name: 'Les écrans de la rubrique L’environnement' }).getByRole('listitem')).toHaveCount(2)
-    await ouvrir(`/${SLUG}/veille`, 'rubrique-veille')
-    // Deux écrans avant le lot 6, six après (thèmes, sources, corpus, calendrier).
-    expect([2, 6]).toContain(await page.getByRole('list', { name: 'Les écrans de la rubrique Votre veille' }).getByRole('listitem').count())
+    await expect(page).toHaveURL(new RegExp(`/${SLUG}$`))
     await ouvrir(`/${SLUG}`, 'tableau-de-bord-rubriques')
     await expect(page.getByRole('list', { name: 'Les rubriques de votre espace' }).getByRole('listitem')).toHaveCount(4)
-    // Rubriques en accordéons (30 octobre 2026) : fermée hors de son écran, « Stratégie » s'ouvre au clic
-    // et mène à l'écran de sa rubrique ; avant, le nom était lui-même le lien « Stratégie → ».
+    // Chaque écran de la carte est un lien direct (31 octobre 2026).
+    await expect(page.getByRole('list', { name: 'Les rubriques de votre espace' }).getByRole('link', { name: 'Diagnostic' })).toBeVisible()
+    // Rubriques en accordéons (30 octobre 2026) : fermée hors de son écran, « Stratégie » s'ouvre au clic sur ses écrans,
+    // sans plus de « Vue de la rubrique ».
     const rail = page.locator('nav[aria-label="Sections"]').first()
     const accordéon = rail.locator('summary', { hasText: /^Stratégie/ })
-    if ((await accordéon.count()) > 0) {
-      await expect(rail.getByRole('link', { name: 'Vue de la rubrique Stratégie' })).toBeHidden()
-      await accordéon.click()
-      await expect(rail.getByRole('link', { name: 'Vue de la rubrique Stratégie' })).toBeVisible()
-    } else {
-      await expect(rail.getByRole('link', { name: 'Stratégie →' })).toBeVisible()
-    }
+    await expect(rail.getByRole('link', { name: 'Scénarios' })).toBeHidden()
+    await accordéon.click()
+    await expect(rail.getByRole('link', { name: 'Scénarios' })).toBeVisible()
+    await expect(rail.getByRole('link', { name: /^Vue de la rubrique/ })).toHaveCount(0)
   })
 
   test('PESTEL : chaque axe qui suit une dimension mène à l’écran de ses faits', async () => {

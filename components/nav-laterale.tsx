@@ -11,9 +11,9 @@ import { estOngletCourant, groupeCourant, grouperParRubrique } from '@/lib/porta
  *
  * Dans l'espace réorganisé, chaque rubrique est un accordéon (30 octobre 2026,
  * demande de l'opératrice) : un `details` natif, qui s'ouvre au clavier comme à
- * la souris, ouvert d'office sur la rubrique de l'écran courant. Son écran de
- * rubrique est le premier lien du panneau. Sans rubrique, le rail reste une
- * liste simple.
+ * la souris, ouvert d'office sur la rubrique de l'écran courant. Sans
+ * rubrique, le rail reste une liste simple. Les écrans de rubrique (« Vue de la
+ * rubrique ») ont été retirés le 31 octobre 2026, à la demande de l'opératrice.
  */
 export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
   const chemin = usePathname()
@@ -30,11 +30,6 @@ export function NavLatérale({ onglets }: { onglets: readonly Onglet[] }) {
               </span>
             </summary>
             <div className="flex flex-col gap-1 pt-1">
-              {groupe.rubriqueHref ? (
-                <LienDOnglet petit href={groupe.rubriqueHref} courant={chemin === groupe.rubriqueHref}>
-                  Vue de la rubrique<span className="sr-only"> {groupe.rubrique}</span>
-                </LienDOnglet>
-              ) : null}
               {groupe.onglets.map((onglet) => (
                 <LienDOnglet petit key={onglet.href} href={onglet.href} courant={estOngletCourant(onglet, chemin)} compte={onglet.compte}>
                   {onglet.libellé}

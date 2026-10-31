@@ -38,8 +38,6 @@ export type Onglet = {
    * nom ; sans rubrique, le rail reste une liste simple.
    */
   readonly rubrique?: string
-  /** L'écran de la rubrique (30 octobre 2026) : son nom, dans le rail, y mène. */
-  readonly rubriqueHref?: string
 }
 
 export function Coquille({
@@ -184,7 +182,8 @@ export function EntêteÉcran({
  * Ces deux briques sont le seul endroit où la règle est écrite. Un écran qui
  * dessinerait sa propre grille finirait par y remettre un rayon ou un écart.
  */
-const COLONNES: Record<2 | 3 | 4, string> = {
+const COLONNES: Record<1 | 2 | 3 | 4, string> = {
+  1: '',
   2: 'sm:grid-cols-2',
   3: 'sm:grid-cols-2 xl:grid-cols-3',
   4: 'sm:grid-cols-2 xl:grid-cols-4',
@@ -195,7 +194,7 @@ export function Grille({
   étiquette,
   children,
 }: {
-  colonnes?: 2 | 3 | 4
+  colonnes?: 1 | 2 | 3 | 4
   étiquette: string
   children: React.ReactNode
 }) {

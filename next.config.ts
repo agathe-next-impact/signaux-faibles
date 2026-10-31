@@ -98,6 +98,15 @@ const nextConfig: NextConfig = {
         destination: '/:slug/perimetre',
         permanent: true,
       },
+      // Les écrans de rubrique (« Vue de la rubrique ») ont été retirés le
+      // 31 octobre 2026 : leur ancienne adresse ramène à la vue d'ensemble, qui
+      // porte les cartes des rubriques. Adresses exactes : `/:slug/veille/...`
+      // garde ses écrans.
+      ...['marche', 'environnement', 'strategie', 'veille'].map((rubrique) => ({
+        source: `/:slug/${rubrique}`,
+        destination: '/:slug',
+        permanent: false,
+      })),
     ]
   },
 

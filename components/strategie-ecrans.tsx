@@ -1,10 +1,11 @@
 import Link from 'next/link'
+import { Fraicheur } from '@/components/fraicheur'
 import { Case, Grille, LienFlèche, Tuile } from '@/components/coquille'
 import {
   dateCourte,
   LIBELLÉS_MENDELOW,
-  ancreDeLaSwot,
   LIBELLÉS_SWOT,
+  ordreDeLecture,
   libelléDePériode,
   STRATÉGIES_MENDELOW,
   TYPES_DE_TOWS,
@@ -244,12 +245,13 @@ function Crans({ crans }: { crans: ConcurrentVu['crans'] }) {
 export function ListeDesConcurrents({ slug, concurrents, étiquette = 'Les concurrents suivis' }: { slug: string; concurrents: readonly ConcurrentVu[]; étiquette?: string }) {
   return (
     <Grille colonnes={3} étiquette={étiquette}>
-      {concurrents.map((c) => (
+      {/* Ceux qui ont bougé d'abord (31 octobre 2026), l'ordre de la grille ensuite (tri stable). */}
+      {[...concurrents].sort((a, b) => Number(b.aBougé) - Number(a.aBougé)).map((c) => (
         <Case key={c.segment} accent={c.aBougé}>
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-titre text-h3 font-semibold text-encre">{c.nom}</h3>
-            {c.aBougé ? <p className="label-mono shrink-0 text-encre">A bougé</p> : null}
           </div>
+          {c.aBougé ? <Fraicheur fraîcheur="nouveau" libellé="a bougé ce mois-ci" /> : null}
           <Crans crans={c.crans} />
           <p className="label-mono text-ardoise">
             {c.faits > 0 ? `${c.faits} fait${c.faits > 1 ? 's' : ''} daté${c.faits > 1 ? 's' : ''}, le dernier du ${dateCourte(c.dernierFait ?? '')}` : 'Aucun fait daté'}
@@ -404,7 +406,7 @@ export function EnBref({ chiffres }: { chiffres: readonly ChiffreEnBref[] }) {
     <section aria-label="En bref" className="mt-6">
       <Grille étiquette="En bref" colonnes={chiffres.length === 2 ? 2 : 3}>
         {chiffres.map((c) => (
-          <Tuile key={c.intitulé} intitulé={c.intitulé} valeur={c.valeur} mention={c.mention ?? null} href={c.ancre ? `#${c.ancre}` : undefined} />
+          <Tuile key={c.intitulé} intitulé={c.intitulé} valeur={c.valeur} mention={c.mention ?? null} />
         ))}
       </Grille>
     </section>
@@ -424,14 +426,15 @@ export function MatriceSwot({ swot, lettre }: { swot: VueDeLaSwot; lettre?: (éd
       <ComptesDeLaSwot swot={swot} />
       <Grille étiquette="Matrice SWOT" colonnes={2}>
         {CASES_SWOT.map((c) => (
-          <Case key={c} id={ancreDeLaSwot(c)}>
+          <Case key={c}>
             <p className="label-mono text-encre">{LIBELLÉS_SWOT[c]}</p>
             {swot[c].length === 0 ? <p className="text-ardoise">Rien de daté ce mois-ci.</p> : null}
-            {swot[c].map((é) => (
+            {ordreDeLecture(swot[c]).map((é) => (
               <div key={é.code} id={é.code} className="flex scroll-mt-6 gap-3">
                 <span className="w-7 shrink-0 pt-1 font-mono text-label text-ardoise">{é.code}</span>
                 <span className="flex flex-col gap-1">
-                  <span className="text-encre">{é.énoncé}</span>
+                  {é.état === 'nouveau' ? <Fraicheur fraîcheur="nouveau" libellé="nouveau ce mois-ci" /> : é.état === 'renforce' ? <p className="label-mono text-encre">Renforcé ce mois-ci</p> : null}
+                  <span className={é.état === 'nouveau' || é.état === 'renforce' ? 'font-medium text-encre' : 'text-encre'}>{é.énoncé}</span>
                   {(() => {
                     const href = é.édition ? (lettre?.(é.édition) ?? null) : null
                     return href ? (

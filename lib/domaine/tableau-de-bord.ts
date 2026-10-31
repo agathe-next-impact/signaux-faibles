@@ -157,10 +157,10 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
 // ── Les rubriques (30 octobre 2026) ─────────────────────────────────────────
 
 /**
- * Les rubriques du rail, chacune avec son écran (`/[slug]/marche`…), qui montre
- * la grille de ses écrans. Décision de l'opératrice du 30 octobre 2026 : le
+ * Les rubriques du rail. Décision de l'opératrice du 30 octobre 2026 : le
  * tableau de bord porte une carte par rubrique, et non plus une case par écran ;
- * le rail garde ses écrans. « Cette semaine » n'a pas de carte : c'est la vue
+ * le rail garde ses écrans. Depuis le 31 octobre 2026, une rubrique n'a plus
+ * d'écran à elle : chaque écran de la carte mène directement au sien. « Cette semaine » n'a pas de carte : c'est la vue
  * d'ensemble elle-même, et « Lettres » reste au rail. Les noms sont ceux de
  * `Onglet.rubrique` (`ongletsDe`), écrits ici seulement.
  */
@@ -176,9 +176,8 @@ export type CléDeRubrique = (typeof RUBRIQUES)[number]['clé']
 export type CarteDeRubrique = {
   readonly clé: CléDeRubrique
   readonly titre: string
-  readonly href: string
-  /** Ses écrans, chacun avec son chiffre clé : la carte se lit sans s'ouvrir. */
-  readonly écrans: readonly { readonly écran: string; readonly valeur: string }[]
+  /** Ses écrans, chacun avec son chiffre clé et son adresse : la carte se lit sans s'ouvrir, et chaque écran s'ouvre d'elle. */
+  readonly écrans: readonly { readonly écran: string; readonly valeur: string; readonly href: string }[]
   /** Les faits de la rubrique sur huit semaines (mini graphique), `null` sans faits étiquetés. */
   readonly activité: ActivitéDeRubrique | null
 }
@@ -190,15 +189,13 @@ export function casesDeLaRubrique(cases: readonly CaseDÉcran[], clé: CléDeRub
 }
 
 export function cartesDesRubriques(
-  slug: string,
   cases: readonly CaseDÉcran[],
   parRubrique: Readonly<Record<string, ActivitéDeRubrique>> | null = null,
 ): readonly CarteDeRubrique[] {
   return RUBRIQUES.map((r) => ({
     clé: r.clé,
     titre: r.titre,
-    href: `/${slug}/${r.clé}`,
-    écrans: casesDeLaRubrique(cases, r.clé).map((c) => ({ écran: c.écran, valeur: c.valeur })),
+    écrans: casesDeLaRubrique(cases, r.clé).map((c) => ({ écran: c.écran, valeur: c.valeur, href: c.href })),
     activité: parRubrique?.[r.clé] ?? null,
   }))
 }

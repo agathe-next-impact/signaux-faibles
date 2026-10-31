@@ -102,10 +102,9 @@ Le marché, L'environnement, Stratégie, Votre veille), douze écrans. Le lot 4
 l'écran lit déjà plus la synthèse publiée), un bandeau « En bref » de trois
 chiffres en tête des écrans par outil (`enBref…`, `lib/domaine/strategie-vues.ts`,
 comptés, jamais rédigés ; retiré le même jour, à la demande de l'opératrice,
-de « Concurrents », « Acteurs », « Forces du marché » et « Scénarios », il reste
-sur « Diagnostic », « PESTEL », réduit aux deux dimensions les plus citées,
-et « Indicateurs » ; sur « Diagnostic », les tuiles Opportunités et Menaces mènent
-à leur case de la SWOT, `ancreDeLaSwot`), les longues listes repliées derrière un `details`
+de « Concurrents », « Acteurs », « Forces du marché » et « Scénarios », puis le 31 octobre
+de « Diagnostic », il reste sur « PESTEL », réduit aux deux dimensions les plus citées,
+et « Indicateurs »), les longues listes repliées derrière un `details`
 natif (`components/repliable.tsx` : concurrents au-delà de six, dossiers au-delà
 de cinq, semaines d'actions au-delà de quatre) et des liens internes (un élément
 SWOT daté vers sa lettre, un dossier concurrent de l'accueil vers sa fiche). Le
@@ -122,14 +121,28 @@ synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 « À la une », sans la cartouche des chiffres de la semaine, la section
 « L'écosystème » ni la « Lecture stratégique » (retirées le même jour, à sa
 demande ; la lecture stratégique a quitté toutes les vues d'ensemble), et non plus une case par écran ; le
-détail de chaque carte (ses écrans et leur chiffre clé) tient sur deux colonnes ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
-`/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
-avec leur chiffre clé, sur deux colonnes elle aussi ; le rail garde ses écrans, chaque rubrique en
+détail de chaque carte (ses écrans et leur chiffre clé) tient sur deux colonnes, chaque écran en lien direct ; les écrans de
+rubrique (`/[slug]/marche`, `/environnement`, `/strategie`, `/veille`, « Vue de la rubrique ») ont été **retirés le 31 octobre
+2026**, à la demande de l'opératrice, leur ancienne adresse ramenant à la vue d'ensemble (`next.config.ts`) ; le rail garde ses écrans, chaque rubrique en
 **accordéon** (`details` natif, ouvert d'office sur la rubrique de l'écran courant,
 `grouperParRubrique` et `groupeCourant`, `lib/portail/onglet.ts`), dans le rail
-comme dans la liste « Plus » du menu de pied, et l'écran de la rubrique en est le
-premier lien, « Vue de la rubrique » (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
-(`lib/portail/tableau.ts`). Sur « PESTEL », chaque axe qui suit une dimension
+comme dans la liste « Plus » du menu de pied ; un seul calcul des cases, `tableauDeLEspace`
+(`lib/portail/tableau.ts`). Depuis le 31 octobre 2026, « Lettres », dans la rubrique
+« Cette semaine », ne montre que les lettres de la dernière semaine publiée, une carte par
+lettre sur une colonne, et renvoie aux archives (compte du rail aligné) ; hors de l'espace
+réorganisé, il reste « Toutes les lettres ». **Nouveautés et points forts mis en avant** (31 octobre
+2026, demande de l'opératrice, intensité « marquée, dans la charte ») : `axesÀRetenir`
+(`lib/domaine/tendances.ts`) retient les axes FORT puis ceux qui apparaissent ou montent depuis la lettre
+précédente de la même veille (jamais un RAS ; sans lettre précédente, seuls les FORT), rendus par
+l'encadré `ÀRetenir` (`components/a-retenir.tsx`, filet rose à gauche, encadré isolé hors grille) : « À
+retenir » en tête d'une lettre (ancres `ancreDAxe`), où les axes FORT et nouveaux restent ouverts avec un
+filet rose et les autres sont repliés (`RenduDocument`, `miseEnAvant`, absente de la vitrine et des
+archives) ; « Points forts de la semaine » sur la vue d'ensemble, sans lecture de plus, et la pastille
+« nouveau » sur les acteurs qui ont bougé ; sur les cartes de « Lettres de la semaine », les axes FORT
+nommés et le compte des nouveautés (lecture complète seulement : rien de ce qu'une lettre tronquée ne
+montre plus) ; dans « Diagnostic », les éléments SWOT nouveaux puis renforcés du mois en tête de leur case
+(`ordreDeLecture`, codes inchangés, état lu dans `elements_synthese`) ; dans « Concurrents », ceux qui ont
+bougé d'abord. Le rose ne porte que le FORT et la nouveauté. Sur « PESTEL », chaque axe qui suit une dimension
 mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 `faitsDeLAxeDeLEspace`, segment comparé à la seule grille de l'organisation,
 404 sinon). Le lot 6 (même jour) ajoute à la rubrique « Votre veille » quatre

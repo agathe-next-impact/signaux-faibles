@@ -1,7 +1,9 @@
-import { construireDocument } from '@/lib/domaine/document'
+import { construireDocument, type Document } from '@/lib/domaine/document'
 import { tronquerÀLEssentiel } from '@/lib/domaine/troncature'
 import { lireBlocsDePage, type Édition } from '@/lib/documents'
-import { RenduDocument } from '@/components/document'
+import { ÀRetenir } from '@/components/a-retenir'
+import { ancreDAxe, RenduDocument } from '@/components/document'
+import { axesÀRetenir, suivreLesAxes } from '@/lib/domaine/tendances'
 import { EntêteÉdition } from '@/components/entete-edition'
 import { PanneauDossiers } from '@/components/panneau-dossiers'
 import { PurgeHorsLigne } from '@/components/purge-hors-ligne'
@@ -16,6 +18,7 @@ import { PurgeHorsLigne } from '@/components/purge-hors-ligne'
 export async function Note({
   édition,
   lecture,
+  précédente,
 }: {
   édition: Édition
   /**
@@ -28,6 +31,13 @@ export async function Note({
    * pas servir la lettre entière par mégarde.
    */
   lecture: 'complète' | 'essentiel'
+  /**
+   * La lettre précédente de la même veille (31 octobre 2026) : sa lecture, déjà
+   * cachée, dit ce qui est nouveau ou en hausse. Sans elle, pas de mise en avant
+   * (archives d'une semaine) ; `null` pour une première lettre : seuls les axes
+   * FORT sont mis en avant.
+   */
+  précédente?: Édition | null
 }) {
   const blocs = await lireBlocsDePage(édition.pageId)
   const document = lecture === 'essentiel' ? tronquerÀLEssentiel(construireDocument(blocs)) : construireDocument(blocs)
@@ -47,9 +57,20 @@ export async function Note({
     )
   }
 
+  const miseEnAvant = précédente === undefined ? null : await àRetenirDeLaLettre(document, précédente)
+
   return (
     <section className="flex flex-col gap-6">
       <EntêteÉdition édition={édition} />
+
+      {miseEnAvant ? (
+        <ÀRetenir
+          titre="À retenir"
+          mention={précédente ? 'signal fort et nouveautés depuis la lettre précédente' : 'signal fort'}
+          axes={miseEnAvant.axes}
+          lien={(axe) => `#${ancreDAxe(axe.titre)}`}
+        />
+      ) : null}
 
       {édition.actionDeLaSemaine ? (
         <aside className="border border-gris-ligne bg-fond-ardoise p-4">
@@ -60,9 +81,20 @@ export async function Note({
         </aside>
       ) : null}
 
-      <RenduDocument document={document} />
+      <RenduDocument document={document} miseEnAvant={miseEnAvant ? { nouveaux: miseEnAvant.nouveaux } : undefined} />
 
       <PanneauDossiers brut={édition.dossiersOuvertsBruts} />
     </section>
   )
+}
+
+/** Les axes à retenir d'une lettre, comparée à la précédente de la même veille. */
+async function àRetenirDeLaLettre(document: Document, précédente: Édition | null) {
+  const avant = précédente ? construireDocument(await lireBlocsDePage(précédente.pageId)) : null
+  const suivis = suivreLesAxes([document], avant ? [avant] : [])
+  const axes = axesÀRetenir(suivis, { avecPrécédent: avant !== null })
+  const nouveaux = new Set(
+    avant ? suivis.filter((a) => a.niveau !== 'RAS' && (a.mouvement === 'nouveau' || a.mouvement === 'monté')).map((a) => a.titre) : [],
+  )
+  return { axes, nouveaux }
 }

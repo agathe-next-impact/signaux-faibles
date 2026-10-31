@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
-import { EnBref, MatriceSwot } from '@/components/strategie-ecrans'
-import { enBrefDeLaSwot, libelléDePériode } from '@/lib/domaine/strategie-vues'
+import { MatriceSwot } from '@/components/strategie-ecrans'
+import { libelléDePériode } from '@/lib/domaine/strategie-vues'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
 import { lettresPubliées, semainesPubliées } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
@@ -31,12 +31,9 @@ export default async function Diagnostic({ params }: { params: Promise<{ slug: s
     <>
       <EntêteÉcran surtitre="stratégie" titre="Où en êtes-vous" état={synthèse?.mois ? `synthèse ${libelléDePériode(synthèse.mois.période)}` : undefined} />
       {synthèse?.mois ? (
-        <>
-          <EnBref chiffres={enBrefDeLaSwot(synthèse.mois.swot)} />
-          <div className="mt-8">
-            <MatriceSwot swot={synthèse.mois.swot} lettre={(édition) => lettres.get(édition) ?? null} />
-          </div>
-        </>
+        <div className="mt-8">
+          <MatriceSwot swot={synthèse.mois.swot} lettre={(édition) => lettres.get(édition) ?? null} />
+        </div>
       ) : (
         <p className="mt-6 text-ardoise">Aucune synthèse n’est publiée pour l’instant. Le diagnostic paraît avec la première revue mensuelle relue.</p>
       )}

@@ -44,6 +44,8 @@ export type ÉlémentLu = {
   readonly faits: readonly string[]
   readonly références: unknown
   readonly candidateRecommandation: boolean
+  /** SWOT : `nouveau`, `renforce`, `inchange` ou `affaibli` par rapport au mois précédent ; nul ailleurs. */
+  readonly état?: string | null
 }
 export type PositionLue = {
   readonly outil: string
@@ -397,6 +399,19 @@ export type ÉlémentDeLaSwot = {
   readonly source: string
   /** La lettre du fait le plus récent (32 hexadécimaux), pour y mener ; nulle pour un élément déclaratif. */
   readonly édition: string | null
+  /** Ce que l'élément est devenu depuis le mois précédent : `nouveau`, `renforce`, `inchange`, `affaibli` ; nul si inconnu. */
+  readonly état: string | null
+}
+
+/**
+ * L'ordre de lecture d'une case de la SWOT (31 octobre 2026, demande de
+ * l'opératrice) : les éléments nouveaux du mois d'abord, puis les renforcés,
+ * puis le reste, dans l'ordre de la synthèse à l'intérieur (tri stable). Les
+ * codes (F1, O2…) ne changent pas : la TOWS y renvoie.
+ */
+export function ordreDeLecture(éléments: readonly ÉlémentDeLaSwot[]): ÉlémentDeLaSwot[] {
+  const rang = (é: ÉlémentDeLaSwot) => (é.état === 'nouveau' ? 0 : é.état === 'renforce' ? 1 : 2)
+  return [...éléments].sort((a, b) => rang(a) - rang(b))
 }
 export type VueDeLaSwot = Readonly<Record<CaseSwot, readonly ÉlémentDeLaSwot[]>>
 
@@ -423,7 +438,7 @@ export function vueDeLaSwot(
         : fait
           ? `Fait du ${dateCourte(fait.date)}${numéro ? ` · lettre n° ${numéro}` : ''}`
           : 'Faits de vos lettres'
-    swot[c].push({ code, énoncé: é.énoncé ?? '', source, édition: é.origine === 'declaratif' ? null : (fait?.édition || null) })
+    swot[c].push({ code, énoncé: é.énoncé ?? '', source, édition: é.origine === 'declaratif' ? null : (fait?.édition || null), état: é.état ?? null })
   }
   return { swot, codes }
 }
@@ -692,7 +707,7 @@ export function périodesAPublier(comptes: readonly ComptesDePériode[]): Synth�
  * porte pas n'est pas inventé ; la case dit alors « n.d. ».
  */
 /** `ancre` : l'identifiant de la section de l'écran que le chiffre compte ; la tuile y mène. */
-export type ChiffreEnBref = { readonly intitulé: string; readonly valeur: number | string; readonly mention?: string | null; readonly ancre?: string }
+export type ChiffreEnBref = { readonly intitulé: string; readonly valeur: number | string; readonly mention?: string | null }
 
 const pluriel = (n: number, mot: string, mots = `${mot}s`) => `${n} ${n > 1 ? mots : mot}`
 
@@ -700,19 +715,6 @@ const pluriel = (n: number, mot: string, mots = `${mot}s`) => `${n} ${n > 1 ? mo
 export function mouvementsDeLaCarte(carte: VueDeLaCarte | null): number {
   if (!carte) return 0
   return [...carte.cases.values()].flat().filter((o) => o.aBougé && !o.organisation).length
-}
-
-/** L'ancre d'une case de la SWOT : `swot-opportunites`, distincte des codes d'éléments (« O1 »). */
-export const ancreDeLaSwot = (c: CaseSwot) => `swot-${c}`
-
-export function enBrefDeLaSwot(swot: VueDeLaSwot): readonly ChiffreEnBref[] {
-  const tous = CASES_SWOT.flatMap((c) => swot[c])
-  const déclaratifs = tous.filter((é) => é.édition === null && é.source.startsWith('Déclaratif')).length
-  return [
-    { intitulé: 'Éléments de la SWOT', valeur: tous.length, mention: `${pluriel(déclaratifs, 'déclaratif')}, ${tous.length - déclaratifs} datés` },
-    { intitulé: 'Opportunités', valeur: swot.opportunites.length, mention: 'tirées des faits de vos lettres', ancre: ancreDeLaSwot('opportunites') },
-    { intitulé: 'Menaces', valeur: swot.menaces.length, mention: 'tirées des faits de vos lettres', ancre: ancreDeLaSwot('menaces') },
-  ]
 }
 
 /** Les deux dimensions les plus citées seulement (30 octobre 2026, demande de l'opératrice) ; une dimension sans fait n'y figure pas. */

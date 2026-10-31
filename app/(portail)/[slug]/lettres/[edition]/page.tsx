@@ -22,9 +22,14 @@ export default async function UneLettre({
   if (lecture === 'aucune') redirect(`/${accès.slug}`)
 
   const semaines = await semainesPubliées(accès.organisationId)
-  const lettre = lettresPubliées(semaines).find(({ édition }) => édition.pageId === pageId)
+  const lettres = lettresPubliées(semaines)
+  const rang = lettres.findIndex(({ édition }) => édition.pageId === pageId)
+  const lettre = lettres[rang]
 
   if (!lettre) notFound()
+  // La lettre précédente de la même veille, dans la liste déjà filtrée (du plus récent au plus ancien) :
+  // la mise en avant compare à elle, jamais à une page venue d'ailleurs.
+  const précédente = lettres.slice(rang + 1).find(({ édition }) => édition.veille === lettre.édition.veille)?.édition ?? null
 
   return (
     <>
@@ -39,7 +44,7 @@ export default async function UneLettre({
       </p>
 
       <div className="mt-8">
-        <Note édition={lettre.édition} lecture={lecture} />
+        <Note édition={lettre.édition} lecture={lecture} précédente={précédente} />
       </div>
     </>
   )

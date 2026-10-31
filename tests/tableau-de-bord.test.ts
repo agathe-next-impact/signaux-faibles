@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cartesDesRubriques, casesDeLaRubrique, casesDuTableauDeBord, RUBRIQUES, type DonnéesDuTableau } from '@/lib/domaine/tableau-de-bord'
 import {
-  enBrefDeLaSwot,
+  ordreDeLecture,
   enBrefDuPestel,
   mouvementsDeLaCarte,
   type ConcurrentVu,
@@ -12,7 +12,7 @@ import {
 
 /** Le tableau de bord en cases et les bandeaux « En bref » (lot 4, 30 octobre 2026) : des comptes, jamais d'invention. */
 
-const élément = (code: string, source: string, édition: string | null) => ({ code, énoncé: 'É.', source, édition })
+const élément = (code: string, source: string, édition: string | null, état: string | null = null) => ({ code, énoncé: 'É.', source, édition, état })
 const SYNTHÈSE: SynthèseVue = {
   mois: {
     période: '2026-09',
@@ -149,14 +149,15 @@ describe('casesDuTableauDeBord', () => {
 describe('les rubriques', () => {
   it('une carte par rubrique, Cette semaine exceptée, avec les chiffres de ses écrans', () => {
     const cases = casesDuTableauDeBord(DONNÉES)
-    const cartes = cartesDesRubriques('hermitage', cases)
-    expect(cartes.map((c) => [c.titre, c.href, c.écrans.map((é) => é.écran)])).toEqual([
-      ['Le marché', '/hermitage/marche', ['Concurrents', 'Acteurs', 'Forces du marché']],
-      ['L’environnement', '/hermitage/environnement', ['Les axes', 'PESTEL']],
-      ['Stratégie', '/hermitage/strategie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
-      ['Votre veille', '/hermitage/veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Calendrier', 'Périmètre', 'Archives']],
+    const cartes = cartesDesRubriques(cases)
+    expect(cartes.map((c) => [c.titre, c.écrans.map((é) => é.écran)])).toEqual([
+      ['Le marché', ['Concurrents', 'Acteurs', 'Forces du marché']],
+      ['L’environnement', ['Les axes', 'PESTEL']],
+      ['Stratégie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
+      ['Votre veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Calendrier', 'Périmètre', 'Archives']],
     ])
-    expect(cartes[0]!.écrans[0]).toEqual({ écran: 'Concurrents', valeur: '36 suivis' })
+    // Plus d'écran de rubrique (31 octobre 2026) : chaque écran de la carte porte sa propre adresse.
+    expect(cartes[0]!.écrans[0]).toEqual({ écran: 'Concurrents', valeur: '36 suivis', href: '/hermitage/concurrents' })
     // Chaque écran hors « Cette semaine » est dans une rubrique, et une seule.
     const rangés = RUBRIQUES.flatMap((r) => casesDeLaRubrique(cases, r.clé))
     expect(rangés.map((c) => c.href).sort()).toEqual(cases.filter((c) => c.rubrique !== 'Cette semaine').map((c) => c.href).sort())
@@ -167,16 +168,6 @@ describe('en bref', () => {
   it('compte les mouvements de la carte sans l’organisation', () => {
     expect(mouvementsDeLaCarte(SYNTHÈSE.mois!.carte as VueDeLaCarte)).toBe(1)
     expect(mouvementsDeLaCarte(null)).toBe(0)
-  })
-
-  it('la SWOT, les forces et les scénarios : trois chiffres chacun, comptés sur ce que l’écran montre', () => {
-    expect(enBrefDeLaSwot(SYNTHÈSE.mois!.swot).map((c) => [c.intitulé, c.valeur, c.mention])).toEqual([
-      ['Éléments de la SWOT', 5, '1 déclaratif, 4 datés'],
-      ['Opportunités', 2, 'tirées des faits de vos lettres'],
-      ['Menaces', 1, 'tirées des faits de vos lettres'],
-    ])
-    // Opportunités et menaces mènent à leur case de la matrice.
-    expect(enBrefDeLaSwot(SYNTHÈSE.mois!.swot).map((c) => c.ancre ?? null)).toEqual([null, 'swot-opportunites', 'swot-menaces'])
   })
 
   it('les concurrents et le PESTEL', () => {
@@ -200,5 +191,18 @@ describe('en bref', () => {
       ['Dimension la plus citée', 'Légal', '5 faits'],
       ['Deuxième dimension citée', 'Politique', '2 faits'],
     ])
+  })
+})
+
+describe('ordre de lecture de la SWOT (31 octobre 2026)', () => {
+  it('les nouveaux du mois d’abord, puis les renforcés, l’ordre de la synthèse à l’intérieur ; les codes ne changent pas', () => {
+    const lus = ordreDeLecture([
+      élément('O1', 's', null, 'inchange'),
+      élément('O2', 's', null, 'renforce'),
+      élément('O3', 's', null, 'nouveau'),
+      élément('O4', 's', null, null),
+      élément('O5', 's', null, 'nouveau'),
+    ])
+    expect(lus.map((é) => é.code)).toEqual(['O3', 'O5', 'O2', 'O1', 'O4'])
   })
 })
