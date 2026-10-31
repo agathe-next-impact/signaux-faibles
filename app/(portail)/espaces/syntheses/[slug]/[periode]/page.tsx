@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { lireUneSynthèseÀRelire } from '@/lib/auth/appartenance'
+import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
 import { BORNES, LIBELLÉS_PESTEL, type Pestel } from '@/lib/domaine/strategie'
@@ -119,9 +120,9 @@ export default async function RelireUneSynthèse({
                 <input type="hidden" name="slug" value={slug} />
                 <input type="hidden" name="periode" value={periode} />
                 <input type="hidden" name="etat" value="publie" />
-                <button type="submit" className="rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc">
+                <BoutonEnvoi className="rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc">
                   Publier
-                </button>
+                </BoutonEnvoi>
               </form>
             </section>
           )}
@@ -202,9 +203,9 @@ function Élément({
             />
           </label>
           <div>
-            <button type="submit" className="rounded-douce border border-encre px-3 py-1 text-label font-medium text-encre">
+            <BoutonEnvoi className="rounded-douce border border-encre px-3 py-1 text-label font-medium text-encre">
               Enregistrer
-            </button>
+            </BoutonEnvoi>
           </div>
         </form>
       ) : (

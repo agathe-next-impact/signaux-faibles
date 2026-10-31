@@ -40,7 +40,7 @@ function slugDu(données: FormData): string {
 }
 
 function retour(slug: string, code: string, section: string): never {
-  redirect(`/espaces/abonnements/${encodeURIComponent(slug)}?gestion=${encodeURIComponent(code)}#${section}`)
+  redirect(`/espaces/abonnements/${encodeURIComponent(slug)}?gestion=${encodeURIComponent(code)}&section=${section}#${section}`)
 }
 
 function messageDe(erreur: unknown): string {

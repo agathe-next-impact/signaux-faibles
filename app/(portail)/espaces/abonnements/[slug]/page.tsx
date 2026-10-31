@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-import { lireLaGestionDUneOrganisation } from '@/lib/auth/appartenance'
+import { Suspense, type ReactNode } from 'react'
+import { lireLaGestionDUneOrganisation, lireLaSantéDesEspaces } from '@/lib/auth/appartenance'
+import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
@@ -88,10 +89,22 @@ const bouton = 'rounded-douce bg-encre px-3 py-1 text-label font-medium text-bla
 const lienDeGeste = 'text-label text-ardoise underline decoration-gris-ligne underline-offset-2'
 const champ = 'rounded-douce border border-gris-ligne bg-blanc px-2 py-1 text-corps text-encre'
 
-function Section({ id, titre, children }: { id: string; titre: string; children: ReactNode }) {
+type Statut = { readonly section: string | null; readonly message: string } | null
+
+/** Le résultat d'un geste, dans la section de son bouton : c'est là que le navigateur revient. */
+function MessageDeStatut({ message }: { message: string }) {
   return (
-    <section id={id} className="flex flex-col gap-4 border-t border-gris-ligne pt-8">
+    <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
+      {message}
+    </p>
+  )
+}
+
+function Section({ id, titre, statut, children }: { id: string; titre: string; statut: Statut; children: ReactNode }) {
+  return (
+    <section id={id} className="flex scroll-mt-6 flex-col gap-4 border-t border-gris-ligne pt-8">
       <h2 className="font-titre text-h2 font-bold text-encre">{titre}</h2>
+      {statut && statut.section === id ? <MessageDeStatut message={statut.message} /> : null}
       {children}
     </section>
   )
@@ -105,9 +118,9 @@ function Interrupteur({ action, slug, actif, libellé }: { action: (d: FormData)
       <p className="text-encre">
         {libellé} : <span className="label-mono text-ardoise">{actif ? 'ouvert' : 'fermé'}</span>
       </p>
-      <button type="submit" className={actif ? lienDeGeste : bouton}>
+      <BoutonEnvoi className={actif ? lienDeGeste : bouton}>
         {actif ? 'Fermer' : 'Ouvrir'}
-      </button>
+      </BoutonEnvoi>
     </form>
   )
 }
@@ -117,13 +130,15 @@ export default async function GérerUneOrganisation({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ gestion?: string | string[]; reglage?: string | string[] }>
+  searchParams: Promise<{ gestion?: string | string[]; reglage?: string | string[]; section?: string | string[] }>
 }) {
   const { slug } = await params
   const { accès, gestion } = await lireLaGestionDUneOrganisation(slug)
   const paramètres = await searchParams
   const code = typeof paramètres.gestion === 'string' ? paramètres.gestion : typeof paramètres.reglage === 'string' ? paramètres.reglage : undefined
   const message = code ? MESSAGES[code] : undefined
+  const section = typeof paramètres.section === 'string' ? paramètres.section : null
+  const statut: Statut = message ? { section, message } : null
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-4xl flex-col gap-8 px-6 py-12">
@@ -142,48 +157,59 @@ export default async function GérerUneOrganisation({
         </p>
       </header>
 
-      {message ? (
-        <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
-          {message}
-        </p>
-      ) : null}
+      {statut && !statut.section ? <MessageDeStatut message={statut.message} /> : null}
 
       {!gestion ? (
         <Panneau ton="rose">
           <p className="text-encre">La base Postgres n’est pas en service sur cet environnement : rien à gérer ici.</p>
         </Panneau>
       ) : (
-        <Gestion slug={slug} gestion={gestion} />
+        <Gestion slug={slug} gestion={gestion} statut={statut} />
       )}
     </main>
   )
 }
 
-function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited<ReturnType<typeof lireLaGestionDUneOrganisation>>['gestion']> }) {
-  const { organisation, lecteurs, grille, fiche, courriers, santé } = gestion
+/** La santé, lue en flux : la page et ses boutons n'attendent pas le contrôle des espaces. */
+async function SantéDeLOrganisation({ slug }: { slug: string }) {
+  const { santé: parSlug } = await lireLaSantéDesEspaces()
+  const santé = parSlug ? (parSlug.get(slug) ?? []) : null
+  if (santé === null) return <p className="text-ardoise">Le contrôle des espaces n’a pas répondu à temps : santé non lue. Recharger la page.</p>
+  if (santé.length === 0) return <p className="text-encre">Aucun défaut au contrôle du soir.</p>
+  return (
+    <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
+      {santé.map((d) => (
+        <li key={`${d.code}:${d.message}`} className="flex flex-col gap-1 py-3">
+          <p className="label-mono text-rose-texte">{d.code}</p>
+          <p className="text-encre">{d.message}</p>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Gestion({
+  slug,
+  gestion,
+  statut,
+}: {
+  slug: string
+  gestion: NonNullable<Awaited<ReturnType<typeof lireLaGestionDUneOrganisation>>['gestion']>
+  statut: Statut
+}) {
+  const { organisation, lecteurs, grille, fiche, courriers } = gestion
   const actifs = lecteurs.filter((l) => l.actif).length
   const horsService = organisation.état === 'suspendue' || organisation.état === 'ecartee'
 
   return (
     <>
-      <Section id="sante" titre="Santé">
-        {santé === null ? (
-          <p className="text-ardoise">Le contrôle des espaces n’a pas répondu à temps : santé non lue. Recharger la page.</p>
-        ) : santé.length === 0 ? (
-          <p className="text-encre">Aucun défaut au contrôle du soir.</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-            {santé.map((d) => (
-              <li key={`${d.code}:${d.message}`} className="flex flex-col gap-1 py-3">
-                <p className="label-mono text-rose-texte">{d.code}</p>
-                <p className="text-encre">{d.message}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+      <Section id="sante" titre="Santé" statut={statut}>
+        <Suspense fallback={<p className="text-ardoise">Lecture du contrôle des espaces…</p>}>
+          <SantéDeLOrganisation slug={slug} />
+        </Suspense>
       </Section>
 
-      <Section id="pilote" titre="Pilote et espace">
+      <Section id="pilote" titre="Pilote et espace" statut={statut}>
         <Interrupteur action={basculerLePilote} slug={slug} actif={organisation.outilsStratégiques} libellé="Outils stratégiques" />
         <Interrupteur action={basculerLEspace} slug={slug} actif={organisation.espaceRéorganisé} libellé="Espace réorganisé" />
         <p className="text-ardoise">
@@ -192,7 +218,7 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
         </p>
       </Section>
 
-      <Section id="grille" titre="Grille stratégique">
+      <Section id="grille" titre="Grille stratégique" statut={statut}>
         {grille.sorte !== 'lue' ? (
           <p className="text-ardoise">{grille.sorte === 'hors-pilote' ? 'Hors du pilote : pas de grille.' : 'Aucune grille enregistrée.'}</p>
         ) : (
@@ -212,16 +238,16 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
               <form action={validerLaGrille}>
                 <input type="hidden" name="slug" value={slug} />
                 <input type="hidden" name="version" value={grille.version} />
-                <button type="submit" className={bouton}>
+                <BoutonEnvoi className={bouton}>
                   Valider la version {grille.version}
-                </button>
+                </BoutonEnvoi>
               </form>
             )}
           </div>
         )}
       </Section>
 
-      <Section id="fiche" titre="Fiche de veille">
+      <Section id="fiche" titre="Fiche de veille" statut={statut}>
         {fiche.sorte !== 'lue' ? (
           <p className="text-ardoise">{fiche.sorte === 'hors-pilote' ? 'Hors du pilote : pas de fiche.' : 'Aucune fiche enregistrée : la revue mensuelle la propose.'}</p>
         ) : (
@@ -235,16 +261,16 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
               {fiche.état === 'publie' ? (
                 <>
                   <input type="hidden" name="etat" value="retire" />
-                  <button type="submit" className={lienDeGeste}>
+                  <BoutonEnvoi className={lienDeGeste}>
                     Retirer
-                  </button>
+                  </BoutonEnvoi>
                 </>
               ) : (
                 <>
                   <input type="hidden" name="etat" value="publie" />
-                  <button type="submit" className={bouton}>
+                  <BoutonEnvoi className={bouton}>
                     Publier
-                  </button>
+                  </BoutonEnvoi>
                 </>
               )}
             </form>
@@ -256,7 +282,7 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
         )}
       </Section>
 
-      <Section id="lecteurs" titre="Lecteurs">
+      <Section id="lecteurs" titre="Lecteurs" statut={statut}>
         <p className="label-mono text-ardoise">
           {actifs} actif{actifs > 1 ? 's' : ''} sur {LECTEURS_ACTIFS_MAX}
         </p>
@@ -277,18 +303,18 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
                     <form action={renvoyerLeLien}>
                       <input type="hidden" name="slug" value={slug} />
                       <input type="hidden" name="lecteur" value={l.id} />
-                      <button type="submit" className={bouton}>
+                      <BoutonEnvoi className={bouton}>
                         Renvoyer le lien
-                      </button>
+                      </BoutonEnvoi>
                     </form>
                   ) : null}
                   {gestion.lecteursModifiables ? (
                     <form action={l.actif ? révoquerUnLecteur : réactiverUnLecteur}>
                       <input type="hidden" name="slug" value={slug} />
                       <input type="hidden" name="lecteur" value={l.id} />
-                      <button type="submit" className={lienDeGeste}>
+                      <BoutonEnvoi className={lienDeGeste}>
                         {l.actif ? 'Révoquer' : 'Réactiver'}
-                      </button>
+                      </BoutonEnvoi>
                     </form>
                   ) : null}
                 </div>
@@ -307,9 +333,9 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
               adresse
               <input name="email" type="email" required maxLength={320} className={champ} />
             </label>
-            <button type="submit" className={bouton}>
+            <BoutonEnvoi className={bouton}>
               Inscrire et envoyer le lien
-            </button>
+            </BoutonEnvoi>
           </form>
         ) : (
           <p className="text-ardoise">
@@ -319,7 +345,7 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
         )}
       </Section>
 
-      <Section id="decision" titre="Décision">
+      <Section id="decision" titre="Décision" statut={statut}>
         <p className="text-encre">
           État : <span className="label-mono text-ardoise">{organisation.état}</span>
           {horsService && organisation.suspendueLe ? (
@@ -341,32 +367,32 @@ function Gestion({ slug, gestion }: { slug: string; gestion: NonNullable<Awaited
             <form action={déciderDeLOrganisation}>
               <input type="hidden" name="slug" value={slug} />
               <input type="hidden" name="decision" value="reactiver" />
-              <button type="submit" className={bouton}>
+              <BoutonEnvoi className={bouton}>
                 Réactiver
-              </button>
+              </BoutonEnvoi>
             </form>
           ) : (
             <>
               <form action={déciderDeLOrganisation}>
                 <input type="hidden" name="slug" value={slug} />
                 <input type="hidden" name="decision" value="suspendre" />
-                <button type="submit" className={bouton}>
+                <BoutonEnvoi className={bouton}>
                   Suspendre
-                </button>
+                </BoutonEnvoi>
               </form>
               <form action={déciderDeLOrganisation}>
                 <input type="hidden" name="slug" value={slug} />
                 <input type="hidden" name="decision" value="ecarter" />
-                <button type="submit" className={lienDeGeste}>
+                <BoutonEnvoi className={lienDeGeste}>
                   Écarter
-                </button>
+                </BoutonEnvoi>
               </form>
             </>
           )}
         </div>
       </Section>
 
-      <Section id="courriers" titre={`Courriers, ${JOURS_DU_JOURNAL} derniers jours`}>
+      <Section id="courriers" titre={`Courriers, ${JOURS_DU_JOURNAL} derniers jours`} statut={statut}>
         {courriers.length === 0 ? (
           <p className="text-ardoise">Aucun courrier journalisé.</p>
         ) : (

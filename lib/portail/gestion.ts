@@ -16,8 +16,13 @@ import { lireLaGrilleDuPilote, type LectureDeLaGrille } from '@/lib/portail/stra
  * lectures sont cachées.
  */
 
-/** Le délai au-delà duquel la santé n'est pas montrée : un tableau lent vaut moins qu'un tableau sans elle. */
-const DÉLAI_DE_LA_SANTÉ_MS = 4_000
+/**
+ * Le délai au-delà duquel la santé n'est pas montrée. Elle arrive en flux, après
+ * le reste de la page (31 octobre 2026) : en production, le contrôle dépasse
+ * souvent quatre secondes, et l'attendre figeait chaque page de l'opératrice,
+ * boutons compris, pendant tout ce temps.
+ */
+const DÉLAI_DE_LA_SANTÉ_MS = 8_000
 
 export type SantéDesEspaces = ReadonlyMap<string, readonly Défaut[]>
 
@@ -55,8 +60,6 @@ export type GestionDUneOrganisation = {
   readonly grille: LectureDeLaGrille
   readonly fiche: LectureDeLaFiche
   readonly courriers: readonly CourrierÀGérer[]
-  /** `null` : la santé n'a pas pu être lue. */
-  readonly santé: readonly Défaut[] | null
 }
 
 export const JOURS_DU_JOURNAL = 30
@@ -66,12 +69,11 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
   const organisation = await organisationÀGérer(slug)
   if (!organisation) return null
   const depuis = new Date(maintenant.getTime() - JOURS_DU_JOURNAL * 24 * 60 * 60 * 1000)
-  const [lecteurs, grille, fiche, courriers, santé] = await Promise.all([
+  const [lecteurs, grille, fiche, courriers] = await Promise.all([
     lecteursÀGérer(organisation.id),
     lireLaGrilleDuPilote({ slug }),
     lireLaFicheDuPilote({ slug }),
     courriersRécents(depuis),
-    santéDesEspaces(),
   ])
   return {
     organisation,
@@ -80,6 +82,5 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
     grille,
     fiche,
     courriers: courriers.filter((c) => c.slug === slug),
-    santé: santé ? (santé.get(slug) ?? []) : null,
   }
 }
