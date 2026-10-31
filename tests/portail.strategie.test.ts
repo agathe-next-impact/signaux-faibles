@@ -599,7 +599,7 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         expect(vue?.trimestre).toBeNull()
         expect(vue?.mois?.période).toBe('2026-10')
         expect(vue?.mois?.tows.candidate).toMatchObject({ libellé: 'Forces × menaces', croise: ['F1', 'M1'] })
-        expect(vue?.mois?.swot.forces).toEqual([{ code: 'F1', énoncé: 'La fédération réunit trois couches du numérique.', source: 'Déclaratif · votre fiche', édition: null }])
+        expect(vue?.mois?.swot.forces).toEqual([{ code: 'F1', énoncé: 'La fédération réunit trois couches du numérique.', source: 'Déclaratif · votre fiche', édition: null, état: 'nouveau' }])
         expect(vue?.mois?.swot.menaces[0]?.édition).toMatch(/^[0-9a-f]{32}$/)
         expect(vue?.mois?.swot.menaces[0]?.source).toMatch(/^Fait du \d{2}\/10 · lettre n° 6$/)
         // CISPE n'est placé que sur un axe : il n'entre pas sur la carte. DGE l'est sur les deux de Mendelow.

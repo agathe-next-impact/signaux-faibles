@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { regrouperParSemaine } from '@/lib/domaine/semaines'
-import { suivreLesAxes, suivreLesDossiers } from '@/lib/domaine/tendances'
+import { axesÀRetenir, suivreLesAxes, suivreLesDossiers } from '@/lib/domaine/tendances'
 
 const édition = (dateÉdition: string, dossiersOuvertsBruts: string) => ({
   dateÉdition,
@@ -123,5 +123,30 @@ describe('suivreLesAxes', () => {
 
     expect(axes.map((axe) => axe.titre)).toEqual(['Cadre', 'Inconnu'])
     expect(axes.map((axe) => axe.mouvement)).toEqual(['stable', 'stable'])
+  })
+})
+
+describe('axesÀRetenir (31 octobre 2026)', () => {
+  it('les axes FORT d’abord, puis ce qui apparaît ou monte ; jamais un RAS', () => {
+    const axes = suivreLesAxes(
+      [doc(['Stable', 'MOYEN'], ['Nouveau', 'MOYEN'], ['Fort', 'FORT'], ['Monté', 'MOYEN'], ['Vide', 'RAS'])],
+      [doc(['Stable', 'MOYEN'], ['Fort', 'FORT'], ['Monté', 'RAS'])],
+    )
+    const retenus = axesÀRetenir(axes, { avecPrécédent: true })
+    expect(retenus.map((a) => [a.titre, a.fort, a.nouveau])).toEqual([
+      ['Fort', true, false],
+      ['Nouveau', false, true],
+      ['Monté', false, true],
+    ])
+  })
+
+  it('sans lettre précédente, rien n’est « nouveau » : seuls les axes FORT restent', () => {
+    const axes = suivreLesAxes([doc(['Fort', 'FORT'], ['Moyen', 'MOYEN'])], [])
+    expect(axesÀRetenir(axes, { avecPrécédent: false }).map((a) => [a.titre, a.nouveau])).toEqual([['Fort', false]])
+  })
+
+  it('borné au nombre demandé', () => {
+    const axes = suivreLesAxes([doc(['A', 'FORT'], ['B', 'FORT'], ['C', 'FORT'])], [])
+    expect(axesÀRetenir(axes, { avecPrécédent: false, combien: 2 })).toHaveLength(2)
   })
 })

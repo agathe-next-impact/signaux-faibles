@@ -4,6 +4,9 @@ import { FinDEssai } from '@/components/fin-d-essai'
 import { LigneDEssai, OffreDEssai, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau, Tuile } from '@/components/coquille'
 import { CaseAxe } from '@/components/case-axe'
+import { ÀRetenir } from '@/components/a-retenir'
+import { Fraicheur } from '@/components/fraicheur'
+import { axesÀRetenir, suivreLesAxes } from '@/lib/domaine/tendances'
 import { fusionnerLesAxes } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
 import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
@@ -152,6 +155,10 @@ export default async function VueDEnsemble({
     }),
   )
 
+  // Les points forts de la semaine (31 octobre 2026) : axes FORT, puis nouveaux ou en hausse
+  // depuis la semaine précédente. Les mêmes corps que ci-dessus, aucune lecture de plus.
+  const pointsForts = axesÀRetenir(suivreLesAxes(documents, documentsPrécédents), { avecPrécédent: documentsPrécédents.length > 0 })
+
   const actions = courante.éditions
     .map((édition) => édition.actionDeLaSemaine)
     .filter((action) => action.length > 0)
@@ -220,6 +227,17 @@ export default async function VueDEnsemble({
         </div>
       ) : null}
 
+      {pointsForts.length > 0 ? (
+        <div className="mt-6">
+          <ÀRetenir
+            titre="Points forts de la semaine"
+            mention={documentsPrécédents.length > 0 ? 'signal fort et nouveautés depuis la semaine précédente' : 'signal fort'}
+            axes={pointsForts}
+            lien={(axe) => `/${accès.slug}/axes/${enSlug(axe.titre)}`}
+          />
+        </div>
+      ) : null}
+
       <section className="mt-12 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">À la une</h2>
@@ -269,13 +287,14 @@ export default async function VueDEnsemble({
                   <p className="text-ardoise">{acteur.précision ?? acteur.extrait}</p>
                 ) : null}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
-                  <p className="label-mono text-ardoise">
-                    {acteur.compteur === null
-                      ? 'suivi'
-                      : acteur.compteur === 0
-                        ? 'a bougé cette semaine'
-                        : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
-                  </p>
+                  {acteur.compteur === 0 ? (
+                    // La nouveauté se repère d'un coup d'œil (31 octobre 2026) : la pastille rose de la fraîcheur.
+                    <Fraicheur fraîcheur="nouveau" libellé="nouveau · a bougé cette semaine" />
+                  ) : (
+                    <p className="label-mono text-ardoise">
+                      {acteur.compteur === null ? 'suivi' : `${acteur.compteur} semaine${acteur.compteur > 1 ? 's' : ''} sans mouvement`}
+                    </p>
+                  )}
                   <LienFlèche
                     href={
                       // Espace réorganisé : un concurrent de la grille mène à sa fiche.

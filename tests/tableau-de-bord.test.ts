@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cartesDesRubriques, casesDeLaRubrique, casesDuTableauDeBord, RUBRIQUES, type DonnéesDuTableau } from '@/lib/domaine/tableau-de-bord'
 import {
+  ordreDeLecture,
   enBrefDuPestel,
   mouvementsDeLaCarte,
   type ConcurrentVu,
@@ -11,7 +12,7 @@ import {
 
 /** Le tableau de bord en cases et les bandeaux « En bref » (lot 4, 30 octobre 2026) : des comptes, jamais d'invention. */
 
-const élément = (code: string, source: string, édition: string | null) => ({ code, énoncé: 'É.', source, édition })
+const élément = (code: string, source: string, édition: string | null, état: string | null = null) => ({ code, énoncé: 'É.', source, édition, état })
 const SYNTHÈSE: SynthèseVue = {
   mois: {
     période: '2026-09',
@@ -190,5 +191,18 @@ describe('en bref', () => {
       ['Dimension la plus citée', 'Légal', '5 faits'],
       ['Deuxième dimension citée', 'Politique', '2 faits'],
     ])
+  })
+})
+
+describe('ordre de lecture de la SWOT (31 octobre 2026)', () => {
+  it('les nouveaux du mois d’abord, puis les renforcés, l’ordre de la synthèse à l’intérieur ; les codes ne changent pas', () => {
+    const lus = ordreDeLecture([
+      élément('O1', 's', null, 'inchange'),
+      élément('O2', 's', null, 'renforce'),
+      élément('O3', 's', null, 'nouveau'),
+      élément('O4', 's', null, null),
+      élément('O5', 's', null, 'nouveau'),
+    ])
+    expect(lus.map((é) => é.code)).toEqual(['O3', 'O5', 'O2', 'O1', 'O4'])
   })
 })

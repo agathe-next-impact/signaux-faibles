@@ -130,7 +130,19 @@ comme dans la liste « Plus » du menu de pied ; un seul calcul des cases, `tabl
 (`lib/portail/tableau.ts`). Depuis le 31 octobre 2026, « Lettres », dans la rubrique
 « Cette semaine », ne montre que les lettres de la dernière semaine publiée, une carte par
 lettre sur une colonne, et renvoie aux archives (compte du rail aligné) ; hors de l'espace
-réorganisé, il reste « Toutes les lettres ». Sur « PESTEL », chaque axe qui suit une dimension
+réorganisé, il reste « Toutes les lettres ». **Nouveautés et points forts mis en avant** (31 octobre
+2026, demande de l'opératrice, intensité « marquée, dans la charte ») : `axesÀRetenir`
+(`lib/domaine/tendances.ts`) retient les axes FORT puis ceux qui apparaissent ou montent depuis la lettre
+précédente de la même veille (jamais un RAS ; sans lettre précédente, seuls les FORT), rendus par
+l'encadré `ÀRetenir` (`components/a-retenir.tsx`, filet rose à gauche, encadré isolé hors grille) : « À
+retenir » en tête d'une lettre (ancres `ancreDAxe`), où les axes FORT et nouveaux restent ouverts avec un
+filet rose et les autres sont repliés (`RenduDocument`, `miseEnAvant`, absente de la vitrine et des
+archives) ; « Points forts de la semaine » sur la vue d'ensemble, sans lecture de plus, et la pastille
+« nouveau » sur les acteurs qui ont bougé ; sur les cartes de « Lettres de la semaine », les axes FORT
+nommés et le compte des nouveautés (lecture complète seulement : rien de ce qu'une lettre tronquée ne
+montre plus) ; dans « Diagnostic », les éléments SWOT nouveaux puis renforcés du mois en tête de leur case
+(`ordreDeLecture`, codes inchangés, état lu dans `elements_synthese`) ; dans « Concurrents », ceux qui ont
+bougé d'abord. Le rose ne porte que le FORT et la nouveauté. Sur « PESTEL », chaque axe qui suit une dimension
 mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 `faitsDeLAxeDeLEspace`, segment comparé à la seule grille de l'organisation,
 404 sinon). Le lot 6 (même jour) ajoute à la rubrique « Votre veille » quatre

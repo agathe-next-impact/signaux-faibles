@@ -44,6 +44,8 @@ export type ÉlémentLu = {
   readonly faits: readonly string[]
   readonly références: unknown
   readonly candidateRecommandation: boolean
+  /** SWOT : `nouveau`, `renforce`, `inchange` ou `affaibli` par rapport au mois précédent ; nul ailleurs. */
+  readonly état?: string | null
 }
 export type PositionLue = {
   readonly outil: string
@@ -397,6 +399,19 @@ export type ÉlémentDeLaSwot = {
   readonly source: string
   /** La lettre du fait le plus récent (32 hexadécimaux), pour y mener ; nulle pour un élément déclaratif. */
   readonly édition: string | null
+  /** Ce que l'élément est devenu depuis le mois précédent : `nouveau`, `renforce`, `inchange`, `affaibli` ; nul si inconnu. */
+  readonly état: string | null
+}
+
+/**
+ * L'ordre de lecture d'une case de la SWOT (31 octobre 2026, demande de
+ * l'opératrice) : les éléments nouveaux du mois d'abord, puis les renforcés,
+ * puis le reste, dans l'ordre de la synthèse à l'intérieur (tri stable). Les
+ * codes (F1, O2…) ne changent pas : la TOWS y renvoie.
+ */
+export function ordreDeLecture(éléments: readonly ÉlémentDeLaSwot[]): ÉlémentDeLaSwot[] {
+  const rang = (é: ÉlémentDeLaSwot) => (é.état === 'nouveau' ? 0 : é.état === 'renforce' ? 1 : 2)
+  return [...éléments].sort((a, b) => rang(a) - rang(b))
 }
 export type VueDeLaSwot = Readonly<Record<CaseSwot, readonly ÉlémentDeLaSwot[]>>
 
@@ -423,7 +438,7 @@ export function vueDeLaSwot(
         : fait
           ? `Fait du ${dateCourte(fait.date)}${numéro ? ` · lettre n° ${numéro}` : ''}`
           : 'Faits de vos lettres'
-    swot[c].push({ code, énoncé: é.énoncé ?? '', source, édition: é.origine === 'declaratif' ? null : (fait?.édition || null) })
+    swot[c].push({ code, énoncé: é.énoncé ?? '', source, édition: é.origine === 'declaratif' ? null : (fait?.édition || null), état: é.état ?? null })
   }
   return { swot, codes }
 }

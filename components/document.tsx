@@ -1,5 +1,7 @@
 import type { Axe, Bloc, Document, Segment } from '@/lib/domaine/document'
 import { trierParImpact } from '@/lib/domaine/impact'
+import { Fraicheur } from '@/components/fraicheur'
+import { enSlug } from '@/lib/domaine/slug'
 import { BadgeImpact } from '@/components/badge-impact'
 import { TitreAxe } from '@/components/titre-axe'
 
@@ -168,21 +170,38 @@ function Blocs({ blocs }: { blocs: readonly Bloc[] }) {
   )
 }
 
-function RenduAxe({ axe }: { axe: Axe }) {
+/**
+ * La mise en avant d'une lettre (31 octobre 2026, demande de l'opératrice) : les
+ * axes FORT et ceux qui apparaissent ou montent depuis la lettre précédente de
+ * la même veille restent ouverts, marqués d'un filet rose ; les autres sont
+ * repliés, leur badge visible. Sans elle (vitrine), tous les axes sont ouverts.
+ */
+export type MiseEnAvant = {
+  /** Les titres d'axes nouveaux ou en hausse depuis la lettre précédente. */
+  readonly nouveaux: ReadonlySet<string>
+}
+
+/** L'ancre d'un axe dans la page d'une lettre, que l'encadré « À retenir » vise. */
+export const ancreDAxe = (titre: string) => `axe-${enSlug(titre)}`
+
+function RenduAxe({ axe, miseEnAvant }: { axe: Axe; miseEnAvant?: MiseEnAvant }) {
+  const nouveau = miseEnAvant?.nouveaux.has(axe.titre) ?? false
+  const enAvant = axe.niveau === 'FORT' || nouveau
   return (
     <details
-      // Ouvertes par défaut, toutes. La charte pose que « RAS » est un état à
-      // part entière : il se montre, il ne se cache pas — un axe replié
-      // d'office le cacherait. Le pli reste offert au lecteur, il n'est pas
-      // imposé. C'est aussi ce qui fait une lettre plutôt qu'un tableau de bord.
-      open
-      className="border border-gris-ligne"
+      // Sans mise en avant, ouvertes toutes : « RAS » est un état à part
+      // entière, il se montre. Avec elle, le lecteur va d'abord à ce qui compte ;
+      // un axe replié garde son badge dans son titre, et le pli reste à lui.
+      open={miseEnAvant ? enAvant : true}
+      id={miseEnAvant ? ancreDAxe(axe.titre) : undefined}
+      className={`scroll-mt-6 border border-gris-ligne ${miseEnAvant && enAvant ? 'border-l-4 border-l-rose' : ''}`}
     >
       <summary className="flex cursor-pointer flex-wrap items-center gap-3 px-4 py-3">
         <span className="font-titre text-h3 font-semibold text-encre">
           <TitreAxe axe={axe} />
         </span>
         <BadgeImpact niveau={axe.niveau} />
+        {nouveau ? <Fraicheur fraîcheur="nouveau" libellé="nouveau" /> : null}
       </summary>
       <div className="px-4 pb-4">
         <Blocs blocs={axe.blocs} />
@@ -191,7 +210,7 @@ function RenduAxe({ axe }: { axe: Axe }) {
   )
 }
 
-export function RenduDocument({ document }: { document: Document }) {
+export function RenduDocument({ document, miseEnAvant }: { document: Document; miseEnAvant?: MiseEnAvant }) {
   return (
     <article className="flex flex-col gap-8">
       <Blocs blocs={document.préambule} />
@@ -209,7 +228,7 @@ export function RenduDocument({ document }: { document: Document }) {
               {/* Le tri par impact opère au niveau des axes, jamais des
                   faits : la note est un document, pas une base d'items. */}
               {trierParImpact(rubrique.axes).map((axe, rang) => (
-                <RenduAxe key={rang} axe={axe} />
+                <RenduAxe key={rang} axe={axe} miseEnAvant={miseEnAvant} />
               ))}
             </div>
           ) : null}

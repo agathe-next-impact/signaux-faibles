@@ -157,3 +157,33 @@ export function libelléDeMouvement(mouvement: Mouvement): string {
       return 'stable'
   }
 }
+
+/**
+ * Ce qu'une lettre ou une semaine a de plus important (31 octobre 2026, demande
+ * de l'opératrice : les nouveautés et les points forts doivent se repérer d'un
+ * coup d'œil). Les axes FORT, puis ceux qui apparaissent ou montent ; jamais un
+ * axe RAS, qui n'a rien à lire. FORT d'abord, puis la nouveauté ; l'ordre
+ * d'impact de `suivreLesAxes` reste celui d'à l'intérieur, le tri étant stable.
+ *
+ * `avecPrécédent` faux (première lettre, ou semaine précédente absente) : tout
+ * serait « nouveau », ce qui ne dirait rien ; seuls les axes FORT restent.
+ */
+export type AxeÀRetenir = AxeSuivi & { readonly fort: boolean; readonly nouveau: boolean }
+
+export const AXES_À_RETENIR = 6
+
+export function axesÀRetenir(
+  axes: readonly AxeSuivi[],
+  options: { readonly avecPrécédent: boolean; readonly combien?: number },
+): AxeÀRetenir[] {
+  return axes
+    .filter((axe) => axe.niveau !== 'RAS')
+    .map((axe) => ({
+      ...axe,
+      fort: axe.niveau === 'FORT',
+      nouveau: options.avecPrécédent && (axe.mouvement === 'nouveau' || axe.mouvement === 'monté'),
+    }))
+    .filter((axe) => axe.fort || axe.nouveau)
+    .sort((a, b) => Number(b.fort) - Number(a.fort) || Number(b.nouveau) - Number(a.nouveau))
+    .slice(0, options.combien ?? AXES_À_RETENIR)
+}
