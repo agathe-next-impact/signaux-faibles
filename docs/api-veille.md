@@ -195,9 +195,16 @@ prennent les options exactes du registre. Réponse :
   "demain":     { "date": "2026-09-18", "jour": "Vendredi", … },
   "parutions":  ["dalious"],
   "revuesDues": [],
-  "prochaines": [ { "slug": "dalious", "date": "2026-09-24", "jour": "Jeudi" }, { "slug": "hermitage", "date": "2026-09-21", "jour": "Lundi" } ]
+  "prochaines": [ { "slug": "dalious", "date": "2026-09-24", "jour": "Jeudi" }, { "slug": "hermitage", "date": "2026-09-21", "jour": "Lundi" } ],
+  "suspendues": []
 }
 ```
+
+`suspendues` (31 octobre 2026) : les slugs donnés qu'une décision de
+l'opératrice a suspendus ou écartés (Postgres). Ils sont retirés de `parutions`
+et de `revuesDues`, et les pages des tâches disent de ne pas les traiter.
+`null` quand la base n'est pas en service, en mode `notion` ou au-delà de
+1 500 ms : la sélection reste alors celle du calendrier.
 
 `parutions` est dans l'ordre de traitement (heure de parution, puis slug).
 `revuesDues` sont les organisations dont la première parution du mois tombe
@@ -613,6 +620,17 @@ la carte et les concurrents de la grille) et la fiche de chacun
 (`/[slug]/concurrents/[concurrent]`), et « Acteurs » ne garde que Mendelow et
 les dossiers qui ne nomment pas un concurrent. Refermé, il retrouve ses sept
 écrans ; rien n'est supprimé.
+
+**Décision de l'opératrice** (31 octobre 2026) : `PATCH /api/veille/organisations`
+`{ "slug": "acme", "action": "decision", "decision": "suspendre" | "ecarter" | "reactiver" }`.
+200 `décision-appliquée` (avec `état` et `travauxAbandonnés`), 409
+`décision-impossible` (depuis cet état : une organisation de test, déjà
+suspendue, ou une réactivation sans état d'avant), 404 `inconnue`. Suspendre ou
+écarter garde l'état d'avant (`état_avant_décision`, migration 0018), abandonne
+les travaux non pris de la file et sort l'organisation du calendrier
+(`suspendues`) ; suspendre ferme aussi l'espace à la lecture, écarter le laisse
+lisible. Aucun courrier ne part. Réactiver rend l'état d'avant. Le même geste
+existe sur `/espaces/abonnements/[slug]`.
 
 **Étape 4ter de la tâche des lettres** (page « Tâche — Lettres de veille »,
 depuis le 26 octobre 2026) : après le lint conforme, un `GET` sur la date de

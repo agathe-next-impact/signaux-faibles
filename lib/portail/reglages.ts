@@ -88,3 +88,26 @@ export async function réglerLaRelecture(données: FormData): Promise<void> {
     requise: requise === 'oui',
   })
 }
+
+/**
+ * Suspendre, écarter ou réactiver une organisation (31 octobre 2026). L'espace
+ * se ferme à la lecture, la file et le calendrier des tâches la sautent ; aucun
+ * courrier ne part : l'opératrice prévient le client elle-même. Retour à la page
+ * de gestion de l'organisation.
+ */
+export async function déciderDeLOrganisation(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const décision = données.get('decision')
+  if (décision !== 'suspendre' && décision !== 'ecarter' && décision !== 'reactiver') notFound()
+  const accès = await exigerOpérateur()
+
+  let sorte: RésultatDuRéglage['sorte'] | 'échec'
+  try {
+    sorte = (await réglerLeParcours(slug, { sorte: 'décision', décision })).sorte
+  } catch (erreur) {
+    console.error(`[réglage] ${slug} : ${décision} impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    sorte = 'échec'
+  }
+  console.info(`[réglage] ${accès.nom} : ${slug}, ${décision}, ${sorte}.`)
+  redirect(`/espaces/abonnements/${encodeURIComponent(slug)}?reglage=${encodeURIComponent(sorte)}#decision`)
+}

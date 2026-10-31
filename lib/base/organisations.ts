@@ -1,7 +1,7 @@
-import { and, eq, isNull, ne, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
-import { abonnements, organisations, prescripteurs } from '@/lib/base/schema'
+import { abonnements, organisations, prescripteurs, travaux } from '@/lib/base/schema'
 import { dateDeParis, PARUTIONS_D_ESSAI_RECOMMANDÉE, type Offre } from '@/lib/domaine/parcours'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 
@@ -250,6 +250,22 @@ export type Réglage =
   | { readonly sorte: 'offre'; readonly offre: Offre }
   | { readonly sorte: 'parutions'; readonly parutions: number }
   | { readonly sorte: 'parcours'; readonly prochaineLettre: string; readonly restantes: number }
+  | { readonly sorte: 'décision'; readonly décision: Décision }
+
+/**
+ * Les décisions de l'opératrice sur une organisation (31 octobre 2026) :
+ * suspendre, écarter, réactiver. Elles priment sur Stripe (`étapeDuParcours`).
+ * Suspendre ou écarter garde l'état d'avant (`état_avant_décision`), sort
+ * l'organisation de la file (ses travaux non pris sont abandonnés, la
+ * planification ne la lit plus) et du calendrier des tâches Notion ; aucun
+ * courrier ne part. Suspendre ferme en plus l'espace à la lecture ; écarter le
+ * laisse lisible (hors parcours, `lectureAutorisée`). Réactiver rend l'état
+ * d'avant.
+ */
+export type Décision = 'suspendre' | 'ecarter' | 'reactiver'
+
+/** Les états d'où une décision de l'opératrice peut partir : jamais une organisation de test. */
+const ÉTATS_DÉCIDABLES = new Set(['demande', 'generation', 'essai', 'abonnee'])
 
 export type RésultatDuRéglage =
   | { readonly sorte: 'prolongé'; readonly ancienJ0: string; readonly nouveauJ0: string }
@@ -264,6 +280,8 @@ export type RésultatDuRéglage =
   | { readonly sorte: 'abonnée-stripe' }
   | { readonly sorte: 'parutions-invalides'; readonly parutions: number }
   | { readonly sorte: 'date-invalide' }
+  | { readonly sorte: 'décision-appliquée'; readonly décision: Décision; readonly état: string; readonly travauxAbandonnés: number }
+  | { readonly sorte: 'décision-impossible'; readonly décision: Décision; readonly état: string }
 
 const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000
 const PARUTIONS_MAX = 8
@@ -281,6 +299,7 @@ export async function réglerLeParcours(
         .select({
           id: organisations.id,
           état: organisations.état,
+          étatAvantDécision: organisations.étatAvantDécision,
           activéeLe: organisations.activéeLe,
           essaiOuvertLe: organisations.essaiOuvertLe,
           parutionsDEssai: organisations.parutionsDEssai,
@@ -290,6 +309,38 @@ export async function réglerLeParcours(
         .for('update')
         .limit(1)
       if (!organisation) return { sorte: 'inconnue' } as const
+
+      if (réglage.sorte === 'décision') {
+        const { décision } = réglage
+        if (décision === 'reactiver') {
+          const avant = organisation.étatAvantDécision
+          if ((organisation.état !== 'suspendue' && organisation.état !== 'ecartee') || !avant) {
+            return { sorte: 'décision-impossible', décision, état: organisation.état } as const
+          }
+          await tx
+            .update(organisations)
+            .set({ état: avant, étatAvantDécision: null, suspendueLe: null, modifiéeLe: maintenant })
+            .where(eq(organisations.id, organisation.id))
+          return { sorte: 'décision-appliquée', décision, état: avant, travauxAbandonnés: 0 } as const
+        }
+        if (!ÉTATS_DÉCIDABLES.has(organisation.état)) {
+          return { sorte: 'décision-impossible', décision, état: organisation.état } as const
+        }
+        const état = décision === 'suspendre' ? 'suspendue' : 'ecartee'
+        await tx
+          .update(organisations)
+          .set({ état, étatAvantDécision: organisation.état, suspendueLe: maintenant, modifiéeLe: maintenant })
+          .where(eq(organisations.id, organisation.id))
+        // La file : ce qui n'est pas encore pris n'est plus à faire. Un travail
+        // déjà pris finit sa course ; sa conclusion ne publie rien de plus que
+        // ce que l'exécuteur avait commencé.
+        const abandonnés = await tx
+          .update(travaux)
+          .set({ état: 'abandonne' })
+          .where(and(eq(travaux.organisationId, organisation.id), inArray(travaux.état, ['a_faire', 'refuse'])))
+          .returning({ id: travaux.id })
+        return { sorte: 'décision-appliquée', décision, état, travauxAbandonnés: abandonnés.length } as const
+      }
 
       if (réglage.sorte === 'offre') {
         const état = réglage.offre === 'gratuite' && organisation.état === 'essai' ? 'abonnee' : organisation.état
@@ -386,5 +437,21 @@ export async function fixerJ0(organisationId: string, j0: Date, db: Base = base(
       .where(and(eq(organisations.id, organisationId), eq(organisations.état, 'essai'), isNull(organisations.activéeLe)))
       .returning({ id: organisations.id })
     return lignes.length > 0
+  })
+}
+
+/**
+ * Parmi les slugs que donne une tâche Notion, ceux qu'une décision de
+ * l'opératrice a sortis du service (suspendue, écartée) : le calendrier ne les
+ * met ni dans les parutions du jour ni dans les revues dues (31 octobre 2026).
+ */
+export async function slugsHorsService(slugs: readonly string[], db: Base = base()): Promise<string[]> {
+  if (slugs.length === 0) return []
+  return protéger('lecture des organisations hors service', async () => {
+    const lignes = await db
+      .select({ slug: organisations.slug })
+      .from(organisations)
+      .where(and(inArray(organisations.slug, [...slugs]), inArray(organisations.état, ['suspendue', 'ecartee'])))
+    return lignes.map((l) => l.slug)
   })
 }

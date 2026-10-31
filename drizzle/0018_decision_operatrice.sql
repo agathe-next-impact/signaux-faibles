@@ -1,0 +1,1 @@
+ALTER TABLE "organisations" ADD COLUMN "état_avant_décision" "état_organisation";

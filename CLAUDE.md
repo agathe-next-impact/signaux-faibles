@@ -82,9 +82,9 @@ place sans fait, ne déplace jamais (`mouvement-sans-fait` tient), et l'écran
 dit combien de positions sont lues dans le corpus de la veille. Depuis le même
 jour (lot 2), un **espace réorganisé** (`organisations.espace_reorganise`,
 migration 0016, `PATCH /api/veille/organisations` `action: espace`, refusé hors
-du pilote des outils ; L'Hermitage, puis Infralliance et Suneido le même jour) ajoute au rail « Concurrents »
+du pilote des outils ; L'Hermitage, puis Infralliance et Suneido le même jour, Heritech et Konica Minolta France le 31 octobre ; positions déclaratives et fiche de veille de la revue étendues le 31 octobre à Konica, Heritech et Suneido) ajoute au rail « Concurrents »
 (`/[slug]/concurrents`, carte et concurrents de la grille) et la fiche de chacun
-(`/[slug]/concurrents/[concurrent]`), et recentre « Acteurs » sur Mendelow et
+(`/[slug]/concurrents/[concurrent]`), réduite le 31 octobre 2026 à son graphique des faits par mois et à « Ce que les lettres en disent », et recentre « Acteurs » sur Mendelow et
 les dossiers hors concurrents ; ailleurs, les sept écrans restent
 (`espaceDeLOrganisation`, bornée à 1 500 ms depuis le 30 octobre 2026 : à
 400 ms, une visite de L'Hermitage a reçu l'espace d'avant ; `concurrentsDeLEspace`,
@@ -299,7 +299,9 @@ Les lire avant toute session.
   les cinq tâches du dispositif (lettres, réconciliation, revue, balayage,
   première lettre), plus `etiquetage` (26 octobre 2026, à la main, une
   organisation du pilote des outils stratégiques : l'étape 4ter après coup,
-  rien d'écrit dans Notion), tournent par GitHub Actions (`.github/workflows/taches.yml`,
+  rien d'écrit dans Notion), et `retrospective` (31 octobre 2026, à la main, une organisation
+  et des périodes passées, `--periodes 2026-09,2026-T3` : la seule section
+  « SYNTHÈSE STRATÉGIQUE » de la revue, synthèses proposées et non publiées), tournent par GitHub Actions (`.github/workflows/taches.yml`,
   `pnpm tache <tâche>`), sur la clé API des évaluations, et non plus sur
   l'abonnement. Le prompt reste le pointeur vers la page Notion, qui fait foi
   (`scripts/taches/pointeurs.ts`, texte des tâches en service recopié mot pour
@@ -839,6 +841,25 @@ sélecteur), avec les deux réglages déjà permis par `PATCH /api/veille/organi
 (`lib/portail/reglages.ts`, `exigerOpérateur` avant `réglerLeParcours`) et un
 lien vers l'abonnement dans Stripe, où seul il se modifie. `tableauDesAbonnements`
 traverse les clients et n'a que ce seul appelant.
+**Gestion d'une organisation par l'opératrice** (31 octobre 2026) : le tableau
+porte une colonne « santé » (les défauts du contrôle du soir, `contrôlerLeDispositif`,
+sorti de `GET /api/veille/etat` dans `lib/portail/controle-du-soir.ts`, borné à
+4 s, « non lue » au-delà) et, par organisation, « Gérer » vers
+`/espaces/abonnements/[slug]` (`lireLaGestionDUneOrganisation`, garde dans la
+fonction ; gestes dans `lib/portail/gestion-actions.ts`, `exigerOpérateur` avant
+chaque lecture ou écriture) : interrupteurs « Outils stratégiques » et « Espace
+réorganisé », validation de la grille, publication ou retrait de la fiche de
+veille, lecteurs **par leur nom** (jamais l'adresse) avec renvoi du lien
+d'accès (même envoi que l'activation, relecture par la façade, débit limité,
+déclencheur `operatrice`), inscription, révocation et réactivation seulement
+quand Postgres fait foi (`SOURCE_ACCES=postgres`), journal des courriers sur
+trente jours, et **décision** : suspendre, écarter, réactiver (`réglerLeParcours`,
+sorte `décision`, `état_avant_décision`, migration 0018 ; aussi par `PATCH
+/api/veille/organisations`, `action: decision`). Suspendre ou écarter abandonne
+les travaux non pris de la file et sort l'organisation du calendrier des tâches
+Notion (`suspendues` dans `POST /api/veille/calendrier`, consigne écrite dans les
+pages des lettres et de la revue) ; suspendre ferme aussi l'espace, écarter le
+laisse lisible ; aucun courrier ne part, décision de l'opératrice.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
 `envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit

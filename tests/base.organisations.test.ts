@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
-import { fixerJ0, ouvrirEnEssai, réglerLeParcours } from '@/lib/base/organisations'
-import { abonnements, lecteurs, organisations } from '@/lib/base/schema'
+import { fixerJ0, ouvrirEnEssai, réglerLeParcours, slugsHorsService } from '@/lib/base/organisations'
+import { abonnements, lecteurs, organisations, travaux } from '@/lib/base/schema'
 import { baseEnMémoire } from './aide/base-en-memoire'
 
 const REGISTRE = 'aaaabbbbccccddddeeeeffff00005555'
@@ -236,5 +236,62 @@ describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
     expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '22/10/2026', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'date-invalide' })
     await db.update(organisations).set({ état: 'ecartee' }).where(eq(organisations.slug, 'ess'))
     expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'pas-en-essai', état: 'ecartee' })
+  })
+})
+
+describe('décisions de l’opératrice : suspendre, écarter, réactiver', () => {
+  let db: Base
+  let fermer: () => Promise<void>
+  beforeEach(async () => {
+    ;({ db, fermer } = await baseEnMémoire())
+  })
+  afterEach(async () => {
+    await fermer()
+  })
+
+  const lire = async (slug: string) => (await db.select().from(organisations).where(eq(organisations.slug, slug)))[0]!
+  const LE_31 = new Date('2026-10-31T09:00:00Z')
+
+  it('suspendre garde l’état d’avant, abandonne les travaux non pris, et réactiver le rend', async () => {
+    await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: REGISTRE }, db)
+    const o = await lire('acme')
+    const contexte = {}
+    await db.insert(travaux).values([
+      { type: 'lettre', organisationId: o.id, échéance: LE_31, état: 'a_faire', contexte },
+      { type: 'revue', organisationId: o.id, échéance: LE_31, état: 'refuse', contexte },
+      { type: 'referentiel', organisationId: o.id, échéance: LE_31, état: 'pris', contexte },
+    ])
+
+    const r = await réglerLeParcours('acme', { sorte: 'décision', décision: 'suspendre' }, db, LE_31)
+    expect(r).toEqual({ sorte: 'décision-appliquée', décision: 'suspendre', état: 'suspendue', travauxAbandonnés: 2 })
+    expect(await lire('acme')).toMatchObject({ état: 'suspendue', étatAvantDécision: 'essai', suspendueLe: LE_31 })
+    // Le travail déjà pris finit sa course.
+    const états = (await db.select({ état: travaux.état }).from(travaux)).map((t) => t.état).sort()
+    expect(états).toEqual(['abandonne', 'abandonne', 'pris'])
+    // Une organisation suspendue ne se suspend ni ne s'écarte une seconde fois.
+    expect((await réglerLeParcours('acme', { sorte: 'décision', décision: 'ecarter' }, db, LE_31)).sorte).toBe('décision-impossible')
+
+    const retour = await réglerLeParcours('acme', { sorte: 'décision', décision: 'reactiver' }, db, LE_31)
+    expect(retour).toEqual({ sorte: 'décision-appliquée', décision: 'reactiver', état: 'essai', travauxAbandonnés: 0 })
+    expect(await lire('acme')).toMatchObject({ état: 'essai', étatAvantDécision: null, suspendueLe: null })
+    expect((await réglerLeParcours('acme', { sorte: 'décision', décision: 'reactiver' }, db, LE_31)).sorte).toBe('décision-impossible')
+  })
+
+  it('écarter une abonnée, jamais une organisation de test ; le calendrier sort les deux décisions', async () => {
+    await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: REGISTRE }, db)
+    await ouvrirEnEssai({ slug: 'autre', nom: 'Autre', registreNotion: AUTRE }, db)
+    await db.update(organisations).set({ état: 'abonnee' }).where(eq(organisations.slug, 'acme'))
+    expect((await réglerLeParcours('acme', { sorte: 'décision', décision: 'ecarter' }, db, LE_31)).sorte).toBe('décision-appliquée')
+    expect(await lire('acme')).toMatchObject({ état: 'ecartee', étatAvantDécision: 'abonnee' })
+    expect(await slugsHorsService(['acme', 'autre', 'inconnue'], db)).toEqual(['acme'])
+    expect(await slugsHorsService([], db)).toEqual([])
+
+    await db.update(organisations).set({ état: 'test' }).where(eq(organisations.slug, 'autre'))
+    expect(await réglerLeParcours('autre', { sorte: 'décision', décision: 'suspendre' }, db, LE_31)).toEqual({
+      sorte: 'décision-impossible',
+      décision: 'suspendre',
+      état: 'test',
+    })
+    expect((await réglerLeParcours('nulle-part', { sorte: 'décision', décision: 'suspendre' }, db, LE_31)).sorte).toBe('inconnue')
   })
 })

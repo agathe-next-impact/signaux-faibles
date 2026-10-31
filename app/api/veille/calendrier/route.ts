@@ -6,6 +6,9 @@ import {
   aujourdHuiÀParis,
   sélectionner,
 } from '@/lib/domaine/calendrier'
+import { sourceAccès } from '@/lib/auth/source-acces'
+import { baseConfigurée } from '@/lib/base/client'
+import { slugsHorsService } from '@/lib/base/organisations'
 import { estUneDateISO } from '@/lib/domaine/semaines'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 
@@ -23,7 +26,27 @@ import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
  * parutions du jour dans l'ordre de traitement, les revues dues ce soir et la
  * prochaine parution de chacun. Le modèle ne calcule plus ni jour, ni
  * quantième, ni semaine ISO.
+ *
+ * Depuis le 31 octobre 2026, une organisation suspendue ou écartée par
+ * l'opératrice (Postgres) sort des parutions du jour et des revues dues, et
+ * figure dans `suspendues` : les pages des tâches disent de ne pas la traiter.
+ * Base absente, `SOURCE_ACCES=notion` ou base lente : personne n'est sorti, la
+ * sélection reste celle du calendrier, et `suspendues` vaut `null`.
  */
+const DÉLAI_HORS_SERVICE_MS = 1_500
+
+async function horsService(slugs: readonly string[]): Promise<string[] | null> {
+  if (!baseConfigurée() || sourceAccès() === 'notion') return null
+  try {
+    return await Promise.race([
+      slugsHorsService(slugs),
+      new Promise<null>((résoudre) => setTimeout(() => résoudre(null), DÉLAI_HORS_SERVICE_MS)),
+    ])
+  } catch (erreur) {
+    console.warn(`[veille/calendrier] organisations hors service illisibles : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return null
+  }
+}
 const schéma = z.object({
   date: z.string().optional(),
   organisations: z
@@ -67,12 +90,15 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   }
 
   const sélection = sélectionner(lecture.data.organisations, date)
+  const suspendues = await horsService(lecture.data.organisations.map((o) => o.slug))
+  const enService = (slug: string) => !suspendues?.includes(slug)
 
   return NextResponse.json({
     état: 'calculée',
     fuseau: 'Europe/Paris',
     ...sélection,
-    parutions: sélection.parutions.map((o) => o.slug),
-    revuesDues: sélection.revuesDues.map((o) => o.slug),
+    parutions: sélection.parutions.map((o) => o.slug).filter(enService),
+    revuesDues: sélection.revuesDues.map((o) => o.slug).filter(enService),
+    suspendues,
   })
 }

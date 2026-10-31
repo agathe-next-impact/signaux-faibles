@@ -139,9 +139,11 @@ describe('toute lecture Payload vit dans une fonction cachée, et getPayload res
     // postée sur `/api/veille/resultat` : c'est le chemin Notion du dispositif,
     // pas un écran, et il disparaît avec Notion. L'orchestration des outils
     // stratégiques relit, de même, les lettres étiquetées pour les routes
-    // `/api/veille/faits` (26 octobre 2026).
+    // `/api/veille/faits` (26 octobre 2026). Le contrôle du soir, sorti de sa
+    // route le 31 octobre 2026 pour la santé du tableau de l'opératrice, lit les
+    // éditions telles qu'elles sont, comme avant.
     const notion = importeurs('@/lib/notion/editions').filter((chemin) => !chemin.startsWith('app/api/veille/'))
-    expect(notion).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts', 'lib/portail/file.ts', 'lib/portail/strategie.ts'])
+    expect(notion).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts', 'lib/portail/controle-du-soir.ts', 'lib/portail/file.ts', 'lib/portail/strategie.ts'])
     // Et la façade est bien employée là où les écrans lisent.
     expect(importeurs('@/lib/documents')).toContain('lib/portail/semaine.ts')
     expect(importeurs('@/lib/documents')).toContain('components/note.tsx')
@@ -586,7 +588,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       expect(appelants(nom), nom).toEqual(['lib/base/fiche-veille.ts', 'lib/portail/fiche-veille.ts'])
     }
     expect(appelants('recevoirLaFiche')).toEqual(['app/api/veille/fiche/route.ts', 'lib/portail/fiche-veille.ts'])
-    expect(appelants('publierLaFicheDuPilote')).toEqual(['app/api/veille/fiche/route.ts', 'lib/portail/fiche-veille.ts'])
+    expect(appelants('publierLaFicheDuPilote')).toEqual(['app/api/veille/fiche/route.ts', 'lib/portail/fiche-veille.ts', 'lib/portail/gestion-actions.ts'])
     expect(appelants('ficheDeLEspace')).toEqual([
       'app/(portail)/[slug]/veille/calendrier/page.tsx',
       'app/(portail)/[slug]/veille/corpus/page.tsx',
@@ -812,11 +814,52 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('lireLaFile')).toEqual(['app/api/veille/travaux/route.ts', 'lib/auth/appartenance.ts', 'lib/portail/file.ts'])
   })
 
+  it('la gestion d’une organisation est gardée par le privilège opérateur, avant toute lecture et toute écriture', () => {
+    expect(appelants('gestionDUneOrganisation')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
+    expect(appelants('santéDesEspaces')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
+    expect(appelants('lecteursÀGérer')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion.ts'])
+    expect(appelants('adresseDUnLecteur')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts'])
+    const garde = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    for (const [fonction, lecture] of [
+      ['export async function lireLaGestionDUneOrganisation', 'gestionDUneOrganisation('],
+      ['export async function lireLaSantéDesEspaces', 'santéDesEspaces('],
+    ] as const) {
+      const corps = garde.slice(garde.indexOf(fonction))
+      expect(corps.indexOf('exigerOpérateur()'), fonction).toBeGreaterThan(0)
+      expect(corps.indexOf('exigerOpérateur()'), fonction).toBeLessThan(corps.indexOf(lecture))
+    }
+    // Chaque geste : la garde d'abord, puis la lecture ou l'écriture.
+    const actions = readFileSync(join(process.cwd(), 'lib', 'portail', 'gestion-actions.ts'), 'utf8')
+    for (const [action, geste] of [
+      ['export async function basculerLePilote', 'réglerLePilote('],
+      ['export async function basculerLEspace', 'réglerLEspace('],
+      ['export async function validerLaGrille', 'validerLaVersion('],
+      ['export async function publierLaFiche', 'publierLaFicheDuPilote('],
+      ['export async function renvoyerLeLien', 'adresseDUnLecteur('],
+      ['export async function inscrireUnLecteur', 'créerLecteur('],
+      ['export async function révoquerUnLecteur', 'révoquerLecteurParId('],
+      ['export async function réactiverUnLecteur', 'changerActivation('],
+    ] as const) {
+      const corps = actions.slice(actions.indexOf(action))
+      expect(corps.indexOf('exigerOpérateur()'), action).toBeGreaterThan(0)
+      expect(corps.indexOf('exigerOpérateur()'), action).toBeLessThan(corps.indexOf(geste))
+    }
+    // Les écritures de lecteurs n'ont lieu que si Postgres fait foi.
+    for (const action of ['export async function inscrireUnLecteur', 'export async function révoquerUnLecteur', 'export async function réactiverUnLecteur']) {
+      const corps = actions.slice(actions.indexOf(action))
+      expect(corps.indexOf('lecteursModifiables()'), action).toBeGreaterThan(corps.indexOf('exigerOpérateur()'))
+    }
+    const réglages = readFileSync(join(process.cwd(), 'lib', 'portail', 'reglages.ts'), 'utf8')
+    const décision = réglages.slice(réglages.indexOf('export async function déciderDeLOrganisation'))
+    expect(décision.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(décision.indexOf('exigerOpérateur()')).toBeLessThan(décision.indexOf('réglerLeParcours('))
+  })
+
   it('lignesDAccèsPourContrôle n’est appelée que par le contrôle du soir', () => {
-    expect(appelants('lignesDAccèsPourContrôle')).toEqual([
-      'app/api/veille/etat/route.ts',
-      'lib/notion/acces.ts',
-    ])
+    expect(appelants('lignesDAccèsPourContrôle')).toEqual(['lib/notion/acces.ts', 'lib/portail/controle-du-soir.ts'])
+    // Le contrôle lui-même : la route du soir, et la santé du tableau de
+    // l'opératrice, derrière sa garde.
+    expect(appelants('contrôlerLeDispositif')).toEqual(['app/api/veille/etat/route.ts', 'lib/portail/controle-du-soir.ts', 'lib/portail/gestion.ts'])
   })
 
   it('lignesDAccèsPourImport n’est appelée que par la route d’import', () => {
@@ -898,9 +941,10 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/api/veille/lecteurs/route.ts',
       'lib/base/ecriture-lecteurs.ts',
       'lib/payload/portail.ts',
+      'lib/portail/gestion-actions.ts',
       'lib/portail/lecteurs.ts',
     ])
-    expect(appelants('révoquerLecteurParId')).toEqual(['lib/base/ecriture-lecteurs.ts', 'lib/portail/lecteurs.ts'])
+    expect(appelants('révoquerLecteurParId')).toEqual(['lib/base/ecriture-lecteurs.ts', 'lib/portail/gestion-actions.ts', 'lib/portail/lecteurs.ts'])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'lecteurs.ts'), 'utf8')
     for (const [action, écriture] of [
       ['export async function ajouterLecteur', 'créerLecteur('],
@@ -1216,7 +1260,7 @@ describe('le schéma de la base part avec le code', () => {
   })
 
   it('le contrôle du soir signale les migrations en attente', () => {
-    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'etat', 'route.ts'), 'utf8')
+    const route = readFileSync(join(process.cwd(), 'lib', 'portail', 'controle-du-soir.ts'), 'utf8')
     expect(route).toContain('migrationsEnAttente()')
     const config = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8')
     expect(config).toContain("'/api/veille/etat': ['./drizzle/meta/_journal.json']")

@@ -175,14 +175,16 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     await page.screenshot({ path: `${SORTIES}/concurrents.png`, fullPage: true })
     await ouvrir(`/${SLUG}/concurrents/chateau-du-fey`, 'fiche-concurrent')
     await expect(page.getByRole('heading', { name: 'Château du Feÿ', level: 1 })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Sa position' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Ses faits datés' })).toBeVisible()
+    // Depuis le 31 octobre 2026 : le graphique et les passages des lettres, rien d'autre.
+    await expect(page.getByRole('heading', { name: 'Ce que les lettres en disent' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sa position' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Ses faits datés' })).toHaveCount(0)
     // Un concurrent hors de la grille : la page introuvable. Le cadre de l'espace
     // est déjà parti en flux quand la fiche appelle `notFound()` : le statut reste
     // 200, comme pour un acteur inconnu, et c'est le contenu qui fait foi.
     await page.goto(`/${SLUG}/concurrents/un-concurrent-qui-n-existe-pas`)
     await expect(page.getByRole('heading', { name: 'Rien à cette adresse' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Sa position' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Ce que les lettres en disent' })).toHaveCount(0)
   })
 
   test('acteurs : Mendelow de septembre, et la carte si l’espace n’est pas réorganisé', async () => {

@@ -25,6 +25,7 @@ qu'une phrase : « Limite-toi à l'organisation <slug>. »
 | `revue` | Opus 5.5 | 10 $ | `0 16 * * *` (week-end compris), **active depuis le 25 octobre 2026** |
 | `reconciliation` | Sonnet 5.5 | 5 $ | `0 17 * * 1-5`, **active depuis le 25 octobre 2026** |
 | `etiquetage` | Sonnet 5.5 | 10 $ | à la main, `--organisation` obligatoire (26 octobre 2026) |
+| `retrospective` | Opus 5.5 | 15 $ | à la main, `--organisation` et `--periodes` obligatoires (31 octobre 2026) |
 
 `etiquetage` est la seule tâche sans tâche planifiée d'origine : elle applique
 après coup l'étape « 4ter ÉTIQUETTES » de la page des lettres aux éditions déjà
@@ -36,6 +37,18 @@ Elle saute les éditions déjà étiquetées, sauf avec `--reprendre` (entrée
 classement de l'étape 4ter : un nouveau lot remplace l'ancien. Une édition dont
 aucun fait ne cite d'URL n'est pas étiquetable et est passée sans appel. Sans
 édition publiée, elle étiquette les brouillons, sans en changer le statut.
+
+`retrospective` (31 octobre 2026, décision de l'opératrice pour Konica Minolta
+France, Heritech et Suneido) n'a pas non plus de tâche planifiée d'origine :
+elle n'exécute que la section « SYNTHÈSE STRATÉGIQUE » de la page de la revue,
+pour une organisation et une à quatre périodes passées (entrée « periodes » du
+workflow, `2026-09,2026-T3`), comme si la revue avait tourné la veille de la
+première parution qui suit chaque période. Un mois s'écrit `AAAA-MM`, un
+trimestre `AAAA-Tn` ; le mois et le trimestre en cours sont refusés, ils
+reviennent à la revue planifiée. Ni étape 1, ni S.1, ni point mensuel au client,
+aucune page Notion modifiée : les synthèses arrivent au portail à l'état
+proposé, la fiche de veille aussi (S.8, pour les organisations que la section
+désigne), et un seul courriel « [Relecture] » part à l'opératrice.
 
 Effort `high` partout. La lecture des sources est confiée au sous-agent
 `lecteur`, sur Haiku 5.5 : l'agent principal ne reçoit que des extraits recopiés
