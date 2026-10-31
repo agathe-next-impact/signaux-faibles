@@ -149,14 +149,15 @@ describe('casesDuTableauDeBord', () => {
 describe('les rubriques', () => {
   it('une carte par rubrique, Cette semaine exceptée, avec les chiffres de ses écrans', () => {
     const cases = casesDuTableauDeBord(DONNÉES)
-    const cartes = cartesDesRubriques('hermitage', cases)
-    expect(cartes.map((c) => [c.titre, c.href, c.écrans.map((é) => é.écran)])).toEqual([
-      ['Le marché', '/hermitage/marche', ['Concurrents', 'Acteurs', 'Forces du marché']],
-      ['L’environnement', '/hermitage/environnement', ['Les axes', 'PESTEL']],
-      ['Stratégie', '/hermitage/strategie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
-      ['Votre veille', '/hermitage/veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Calendrier', 'Périmètre', 'Archives']],
+    const cartes = cartesDesRubriques(cases)
+    expect(cartes.map((c) => [c.titre, c.écrans.map((é) => é.écran)])).toEqual([
+      ['Le marché', ['Concurrents', 'Acteurs', 'Forces du marché']],
+      ['L’environnement', ['Les axes', 'PESTEL']],
+      ['Stratégie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
+      ['Votre veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Calendrier', 'Périmètre', 'Archives']],
     ])
-    expect(cartes[0]!.écrans[0]).toEqual({ écran: 'Concurrents', valeur: '36 suivis' })
+    // Plus d'écran de rubrique (31 octobre 2026) : chaque écran de la carte porte sa propre adresse.
+    expect(cartes[0]!.écrans[0]).toEqual({ écran: 'Concurrents', valeur: '36 suivis', href: '/hermitage/concurrents' })
     // Chaque écran hors « Cette semaine » est dans une rubrique, et une seule.
     const rangés = RUBRIQUES.flatMap((r) => casesDeLaRubrique(cases, r.clé))
     expect(rangés.map((c) => c.href).sort()).toEqual(cases.filter((c) => c.rubrique !== 'Cette semaine').map((c) => c.href).sort())

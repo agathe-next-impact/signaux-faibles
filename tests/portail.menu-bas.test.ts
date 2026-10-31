@@ -38,20 +38,20 @@ describe('menu de pied mobile : trois éléments au plus (25 octobre 2026)', () 
 })
 
 describe('rubriques en accordéons, rail et menu de pied (30 octobre 2026)', () => {
-  it('l’espace réorganisé : un groupe par rubrique, dans l’ordre du rail, avec l’écran de la rubrique', () => {
+  it('l’espace réorganisé : un groupe par rubrique, dans l’ordre du rail', () => {
     const groupes = grouperParRubrique(ongletsDe('client', COMPTES, 'complète', { réorganisé: true }))
     expect(groupes.map((g) => g.rubrique)).toEqual(['Cette semaine', 'Le marché', 'L’environnement', 'Stratégie', 'Votre veille'])
-    expect(groupes.find((g) => g.rubrique === 'Le marché')).toMatchObject({ rubriqueHref: '/client/marche' })
-    expect(groupes.find((g) => g.rubrique === 'Cette semaine')?.rubriqueHref).toBeNull()
     expect(groupes.flatMap((g) => g.onglets)).toEqual(ongletsDe('client', COMPTES, 'complète', { réorganisé: true }))
   })
 
-  it('ouvre d’office la rubrique de l’écran courant, ou de l’écran de la rubrique', () => {
+  it('ouvre d’office la rubrique de l’écran courant', () => {
     const groupes = grouperParRubrique(ongletsDe('client', COMPTES, 'complète', { réorganisé: true }))
     const ouverts = (chemin: string) => groupes.filter((g) => groupeCourant(g, chemin)).map((g) => g.rubrique)
     expect(ouverts('/client')).toEqual(['Cette semaine'])
     expect(ouverts('/client/forces')).toEqual(['Le marché'])
-    expect(ouverts('/client/strategie')).toEqual(['Stratégie'])
+    expect(ouverts('/client/scenarios')).toEqual(['Stratégie'])
+    // Plus d'écran de rubrique (31 octobre 2026) : son ancienne adresse n'ouvre rien.
+    expect(ouverts('/client/strategie')).toEqual([])
     expect(ouverts('/client/lettres/abc')).toEqual(['Cette semaine'])
   })
 

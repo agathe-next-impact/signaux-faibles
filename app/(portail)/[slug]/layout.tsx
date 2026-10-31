@@ -87,7 +87,8 @@ async function Garde({
       railReplié={railReplié}
       organisation={accès.organisationLibellé || 'votre veille'}
       onglets={ongletsDe(accès.slug, {
-        lettres: semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
+        // Dans l'espace réorganisé, « Lettres » ne montre que la dernière semaine (31 octobre 2026) : le compte suit.
+        lettres: espace?.réorganisé ? (semaines[0]?.éditions.length ?? 0) : semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
         recommandations,
         archives: semaines.length,
       }, lecture, { réorganisé: espace?.réorganisé ?? false })}

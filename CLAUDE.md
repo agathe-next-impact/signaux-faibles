@@ -122,14 +122,16 @@ synthèse ; treize écrans au rail, garde d'architecture). Depuis le même jour,
 « À la une », sans la cartouche des chiffres de la semaine, la section
 « L'écosystème » ni la « Lecture stratégique » (retirées le même jour, à sa
 demande ; la lecture stratégique a quitté toutes les vues d'ensemble), et non plus une case par écran ; le
-détail de chaque carte (ses écrans et leur chiffre clé) tient sur deux colonnes ; chaque carte ouvre l'écran de sa rubrique (`/[slug]/marche`,
-`/environnement`, `/strategie`, `/veille`), qui montre la grille de ses écrans
-avec leur chiffre clé, sur deux colonnes elle aussi ; le rail garde ses écrans, chaque rubrique en
+détail de chaque carte (ses écrans et leur chiffre clé) tient sur deux colonnes, chaque écran en lien direct ; les écrans de
+rubrique (`/[slug]/marche`, `/environnement`, `/strategie`, `/veille`, « Vue de la rubrique ») ont été **retirés le 31 octobre
+2026**, à la demande de l'opératrice, leur ancienne adresse ramenant à la vue d'ensemble (`next.config.ts`) ; le rail garde ses écrans, chaque rubrique en
 **accordéon** (`details` natif, ouvert d'office sur la rubrique de l'écran courant,
 `grouperParRubrique` et `groupeCourant`, `lib/portail/onglet.ts`), dans le rail
-comme dans la liste « Plus » du menu de pied, et l'écran de la rubrique en est le
-premier lien, « Vue de la rubrique » (`Onglet.rubriqueHref`) ; un seul calcul des cases, `tableauDeLEspace`
-(`lib/portail/tableau.ts`). Sur « PESTEL », chaque axe qui suit une dimension
+comme dans la liste « Plus » du menu de pied ; un seul calcul des cases, `tableauDeLEspace`
+(`lib/portail/tableau.ts`). Depuis le 31 octobre 2026, « Lettres », dans la rubrique
+« Cette semaine », ne montre que les lettres de la dernière semaine publiée, une carte par
+lettre sur une colonne, et renvoie aux archives (compte du rail aligné) ; hors de l'espace
+réorganisé, il reste « Toutes les lettres ». Sur « PESTEL », chaque axe qui suit une dimension
 mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 `faitsDeLAxeDeLEspace`, segment comparé à la seule grille de l'organisation,
 404 sinon). Le lot 6 (même jour) ajoute à la rubrique « Votre veille » quatre
