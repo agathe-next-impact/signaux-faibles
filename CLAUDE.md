@@ -102,10 +102,9 @@ Le marché, L'environnement, Stratégie, Votre veille), douze écrans. Le lot 4
 l'écran lit déjà plus la synthèse publiée), un bandeau « En bref » de trois
 chiffres en tête des écrans par outil (`enBref…`, `lib/domaine/strategie-vues.ts`,
 comptés, jamais rédigés ; retiré le même jour, à la demande de l'opératrice,
-de « Concurrents », « Acteurs », « Forces du marché » et « Scénarios », il reste
-sur « Diagnostic », « PESTEL », réduit aux deux dimensions les plus citées,
-et « Indicateurs » ; sur « Diagnostic », les tuiles Opportunités et Menaces mènent
-à leur case de la SWOT, `ancreDeLaSwot`), les longues listes repliées derrière un `details`
+de « Concurrents », « Acteurs », « Forces du marché » et « Scénarios », puis le 31 octobre
+de « Diagnostic », il reste sur « PESTEL », réduit aux deux dimensions les plus citées,
+et « Indicateurs »), les longues listes repliées derrière un `details`
 natif (`components/repliable.tsx` : concurrents au-delà de six, dossiers au-delà
 de cinq, semaines d'actions au-delà de quatre) et des liens internes (un élément
 SWOT daté vers sa lettre, un dossier concurrent de l'accueil vers sa fiche). Le

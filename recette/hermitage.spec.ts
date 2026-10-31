@@ -236,11 +236,11 @@ test.describe('avec la session d’un lecteur de L’Hermitage', () => {
     expect([11, 12]).toContain(cases + rubriques * 3)
     await page.screenshot({ path: `${SORTIES}/tableau-de-bord.png`, fullPage: true })
     await ouvrir(`/${SLUG}/concurrents`, 'concurrents-lot4')
-    // Bandeau retiré des concurrents, des acteurs, des forces et des scénarios le 30 octobre 2026.
+    // Bandeau retiré des concurrents, des acteurs, des forces et des scénarios le 30 octobre 2026, du diagnostic le 31.
     await expect(page.getByRole('region', { name: 'En bref' })).toHaveCount(0)
     await expect(page.getByText(/Voir les \d+ autres concurrents/)).toBeVisible()
     await ouvrir(`/${SLUG}/diagnostic`, 'diagnostic-lot4')
-    await expect(page.getByRole('region', { name: 'En bref' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'En bref' })).toHaveCount(0)
     await expect(page.getByRole('link', { name: /^Fait du .* lettre n° \d+$/ }).first()).toBeVisible()
   })
 

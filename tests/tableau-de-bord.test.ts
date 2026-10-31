@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cartesDesRubriques, casesDeLaRubrique, casesDuTableauDeBord, RUBRIQUES, type DonnéesDuTableau } from '@/lib/domaine/tableau-de-bord'
 import {
-  enBrefDeLaSwot,
   enBrefDuPestel,
   mouvementsDeLaCarte,
   type ConcurrentVu,
@@ -168,16 +167,6 @@ describe('en bref', () => {
   it('compte les mouvements de la carte sans l’organisation', () => {
     expect(mouvementsDeLaCarte(SYNTHÈSE.mois!.carte as VueDeLaCarte)).toBe(1)
     expect(mouvementsDeLaCarte(null)).toBe(0)
-  })
-
-  it('la SWOT, les forces et les scénarios : trois chiffres chacun, comptés sur ce que l’écran montre', () => {
-    expect(enBrefDeLaSwot(SYNTHÈSE.mois!.swot).map((c) => [c.intitulé, c.valeur, c.mention])).toEqual([
-      ['Éléments de la SWOT', 5, '1 déclaratif, 4 datés'],
-      ['Opportunités', 2, 'tirées des faits de vos lettres'],
-      ['Menaces', 1, 'tirées des faits de vos lettres'],
-    ])
-    // Opportunités et menaces mènent à leur case de la matrice.
-    expect(enBrefDeLaSwot(SYNTHÈSE.mois!.swot).map((c) => c.ancre ?? null)).toEqual([null, 'swot-opportunites', 'swot-menaces'])
   })
 
   it('les concurrents et le PESTEL', () => {
