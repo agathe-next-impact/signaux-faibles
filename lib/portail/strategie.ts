@@ -628,6 +628,16 @@ export async function lireLesFaits(
  * Une lettre dont tous les axes sont RAS n'a aucun fait à étiqueter, et son lot
  * vide ne laisse pas de trace : elle apparaîtrait ici. Le message le dit.
  */
+/** Une lettre porte-t-elle au moins un fait que l'étape 4ter étiquetterait (un fait qui cite une URL) ? */
+async function estÉtiquetable(pageId: string): Promise<boolean> {
+  try {
+    return faitsDeLaLettre(construireDocument(await lireBlocsDePage(pageId))).some((f) => f.urls.length > 0)
+  } catch (erreur) {
+    console.warn(`[étiquetage] corps de ${pageId} illisible : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return true
+  }
+}
+
 export async function contrôlerLÉtiquetage(
   lettresParRegistre: ReadonlyMap<string, readonly { readonly pageId: string; readonly dateÉdition: string }[]>,
   db?: Base,
@@ -636,7 +646,15 @@ export async function contrôlerLÉtiquetage(
   for (const o of await étatDeLÉtiquetage(db)) {
     if (!o.registreNotion || !o.première) continue
     const lettres = lettresParRegistre.get(o.registreNotion) ?? (await listerÉditionsPubliées(o.registreNotion))
-    const manquantes = lettres.filter((l) => l.dateÉdition >= o.première! && !o.éditions.has(normaliserIdentifiant(l.pageId)))
+    const sansFait = lettres.filter((l) => l.dateÉdition >= o.première! && !o.éditions.has(normaliserIdentifiant(l.pageId)))
+    // Une lettre sans fait étiquetable (aucun fait sourcé dans un axe non RAS ni
+    // dans la rubrique des acteurs : tout en RAS, ou archive sans axes
+    // numérotés) n'est pas une étiquette manquante : l'étape 4ter la passe, et
+    // le contrôle la signalait chaque soir à tort (31 octobre 2026). Seules les
+    // lettres sans étiquettes sont relues, en lecture cachée ; un corps illisible
+    // reste signalé, le doute ne fait pas taire l'alerte.
+    const manquantes: typeof sansFait = []
+    for (const l of sansFait) if (await estÉtiquetable(l.pageId)) manquantes.push(l)
     if (manquantes.length === 0) continue
     const dates = manquantes.map((l) => l.dateÉdition).sort()
     défauts.push({
@@ -645,7 +663,7 @@ export async function contrôlerLÉtiquetage(
       message:
         `${manquantes.length === 1 ? 'une édition publiée n’a pas d’étiquettes' : `${manquantes.length} éditions publiées n’ont pas d’étiquettes`} ` +
         `(du ${dates[0]} au ${dates.at(-1)}) : relancer l’étape 4ter, ou « pnpm tache etiquetage --organisation ${o.slug} ». ` +
-        'Une lettre dont tous les axes sont RAS n’a rien à étiqueter et figure ici à tort.',
+        'Les lettres sans aucun fait étiquetable (tout en RAS, archive sans axes numérotés) ne sont plus comptées.',
     })
   }
   return défauts
