@@ -56,6 +56,7 @@ import { réglerLEspace, réglerLePilote } from '@/lib/portail/strategie'
  *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
  *   { "slug": "acme", "action": "outils", "actif": true | false }
  *   { "slug": "acme", "action": "espace", "actif": true | false }
+ *   { "slug": "acme", "action": "decision", "decision": "suspendre" | "ecarter" | "reactiver" }
  *
  * `outils` (26 octobre 2026, `docs/plan-outils-strategiques.md`, lot 4) fait
  * entrer l'organisation dans le pilote des outils stratégiques, ou l'en fait
@@ -106,6 +107,7 @@ const réglage = z.discriminatedUnion('action', [
     prochaineLettre: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     restantes: z.number().int().min(1).max(8),
   }),
+  z.object({ slug: z.string().trim().min(1), action: z.literal('decision'), decision: z.enum(['suspendre', 'ecarter', 'reactiver']) }),
 ])
 
 const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
@@ -121,6 +123,8 @@ const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
   'abonnée-stripe': 409,
   'parutions-invalides': 409,
   'date-invalide': 400,
+  'décision-appliquée': 200,
+  'décision-impossible': 409,
 }
 
 const STATUT: Record<RésultatDOuverture['sorte'], number> = {
@@ -241,6 +245,8 @@ function enRéglage(demande: z.infer<typeof réglage>): Réglage {
       return { sorte: 'parutions', parutions: demande.parutions }
     case 'parcours':
       return { sorte: 'parcours', prochaineLettre: demande.prochaineLettre, restantes: demande.restantes }
+    case 'decision':
+      return { sorte: 'décision', décision: demande.decision }
   }
 }
 
@@ -258,6 +264,10 @@ function journalDuRéglage(résultat: RésultatDuRéglage): string {
       return `refusé, état ${résultat.état}`
     case 'au-delà-d-aujourdhui':
       return `refusé, J0 au plus tard le ${résultat.j0Maximal}`
+    case 'décision-appliquée':
+      return `${résultat.décision}, état ${résultat.état}, ${résultat.travauxAbandonnés} travail(aux) abandonné(s)`
+    case 'décision-impossible':
+      return `${résultat.décision} refusé, état ${résultat.état}`
     default:
       return résultat.sorte
   }

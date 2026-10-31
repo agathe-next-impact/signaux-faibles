@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { listerLesAbonnements, listerLesSynthèses } from '@/lib/auth/appartenance'
+import { lireLaSantéDesEspaces, listerLesAbonnements, listerLesSynthèses } from '@/lib/auth/appartenance'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
 import type { LigneDAbonnement } from '@/lib/base/situation'
@@ -11,6 +11,7 @@ import { mettreEnParcours, poserLOffre, prolongerLEssai, réglerLaRelecture, ré
 import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
 import { publierUnePériode } from '@/lib/portail/publication'
 import type { PériodeAPublier, SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
+import type { SantéDesEspaces } from '@/lib/portail/gestion'
 
 export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
 
@@ -30,6 +31,11 @@ export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
  * Sous le tableau, depuis le 29 octobre 2026, les synthèses stratégiques du
  * pilote, période par période, avec le bouton qui les publie après relecture
  * (`listerLesSynthèses`, même garde, et `publierUnePériode`).
+ *
+ * Depuis le 31 octobre 2026, une colonne « santé » (les défauts du contrôle du
+ * soir, `lireLaSantéDesEspaces`) et, par organisation, le lien « Gérer » vers
+ * `/espaces/abonnements/[slug]` : pilote, espace, grille, fiche de veille,
+ * lecteurs, décision et journal des courriers.
  */
 export const instant = false
 
@@ -78,7 +84,7 @@ export default async function Abonnements({
 }: {
   searchParams: Promise<{ reglage?: string | string[]; slug?: string | string[]; synthese?: string | string[]; periode?: string | string[] }>
 }) {
-  const [{ accès, lignes }, { organisations }] = await Promise.all([listerLesAbonnements(), listerLesSynthèses()])
+  const [{ accès, lignes }, { organisations }, { santé }] = await Promise.all([listerLesAbonnements(), listerLesSynthèses(), lireLaSantéDesEspaces()])
   const paramètres = await searchParams
   const réglage = typeof paramètres.reglage === 'string' ? paramètres.reglage : undefined
   const slugRéglé = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
@@ -124,7 +130,7 @@ export default async function Abonnements({
           <table className="w-full border-collapse text-corps">
             <thead>
               <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
-                {['organisation', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers', 'réglages'].map(
+                {['organisation', 'santé', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers', 'réglages'].map(
                   (entête) => (
                     <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
                       {entête}
@@ -135,7 +141,7 @@ export default async function Abonnements({
             </thead>
             <tbody>
               {lignes.map((ligne) => (
-                <Ligne key={ligne.slug} ligne={ligne} aujourdHui={aujourdHui} modeRéel={modeRéel} />
+                <Ligne key={ligne.slug} ligne={ligne} aujourdHui={aujourdHui} modeRéel={modeRéel} santé={santé} />
               ))}
             </tbody>
           </table>
@@ -231,11 +237,14 @@ function Ligne({
   ligne,
   aujourdHui,
   modeRéel,
+  santé,
 }: {
   ligne: LigneDAbonnement
   aujourdHui: string
   modeRéel: boolean
+  santé: SantéDesEspaces | null
 }) {
+  const défauts = santé?.get(ligne.slug) ?? []
   const étape = étapeDuParcours({
     organisation: {
       état: ligne.état,
@@ -260,6 +269,21 @@ function Ligne({
         <Link href={`/${ligne.slug}/abonnement`} className="label-mono text-ardoise underline underline-offset-2">
           {ligne.slug}
         </Link>
+        <br />
+        <Link href={`/espaces/abonnements/${ligne.slug}`} className="text-label text-encre underline underline-offset-2">
+          Gérer
+        </Link>
+      </td>
+      <td className={`label-mono px-4 py-3 ${défauts.length > 0 ? 'text-rose-texte' : 'text-ardoise'}`}>
+        {santé === null ? (
+          'non lue'
+        ) : défauts.length === 0 ? (
+          'rien à signaler'
+        ) : (
+          <Link href={`/espaces/abonnements/${ligne.slug}#sante`} className="underline underline-offset-2" title={défauts.map((d) => d.code).join(', ')}>
+            {défauts.length} défaut{défauts.length > 1 ? 's' : ''}
+          </Link>
+        )}
       </td>
       <td className="label-mono px-4 py-3 text-ardoise">{ligne.état}</td>
       <td className="label-mono px-4 py-3 text-ardoise">{libelléDÉtape(étape)}</td>

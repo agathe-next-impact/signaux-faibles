@@ -11,6 +11,7 @@ import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
 import { tableauDesPrescripteurs, type LigneDePrescripteur } from '@/lib/base/prescripteurs'
 import { lireLaFile } from '@/lib/portail/file'
+import { gestionDUneOrganisation, santéDesEspaces, type GestionDUneOrganisation, type SantéDesEspaces } from '@/lib/portail/gestion'
 import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
 import type { SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 import type { ÉtatDeLaFile } from '@/lib/base/travaux'
@@ -234,6 +235,37 @@ export async function listerLesPrescripteurs(): Promise<{
  * n'a pas d'autre appelant côté écran (`tests/architecture.test.ts`). `file`
  * vaut `null` quand Postgres n'est pas en service.
  */
+/**
+ * La page de gestion d'une organisation, pour l'opératrice (31 octobre 2026) :
+ * pilote et espace, grille, fiche de veille, lecteurs par leur nom, décision,
+ * journal des courriers et santé. Même forme que `listerLesAbonnements` : la
+ * garde est **dans** la fonction, avant les lectures qui traversent les
+ * clients, et `gestionDUneOrganisation` n'a pas d'autre appelant
+ * (`tests/architecture.test.ts`). `gestion` vaut `null` quand Postgres n'est pas
+ * en service ; un slug inconnu est introuvable.
+ */
+export async function lireLaGestionDUneOrganisation(slug: string): Promise<{
+  readonly accès: Accès
+  readonly gestion: GestionDUneOrganisation | null
+}> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, gestion: null }
+  const gestion = await gestionDUneOrganisation(slug)
+  if (!gestion) notFound()
+  return { accès, gestion }
+}
+
+/**
+ * Les défauts du contrôle du soir par espace, pour la colonne « santé » du
+ * tableau des abonnements (31 octobre 2026). Garde dans la fonction, comme
+ * ci-dessus ; `santéDesEspaces` n'a pas d'autre appelant que celui-ci et la page
+ * de gestion.
+ */
+export async function lireLaSantéDesEspaces(): Promise<{ readonly accès: Accès; readonly santé: SantéDesEspaces | null }> {
+  const accès = await exigerOpérateur()
+  return { accès, santé: await santéDesEspaces() }
+}
+
 export async function listerLaFile(): Promise<{
   readonly accès: Accès
   readonly file: ÉtatDeLaFile | null

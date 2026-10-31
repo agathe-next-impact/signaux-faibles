@@ -841,6 +841,25 @@ sélecteur), avec les deux réglages déjà permis par `PATCH /api/veille/organi
 (`lib/portail/reglages.ts`, `exigerOpérateur` avant `réglerLeParcours`) et un
 lien vers l'abonnement dans Stripe, où seul il se modifie. `tableauDesAbonnements`
 traverse les clients et n'a que ce seul appelant.
+**Gestion d'une organisation par l'opératrice** (31 octobre 2026) : le tableau
+porte une colonne « santé » (les défauts du contrôle du soir, `contrôlerLeDispositif`,
+sorti de `GET /api/veille/etat` dans `lib/portail/controle-du-soir.ts`, borné à
+4 s, « non lue » au-delà) et, par organisation, « Gérer » vers
+`/espaces/abonnements/[slug]` (`lireLaGestionDUneOrganisation`, garde dans la
+fonction ; gestes dans `lib/portail/gestion-actions.ts`, `exigerOpérateur` avant
+chaque lecture ou écriture) : interrupteurs « Outils stratégiques » et « Espace
+réorganisé », validation de la grille, publication ou retrait de la fiche de
+veille, lecteurs **par leur nom** (jamais l'adresse) avec renvoi du lien
+d'accès (même envoi que l'activation, relecture par la façade, débit limité,
+déclencheur `operatrice`), inscription, révocation et réactivation seulement
+quand Postgres fait foi (`SOURCE_ACCES=postgres`), journal des courriers sur
+trente jours, et **décision** : suspendre, écarter, réactiver (`réglerLeParcours`,
+sorte `décision`, `état_avant_décision`, migration 0018 ; aussi par `PATCH
+/api/veille/organisations`, `action: decision`). Suspendre ou écarter abandonne
+les travaux non pris de la file et sort l'organisation du calendrier des tâches
+Notion (`suspendues` dans `POST /api/veille/calendrier`, consigne écrite dans les
+pages des lettres et de la revue) ; suspendre ferme aussi l'espace, écarter le
+laisse lisible ; aucun courrier ne part, décision de l'opératrice.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
 `envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit

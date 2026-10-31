@@ -101,6 +101,12 @@ export const organisations = pgTable(
    */
   entréeParProspection: boolean('entrée_par_prospection').notNull().default(false),
   suspendueLe: horodatage('suspendue_le'),
+  /**
+   * L'état d'avant une suspension ou un écart posé à la main par l'opératrice
+   * (31 octobre 2026, migration 0018) : la réactivation y revient. Nul hors
+   * d'une décision en cours.
+   */
+  étatAvantDécision: étatOrganisation('état_avant_décision'),
   offre: offreOrganisation('offre').notNull().default('standard'),
   /**
    * Parutions complètes de l'essai avant « L'essentiel » seul : deux par

@@ -42,6 +42,9 @@ const nextConfig: NextConfig = {
     '/api/veille/migrer': ['./drizzle/**/*'],
     // Le contrôle du soir compare ce journal au registre de la base.
     '/api/veille/etat': ['./drizzle/meta/_journal.json'],
+    // La santé du tableau de l'opératrice lit le même contrôle (31 octobre 2026).
+    '/espaces/abonnements': ['./drizzle/meta/_journal.json'],
+    '/espaces/abonnements/[slug]': ['./drizzle/meta/_journal.json'],
   },
 
   // Requis par `use cache`, `cacheLife` et `cacheTag`.
