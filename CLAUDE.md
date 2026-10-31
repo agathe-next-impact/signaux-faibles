@@ -82,7 +82,7 @@ place sans fait, ne déplace jamais (`mouvement-sans-fait` tient), et l'écran
 dit combien de positions sont lues dans le corpus de la veille. Depuis le même
 jour (lot 2), un **espace réorganisé** (`organisations.espace_reorganise`,
 migration 0016, `PATCH /api/veille/organisations` `action: espace`, refusé hors
-du pilote des outils ; L'Hermitage, puis Infralliance et Suneido le même jour, Heritech et Konica Minolta France le 31 octobre ; positions déclaratives et fiche de veille de la revue étendues le 31 octobre à Konica, Heritech et Suneido) ajoute au rail « Concurrents »
+du pilote des outils ; L'Hermitage, puis Infralliance et Suneido le même jour, Heritech et Konica Minolta France le 31 octobre ; positions déclaratives et fiche de veille de la revue étendues le 31 octobre à Konica, Heritech et Suneido, la fiche seule à Infralliance le même jour) ajoute au rail « Concurrents »
 (`/[slug]/concurrents`, carte et concurrents de la grille) et la fiche de chacun
 (`/[slug]/concurrents/[concurrent]`), réduite le 31 octobre 2026 à son graphique des faits par mois et à « Ce que les lettres en disent », et recentre « Acteurs » sur Mendelow et
 les dossiers hors concurrents ; ailleurs, les sept écrans restent
