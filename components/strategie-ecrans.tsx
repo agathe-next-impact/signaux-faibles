@@ -268,65 +268,6 @@ export function ListeDesConcurrents({ slug, concurrents, étiquette = 'Les concu
   )
 }
 
-const montant = (n: number | null) => (n === null ? 'n.d.' : `${new Intl.NumberFormat('fr-FR').format(n)} €`)
-
-/** La position, l'historique et les chiffres d'une fiche concurrent ; les faits et les passages sont rendus par la page. */
-export function PositionDuConcurrent({ fiche }: { fiche: FicheDuConcurrent }) {
-  return (
-    <div className="flex flex-col gap-12">
-      <section className="flex flex-col gap-4">
-        <TitreDeSection titre="Sa position" mention="Carte des groupes stratégiques" />
-        {fiche.position ? (
-          <>
-            <p className="max-w-[68ch] text-ardoise">
-              Synthèse {libelléDePériode(fiche.position.période)}.{' '}
-              {fiche.position.déclaratif
-                ? 'Position lue dans le corpus de votre veille (déclaratif), en attendant un fait daté.'
-                : 'Position appuyée sur un fait daté d’une lettre.'}
-            </p>
-            <Crans crans={fiche.position.crans} />
-          </>
-        ) : (
-          <p className="text-ardoise">Aucune synthèse publiée ne le place encore sur la carte.</p>
-        )}
-        {fiche.historique.length > 1 ? (
-          <ol className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne" aria-label="Historique de ses crans">
-            {fiche.historique.map((h) => (
-              <li key={h.période} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3">
-                <p className="label-mono w-40 shrink-0 text-ardoise">Synthèse {libelléDePériode(h.période)}</p>
-                <p className="flex-1 text-sm text-encre">{h.crans.map((c) => c.libellé).join(' · ')}</p>
-                <p className={`label-mono ${h.aBougé ? 'text-encre' : 'text-ardoise'}`}>{h.aBougé ? 'A bougé' : h.déclaratif ? 'Déclaratif' : 'Sans mouvement'}</p>
-              </li>
-            ))}
-          </ol>
-        ) : null}
-      </section>
-
-      {fiche.chiffres ? (
-        <section className="flex flex-col gap-4">
-          <TitreDeSection titre="Ses chiffres publiés" mention="Registre des entreprises" />
-          <p className="max-w-[68ch] text-ardoise">
-            Lus au registre pour le trimestre {libelléDePériode(fiche.chiffres.période)}. Un chiffre absent n’est pas publié, il n’est pas nul.
-          </p>
-          <dl className="grid grid-cols-1 border-t border-l border-gris-ligne sm:grid-cols-4">
-            {[
-              ['Situation', fiche.chiffres.active === null ? 'n.d.' : fiche.chiffres.active ? 'active' : 'cessée'],
-              ['Exercice', fiche.chiffres.année ?? 'n.d.'],
-              ['Chiffre d’affaires', montant(fiche.chiffres.chiffreDAffaires)],
-              ['Résultat net', montant(fiche.chiffres.résultatNet)],
-            ].map(([intitulé, valeur]) => (
-              <div key={intitulé} className="flex flex-col gap-1 border-r border-b border-gris-ligne p-4">
-                <dt className="label-mono text-ardoise">{intitulé}</dt>
-                <dd className="text-encre">{valeur}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      ) : null}
-    </div>
-  )
-}
-
 // ── Recommandations ──────────────────────────────────────────────────────────
 
 /** Les codes des éléments SWOT qu'une option croise ; avec `diagnostic`, chacun mène à son élément sur l'écran « Diagnostic ». */
