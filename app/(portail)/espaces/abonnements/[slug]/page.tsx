@@ -11,7 +11,7 @@ import type { LigneDAbonnement } from '@/lib/base/situation'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
-import { mettreEnParcours, poserLOffre, prolongerLEssai, réglerLaRelecture, réglerLesParutions } from '@/lib/portail/reglages'
+import { mettreEnParcours, poserLOffre, prolongerLEssai, réglerLaRelecture, réglerLAperçu, réglerLesParutions } from '@/lib/portail/reglages'
 import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
 import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER } from '@/lib/domaine/strategie'
 import {
@@ -19,6 +19,7 @@ import {
   basculerLePilote,
   inscrireUnLecteur,
   publierLaFiche,
+  publierLaLettre,
   réactiverUnLecteur,
   renvoyerLeLien,
   révoquerUnLecteur,
@@ -47,6 +48,11 @@ export const instant = false
 const MESSAGES: Record<string, string> = {
   prolongé: 'Essai prolongé : J0 est décalé.',
   'relecture-réglée': 'Relecture des courriers réglée.',
+  'aperçu-réglé': 'Aperçu avant envoi réglé.',
+  'lettre-publiée': 'Lettre publiée et envoyée aux lecteurs.',
+  'lettre-publiée-sans-envoi': 'Lettre publiée, mais aucun courrier n’est parti : aucun lecteur actif, ou Gmail n’a pas répondu (voir le journal des courriers).',
+  'lettre-introuvable': 'Lettre introuvable : déjà publiée, ou d’une autre organisation.',
+  'lettre-hors-payload': 'Les lettres Notion partent en brouillon Gmail : rien à publier ici.',
   'pas-en-essai': 'Cette organisation n’est pas en essai : rien à prolonger.',
   'sans-j0': 'J0 n’est pas encore posé : rien à prolonger.',
   'au-delà-d-aujourdhui': 'Ce décalage mettrait J0 après aujourd’hui : refusé.',
@@ -378,7 +384,7 @@ function Gestion({
   gestion: NonNullable<Awaited<ReturnType<typeof lireLaGestionDUneOrganisation>>['gestion']>
   statut: Statut
 }) {
-  const { organisation, lecteurs, grille, fiche, courriers, onboarding } = gestion
+  const { organisation, lecteurs, grille, fiche, courriers, onboarding, lettresÀPublier } = gestion
   const actifs = lecteurs.filter((l) => l.actif).length
   const horsService = organisation.état === 'suspendue' || organisation.état === 'ecartee'
 
@@ -404,6 +410,52 @@ function Gestion({
           )}
         </Section>
       ) : null}
+
+      <Section id="envois" titre="Envois" statut={statut}>
+        <form action={réglerLAperçu} className="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="slug" value={slug} />
+          <input type="hidden" name="actif" value={organisation.aperçuAvantEnvoi ? 'non' : 'oui'} />
+          <p className="text-encre">
+            Aperçu avant envoi : <span className="label-mono text-ardoise">{organisation.aperçuAvantEnvoi ? 'actif' : 'levé'}</span>
+          </p>
+          <BoutonEnvoi className={organisation.aperçuAvantEnvoi ? lienDeGeste : bouton}>
+            {organisation.aperçuAvantEnvoi ? 'Lever l’aperçu' : 'Activer l’aperçu'}
+          </BoutonEnvoi>
+        </form>
+        <p className="text-ardoise">
+          {organisation.aperçuAvantEnvoi
+            ? 'Rien ne part sans vous : le lien d’accès part d’ici (« Renvoyer le lien » ou « Ouvrir l’espace »), jamais de l’activation ; une lettre du moteur attend ci-dessous.'
+            : 'Les tâches font partir le lien d’accès à l’activation, et le moteur envoie une lettre acceptée aussitôt.'}{' '}
+          Dans l’espace, vous voyez les lettres non publiées, marquées « aperçu » ; le client ne les voit jamais.
+        </p>
+        {lettresÀPublier === null ? (
+          <p className="text-ardoise">Lettres Notion : elles partent en brouillon Gmail, que vous envoyez après les avoir lues dans l’espace.</p>
+        ) : lettresÀPublier.length === 0 ? (
+          <p className="text-ardoise">Aucune lettre à publier.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {lettresÀPublier.map((lettre) => (
+              <li key={lettre.id} className="flex flex-wrap items-center gap-3 border border-gris-ligne p-4">
+                <p className="text-encre">
+                  {lettre.titre || 'Lettre sans titre'}{' '}
+                  <span className="label-mono text-ardoise">
+                    {lettre.numéro !== null ? `n° ${lettre.numéro}` : 'sans numéro'}
+                    {lettre.dateÉdition ? ` · ${dateLongueDeParis(new Date(`${lettre.dateÉdition}T12:00:00Z`))}` : ''}
+                  </span>
+                </p>
+                <Link href={`/${slug}/lettres/${lettre.id}`} className={lienDeGeste}>
+                  Lire dans l’espace
+                </Link>
+                <form action={publierLaLettre}>
+                  <input type="hidden" name="slug" value={slug} />
+                  <input type="hidden" name="edition" value={lettre.id} />
+                  <BoutonEnvoi className={bouton}>Publier et envoyer</BoutonEnvoi>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
 
       <Section id="pilote" titre="Pilote et espace" statut={statut}>
         <Interrupteur action={basculerLePilote} slug={slug} actif={organisation.outilsStratégiques} libellé="Outils stratégiques" />

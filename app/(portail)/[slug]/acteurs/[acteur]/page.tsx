@@ -9,7 +9,7 @@ import { SurtitreAxe } from '@/components/titre-axe'
 import { mentionsDe } from '@/lib/domaine/mentions'
 import { enSlug } from '@/lib/domaine/slug'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
-import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
+import { dernièresNotes, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/portail/semaine'
 
 /**
  * Un acteur suivi, et ce que les lettres en disent.
@@ -33,7 +33,7 @@ export default async function UnActeur({
   const { slug, acteur: segment } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const semaines = await semainesDeLEspace(accès)
   const suivi = suivreLesDossiers(semaines).find((dossier) => enSlug(dossier.nom) === segment)
 
   if (!suivi) notFound()

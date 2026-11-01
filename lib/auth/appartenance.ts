@@ -35,6 +35,13 @@ import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
 export type AccèsAccordé = Accès & {
   /** `true` quand la personne visite l'espace d'un client qui n'est pas le sien. */
   readonly enOpérateur: boolean
+  /**
+   * Vrai pour une session au privilège « Tous les espaces » : l'espace lui montre
+   * aussi les lettres non publiées, marquées, pour les lire avant tout envoi
+   * (1er novembre 2026). Jamais vrai pour un client ; `semainesDeLEspace` est le
+   * seul à le lire.
+   */
+  readonly aperçu: boolean
 }
 
 /**
@@ -71,7 +78,7 @@ export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé
   if (!accès || !accès.actif) redirect('/recevoir-mon-lien?revoque=1')
 
   // Le cas ordinaire, et de loin le plus fréquent : la personne est chez elle.
-  if (accès.slug === slugDemandé) return { ...accès, enOpérateur: false }
+  if (accès.slug === slugDemandé) return { ...accès, enOpérateur: false, aperçu: accès.tousLesEspaces }
 
   // La personne demande le portail d'un autre client sans y être autorisée.
   // `notFound` plutôt qu'une redirection : ne pas confirmer que ce slug existe.
@@ -91,6 +98,7 @@ export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé
     organisationLibellé: organisation.organisationLibellé,
     slug: slugDemandé,
     enOpérateur: true,
+    aperçu: true,
   }
 }
 

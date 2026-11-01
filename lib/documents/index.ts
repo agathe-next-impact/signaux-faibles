@@ -26,6 +26,27 @@ export async function lireBlocsDePage(pageId: string): Promise<BlocNotion[]> {
 }
 
 /**
+ * Les éditions non publiées, pour l'aperçu de l'opératrice (1er novembre 2026) :
+ * Brouillon et Relu dans Notion, « à publier » dans Payload. Seul appelant,
+ * `lib/portail/semaine.ts`, derrière le privilège opérateur.
+ */
+export async function listerÉditionsÀPrévisualiser(organisationId: string): Promise<notion.Édition[]> {
+  return sourceDocuments() === 'payload'
+    ? payload.listerÉditionsÀPrévisualiser(organisationId)
+    : notion.listerÉditionsÀPrévisualiser(organisationId)
+}
+
+/**
+ * Les blocs d'une édition, publiée ou en aperçu. Dans Notion, la lecture des
+ * blocs ne filtre pas le statut ; dans Payload, une édition « à publier » a son
+ * propre lecteur, qui refuse une publiée comme l'autre refuse un brouillon.
+ */
+export async function lireBlocsDeLÉdition(édition: Pick<notion.Édition, 'pageId' | 'aperçu'>): Promise<BlocNotion[]> {
+  if (édition.aperçu && sourceDocuments() === 'payload') return payload.lireBlocsDeLAperçu(édition.pageId)
+  return lireBlocsDePage(édition.pageId)
+}
+
+/**
  * Aucune image Notion en mode Payload : une lettre Payload n'en porte pas
  * (`docs/emails/README.md`, une image Notion n'entre jamais dans un courriel,
  * et le Markdown n'en produit pas). Le proxy des médias ne sert alors rien.

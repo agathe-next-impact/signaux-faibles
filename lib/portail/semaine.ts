@@ -1,7 +1,7 @@
 import type { Onglet } from '@/components/coquille'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { regrouperParSemaine, type Semaine } from '@/lib/domaine/semaines'
-import { lireBlocsDePage, listerÉditionsPubliées, type Édition } from '@/lib/documents'
+import { lireBlocsDeLÉdition, listerÉditionsPubliées, listerÉditionsÀPrévisualiser, type Édition } from '@/lib/documents'
 
 /**
  * Ce que tous les écrans de l'espace client partagent.
@@ -32,6 +32,32 @@ export async function semainesPubliées(organisationId: string): Promise<Semaine
 }
 
 /**
+ * Les semaines de l'espace, telles que la session a le droit de les voir.
+ *
+ * Un client voit les lettres publiées, et elles seules (règle 3). L'opératrice
+ * (privilège « Tous les espaces », `accès.aperçu`) voit **en plus** les lettres
+ * non publiées, pour les lire dans l'espace avant tout envoi (1er novembre 2026) :
+ * chacune porte `aperçu: true`, que les écrans marquent. Les deux listes sont
+ * deux fonctions cachées distinctes : l'aperçu n'entre jamais dans l'entrée de
+ * cache qu'un client partage, et `tests/architecture.test.ts` tient ce seul appelant.
+ */
+export async function semainesDeLEspace(accès: { readonly organisationId: string; readonly aperçu: boolean }): Promise<SemaineDÉditions[]> {
+  if (!accès.aperçu) return semainesPubliées(accès.organisationId)
+  const [publiées, enAperçu] = await Promise.all([
+    listerÉditionsPubliées(accès.organisationId),
+    listerÉditionsÀPrévisualiser(accès.organisationId).catch((erreur: unknown) => {
+      console.warn(`[aperçu] éditions non publiées non lues : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return [] as Édition[]
+    }),
+  ])
+  const connues = new Set(publiées.map((é) => é.pageId))
+  const toutes = [...publiées, ...enAperçu.filter((é) => !connues.has(é.pageId))].sort((a, b) =>
+    b.dateÉdition.localeCompare(a.dateÉdition),
+  )
+  return regrouperParSemaine(toutes)
+}
+
+/**
  * Les corps des notes d'une semaine.
  *
  * Deux lectures de blocs au plus par semaine : c'est le coût d'un écran qui
@@ -49,7 +75,7 @@ export async function notesDeLaSemaine(
   return Promise.all(
     semaine.éditions.map(async (édition) => ({
       édition,
-      document: construireDocument(await lireBlocsDePage(édition.pageId)),
+      document: construireDocument(await lireBlocsDeLÉdition(édition)),
     })),
   )
 }
@@ -89,7 +115,7 @@ export async function dernièresNotes(
       .slice(0, combien)
       .map(async (lettre) => ({
         lettre,
-        document: construireDocument(await lireBlocsDePage(lettre.édition.pageId)),
+        document: construireDocument(await lireBlocsDeLÉdition(lettre.édition)),
       })),
   )
 }

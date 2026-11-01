@@ -146,6 +146,7 @@ describe('PATCH /api/veille/organisations', () => {
     const cas: Array<[unknown, unknown, number, Record<string, unknown>]> = [
       [{ slug: 'acme', action: 'prolonger', semaines: 2 }, { sorte: 'prolongé', ancienJ0: '2026-09-28', nouveauJ0: '2026-10-12' }, 200, { état: 'prolongé', ancienJ0: '2026-09-28', nouveauJ0: '2026-10-12' }],
       [{ slug: 'acme', action: 'relecture', requise: true }, { sorte: 'relecture-réglée', requise: true }, 200, { état: 'relecture-réglée', requise: true }],
+      [{ slug: 'acme', action: 'apercu', actif: false }, { sorte: 'aperçu-réglé', actif: false }, 200, { état: 'aperçu-réglé', actif: false }],
       [{ slug: 'x', action: 'prolonger', semaines: 1 }, { sorte: 'inconnue' }, 404, { état: 'inconnue' }],
       [{ slug: 'acme', action: 'prolonger', semaines: 1 }, { sorte: 'sans-j0' }, 409, { état: 'sans-j0' }],
       [{ slug: 'acme', action: 'prolonger', semaines: 3 }, { sorte: 'au-delà-d-aujourdhui', j0Maximal: '2026-10-12' }, 409, { état: 'au-delà-d-aujourdhui', j0Maximal: '2026-10-12' }],
@@ -158,6 +159,7 @@ describe('PATCH /api/veille/organisations', () => {
     }
     expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(1, 'acme', { sorte: 'prolonger', semaines: 2 })
     expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(2, 'acme', { sorte: 'relecture', requise: true })
+    expect(organisations.réglerLeParcours).toHaveBeenNthCalledWith(3, 'acme', { sorte: 'apercu', actif: false })
   })
 
   it('offre : pose le tarif fondateur, et lit encore son ancien nom « early_adopter »', async () => {

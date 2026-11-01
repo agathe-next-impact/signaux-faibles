@@ -65,7 +65,9 @@ export const produireLaLettre = task({
     }
     const accusé = await remettreLÉdition(remise)
     logger.info('édition remise', { accusé, acceptée: production.acceptée, coût: production.mesures.coût, reprises: production.mesures.reprises })
-    if (accusé.statut !== 'publiee') {
+    // `a_publier` est un succès : l'aperçu avant envoi (1er novembre 2026) retient
+    // la lettre acceptée jusqu'à la publication de l'opératrice.
+    if (accusé.statut !== 'publiee' && accusé.statut !== 'a_publier') {
       // Le portail a refusé ou abandonné le travail : le run est en échec,
       // visible dans Trigger.dev, et la file garde la décision.
       throw new Error(`Travail ${payload.travail} non accepté par le portail (${'état' in accusé ? String(accusé.état) : accusé.statut}).`)

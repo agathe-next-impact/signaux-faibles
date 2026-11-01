@@ -1,0 +1,1 @@
+ALTER TABLE "organisations" ADD COLUMN "apercu_avant_envoi" boolean DEFAULT true NOT NULL;

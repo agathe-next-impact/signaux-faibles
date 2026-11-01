@@ -115,6 +115,9 @@ export async function ouvrirLEspace(email: string): Promise<void> {
     headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json' },
     body: JSON.stringify({ email }),
   })
+  // 409 `apercu-avant-envoi` : l'opératrice fait partir le lien de la fiche de
+  // l'organisation (1er novembre 2026). Ce n'est pas un échec du run.
+  if (réponse.status === 409) return
   if (!réponse.ok) throw new Error(`POST /api/acces/ouvrir : ${réponse.status}`)
 }
 

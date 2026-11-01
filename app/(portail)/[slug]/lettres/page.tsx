@@ -5,7 +5,7 @@ import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { Fraicheur } from '@/components/fraicheur'
 import { TitreAxe } from '@/components/titre-axe'
 import { axesÀRetenir, suivreLesAxes, type AxeÀRetenir } from '@/lib/domaine/tendances'
-import { lettresPubliées, notesDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
+import { lettresPubliées, notesDeLaSemaine, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
 /**
@@ -34,7 +34,7 @@ export default async function Lettres({ params }: { params: Promise<{ slug: stri
   const { accès, lecture } = await exigerLecture(slug)
   if (lecture === 'aucune') redirect(`/${accès.slug}`)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   const réorganisé = espace?.réorganisé ?? false
   const lettres = lettresPubliées(réorganisé ? semaines.slice(0, 1) : semaines)
   const saillants = réorganisé && lecture === 'complète' ? await saillantsDeLaSemaine(semaines) : null

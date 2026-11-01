@@ -6,6 +6,8 @@ import { recevoirUneÉdition } from '@/lib/portail/file'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 import { envoyerLaLettreDeFilière, envoyerLaLettreAuxLecteurs } from '@/lib/portail/parution'
+import { aperçuAvantEnvoi } from '@/lib/portail/apercu'
+import { cléDeCloisonnement } from '@/lib/payload/portail'
 
 /**
  * La remise d'une édition par une tâche Trigger.dev (programme du 22 octobre
@@ -30,7 +32,11 @@ import { envoyerLaLettreDeFilière, envoyerLaLettreAuxLecteurs } from '@/lib/por
  *
  *   POST /api/veille/editions   Authorization: Bearer <ACTIVATION_SECRET>
  *   corps : RemiseDÉdition (lib/moteur/remise.ts)
- *   → { edition, run, statut: "publiee" | "brouillon", courriers, ruptures }
+ *   → { edition, run, statut: "publiee" | "a_publier" | "brouillon", courriers, ruptures }
+ *
+ * Aperçu avant envoi (1er novembre 2026, réglage de l'organisation, vrai par
+ * défaut) : une lettre d'organisation acceptée est écrite `a_publier`, sans
+ * courrier ; l'opératrice la lit dans l'espace et la publie de la fiche.
  *   → { état: "refuse" | "abandonne", run, portes, tentatives }     (travail non accepté)
  *   → { état: "inconnu" | "pas-pris" | "autre-session" }, 409      (travail non conclu)
  */
@@ -100,6 +106,15 @@ async function conclureLeTravailDeLaFile(remise: RemiseDÉdition, travail: strin
     })
   }
 
+  // L'aperçu avant envoi (1er novembre 2026) : la lettre acceptée attend
+  // l'opératrice, qui la lit dans l'espace puis la publie de la fiche. Le
+  // travail, lui, est conclu : le numéro est consommé, la file avance.
+  if (await aperçuAvantEnvoi(cléDeCloisonnement(remise.organisation ?? ''))) {
+    const accusé = await enregistrerLÉdition(remise, 'a_publier')
+    console.info(`[veille/editions] run ${remise.run} : travail ${travail} accepté, édition ${accusé.edition} à publier (aperçu avant envoi).`)
+    return NextResponse.json({ ...accusé, travail: 'accepte', ruptures: [], avertissements: réception.portes.avertissements.map((a) => a.code), courriers: null })
+  }
+
   const accusé = await enregistrerLÉdition(remise, 'publiee')
   const courriers = await envoyerLaLettreAuxLecteurs({
     organisationPayload: remise.organisation ?? '',
@@ -121,7 +136,10 @@ async function remettreHorsFile(remise: RemiseDÉdition): Promise<NextResponse> 
     numéro: remise.proprietes.numero,
     forme: 'unique',
   })
-  const statut = remise.acceptee && rapport.conforme ? 'publiee' : 'brouillon'
+  // Une lettre d'organisation passe par l'aperçu avant envoi ; une lettre de
+  // filière, adressée aux prospects de la filière, garde son envoi direct.
+  const retenue = remise.organisation !== null && (await aperçuAvantEnvoi(cléDeCloisonnement(remise.organisation)))
+  const statut = remise.acceptee && rapport.conforme ? (retenue ? 'a_publier' : 'publiee') : 'brouillon'
   if (remise.acceptee && !rapport.conforme) {
     console.warn(`[veille/editions] run ${remise.run} : acceptée par le moteur, refusée par le portail (${rapport.ruptures.map((r) => r.code).join(', ')}) ; brouillon.`)
   }

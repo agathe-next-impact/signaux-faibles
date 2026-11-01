@@ -13,12 +13,7 @@ import { ordonnerLesDossiers } from '@/lib/domaine/dossiers'
 import { acteursEnVue } from '@/lib/domaine/mentions'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { écart, synthétiser } from '@/lib/domaine/synthese'
-import {
-  dernièresNotes,
-  documentsDeLaSemaine,
-  LETTRES_POUR_ACTUALITÉ,
-  semainesPubliées,
-} from '@/lib/portail/semaine'
+import { dernièresNotes, documentsDeLaSemaine, LETTRES_POUR_ACTUALITÉ, semainesDeLEspace } from '@/lib/portail/semaine'
 import { contrôlerLeContrat, journaliserLeContrat } from '@/lib/portail/contrat'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 import { tableauDeLEspace } from '@/lib/portail/tableau'
@@ -70,7 +65,7 @@ export default async function VueDEnsemble({
     )
   }
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const semaines = await semainesDeLEspace(accès)
   const courante = semaines[0]
 
   if (!courante) {

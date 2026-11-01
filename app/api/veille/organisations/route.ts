@@ -50,6 +50,7 @@ import { réglerLEspace, réglerLePilote } from '@/lib/portail/strategie'
  *   PATCH /api/veille/organisations
  *   { "slug": "acme", "action": "prolonger", "semaines": 1 | 2 | 3 }
  *   { "slug": "acme", "action": "relecture", "requise": true | false }
+ *   { "slug": "acme", "action": "apercu", "actif": true | false }
  *   { "slug": "acme", "action": "offre", "offre": "standard" | "fondateur" | "gratuite" }
  *   (« early_adopter », l'ancien nom du tarif fondateur, reste accepté et vaut « fondateur »)
  *   { "slug": "acme", "action": "parutions", "parutions": 3 }
@@ -68,6 +69,10 @@ import { réglerLEspace, réglerLePilote } from '@/lib/portail/strategie'
  * ouvre l'espace réorganisé (écrans par outil, « Concurrents » et sa fiche), ou
  * le referme : `espace-réglé` (200), `hors-pilote` (409, l'organisation n'est pas
  * dans le pilote des outils) ou `inconnue` (404).
+ *
+ * `apercu` (1er novembre 2026) règle l'aperçu avant envoi : vrai (par défaut),
+ * le lien d'accès ne part plus par `/api/acces/ouvrir` et une lettre acceptée
+ * par le moteur attend la publication de l'opératrice ; `aperçu-réglé` (200).
  *
  * Les deux réglages de l'opératrice sur un parcours d'essai (`réglerLeParcours`) :
  * décaler J0, jamais au-delà d'aujourd'hui, ou faire partir les courriers de fin
@@ -93,6 +98,7 @@ const réglage = z.discriminatedUnion('action', [
     semaines: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   }),
   z.object({ slug: z.string().trim().min(1), action: z.literal('relecture'), requise: z.boolean() }),
+  z.object({ slug: z.string().trim().min(1), action: z.literal('apercu'), actif: z.boolean() }),
   z.object({
     slug: z.string().trim().min(1),
     action: z.literal('offre'),
@@ -113,6 +119,7 @@ const réglage = z.discriminatedUnion('action', [
 const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
   prolongé: 200,
   'relecture-réglée': 200,
+  'aperçu-réglé': 200,
   'offre-posée': 200,
   'parutions-réglées': 200,
   'mis-en-parcours': 200,
@@ -239,6 +246,8 @@ function enRéglage(demande: z.infer<typeof réglage>): Réglage {
       return { sorte: 'prolonger', semaines: demande.semaines }
     case 'relecture':
       return { sorte: 'relecture', requise: demande.requise }
+    case 'apercu':
+      return { sorte: 'apercu', actif: demande.actif }
     case 'offre':
       return { sorte: 'offre', offre: demande.offre }
     case 'parutions':
@@ -256,6 +265,8 @@ function journalDuRéglage(résultat: RésultatDuRéglage): string {
       return `J0 ${résultat.ancienJ0} → ${résultat.nouveauJ0}`
     case 'relecture-réglée':
       return résultat.requise ? 'courriers à la relecture' : 'courriers au client'
+    case 'aperçu-réglé':
+      return résultat.actif ? 'aperçu avant envoi' : 'envois sans aperçu'
     case 'offre-posée':
       return `offre ${résultat.offre}, état ${résultat.état}`
     case 'mis-en-parcours':

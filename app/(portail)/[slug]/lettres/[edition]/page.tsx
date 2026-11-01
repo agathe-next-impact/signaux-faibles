@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Note } from '@/components/note'
-import { lettresPubliées, semainesPubliées } from '@/lib/portail/semaine'
+import { lettresPubliées, semainesDeLEspace } from '@/lib/portail/semaine'
 
 /**
  * Une lettre, en entier.
@@ -21,7 +21,7 @@ export default async function UneLettre({
   const { accès, lecture } = await exigerLecture(slug)
   if (lecture === 'aucune') redirect(`/${accès.slug}`)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const semaines = await semainesDeLEspace(accès)
   const lettres = lettresPubliées(semaines)
   const rang = lettres.findIndex(({ édition }) => édition.pageId === pageId)
   const lettre = lettres[rang]
@@ -38,6 +38,13 @@ export default async function UneLettre({
         titre={lettre.semaine.libellé}
         état={lettre.édition.numéro !== null ? `n° ${lettre.édition.numéro}` : undefined}
       />
+
+      {lettre.édition.aperçu ? (
+        <p role="note" className="mt-6 border border-gris-ligne bg-fond-ardoise p-4 text-encre">
+          <span className="label-mono text-ardoise">aperçu · non publiée</span> Cette lettre n’est pas encore partie. Le client ne
+          la voit pas ; elle se publie depuis la fiche de l’organisation, ou en envoyant son brouillon.
+        </p>
+      ) : null}
 
       <p className="mt-6">
         <LienFlèche href={`/${accès.slug}/lettres`}>Retour à toutes les lettres</LienFlèche>

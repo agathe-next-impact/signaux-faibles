@@ -22,6 +22,8 @@ export type OrganisationÀGérer = {
   readonly suspendueLe: Date | null
   readonly outilsStratégiques: boolean
   readonly espaceRéorganisé: boolean
+  /** L'aperçu avant envoi (1er novembre 2026) : vrai, rien ne part au client sans le geste de l'opératrice. */
+  readonly aperçuAvantEnvoi: boolean
   /** Vrai si l'organisation porte sa clé de cloisonnement : sans elle, aucun lecteur ne peut entrer (règle 2). */
   readonly avecRegistre: boolean
 }
@@ -38,6 +40,7 @@ export async function organisationÀGérer(slug: string, db: Base = base()): Pro
         suspendueLe: organisations.suspendueLe,
         outilsStratégiques: organisations.outilsStratégiques,
         espaceRéorganisé: organisations.espaceRéorganisé,
+        aperçuAvantEnvoi: organisations.aperçuAvantEnvoi,
         registreNotion: organisations.registreNotion,
       })
       .from(organisations)
@@ -86,5 +89,21 @@ export async function adresseDUnLecteur(
       .where(and(eq(lecteurs.id, entrée.lecteurId), eq(lecteurs.organisationId, entrée.organisationId), eq(lecteurs.tousLesEspaces, false)))
       .limit(1)
     return ligne?.email ?? null
+  })
+}
+
+/**
+ * La clé de cloisonnement d'une organisation à gérer, pour publier une de ses
+ * lettres (1er novembre 2026). Elle ne quitte pas le serveur : l'action la passe
+ * à Payload, qui retrouve l'édition par elle et par son identifiant à la fois.
+ */
+export async function cléDUneOrganisationÀGérer(slug: string, db: Base = base()): Promise<string | null> {
+  return protéger('lecture de la clé d’une organisation à gérer', async () => {
+    const [ligne] = await db
+      .select({ registreNotion: organisations.registreNotion })
+      .from(organisations)
+      .where(eq(organisations.slug, slug))
+      .limit(1)
+    return ligne?.registreNotion || null
   })
 }

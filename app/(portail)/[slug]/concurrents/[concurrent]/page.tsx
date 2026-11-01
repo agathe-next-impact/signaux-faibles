@@ -4,7 +4,7 @@ import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Texte } from '@/components/document'
 import { FaitsParMois } from '@/components/graphiques-strategie'
 import { mentionsDe } from '@/lib/domaine/mentions'
-import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
+import { dernièresNotes, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, ficheDuConcurrent } from '@/lib/portail/strategie'
 
 /**
@@ -24,7 +24,7 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
   const { slug, concurrent: segment } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
   const lue = espace ? await ficheDuConcurrent({ registre: accès.organisationId, segment }) : null
   if (lue?.sorte === 'inconnu') notFound()

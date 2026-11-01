@@ -7,6 +7,8 @@ import { lireLaFicheDuPilote, type LectureDeLaFiche } from '@/lib/portail/fiche-
 import { lecteursModifiables } from '@/lib/portail/situation'
 import { vueDUnOnboarding, type VueDOnboarding } from '@/lib/portail/onboarding'
 import { lireLaGrilleDuPilote, type LectureDeLaGrille } from '@/lib/portail/strategie'
+import { lettresÀPublierDe } from '@/lib/portail/lettres-a-publier'
+import type { LettreÀPublier } from '@/lib/payload/publication'
 
 /**
  * Ce que la page de gestion d'une organisation montre à l'opératrice
@@ -64,6 +66,12 @@ export type GestionDUneOrganisation = {
   readonly courriers: readonly CourrierÀGérer[]
   /** L'onboarding suivi sous ce slug (1er novembre 2026), `null` s'il n'y en a pas. */
   readonly onboarding: VueDOnboarding | null
+  /**
+   * Les lettres acceptées par le moteur qui attendent la publication (1er novembre
+   * 2026, aperçu avant envoi) ; `null` hors Payload, où une lettre part en
+   * brouillon Gmail, ou si Payload n'a pas répondu.
+   */
+  readonly lettresÀPublier: readonly LettreÀPublier[] | null
 }
 
 export const JOURS_DU_JOURNAL = 30
@@ -73,12 +81,16 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
   const organisation = await organisationÀGérer(slug)
   if (!organisation) return null
   const depuis = new Date(maintenant.getTime() - JOURS_DU_JOURNAL * 24 * 60 * 60 * 1000)
-  const [lecteurs, grille, fiche, courriers, onboarding] = await Promise.all([
+  const [lecteurs, grille, fiche, courriers, onboarding, lettresÀPublier] = await Promise.all([
     lecteursÀGérer(organisation.id),
     lireLaGrilleDuPilote({ slug }),
     lireLaFicheDuPilote({ slug }),
     courriersRécents(depuis),
     onboardingDUnSlug(slug),
+    lettresÀPublierDe(slug).catch((erreur: unknown) => {
+      console.warn(`[gestion] ${slug} : lettres à publier non lues (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+      return null
+    }),
   ])
   return {
     organisation,
@@ -88,5 +100,6 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
     fiche,
     courriers: courriers.filter((c) => c.slug === slug),
     onboarding: onboarding ? vueDUnOnboarding(onboarding, maintenant) : null,
+    lettresÀPublier,
   }
 }

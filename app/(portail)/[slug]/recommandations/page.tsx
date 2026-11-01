@@ -1,7 +1,7 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { Repliable } from '@/components/repliable'
-import { semainesPubliées } from '@/lib/portail/semaine'
+import { semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 import { LectureDuTrimestre, OptionsStratégiques, SynthèseDesRecommandations } from '@/components/strategie-ecrans'
 
@@ -22,7 +22,7 @@ export default async function Recommandations({
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 3) : cet écran devient « Options », l'option retenue
   // et la TOWS ; la SWOT, les forces et les scénarios ont chacun leur écran.
   const réorganisé = espace?.réorganisé ?? false

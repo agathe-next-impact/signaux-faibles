@@ -1,6 +1,6 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
-import { semainesPubliées } from '@/lib/portail/semaine'
+import { semainesDeLEspace } from '@/lib/portail/semaine'
 
 /**
  * Archives : une entrée par semaine, jamais par édition.
@@ -14,7 +14,7 @@ export default async function Archives({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const semaines = await semainesDeLEspace(accès)
 
   return (
     <>

@@ -80,7 +80,7 @@ export const schémaDeRemiseDeRéférentiel = z.object({
 export type RemiseDeRéférentiel = z.infer<typeof schémaDeRemiseDeRéférentiel>
 
 /** La réponse du portail à une remise acceptée. */
-export type AccuséDeRemise = { readonly edition?: string; readonly referentiel?: string; readonly run: string; readonly statut: 'publiee' | 'brouillon' | 'actif' }
+export type AccuséDeRemise = { readonly edition?: string; readonly referentiel?: string; readonly run: string; readonly statut: 'publiee' | 'a_publier' | 'brouillon' | 'actif' }
 
 /** Ce que le portail donne à la tâche d'onboarding ou de découverte. */
 export type DossierDOnboarding = {

@@ -178,7 +178,7 @@ export async function dossierDeProspect(prospectId: string): Promise<DossierDePr
 
 // ── Écritures ────────────────────────────────────────────────────────────────
 
-export async function enregistrerLÉdition(remise: RemiseDÉdition, statut: 'publiee' | 'brouillon'): Promise<AccuséDeRemise> {
+export async function enregistrerLÉdition(remise: RemiseDÉdition, statut: 'publiee' | 'a_publier' | 'brouillon'): Promise<AccuséDeRemise> {
   const payload = await instance()
   const édition = await payload.create({
     collection: 'editions',

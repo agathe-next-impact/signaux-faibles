@@ -3,7 +3,7 @@ import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { CinqForces } from '@/components/strategie-ecrans'
 import { libelléDePériode } from '@/lib/domaine/strategie-vues'
-import { semainesPubliées } from '@/lib/portail/semaine'
+import { semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 
 /**
@@ -17,7 +17,7 @@ export default async function ForcesDuMarché({ params }: { params: Promise<{ sl
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
   const numéros = new Map(semaines.flatMap((s) => s.éditions).flatMap((é) => (é.numéro !== null ? [[é.pageId, é.numéro] as const] : [])))
   const synthèse = espace ? await synthèseDeLEspace({ registre: accès.organisationId, numéros }) : null

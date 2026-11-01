@@ -5,7 +5,7 @@ import { LégendeFraicheur } from '@/components/fraicheur'
 import { fraîcheurDUnAxe, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { libelléDeMouvement, suivreLesAxes } from '@/lib/domaine/tendances'
-import { notesDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
+import { notesDeLaSemaine, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, faitsRécentsDeLEspace, pestelDeLEspace } from '@/lib/portail/strategie'
 import { Onglets } from '@/components/onglets'
 import { VuePestel } from '@/components/strategie-ecrans'
@@ -30,7 +30,7 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 3) a son écran « PESTEL » : l'onglet n'est plus lu ici.
   const réorganisé = espace?.réorganisé ?? false
 

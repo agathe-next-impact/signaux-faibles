@@ -841,6 +841,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       ['export async function inscrireUnLecteur', 'créerLecteur('],
       ['export async function révoquerUnLecteur', 'révoquerLecteurParId('],
       ['export async function réactiverUnLecteur', 'changerActivation('],
+      ['export async function publierLaLettre', 'publierEtEnvoyer('],
     ] as const) {
       const corps = actions.slice(actions.indexOf(action))
       expect(corps.indexOf('exigerOpérateur()'), action).toBeGreaterThan(0)
@@ -1475,5 +1476,65 @@ describe('la prospection par lemlist reste à sa place', () => {
     const route = readFileSync(join(process.cwd(), 'app', '(portail)', 'acces', '[jeton]', 'route.ts'), 'utf8')
     expect(route.indexOf('cookies.set(')).toBeLessThan(route.indexOf('signalerVisite('))
     expect(route).toContain('after(() => signalerVisite(identifiant))')
+  })
+})
+
+/**
+ * L'aperçu avant envoi (1er novembre 2026). Deux exceptions bornées, et leurs
+ * frontières : les éditions non publiées ne se lisent que pour une session au
+ * privilège opérateur, par un seul chemin ; et rien ne part d'une tâche quand
+ * le réglage est actif, ni le lien d'accès ni une lettre du moteur.
+ */
+describe('l’aperçu avant envoi reste confiné', () => {
+  const sources = (racines: readonly string[]): { chemin: string; source: string }[] => {
+    const trouvés: { chemin: string; source: string }[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+        } else if (/\.tsx?$/.test(entrée.name)) {
+          trouvés.push({ chemin: relatif(chemin), source: readFileSync(chemin, 'utf8') })
+        }
+      }
+    }
+    for (const racine of racines) parcourir(join(process.cwd(), racine))
+    return trouvés
+  }
+  const tous = sources(['app', 'components', 'lib', 'trigger'])
+  const appelants = (motif: string) => tous.filter((f) => f.source.includes(motif)).map((f) => f.chemin).sort()
+
+  it('les éditions non publiées ne se lisent que par semainesDeLEspace, et pour l’opératrice seulement', () => {
+    expect(appelants('listerÉditionsÀPrévisualiser')).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts', 'lib/notion/editions.ts', 'lib/portail/semaine.ts'])
+    expect(appelants('lireBlocsDeLAperçu')).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts'])
+    // `aperçu` n'est vrai que pour une session au privilège « Tous les espaces ».
+    const garde = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    expect(garde).toContain('enOpérateur: false, aperçu: accès.tousLesEspaces }')
+    // Et `aperçu: true` seulement dans la branche de la visite opérateur, après la vérification du privilège.
+    expect(garde.match(/aperçu: true/g)?.length).toBe(1)
+    expect(garde.indexOf('if (!accès.tousLesEspaces) notFound()')).toBeLessThan(garde.indexOf('aperçu: true'))
+  })
+
+  it('aucun écran de l’espace ne lit les semaines sans passer par semainesDeLEspace', () => {
+    const écrans = tous.filter((f) => f.chemin.startsWith('app/(portail)/[slug]/'))
+    for (const { chemin, source } of écrans) expect(source, chemin).not.toMatch(/semainesPubliées\(/)
+  })
+
+  it('les lettres à publier ne s’écrivent que par lib/portail/lettres-a-publier.ts, derrière le privilège', () => {
+    expect(appelants("'@/lib/payload/publication'")).toEqual(['lib/portail/gestion.ts', 'lib/portail/lettres-a-publier.ts'])
+    expect(appelants('publierEtEnvoyer(')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/lettres-a-publier.ts'])
+    expect(appelants('lettresÀPublierDe(')).toEqual(['lib/portail/gestion.ts', 'lib/portail/lettres-a-publier.ts'])
+  })
+
+  it('la route d’ouverture lit l’aperçu avant d’envoyer, et le moteur avant d’écrire une lettre publiée', () => {
+    const ouvrir = readFileSync(join(process.cwd(), 'app', 'api', 'acces', 'ouvrir', 'route.ts'), 'utf8')
+    expect(ouvrir.indexOf('aperçuAvantEnvoi(')).toBeGreaterThan(0)
+    expect(ouvrir.indexOf('aperçuAvantEnvoi(')).toBeLessThan(ouvrir.indexOf('envoyerCourrier('))
+    const éditions = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'editions', 'route.ts'), 'utf8')
+    const conclure = éditions.slice(éditions.indexOf('async function conclureLeTravailDeLaFile'))
+    expect(conclure.indexOf('aperçuAvantEnvoi(')).toBeGreaterThan(0)
+    expect(conclure.indexOf('aperçuAvantEnvoi(')).toBeLessThan(conclure.indexOf("enregistrerLÉdition(remise, 'publiee')"))
+    const horsFile = éditions.slice(éditions.indexOf('async function remettreHorsFile'))
+    expect(horsFile.indexOf('aperçuAvantEnvoi(')).toBeLessThan(horsFile.indexOf('enregistrerLÉdition('))
   })
 })

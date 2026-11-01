@@ -220,7 +220,7 @@ export interface Edition {
   filiere?: (string | null) | Filiere;
   numero?: number | null;
   dateEdition: string;
-  statut: 'brouillon' | 'publiee' | 'retiree';
+  statut: 'brouillon' | 'a_publier' | 'publiee' | 'retiree';
   periodeCouverte?: string | null;
   fenetreElargie?: boolean | null;
   actionDeLaSemaine?: string | null;

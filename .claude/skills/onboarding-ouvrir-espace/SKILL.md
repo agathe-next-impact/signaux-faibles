@@ -95,7 +95,12 @@ Organisation visée : $ARGUMENTS
      signale-le.
    - **(e3)** `POST /api/acces/ouvrir` avec `{ "email": "<Email de la ligne>" }`,
      jamais l'identifiant d'accès. 404 : réessaie une fois après quelques
-     secondes (cache d'une minute).
+     secondes (cache d'une minute). **409 `apercu-avant-envoi`** (1er novembre
+     2026) : l'aperçu avant envoi de l'organisation est actif (défaut), le
+     portail retient le lien ; ce n'est pas un échec. Ne réessaie pas : dis que
+     la ligne est active et importée, et que le lien part de la fiche de
+     l'organisation (`/espaces/abonnements/<slug>`, « Renvoyer le lien »), après
+     que l'opératrice a vu l'espace.
 
 6. **Rapporte au portail** (1er novembre 2026, lot 4 de
    `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans

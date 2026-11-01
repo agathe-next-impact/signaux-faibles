@@ -19,6 +19,9 @@ import { exactementUneDesDeux, identifiantDeRelation } from '@/lib/payload/relat
  */
 export const STATUTS_D_ÉDITION = [
   { label: 'Brouillon', value: 'brouillon' },
+  // Aperçu avant envoi (1er novembre 2026) : acceptée par le moteur, elle attend
+  // que l'opératrice la lise dans l'espace et la publie depuis sa fiche.
+  { label: 'À publier', value: 'a_publier' },
   { label: 'Publiée', value: 'publiee' },
   { label: 'Retirée', value: 'retiree' },
 ] as const

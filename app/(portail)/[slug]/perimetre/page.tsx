@@ -1,7 +1,7 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { RenduBlocs } from '@/components/document'
-import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
+import { dernièresNotes, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/portail/semaine'
 
 /**
  * Le périmètre de la veille : ce que nous suivons, et ce que nous proposons d'y
@@ -29,7 +29,7 @@ export default async function Périmètre({ params }: { params: Promise<{ slug: 
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const semaines = await semainesDeLEspace(accès)
   const notes = await dernièresNotes(semaines)
   const avecActeurs = notes.filter(({ document }) => document.acteursSuivis.length > 0)
   const avecCadrage = notes.filter(({ document }) => document.cadrage.length > 0)

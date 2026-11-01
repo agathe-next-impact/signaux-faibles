@@ -428,6 +428,15 @@ client dont l'onboarding ou la souscription prend du retard, sans écrire en bas
 - `{ "slug", "action": "relecture", "requise": true | false }` envoie les
   courriers de fin d'essai à l'adresse de relecture (`true`) ou au client
   (`false`), sans toucher au calendrier. 200 `relecture-réglée`.
+- `{ "slug", "action": "apercu", "actif": true | false }` (1er novembre 2026)
+  règle l'**aperçu avant envoi**, vrai par défaut pour toute organisation
+  (migration 0022) : tant qu'il est vrai, `POST /api/acces/ouvrir` répond 409
+  `apercu-avant-envoi` sans rien envoyer (le lien part de la fiche de
+  l'organisation, « Renvoyer le lien » ou « Ouvrir l'espace »), et une lettre
+  acceptée par le moteur est écrite `a_publier` dans Payload, sans courrier,
+  jusqu'au bouton « Publier et envoyer » de la fiche. 200 `aperçu-réglé`.
+  Dans le doute (base absente ou injoignable, organisation hors Postgres),
+  l'aperçu tient (`lib/portail/apercu.ts`).
 
 Trois réglages de plus le 19 octobre 2026, sur la même route, que le tableau de
 l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
@@ -1141,6 +1150,11 @@ route conclut le travail **avant** d'écrire quoi que ce soit
 - 200 `{ edition, statut: "publiee", travail: "accepte", courriers }` :
   édition écrite dans Payload, gel remplacé, `numéro_courant` écrit dans la
   même transaction que la conclusion, courriers partis aux lecteurs actifs ;
+- 200 `{ edition, statut: "a_publier", travail: "accepte", courriers: null }`
+  quand l'aperçu avant envoi de l'organisation est actif (défaut depuis le
+  1er novembre 2026) : le travail est conclu de la même façon, mais l'édition
+  attend l'opératrice, qui la lit dans l'espace puis la publie de la fiche ;
+  la tâche `produire-la-lettre` le tient pour un succès ;
 - 200 `{ état: "refuse" | "abandonne", tentatives, portes }` : **rien n'est
   écrit**, le travail redevient prenable (ou est abandonné) ;
 - 404 `inconnu`, 409 `pas-pris` | `autre-session` ; 400 si `travail` vient sans
@@ -1148,6 +1162,8 @@ route conclut le travail **avant** d'écrire quoi que ce soit
 
 Sans `travail`, la route garde son chemin hors file (lettres de filière) :
 revalidation en forme unique, publiée ou brouillon, courriers aux prospects.
+Une lettre d'organisation hors file passe par l'aperçu avant envoi comme les
+autres (`a_publier`) ; une lettre de filière garde son envoi direct.
 `GET /api/veille/dossier?travail=<uuid>` donne à la tâche le dossier du travail
 pris : organisation par sa clé de cloisonnement, numéro et date de parution
 décidés par la file, mode déduit du type (`premiere_lettre` → `onboarding`,

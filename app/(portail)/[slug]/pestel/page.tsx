@@ -3,7 +3,7 @@ import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { EnBref, VuePestel } from '@/components/strategie-ecrans'
 import { enBrefDuPestel } from '@/lib/domaine/strategie-vues'
-import { notesDeLaSemaine, semainesPubliées } from '@/lib/portail/semaine'
+import { notesDeLaSemaine, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, pestelDeLEspace } from '@/lib/portail/strategie'
 
 /**
@@ -21,7 +21,7 @@ export default async function Pestel({ params }: { params: Promise<{ slug: strin
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
   const fin = semaines[0]?.éditions.map((é) => é.dateÉdition).sort().at(-1)
   const [notes, notesPrécédentes] = espace && fin ? await Promise.all([notesDeLaSemaine(semaines[0]), notesDeLaSemaine(semaines[1])]) : [[], []]

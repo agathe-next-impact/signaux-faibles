@@ -6,7 +6,7 @@ import { RenduBlocs } from '@/components/document'
 import { TitreAxe } from '@/components/titre-axe'
 import { axesDuDocument, faitsDe } from '@/lib/domaine/document'
 import { enSlug } from '@/lib/domaine/slug'
-import { dernièresNotes, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
+import { dernièresNotes, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/portail/semaine'
 
 /**
  * Un axe, suivi sur les dernières lettres.
@@ -29,7 +29,7 @@ export default async function UnAxe({
   const { slug, axe: segment } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const semaines = await semainesDeLEspace(accès)
   const notes = await dernièresNotes(semaines)
 
   const passages = notes.flatMap(({ lettre, document }) => {

@@ -83,6 +83,11 @@ Organisation visée : $ARGUMENTS
        `POST /api/veille/organisations` si l'organisation n'est pas encore en
        essai), puis `POST /api/acces/ouvrir`. Pas de second lien si le premier
        est déjà parti (organisations ouvertes avant le 20 octobre 2026).
+       **409 `apercu-avant-envoi`** (1er novembre 2026) : l'aperçu avant envoi
+       de l'organisation est actif (défaut) ; le lien est retenu par le portail
+       et part de la fiche de l'organisation (`/espaces/abonnements/<slug>`,
+       « Renvoyer le lien »). Ce n'est pas un échec : l'activation de la veille
+       se fait quand même, et le compte rendu le dit.
      **Si « Invitation manuelle » est cochée**, le 1.3 contrôle sans ouvrir ni
      envoyer, même pour une ligne déjà active : l'espace s'ouvre par
      `/onboarding-ouvrir-espace`, et l'activation de la veille se fait quand

@@ -17,6 +17,9 @@ import { identifiantDeRelation } from '@/lib/payload/relations'
  */
 const STATUT_PUBLIÉ = 'publiee'
 
+/** Une lettre acceptée par le moteur qui attend la publication de l'opératrice (aperçu avant envoi). */
+const STATUT_À_PUBLIER = 'a_publier'
+
 export async function listerÉditionsPubliées(organisationId: string): Promise<Édition[]> {
   'use cache: remote'
 
@@ -123,4 +126,66 @@ function versÉdition(doc: unknown): Édition | null {
     actionDeLaSemaine: texte(champ(doc, 'actionDeLaSemaine')),
     dossiersOuvertsBruts: texte(champ(doc, 'dossiersOuvertsSuivis')),
   }
+}
+
+/**
+ * Les éditions « à publier » d'une organisation, pour l'aperçu de l'opératrice
+ * (1er novembre 2026). Même forme et mêmes filtres que `listerÉditionsPubliées`,
+ * un autre statut ; chaque édition porte `aperçu: true`. Seul appelant, par la
+ * façade : `lib/portail/semaine.ts`, pour une session au privilège opérateur.
+ */
+export async function listerÉditionsÀPrévisualiser(organisationId: string): Promise<Édition[]> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('notion')
+  cacheTag(`liste:${organisationId}`)
+
+  const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')])
+  const payload = await getPayload({ config })
+
+  const { docs } = await payload.find({
+    collection: 'editions',
+    where: { and: [{ organisation: { equals: organisationId } }, { statut: { equals: STATUT_À_PUBLIER } }] },
+    sort: '-dateEdition',
+    depth: 0,
+    pagination: false,
+  })
+
+  return (docs as unknown[])
+    .filter((doc) => identifiantDeRelation(champ(doc, 'organisation')) === organisationId)
+    .filter((doc) => champ(doc, 'statut') === STATUT_À_PUBLIER)
+    .map(versÉdition)
+    .filter((édition): édition is Édition => édition !== null)
+    .map((édition) => ({ ...édition, aperçu: true as const }))
+}
+
+/**
+ * Les blocs d'une édition « à publier », pour l'aperçu. Comme `lireBlocsDePage`,
+ * ne contrôle pas l'appartenance : l'édition a été trouvée dans la liste de
+ * l'aperçu de l'organisation. Une édition publiée ou en brouillon ne donne rien.
+ */
+export async function lireBlocsDeLAperçu(pageId: string): Promise<BlocNotion[]> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('notion')
+  cacheTag(`page:${pageId}`)
+
+  const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')])
+  const payload = await getPayload({ config })
+
+  const { docs } = await payload.find({
+    collection: 'editions',
+    where: { and: [{ id: { equals: pageId } }, { statut: { equals: STATUT_À_PUBLIER } }] },
+    depth: 0,
+    limit: 1,
+    pagination: false,
+  })
+
+  const doc = (docs as unknown[])[0]
+  if (!doc || champ(doc, 'statut') !== STATUT_À_PUBLIER) return []
+
+  const blocs = champ(doc, 'blocs')
+  return Array.isArray(blocs) ? (blocs as BlocNotion[]) : []
 }
