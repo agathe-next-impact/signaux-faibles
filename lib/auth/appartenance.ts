@@ -10,6 +10,9 @@ import { identifiantDeLaSession } from '@/lib/auth/session'
 import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
 import { tableauDesPrescripteurs, type LigneDePrescripteur } from '@/lib/base/prescripteurs'
+import { créneauxCoworkPris, tableauDesOnboardings } from '@/lib/base/onboardings'
+import { débutDuMoisDeParis } from '@/lib/domaine/onboarding'
+import { vueDuTableau, type TableauDesOnboardings } from '@/lib/portail/onboarding'
 import { lireLaFile } from '@/lib/portail/file'
 import { gestionDUneOrganisation, santéDesEspaces, type GestionDUneOrganisation, type SantéDesEspaces } from '@/lib/portail/gestion'
 import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
@@ -224,6 +227,40 @@ export async function listerLesPrescripteurs(): Promise<{
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null }
   return { accès, lignes: await tableauDesPrescripteurs() }
+}
+
+/**
+ * Les onboardings suivis par le portail (lot 1 de
+ * `docs/proposition-onboarding-admin.md`, 1er novembre 2026), pour
+ * `/espaces/onboardings`. Même forme que `listerLesAbonnements` : la garde est
+ * **dans** la fonction, avant la lecture qui traverse les clients, et
+ * `tableauDesOnboardings` n'a pas d'autre appelant (`tests/architecture.test.ts`).
+ * `tableau` vaut `null` quand Postgres n'est pas en service.
+ */
+export async function listerLesOnboardings(instant?: Date): Promise<{
+  readonly accès: Accès
+  readonly tableau: TableauDesOnboardings | null
+}> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, tableau: null }
+  // L'heure se lit après la garde, qui lit le cookie de session : avec
+  // `cacheComponents`, un `new Date()` évalué avant tout accès dynamique fait
+  // échouer le prérendu de la page (`next build`).
+  const maintenant = instant ?? new Date()
+  return { accès, tableau: vueDuTableau(await tableauDesOnboardings(débutDuMoisDeParis(maintenant)), maintenant) }
+}
+
+/**
+ * Le formulaire de demande d'onboarding (lot 3, 1er novembre 2026) : la garde
+ * d'abord, puis le seul chiffre que l'écran montre, les créneaux Cowork pris
+ * cette semaine depuis le portail. `créneaux` vaut `null` quand Postgres n'est
+ * pas en service : l'écran le dit et ne propose pas le formulaire.
+ */
+export async function lireLeFormulaireDeDemande(instant?: Date): Promise<{ readonly accès: Accès; readonly créneaux: number | null }> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, créneaux: null }
+  // Après la garde, comme pour `listerLesOnboardings` : jamais d'heure lue pendant le prérendu.
+  return { accès, créneaux: await créneauxCoworkPris(instant ?? new Date()) }
 }
 
 /**

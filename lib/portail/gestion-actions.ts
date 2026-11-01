@@ -7,12 +7,13 @@ import { exigerOpérateur } from '@/lib/auth/appartenance'
 import { composerLienDAccès } from '@/lib/auth/jeton'
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { changerActivation, créerLecteur, révoquerLecteurParId } from '@/lib/base/ecriture-lecteurs'
-import { adresseDUnLecteur, organisationÀGérer } from '@/lib/base/gestion'
+import { adresseDUnLecteur, lecteursÀGérer, organisationÀGérer } from '@/lib/base/gestion'
 import { composerCourrierDAccès } from '@/lib/email/gmail'
 import { env } from '@/lib/env'
 import { envoyerCourrier } from '@/lib/portail/courriers'
 import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
 import { publierLaFicheDuPilote } from '@/lib/portail/fiche-veille'
+import { vueDeLOnboarding } from '@/lib/portail/onboarding'
 import { lecteursModifiables } from '@/lib/portail/situation'
 import { réglerLEspace, réglerLePilote, validerLaVersion } from '@/lib/portail/strategie'
 
@@ -227,3 +228,56 @@ export async function réactiverUnLecteur(données: FormData): Promise<void> {
   console.info(`[gestion] ${accès.nom} : ${slug}, réactivation, ${code}.`)
   retour(slug, code, 'lecteurs')
 }
+
+/**
+ * Ouvrir l'espace depuis l'onboarding (lot 4 de
+ * `docs/proposition-onboarding-admin.md`, 1er novembre 2026) : ce que fait
+ * `/onboarding-ouvrir-espace`, quand Postgres fait foi pour les accès. La garde
+ * d'abord ; puis, dans l'ordre, Postgres qui fait foi, l'étape « première lettre
+ * publiée » (J0 posé, donc une édition `Envoyé` au moins : décision du
+ * 20 octobre 2026), la clé de cloisonnement, au moins un lecteur actif. Alors
+ * seulement le lien part à chaque lecteur actif, par le même envoi que
+ * l'activation (relecture par la façade, débit limité, journal des courriers),
+ * déclencheur `onboarding`. Aucune écriture dans Notion : en mode `notion` ou
+ * `double`, l'écran renvoie à la commande.
+ */
+export async function ouvrirLEspaceDepuisLOnboarding(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const versLaFiche = données.get('retour') === 'fiche'
+  const accès = await exigerOpérateur()
+  const revenir = (code: string): never =>
+    redirect(
+      versLaFiche
+        ? `/espaces/abonnements/${encodeURIComponent(slug)}?onboarding=${encodeURIComponent(code)}&section=onboarding#onboarding`
+        : `/espaces/onboardings?lancement=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}#${encodeURIComponent(slug)}`,
+    )
+  if (!lecteursModifiables()) revenir('notion-fait-foi')
+
+  let code: string
+  try {
+    const vue = await vueDeLOnboarding(slug)
+    const organisation = await organisationÀGérer(slug)
+    if (!vue || !organisation) code = 'inconnu'
+    else if (vue.geste.sorte !== 'ouvrir') code = 'geste-périmé'
+    else if (!organisation.avecRegistre) code = 'sans-registre'
+    else {
+      const actifs = (await lecteursÀGérer(organisation.id)).filter((l) => l.actif)
+      if (actifs.length === 0) code = 'sans-lecteur'
+      else {
+        const issues: string[] = []
+        for (const lecteur of actifs) {
+          const email = await adresseDUnLecteur({ organisationId: organisation.id, lecteurId: lecteur.id })
+          issues.push(email ? await envoyerLeLien(email, organisation.id, 'onboarding') : 'lecteur-inconnu')
+        }
+        const partis = issues.filter((i) => i === 'lien-envoyé').length
+        code = partis === actifs.length ? 'espace-ouvert' : partis > 0 ? 'ouverture-partielle' : issues.includes('débit') ? 'débit' : 'lien-non-envoyé'
+      }
+    }
+  } catch (erreur) {
+    console.error(`[gestion] ${slug} : ouverture impossible (${messageDe(erreur)}).`)
+    code = 'échec'
+  }
+  console.info(`[gestion] ${accès.nom} : ${slug}, ouverture de l’espace, ${code}.`)
+  revenir(code)
+}
+

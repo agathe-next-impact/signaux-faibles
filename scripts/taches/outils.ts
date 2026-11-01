@@ -60,6 +60,11 @@ export type ConfigurationDesOutils = {
   readonly relevé: { readonly organisations: Set<string> }
   /** Le dossier de travail du run, où `lire_sources` et `synthese_de_collecte` écrivent. */
   readonly espace?: string
+  /**
+   * L'onboarding que ce run suit (1er novembre 2026) : l'outil
+   * `rapporter_onboarding` n'existe que s'il est posé, et n'écrit que sur ce slug.
+   */
+  readonly onboarding?: { readonly slug: string }
   /** Injectables pour les tests. */
   readonly fetch?: typeof fetch
   readonly jetonGoogle?: (portée: string) => Promise<string>
@@ -80,6 +85,15 @@ export function masquer(texteBrut: string, secrets: readonly (string | null | un
 }
 
 // ── Portail ──────────────────────────────────────────────────────────────────
+
+/** La route du suivi des onboardings : écrite par le harnais et par `rapporter_onboarding`, jamais par `appeler_portail`. */
+export const CHEMIN_DU_SUIVI = '/api/veille/onboardings'
+
+/** Vrai si un chemin donné à `appeler_portail` vise la route du suivi, en relatif ou en adresse complète. */
+export function visLeSuivi(chemin: string): boolean {
+  const seul = chemin.trim().replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0] ?? ''
+  return seul.replace(/\/+$/, '') === CHEMIN_DU_SUIVI
+}
 
 export type RéponseDuPortail = { readonly statut: number; readonly corps: string }
 
@@ -315,6 +329,34 @@ const protéger = async (faire: () => Promise<unknown>): Promise<Résultat> => {
   }
 }
 
+/**
+ * `rapporter_onboarding` (1er novembre 2026) : ce que la tâche seule sait du
+ * registre, rapporté au portail sur le slug du run et sur lui seul. Les champs
+ * sont bornés comme la route les borne ; un champ absent n'efface rien.
+ */
+function outilDeRapport(configuration: ConfigurationDesOutils, slug: string) {
+  return tool(
+    'rapporter_onboarding',
+    `Rapporte au portail l'avancement de l'onboarding de « ${slug} » : l'identifiant de la ligne du registre, le statut atteint (1 à 6), ou le motif d'un arrêt sur une garde. N'écrit rien dans Notion.`,
+    {
+      registre: z.string().optional().describe('Identifiant de la ligne du registre, 32 hexadécimaux avec ou sans tirets'),
+      statut: z.number().int().min(1).max(6).optional().describe('Le numéro du statut que la ligne vient d’atteindre'),
+      motif: z.string().max(300).optional().describe('La garde sur laquelle tu t’arrêtes, en une phrase'),
+      nom: z.string().max(200).optional().describe('Le nom de l’organisation, tel que la ligne le porte'),
+      site: z.string().max(500).optional().describe('L’adresse du site, en https://'),
+    },
+    (a) =>
+      protéger(async () => {
+        configuration.journal(`Veille rapporter_onboarding ${slug}${a.statut ? ` : statut ${a.statut}` : ''}${a.motif ? ' : bloqué' : ''}`)
+        // Champs pris un à un, slug du run en dernier : rien de ce que passe le modèle ne vise un autre onboarding.
+        const corps = { registre: a.registre, statut: a.statut, motif: a.motif, nom: a.nom, site: a.site, evenement: 'rapport', slug }
+        const r = await appelerLePortail(configuration, 'POST', CHEMIN_DU_SUIVI, corps)
+        if ('refus' in r) throw new Error(`Refusé : ${r.refus}`)
+        return `statut : ${r.statut}\n\n${r.corps}`
+      }),
+  )
+}
+
 export function serveursDesOutils(configuration: ConfigurationDesOutils) {
   const gmail = createSdkMcpServer({
     name: SERVEURS.gmail,
@@ -402,6 +444,7 @@ export function serveursDesOutils(configuration: ConfigurationDesOutils) {
         },
         (a) =>
           protéger(async () => {
+            if (visLeSuivi(a.chemin)) throw new Error('Refusé : le suivi de l’onboarding se rapporte par rapporter_onboarding, sur l’organisation du run seulement.')
             const r = await appelerLePortail(configuration, a.methode, a.chemin, a.corps)
             if ('refus' in r) throw new Error(`Refusé : ${r.refus}`)
             return `statut : ${r.statut}\n\n${r.corps}`
@@ -492,6 +535,7 @@ export function serveursDesOutils(configuration: ConfigurationDesOutils) {
             return vides ? `${résumé}\n${vides} ligne(s) de grille sans état : la collecte n'est pas terminée.` : résumé
           }),
       ),
+      ...(configuration.onboarding ? [outilDeRapport(configuration, configuration.onboarding.slug)] : []),
     ],
   })
 

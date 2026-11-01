@@ -15,6 +15,7 @@ import {
   type EspaceContrôlé,
   type ÉtatDuDispositif,
 } from '@/lib/portail/etat'
+import { alertesDesOnboardings } from '@/lib/portail/onboarding'
 import { contrôlerLÉtiquetage } from '@/lib/portail/strategie'
 import { CONTRAT_DE_FORME_DEPUIS, contrôlerLaLettre, type Rapport } from '@/lib/portail/lint'
 
@@ -148,10 +149,21 @@ export async function contrôlerLeDispositif(): Promise<{ readonly état: ÉtatD
     }
   }
 
+  // Les onboardings (lot 2 de docs/proposition-onboarding-admin.md) : un run
+  // lancé sans nouvelles, un onboarding immobile depuis sept jours.
+  const défautsDOnboarding: Défaut[] = []
+  if (source !== 'notion' && sonde?.joignable) {
+    try {
+      défautsDOnboarding.push(...(await alertesDesOnboardings()))
+    } catch (erreur) {
+      console.warn(`[veille/etat] onboardings illisibles : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    }
+  }
+
   const état: ÉtatDuDispositif = {
     date: aujourdHuiÀParis(),
     espaces,
-    défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeMigrations, ...défautsDeCourriers, ...défautsDÉtiquetage],
+    défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeMigrations, ...défautsDeCourriers, ...défautsDÉtiquetage, ...défautsDOnboarding],
     lignesSansSlug: sansSlug,
     opérateursActifs: opérateurs.filter((l) => l.actif).length,
   }

@@ -126,3 +126,14 @@ non bloquant. `/onboarding-ouvrir-espace` exige en plus une édition `Envoyé`.
 Les appels au portail des deux dernières (`/api/veille/*`, `/api/acces/ouvrir`)
 demandent une session sur l'environnement « signaux-faibles-io » : ailleurs,
 ils reçoivent 401 ou 403, et la commande le dit au lieu de chercher un jeton.
+
+## Le suivi dans le portail (1er novembre 2026)
+
+`/espaces/onboardings` suit chaque onboarding (`docs/proposition-onboarding-admin.md`).
+Les commandes `/onboarding-referentiels`, `/onboarding-premiere-lettre`,
+`/onboarding-activation` et `/onboarding-ouvrir-espace` y rapportent en fin de
+run (`POST /api/veille/onboardings`, `"executeur": "cowork"`), sans que l'échec
+du rapport arrête l'étape. Quand `SOURCE_ACCES=postgres`, l'opératrice peut
+ouvrir l'espace depuis le portail, à la place de `/onboarding-ouvrir-espace` : le
+lien part aux lecteurs actifs par le même envoi que l'activation.
+

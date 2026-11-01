@@ -30,6 +30,8 @@ export type CodeDeDéfaut =
   | 'courrier-parcours-echec'
   | 'courrier-parcours-incertain'
   | 'étiquettes-manquantes'
+  | 'onboarding-sans-nouvelles'
+  | 'onboarding-immobile'
 
 export type Défaut = {
   readonly slug: string

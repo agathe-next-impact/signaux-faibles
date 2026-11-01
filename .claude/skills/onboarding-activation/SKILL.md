@@ -93,11 +93,27 @@ Organisation visée : $ARGUMENTS
    jeton dans une commande. 401 ou 403 : la session n'a pas le secret réseau
    pour ce chemin, dis-le en tête du compte rendu.
 
-5. **Consomme la case** en fin de run, activation faite ou refusée, et écris
+5. **Rapporte au portail** (1er novembre 2026, lot 4 de
+   `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans
+   que son échec arrête quoi que ce soit** : il ne sert qu'au suivi de
+   l'opératrice sur `/espaces/onboardings`. Aucun en-tête `Authorization` (le
+   secret réseau l'ajoute) :
+
+   ```
+   curl -sS -m 60 -X POST https://www.signauxfaibles.io/api/veille/onboardings -H 'content-type: application/json' -d '<corps>'
+   ```
+
+   Corps : `{ "evenement": "rapport", "executeur": "cowork", "slug": "<Slug de la ligne>", "nom": "<Organisation>", "site": "<URL du site>", "registre": "<identifiant de la ligne du registre>", "statut": 6 }`.
+   Statut 6 si l'activation est faite. Si tu t'es arrêté sur une garde, mets à la place de `statut` un `motif`
+   d'une phrase (300 caractères au plus). Jamais d'adresse ni de jeton dans le
+   corps. Une réponse autre que 200 ou 201 se signale dans le compte rendu, sans
+   rien refaire.
+
+6. **Consomme la case** en fin de run, activation faite ou refusée, et écris
    le résultat dans « Dernier lancement manuel » (« activée le JJ/MM —
    première parution le [jour] », puis la trace du 1.3 f).
 
-6. **Compte rendu** : ce qui a été activé, l'état de l'espace du portail
+7. **Compte rendu** : ce qui a été activé, l'état de l'espace du portail
    (ouvert et lien envoyé, ou en attente de la première publication, contrôlé,
    corrigé) et la première parution prévue. Les tâches planifiées prennent le
    relais. Si l'espace attend la publication, dis qu'il reste à lancer

@@ -863,6 +863,49 @@ les travaux non pris de la file et sort l'organisation du calendrier des tâches
 Notion (`suspendues` dans `POST /api/veille/calendrier`, consigne écrite dans les
 pages des lettres et de la revue) ; suspendre ferme aussi l'espace, écarter le
 laisse lisible ; aucun courrier ne part, décision de l'opératrice.
+**Suivi des onboardings** (1er novembre 2026, lot 1 de
+`docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
+portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une
+organisation, sans rien écrire dans Notion, et depuis le lot 2 (même jour, §11)
+**les lance** : un bouton par étape (`gesteDisponible`), action
+`lib/portail/onboarding-actions.ts` (`exigerOpérateur` d'abord), réservation
+d'une ligne avant l'appel, puis `lib/github/workflow.ts`, seul module qui parle à
+GitHub (`GITHUB_JETON_ACTIONS`, jeton fin limité au dépôt et à « Actions »,
+facultatif : sans lui, l'écran donne la commande) ; l'entrée `lancement` du
+workflow rend la réservation au début du run. Le harnais
+(`scripts/taches/onboarding.ts`) annonce début et fin à
+`POST /api/veille/onboardings` ; la tâche rapporte ligne du registre, statut et
+motif de blocage par l'outil `rapporter_onboarding`, lié au slug du run.
+Tables `onboardings` et `onboarding_runs` (migration 0019, raccord à
+`organisations` par le slug), seul écrivain `lib/base/onboardings.ts`, seule
+orchestration `lib/portail/onboarding.ts` ; l'étape est calculée
+(`lib/domaine/onboarding.ts`) : rapportée avant l'étape B, constatée dans Postgres
+après (essai, J0, espace ouvert). **Budget bloquant et réglable** :
+`ONBOARDING_BUDGET_MENSUEL_USD` (facultative) fait refuser au début un run dont le
+plafond ne tient pas dans le reste du mois de Paris, avant l'ouverture de la
+session ; le même contrôle se fait au clic. Le contrôle du soir signale
+`onboarding-sans-nouvelles` et `onboarding-immobile`. Depuis le lot 3 (même
+jour, §12), l'opératrice **enregistre la demande** sur
+`/espaces/onboardings/nouveau` (`lireLeFormulaireDeDemande`, garde dans la
+fonction ; porte `contrôlerLaDemande` puis `enregistrerUneDemande` : slug libre
+et hors de `SLUGS_RÉSERVÉS`, aucun doublon de nom ni de domaine, deux créneaux
+Cowork par semaine), sans rien lancer : « Générer les référentiels » est un
+second geste. **Exception bornée à la règle de Postgres** (décision 1 du
+1er novembre 2026) : `onboardings.intake` garde objectifs de veille, lecteur
+final et, pour l'API seulement, son adresse, transmis au harnais avec le début
+du run et effacés dès que la tâche rapporte la ligne du registre, trente jours
+au plus (passage quotidien) ; l'adresse n'est jamais montrée à l'écran.
+Depuis le lot 4 (même jour, §13), à la première lettre publiée, le geste est
+**« Ouvrir l'espace »** (`ouvrirLEspaceDepuisLOnboarding`,
+`lib/portail/gestion-actions.ts` : privilège, puis `SOURCE_ACCES=postgres`,
+étape, clé de cloisonnement, lecteur actif, puis le lien à chaque lecteur actif
+par l'envoi de l'activation ; tant que Notion fait foi, l'écran renvoie à
+`/onboarding-ouvrir-espace`), et les **commandes Cowork rapportent** en fin de
+run (`rapport` avec `"executeur": "cowork"`, qui crée l'onboarding ou le
+rattache à la demande Cowork de même nom ; un onboarding existant garde son
+exécuteur). L'opératrice lit le suivi sur `/espaces/onboardings`
+(`listerLesOnboardings`, garde dans la fonction) et dans la section
+« Onboarding » de sa fiche.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
 `envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit

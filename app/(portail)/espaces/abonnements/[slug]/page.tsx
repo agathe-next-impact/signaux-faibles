@@ -4,7 +4,9 @@ import { Suspense, type ReactNode } from 'react'
 import { lireLaGestionDUneOrganisation, lireLaSantéDesEspaces } from '@/lib/auth/appartenance'
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
+import { lecteursModifiables } from '@/lib/portail/situation'
 import { Panneau } from '@/components/coquille'
+import { FriseDOnboarding, GesteDOnboarding, MESSAGES_DE_LANCEMENT, MétaDOnboarding, MotifDeBlocage, RunsDOnboarding } from '@/components/onboarding-operatrice'
 import type { LigneDAbonnement } from '@/lib/base/situation'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
@@ -23,6 +25,7 @@ import {
   validerLaGrille,
 } from '@/lib/portail/gestion-actions'
 import { JOURS_DU_JOURNAL } from '@/lib/portail/gestion'
+import { lancementDisponible, type VueDOnboarding } from '@/lib/portail/onboarding'
 import { déciderDeLOrganisation } from '@/lib/portail/reglages'
 
 export const metadata: Metadata = { title: 'Gérer une organisation — signauxfaibles' }
@@ -146,13 +149,14 @@ export default async function GérerUneOrganisation({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ gestion?: string | string[]; reglage?: string | string[]; section?: string | string[] }>
+  searchParams: Promise<{ gestion?: string | string[]; reglage?: string | string[]; section?: string | string[]; onboarding?: string | string[] }>
 }) {
   const { slug } = await params
   const { accès, gestion, abonnement } = await lireLaGestionDUneOrganisation(slug)
   const paramètres = await searchParams
   const code = typeof paramètres.gestion === 'string' ? paramètres.gestion : typeof paramètres.reglage === 'string' ? paramètres.reglage : undefined
-  const message = code ? MESSAGES[code] : undefined
+  const codeDOnboarding = typeof paramètres.onboarding === 'string' ? paramètres.onboarding : undefined
+  const message = code ? MESSAGES[code] : codeDOnboarding ? MESSAGES_DE_LANCEMENT[codeDOnboarding as keyof typeof MESSAGES_DE_LANCEMENT] : undefined
   const section = typeof paramètres.section === 'string' ? paramètres.section : null
   const statut: Statut = message ? { section, message } : null
 
@@ -186,6 +190,19 @@ export default async function GérerUneOrganisation({
         </>
       )}
     </main>
+  )
+}
+
+/** La frise, le geste possible et les runs (lots 1 et 2 de `docs/proposition-onboarding-admin.md`). */
+function SuiviDOnboarding({ onboarding, disponible }: { onboarding: VueDOnboarding; disponible: boolean }) {
+  return (
+    <>
+      <MotifDeBlocage vue={onboarding} />
+      <FriseDOnboarding vue={onboarding} />
+      <GesteDOnboarding vue={onboarding} retour="fiche" disponible={disponible} ouverture={lecteursModifiables()} />
+      <MétaDOnboarding vue={onboarding} />
+      <RunsDOnboarding runs={onboarding.runs} />
+    </>
   )
 }
 
@@ -361,7 +378,7 @@ function Gestion({
   gestion: NonNullable<Awaited<ReturnType<typeof lireLaGestionDUneOrganisation>>['gestion']>
   statut: Statut
 }) {
-  const { organisation, lecteurs, grille, fiche, courriers } = gestion
+  const { organisation, lecteurs, grille, fiche, courriers, onboarding } = gestion
   const actifs = lecteurs.filter((l) => l.actif).length
   const horsService = organisation.état === 'suspendue' || organisation.état === 'ecartee'
 
@@ -372,6 +389,21 @@ function Gestion({
           <SantéDeLOrganisation slug={slug} />
         </Suspense>
       </Section>
+
+      {onboarding ? (
+        <Section id="onboarding" titre="Onboarding" statut={statut}>
+          {onboarding.étape.étape === 'espace_ouvert' ? (
+            <details>
+              <summary className="cursor-pointer text-encre">Espace ouvert : voir le suivi de l’onboarding</summary>
+              <div className="mt-4 flex flex-col gap-4">
+                <SuiviDOnboarding onboarding={onboarding} disponible={lancementDisponible()} />
+              </div>
+            </details>
+          ) : (
+            <SuiviDOnboarding onboarding={onboarding} disponible={lancementDisponible()} />
+          )}
+        </Section>
+      ) : null}
 
       <Section id="pilote" titre="Pilote et espace" statut={statut}>
         <Interrupteur action={basculerLePilote} slug={slug} actif={organisation.outilsStratégiques} libellé="Outils stratégiques" />

@@ -817,7 +817,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('la gestion d’une organisation est gardée par le privilège opérateur, avant toute lecture et toute écriture', () => {
     expect(appelants('gestionDUneOrganisation')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
     expect(appelants('santéDesEspaces')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
-    expect(appelants('lecteursÀGérer')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion.ts'])
+    // L'ouverture de l'espace depuis l'onboarding (lot 4, 1er novembre 2026) lit
+    // les lecteurs actifs derrière `exigerOpérateur`, comme `adresseDUnLecteur`.
+    expect(appelants('lecteursÀGérer')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts', 'lib/portail/gestion.ts'])
     expect(appelants('adresseDUnLecteur')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts'])
     const garde = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
     for (const [fonction, lecture] of [
@@ -959,6 +961,116 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       expect(source_, action).toBeGreaterThan(refus)
       expect(corps.indexOf(écriture), action).toBeGreaterThan(source_)
     }
+  })
+
+  /**
+   * Le suivi des onboardings (lot 1 de `docs/proposition-onboarding-admin.md`,
+   * 1er novembre 2026) : ses deux tables ne s'écrivent que par
+   * `lib/base/onboardings.ts`, appelé par la seule orchestration
+   * `lib/portail/onboarding.ts`, elle-même appelée par la seule route du
+   * dispositif ; le tableau qui traverse les clients n'a que la garde de
+   * l'appartenance pour appelant, et la fiche le lit par la gestion, déjà gardée.
+   */
+  it('le suivi des onboardings : un écrivain, une route, une garde pour le tableau', () => {
+    const tablesNommées: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+        } else if (/\.tsx?$/.test(entrée.name)) {
+          const source = readFileSync(chemin, 'utf8')
+          if (/\bonboardingRuns\b/.test(source) || /import\s*\{[^}]*\bonboardings\b[^}]*\}\s*from '@\/lib\/base\/schema'/.test(source)) tablesNommées.push(relatif(chemin))
+        }
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) parcourir(join(process.cwd(), racine))
+    expect(tablesNommées.sort()).toEqual(['lib/base/onboardings.ts', 'lib/base/schema.ts'])
+    for (const nom of ['ouvrirUnRunDOnboarding', 'conclureUnRunDOnboarding', 'rapporterUnOnboarding']) {
+      expect(appelants(nom), nom).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    }
+    for (const nom of ['recevoirUnDébut', 'recevoirUneFin', 'recevoirUnRapport', 'lireUnOnboarding']) {
+      expect(appelants(nom), nom).toEqual(['app/api/veille/onboardings/route.ts', 'lib/portail/onboarding.ts'])
+    }
+    expect(appelants('tableauDesOnboardings')).toEqual(['lib/auth/appartenance.ts', 'lib/base/onboardings.ts'])
+    expect(appelants('listerLesOnboardings')).toEqual(['app/(portail)/espaces/onboardings/page.tsx', 'lib/auth/appartenance.ts'])
+    expect(appelants('onboardingDUnSlug')).toEqual(['lib/base/onboardings.ts', 'lib/portail/gestion.ts', 'lib/portail/onboarding.ts'])
+    // La garde avant la lecture, dans la fonction.
+    const appartenance = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    const lister = appartenance.slice(appartenance.indexOf('export async function listerLesOnboardings'))
+    expect(lister.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(lister.indexOf('exigerOpérateur()')).toBeLessThan(lister.indexOf('tableauDesOnboardings('))
+    // Lot 2 : un seul module parle à GitHub, une seule orchestration l'appelle,
+    // une seule action la déclenche, derrière la garde ; la réservation précède l'appel.
+    expect(appelants('déclencherLeWorkflow')).toEqual(['lib/github/workflow.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('lancerDepuisLePortail')).toEqual(['lib/portail/onboarding-actions.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('réserverUnLancement')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('conclureUnLancement')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('onboardingsPourLeContrôle')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('alertesDesOnboardings')).toEqual(['lib/portail/controle-du-soir.ts', 'lib/portail/onboarding.ts'])
+    const action = readFileSync(join(process.cwd(), 'lib', 'portail', 'onboarding-actions.ts'), 'utf8')
+    expect(action.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(action.indexOf('exigerOpérateur()')).toBeLessThan(action.indexOf('lancerDepuisLePortail('))
+    const orchestration = readFileSync(join(process.cwd(), 'lib', 'portail', 'onboarding.ts'), 'utf8')
+    const lancer = orchestration.slice(orchestration.indexOf('export async function lancerDepuisLePortail'))
+    expect(lancer.indexOf('réserverUnLancement(')).toBeGreaterThan(0)
+    expect(lancer.indexOf('réserverUnLancement(')).toBeLessThan(lancer.indexOf('déclencherLeWorkflow('))
+    // Le jeton GitHub n'est lu qu'à un endroit.
+    const lecteursDuJeton: string[] = []
+    const chercher = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) chercher(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && readFileSync(chemin, 'utf8').includes("'GITHUB_JETON_ACTIONS'")) lecteursDuJeton.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercher(join(process.cwd(), racine))
+    expect(lecteursDuJeton).toEqual(['lib/github/workflow.ts'])
+    // Lot 3 : la demande passe la porte avant l'écriture, derrière la garde ;
+    // l'adresse du lecteur final n'est nommée que par le domaine, la base et le harnais.
+    expect(appelants('enregistrerUneDemande')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('enregistrerLaDemande')).toEqual(['lib/portail/onboarding-actions.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('demandeÀTransmettre')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('effacerLesDemandesAnciennes')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('créneauxCoworkPris')).toEqual(['lib/auth/appartenance.ts', 'lib/base/onboardings.ts'])
+    expect(appelants('lireLeFormulaireDeDemande')).toEqual(['app/(portail)/espaces/onboardings/nouveau/page.tsx', 'lib/auth/appartenance.ts'])
+    const formulaire = action.slice(action.indexOf('export async function enregistrerUneDemandeDOnboarding'))
+    expect(formulaire.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(formulaire.indexOf('exigerOpérateur()')).toBeLessThan(formulaire.indexOf('enregistrerLaDemande('))
+    const enregistrer = orchestration.slice(orchestration.indexOf('export async function enregistrerLaDemande'))
+    expect(enregistrer.indexOf('contrôlerLaDemande(')).toBeGreaterThan(0)
+    expect(enregistrer.indexOf('contrôlerLaDemande(')).toBeLessThan(enregistrer.indexOf('enregistrerUneDemande('))
+    const nommentLAdresse: string[] = []
+    const chercherLAdresse = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) chercherLAdresse(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && readFileSync(chemin, 'utf8').includes('emailDuLecteurFinal')) nommentLAdresse.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercherLAdresse(join(process.cwd(), racine))
+    expect(nommentLAdresse.sort()).toEqual(['lib/base/onboardings.ts', 'lib/domaine/onboarding.ts', 'scripts/taches/onboarding.ts'])
+    // Lot 4 : l'ouverture de l'espace vit avec les gestes de la fiche, derrière la
+    // garde, et n'écrit rien tant que Notion fait foi pour les accès.
+    expect(appelants('vueDeLOnboarding')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/onboarding.ts'])
+    const gestes = readFileSync(join(process.cwd(), 'lib', 'portail', 'gestion-actions.ts'), 'utf8')
+    const ouvrir = gestes.slice(gestes.indexOf('export async function ouvrirLEspaceDepuisLOnboarding'))
+    expect(ouvrir.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(ouvrir.indexOf('exigerOpérateur()')).toBeLessThan(ouvrir.indexOf('lecteursModifiables()'))
+    expect(ouvrir.indexOf('lecteursModifiables()')).toBeLessThan(ouvrir.indexOf('vueDeLOnboarding('))
+    expect(ouvrir.indexOf('vueDeLOnboarding(')).toBeLessThan(ouvrir.indexOf('envoyerLeLien('))
+    // Les gardes des écrans de l'opératrice ne lisent jamais l'heure en
+    // paramètre par défaut : évaluée avant la lecture du cookie, elle fait
+    // échouer le prérendu (`next build`, cacheComponents ; aperçus Vercel des
+    // lots 1 à 4, 1er novembre 2026).
+    expect(appartenance).not.toMatch(/:\s*Date\s*=\s*new Date\(\)/)
+    // La route garde le jeton et la base avant tout appel.
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'onboardings', 'route.ts'), 'utf8')
+    const post = route.slice(route.indexOf('export async function POST'))
+    expect(post.indexOf('refuserSiNonAutorisé(')).toBeLessThan(post.indexOf('refuserSiBaseIndisponible('))
+    expect(post.indexOf('refuserSiBaseIndisponible(')).toBeLessThan(post.indexOf('recevoirUnDébut('))
   })
 
   it('le tableau des abonnements traverse les clients : sa garde est dans l’appartenance', () => {

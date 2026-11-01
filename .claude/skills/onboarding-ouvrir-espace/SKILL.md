@@ -97,12 +97,28 @@ Organisation visée : $ARGUMENTS
      jamais l'identifiant d'accès. 404 : réessaie une fois après quelques
      secondes (cache d'une minute).
 
-6. **Ne décoche pas « Invitation manuelle »** si elle est cochée : elle garde la
+6. **Rapporte au portail** (1er novembre 2026, lot 4 de
+   `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans
+   que son échec arrête quoi que ce soit** : il ne sert qu'au suivi de
+   l'opératrice sur `/espaces/onboardings`. Aucun en-tête `Authorization` (le
+   secret réseau l'ajoute) :
+
+   ```
+   curl -sS -m 60 -X POST https://www.signauxfaibles.io/api/veille/onboardings -H 'content-type: application/json' -d '<corps>'
+   ```
+
+   Corps : `{ "evenement": "rapport", "executeur": "cowork", "slug": "<Slug de la ligne>", "nom": "<Organisation>", "site": "<URL du site>", "registre": "<identifiant de la ligne du registre>", "statut": 6 }`.
+   Le statut que porte la ligne après l'ouverture (6 si l'activation est faite, sinon celui d'avant) ; l'ouverture elle-même, le portail la constate par le lien parti. Si tu t'es arrêté sur une garde, mets à la place de `statut` un `motif`
+   d'une phrase (300 caractères au plus). Jamais d'adresse ni de jeton dans le
+   corps. Une réponse autre que 200 ou 201 se signale dans le compte rendu, sans
+   rien refaire.
+
+7. **Ne décoche pas « Invitation manuelle »** si elle est cochée : elle garde la
    trace du choix, et l'activation saura que l'espace a été ouvert à la main. Écris dans « Dernier
    lancement manuel » : « espace ouvert à la main le JJ/MM, lien envoyé à
    <empreinte ou prénom du lecteur>, lettres publiées : N ».
 
-7. **Compte rendu** : les gestes faits, la réponse de chaque appel, le nombre de
+8. **Compte rendu** : les gestes faits, la réponse de chaque appel, le nombre de
    lettres publiées que rend `/api/acces/ouvrir`. Il doit être d'au moins un,
    puisque la garde de publication est passée : s'il vaut zéro, signale l'écart
    entre Notion et le portail.

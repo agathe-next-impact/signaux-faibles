@@ -4,6 +4,7 @@ import { baseConfigurée } from '@/lib/base/client'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { env } from '@/lib/env'
 import { planifierLaFile } from '@/lib/portail/file'
+import { effacerLesDemandesExpirées } from '@/lib/portail/onboarding'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { préparerLesRappelsDeRenouvellement } from '@/lib/portail/courriers-abonnement'
 import { envoyerLesCourriersDeParcours } from '@/lib/portail/parcours-courriers'
@@ -59,7 +60,13 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       console.error(`[veille/parcours] file non planifiée : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
       return { état: 'erreur' as const }
     })
-    return NextResponse.json({ état: 'passé', ...rapport, renouvellements, prospection, file })
+    // Les demandes d'onboarding de plus de trente jours perdent leur intake
+    // (lot 3 de docs/proposition-onboarding-admin.md, décision 1).
+    const demandesEffacées = await effacerLesDemandesExpirées().catch((erreur: unknown) => {
+      console.error(`[veille/parcours] demandes d'onboarding non effacées : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return null
+    })
+    return NextResponse.json({ état: 'passé', ...rapport, renouvellements, prospection, file, demandesEffacées })
   } catch (erreur) {
     // L'erreur sort de lib/base sans donnée : seulement un code.
     console.error(`[veille/parcours] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
