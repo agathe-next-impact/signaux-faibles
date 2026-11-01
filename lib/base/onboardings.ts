@@ -1,8 +1,19 @@
-import { and, desc, eq, gte, inArray, isNull, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { courriers, lecteurs, onboardingRuns, onboardings, organisations } from '@/lib/base/schema'
-import { déciderDuBudget, dépenseDuMois, étatMontré, type DécisionDeBudget, type ÉtatDeRun } from '@/lib/domaine/onboarding'
+import {
+  CRÉNEAUX_COWORK_PAR_SEMAINE,
+  déciderDuBudget,
+  dépenseDuMois,
+  domaineDuSite,
+  étatMontré,
+  lundiDeParis,
+  nomComparable,
+  type DécisionDeBudget,
+  type DemandeContrôlée,
+  type ÉtatDeRun,
+} from '@/lib/domaine/onboarding'
 
 /**
  * Le suivi des onboardings (lot 1 de `docs/proposition-onboarding-admin.md`,
@@ -184,7 +195,9 @@ export async function rapporterUnOnboarding(
         .set({
           misÀJourLe: entrée.maintenant,
           ...(entrée.statut !== null ? { statutRapporté: entrée.statut, statutRapportéLe: entrée.maintenant } : {}),
-          ...(entrée.registre !== null ? { registreNotion: entrée.registre } : {}),
+          // La ligne du registre existe : c'est elle qui porte la demande, le
+          // portail efface la sienne (décision 1 du 1er novembre 2026).
+          ...(entrée.registre !== null ? { registreNotion: entrée.registre, intake: null } : {}),
           ...(entrée.nom !== null ? { nom: entrée.nom } : {}),
           ...(entrée.site !== null ? { site: entrée.site } : {}),
           ...(entrée.motif !== null ? { motifDeBlocage: entrée.motif } : entrée.statut !== null ? { motifDeBlocage: null } : {}),
@@ -281,6 +294,124 @@ export async function conclureUnLancement(
   })
 }
 
+// ── La demande enregistrée depuis le portail (lot 3, 1er novembre 2026) ─────
+
+export type EnregistrementDeDemande =
+  | { readonly sorte: 'enregistrée'; readonly onboardingId: string }
+  | { readonly sorte: 'doublon'; readonly par: 'slug' | 'nom' | 'site'; readonly slug: string; readonly où: 'onboarding' | 'organisation' }
+  | { readonly sorte: 'créneaux-cowork'; readonly pris: number }
+
+/**
+ * Enregistre une demande, sans rien lancer (décision 4 : le lancement est un
+ * second geste). Avant d'écrire, sous un verrou : le slug libre parmi les
+ * onboardings et les organisations, le même nom ou le même domaine nulle part
+ * (accents et casse ignorés), et pour Cowork un créneau libre dans la semaine
+ * ISO de Paris. L'anti-doublon contre le registre Notion reste celui de la
+ * tâche, qui seule le lit.
+ */
+export async function enregistrerUneDemande(
+  entrée: { readonly demande: DemandeContrôlée; readonly opératrice: string; readonly maintenant: Date },
+  db: Base = base(),
+): Promise<EnregistrementDeDemande> {
+  const d = entrée.demande
+  return protéger('enregistrement d’une demande d’onboarding', () =>
+    db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('demandes-d-onboarding'))`)
+      const [existants, orgs] = await Promise.all([
+        tx.select({ slug: onboardings.slug, nom: onboardings.nom, site: onboardings.site, exécuteur: onboardings.exécuteur, crééLe: onboardings.crééLe }).from(onboardings),
+        tx.select({ slug: organisations.slug, nom: organisations.nom, site: organisations.urlSite }).from(organisations),
+      ])
+      const nom = nomComparable(d.nom)
+      const domaine = domaineDuSite(d.site)
+      for (const [où, lignes] of [['onboarding', existants], ['organisation', orgs]] as const) {
+        for (const l of lignes) {
+          if (l.slug === d.slug) return { sorte: 'doublon', par: 'slug', slug: l.slug, où }
+          if (l.nom && nomComparable(l.nom) === nom) return { sorte: 'doublon', par: 'nom', slug: l.slug, où }
+          if (domaine && domaineDuSite(l.site) === domaine) return { sorte: 'doublon', par: 'site', slug: l.slug, où }
+        }
+      }
+      if (d.exécuteur === 'cowork') {
+        const semaine = lundiDeParis(entrée.maintenant)
+        const pris = existants.filter((l) => l.exécuteur === 'cowork' && lundiDeParis(l.crééLe) === semaine).length
+        if (pris >= CRÉNEAUX_COWORK_PAR_SEMAINE) return { sorte: 'créneaux-cowork', pris }
+      }
+      const [ligne] = await tx
+        .insert(onboardings)
+        .values({
+          slug: d.slug,
+          nom: d.nom,
+          site: d.site,
+          exécuteur: d.exécuteur,
+          intake: { ...d.intake },
+          crééPar: entrée.opératrice,
+          crééLe: entrée.maintenant,
+          misÀJourLe: entrée.maintenant,
+        })
+        .returning({ id: onboardings.id })
+      if (!ligne) throw new Error('demande non enregistrée')
+      return { sorte: 'enregistrée', onboardingId: ligne.id }
+    }),
+  )
+}
+
+export type DemandeÀTransmettre = {
+  readonly nom: string | null
+  readonly site: string | null
+  readonly objectifs: string | null
+  readonly lecteurFinal: string | null
+  readonly emailDuLecteurFinal: string | null
+}
+
+/**
+ * La demande que le début d'un run transmet à la tâche, tant que la ligne du
+ * registre n'est pas rapportée ; `null` ensuite, ou pour un onboarding né d'un
+ * run. C'est la seule lecture de l'adresse du lecteur final, pour le seul
+ * harnais, derrière le jeton du dispositif.
+ */
+export async function demandeÀTransmettre(slug: string, db: Base = base()): Promise<DemandeÀTransmettre | null> {
+  return protéger('lecture d’une demande d’onboarding', async () => {
+    const [l] = await db
+      .select({ nom: onboardings.nom, site: onboardings.site, intake: onboardings.intake })
+      .from(onboardings)
+      .where(and(eq(onboardings.slug, slug), isNull(onboardings.registreNotion), isNotNull(onboardings.intake)))
+      .limit(1)
+    if (!l?.intake) return null
+    const texteOuNul = (v: unknown) => (typeof v === 'string' && v ? v : null)
+    return {
+      nom: l.nom,
+      site: l.site,
+      objectifs: texteOuNul(l.intake['objectifs']),
+      lecteurFinal: texteOuNul(l.intake['lecteurFinal']),
+      emailDuLecteurFinal: texteOuNul(l.intake['emailDuLecteurFinal']),
+    }
+  })
+}
+
+/** Les onboardings Cowork créés depuis le portail cette semaine ISO de Paris (la vue Notion « Créneaux Cowork » fait foi pour le reste). */
+export async function créneauxCoworkPris(maintenant: Date, db: Base = base()): Promise<number> {
+  return protéger('lecture des créneaux Cowork', async () => {
+    const lignes = await db.select({ crééLe: onboardings.crééLe }).from(onboardings).where(eq(onboardings.exécuteur, 'cowork'))
+    const semaine = lundiDeParis(maintenant)
+    return lignes.filter((l) => lundiDeParis(l.crééLe) === semaine).length
+  })
+}
+
+/** Trente jours au plus : une demande restée sans ligne du registre ne garde pas l'intake indéfiniment. */
+export const JOURS_DE_L_INTAKE = 30
+
+/** Efface l'intake des demandes de plus de trente jours ; rend le nombre de lignes effacées. Appelée par le passage quotidien. */
+export async function effacerLesDemandesAnciennes(maintenant: Date, db: Base = base()): Promise<number> {
+  return protéger('effacement des demandes anciennes', async () => {
+    const limite = new Date(maintenant.getTime() - JOURS_DE_L_INTAKE * 24 * 60 * 60 * 1000)
+    const effacées = await db
+      .update(onboardings)
+      .set({ intake: null })
+      .where(and(isNotNull(onboardings.intake), lt(onboardings.crééLe, limite)))
+      .returning({ id: onboardings.id })
+    return effacées.length
+  })
+}
+
 // ── Lectures ─────────────────────────────────────────────────────────────────
 
 export type RunLu = {
@@ -310,6 +441,9 @@ export type OnboardingLu = {
   readonly motifDeBlocage: string | null
   readonly crééLe: Date
   readonly misÀJourLe: Date
+  readonly crééPar: string
+  /** La demande du formulaire, tant qu'elle est gardée : objectifs et lecteur final par son nom, jamais l'adresse. */
+  readonly demande: { readonly objectifs: string | null; readonly lecteurFinal: string | null; readonly avecAdresse: boolean } | null
   /** L'organisation du même slug, si l'étape B l'a créée. */
   readonly organisation: { readonly nom: string; readonly état: string; readonly activéeLe: Date | null; readonly essaiOuvertLe: Date | null } | null
   readonly lecteursActifs: number
@@ -387,6 +521,14 @@ async function lire(filtre: { readonly slug: string } | null, db: Base): Promise
       motifDeBlocage: o.motifDeBlocage,
       crééLe: o.crééLe,
       misÀJourLe: o.misÀJourLe,
+      crééPar: o.crééPar,
+      demande: o.intake
+        ? {
+            objectifs: typeof o.intake['objectifs'] === 'string' ? o.intake['objectifs'] : null,
+            lecteurFinal: typeof o.intake['lecteurFinal'] === 'string' ? o.intake['lecteurFinal'] : null,
+            avecAdresse: typeof o.intake['emailDuLecteurFinal'] === 'string' && o.intake['emailDuLecteurFinal'] !== '',
+          }
+        : null,
       organisation:
         l.organisationId && l.organisationNom && l.organisationÉtat
           ? { nom: l.organisationNom, état: l.organisationÉtat, activéeLe: l.activéeLe, essaiOuvertLe: l.essaiOuvertLe }

@@ -314,3 +314,147 @@ export function alertesDUnOnboarding(
   }
   return alertes
 }
+
+// ── La demande enregistrée depuis le portail (lot 3, 1er novembre 2026) ─────
+
+/**
+ * Les premiers segments d'adresse que le portail sert lui-même : un slug
+ * identique serait masqué par la page (vitrines, `/demo`, `/espaces`…) ou par
+ * Payload (`/admin`). `tests/domaine.onboarding.test.ts` vérifie que chaque
+ * dossier de premier niveau de `app/` y figure.
+ */
+export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
+  'acces',
+  'admin',
+  'api',
+  'demo',
+  'espaces',
+  'exemple',
+  'hors-ligne',
+  'offre',
+  'payload-api',
+  'quitter',
+  'recevoir-mon-lien',
+  'tarifs',
+])
+
+/** Deux cowork par semaine au plus (décision du 25 octobre 2026, `docs/taches-api.md`). */
+export const CRÉNEAUX_COWORK_PAR_SEMAINE = 2
+
+export const BORNES_DE_LA_DEMANDE = { nom: 200, site: 500, objectifs: 1500, lecteur: 200, email: 320, slug: 60 } as const
+
+/** Le domaine d'un site, sans `www.`, en minuscules ; `null` si l'adresse ne se lit pas. */
+export function domaineDuSite(site: string | null | undefined): string | null {
+  if (!site) return null
+  try {
+    const url = new URL(/^https?:\/\//i.test(site.trim()) ? site.trim() : `https://${site.trim()}`)
+    return url.hostname.toLowerCase().replace(/^www\./, '') || null
+  } catch {
+    return null
+  }
+}
+
+/** Un nom comparable : accents, casse, ponctuation et espaces ignorés, comme l'anti-doublon de `/onboarding-demande`. */
+export function nomComparable(nom: string): string {
+  return nom.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+export type ChampDeLaDemande = 'nom' | 'site' | 'slug' | 'objectifs' | 'lecteurNom' | 'lecteurEmail' | 'exécuteur'
+
+export type DemandeContrôlée = {
+  readonly slug: string
+  readonly nom: string
+  readonly site: string
+  readonly exécuteur: 'api' | 'cowork'
+  /** Ce que la tâche recopiera dans le registre, puis effacé (décision 1). L'adresse n'est gardée que pour l'API. */
+  readonly intake: {
+    readonly objectifs: string | null
+    readonly lecteurFinal: string | null
+    readonly emailDuLecteurFinal: string | null
+  }
+}
+
+const EMAIL = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[a-z]{2,}$/i
+
+/**
+ * La porte du formulaire : champs requis, bornes, adresse du site en https,
+ * slug dérivé du nom sauf s'il est donné, jamais réservé. Les doublons et les
+ * créneaux Cowork se vérifient en base, contre ce qui existe déjà.
+ */
+export function contrôlerLaDemande(entrée: {
+  readonly nom: string
+  readonly site: string
+  readonly slug?: string
+  readonly objectifs?: string
+  readonly lecteurNom?: string
+  readonly lecteurEmail?: string
+  readonly exécuteur?: string
+}): { readonly sorte: 'valide'; readonly demande: DemandeContrôlée } | { readonly sorte: 'invalide'; readonly champs: readonly ChampDeLaDemande[] } {
+  const champs: ChampDeLaDemande[] = []
+  const nom = entrée.nom.trim().replace(/\s+/g, ' ')
+  if (!nom || nom.length > BORNES_DE_LA_DEMANDE.nom) champs.push('nom')
+
+  const brut = entrée.site.trim()
+  const avecSchéma = brut && !/^[a-z][a-z0-9+.-]*:\/\//i.test(brut) ? `https://${brut}` : brut
+  let site = ''
+  try {
+    const url = new URL(avecSchéma)
+    if ((url.protocol === 'https:' || url.protocol === 'http:') && url.hostname.includes('.') && avecSchéma.length <= BORNES_DE_LA_DEMANDE.site) site = url.toString()
+  } catch {
+    // illisible
+  }
+  if (!site) champs.push('site')
+
+  const slug = (entrée.slug?.trim() ? entrée.slug.trim().toLowerCase() : enSlugSimple(nom)).slice(0, BORNES_DE_LA_DEMANDE.slug).replace(/-+$/, '')
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || SLUGS_RÉSERVÉS.has(slug)) champs.push('slug')
+
+  const objectifsBruts = (entrée.objectifs ?? '').trim()
+  const objectifs = !objectifsBruts || /^[àa] proposer\.?$/i.test(objectifsBruts) ? null : objectifsBruts
+  if (objectifs && objectifs.length > BORNES_DE_LA_DEMANDE.objectifs) champs.push('objectifs')
+
+  const lecteurFinal = (entrée.lecteurNom ?? '').trim().replace(/\s+/g, ' ') || null
+  if (lecteurFinal && lecteurFinal.length > BORNES_DE_LA_DEMANDE.lecteur) champs.push('lecteurNom')
+  const email = (entrée.lecteurEmail ?? '').trim().toLowerCase() || null
+  if (email && (email.length > BORNES_DE_LA_DEMANDE.email || !EMAIL.test(email))) champs.push('lecteurEmail')
+
+  const exécuteur = entrée.exécuteur === 'cowork' ? 'cowork' : entrée.exécuteur === undefined || entrée.exécuteur === '' || entrée.exécuteur === 'api' ? 'api' : null
+  if (!exécuteur) champs.push('exécuteur')
+
+  if (champs.length > 0 || !exécuteur) return { sorte: 'invalide', champs }
+  return {
+    sorte: 'valide',
+    demande: {
+      slug,
+      nom,
+      site,
+      exécuteur,
+      // Cowork reçoit la demande par la commande /onboarding-demande, que
+      // l'opératrice complète : le portail ne garde pas l'adresse pour lui.
+      intake: { objectifs, lecteurFinal, emailDuLecteurFinal: exécuteur === 'api' ? email : null },
+    },
+  }
+}
+
+const enSlugSimple = (nom: string) =>
+  nom
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+/** La commande Cowork à copier, sans adresse : l'opératrice l'ajoute si elle la connaît. */
+export function commandeCoworkDeLaDemande(entrée: { readonly nom: string; readonly site: string | null; readonly objectifs: string | null; readonly lecteurFinal: string | null }): string {
+  const parties = [`Organisation : ${entrée.nom}`, `URL : ${entrée.site ?? ''}`, `Objectifs de veille : ${entrée.objectifs ?? 'à proposer'}`]
+  if (entrée.lecteurFinal) parties.push(`Lecteur final : ${entrée.lecteurFinal}`)
+  parties.push('Exécuteur : Cowork')
+  return `/onboarding-demande ${parties.join(' · ')}`
+}
+
+/** Le lundi de la semaine ISO, heure de Paris, d'un instant : la fenêtre des créneaux Cowork. */
+export function lundiDeParis(instant: Date): string {
+  const jour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant)
+  const d = new Date(`${jour}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
+  return d.toISOString().slice(0, 10)
+}

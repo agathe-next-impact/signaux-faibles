@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { consignesDuHarnais } from '@/scripts/taches/executer'
-import { annoncerLaFin, annoncerLeDébut, estUnOnboarding, lancementDuPortail, runDeGithub } from '@/scripts/taches/onboarding'
+import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, lancementDuPortail, runDeGithub } from '@/scripts/taches/onboarding'
 import { serveursDesOutils, visLeSuivi, type ConfigurationDesOutils } from '@/scripts/taches/outils'
 import { SERVEURS } from '@/scripts/taches/garde'
 
@@ -49,7 +49,7 @@ describe('le suivi d’un onboarding par le harnais', () => {
   it('annonce le début et rend l’identifiant du run', async () => {
     const { conf, appels } = configuration(() => json({ état: 'ouvert', run: 'r-1', budget: { sorte: 'sans-budget' } }, 201))
     const début = await annoncerLeDébut(conf, { slug: 'mastora', tâche: 'balayage', plafondUsd: 30, run: { id: 9, tentative: 1, lien: null } })
-    expect(début).toEqual({ sorte: 'suivi', runId: 'r-1' })
+    expect(début).toEqual({ sorte: 'suivi', runId: 'r-1', demande: null })
     expect(appels[0]).toMatchObject({ url: 'https://www.signauxfaibles.io/api/veille/onboardings', corps: { evenement: 'debut', slug: 'mastora', tache: 'balayage', plafondUsd: 30 } })
   })
 
@@ -137,6 +137,30 @@ describe('le lancement venu du portail (lot 2)', () => {
     const yml = readFileSync('.github/workflows/taches.yml', 'utf8')
     expect(yml).toMatch(/\n {6}lancement:\n/)
     expect(yml).toContain('LANCEMENT: ${{ inputs.lancement }}')
+  })
+})
+
+describe('la demande du formulaire transmise au run (lot 3)', () => {
+  const DEMANDE = { nom: 'Mastora', site: 'https://mastora.example/', objectifs: 'Suivre les appels d’offres.', lecteurFinal: 'Camille Martin', emailDuLecteurFinal: 'camille@mastora.example' }
+
+  it('le début rend la demande que le portail envoie, champ par champ', async () => {
+    const { conf } = configuration(() => json({ état: 'ouvert', run: 'r-1', demande: { ...DEMANDE, intrus: 'x' } }, 201))
+    const début = await annoncerLeDébut(conf, { slug: 'mastora', tâche: 'balayage', plafondUsd: 30, run: null })
+    expect(début).toEqual({ sorte: 'suivi', runId: 'r-1', demande: DEMANDE })
+    const sansSite = configuration(() => json({ état: 'ouvert', run: 'r-1', demande: { nom: 'Mastora' } }, 201))
+    expect(await annoncerLeDébut(sansSite.conf, { slug: 'mastora', tâche: 'balayage', plafondUsd: 30, run: null })).toMatchObject({ demande: null })
+  })
+
+  it('la consigne demande l’étape 1 avec ces valeurs, le slug du portail, puis le rapport de la ligne', () => {
+    const consigne = consigneDuSuivi('mastora', SERVEURS.veille, DEMANDE)
+    expect(consigne).toContain('DEMANDE ENREGISTRÉE DANS LE PORTAIL')
+    expect(consigne).toContain('· Organisation : Mastora')
+    expect(consigne).toContain('· Email du lecteur final : camille@mastora.example')
+    expect(consigne).toContain('« mastora »')
+    expect(consigne).toContain('rapporter_onboarding')
+    expect(consigne.indexOf('DEMANDE ENREGISTRÉE')).toBeLessThan(consigne.indexOf('SUIVI DE L’ONBOARDING'))
+    expect(consigneDuSuivi('mastora', SERVEURS.veille)).not.toContain('DEMANDE ENREGISTRÉE')
+    expect(consigneDuSuivi('mastora', SERVEURS.veille, { ...DEMANDE, objectifs: null })).toContain('à formuler par l’étape A')
   })
 })
 

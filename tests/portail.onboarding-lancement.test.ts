@@ -35,6 +35,8 @@ const onboarding = (plus: Partial<OnboardingLu> = {}): OnboardingLu => ({
   organisation: null,
   lecteursActifs: 0,
   dernierLienEnvoyéLe: null,
+  crééPar: 'tache',
+  demande: null,
   runs: [],
   ...plus,
 })

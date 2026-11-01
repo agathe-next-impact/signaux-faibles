@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { readdirSync } from 'node:fs'
 import {
   alertesDUnOnboarding,
+  commandeCoworkDeLaDemande,
+  contrôlerLaDemande,
+  domaineDuSite,
+  lundiDeParis,
+  nomComparable,
+  SLUGS_RÉSERVÉS,
   débutDuMoisDeParis,
   gesteDisponible,
   PLAFONDS_DES_TÂCHES,
@@ -185,3 +192,53 @@ describe('les alertes du contrôle du soir (lot 2)', () => {
     expect(alertesDUnOnboarding({ étape: 'referentiels_generes', clos: false, misÀJourLe: jour('2026-11-05T12:00:00Z'), dernierRun: null }, maintenant)).toEqual([])
   })
 })
+
+describe('la demande du formulaire (lot 3)', () => {
+  it('accepte le minimum, complète le schéma et dérive le slug du nom', () => {
+    const r = contrôlerLaDemande({ nom: '  L’Hermitage  Tiers-lieu ', site: 'hermitage.example' })
+    expect(r).toEqual({
+      sorte: 'valide',
+      demande: { slug: 'l-hermitage-tiers-lieu', nom: 'L’Hermitage Tiers-lieu', site: 'https://hermitage.example/', exécuteur: 'api', intake: { objectifs: null, lecteurFinal: null, emailDuLecteurFinal: null } },
+    })
+  })
+
+  it('« à proposer » vaut des objectifs vides ; l’adresse n’est gardée que pour l’API', () => {
+    const api = contrôlerLaDemande({ nom: 'Mastora', site: 'https://mastora.example', objectifs: 'à proposer', lecteurNom: 'Camille', lecteurEmail: 'Camille@Mastora.example' })
+    expect(api.sorte === 'valide' && api.demande.intake).toEqual({ objectifs: null, lecteurFinal: 'Camille', emailDuLecteurFinal: 'camille@mastora.example' })
+    const cowork = contrôlerLaDemande({ nom: 'Mastora', site: 'https://mastora.example', lecteurEmail: 'camille@mastora.example', exécuteur: 'cowork' })
+    expect(cowork.sorte === 'valide' && cowork.demande.intake.emailDuLecteurFinal).toBeNull()
+  })
+
+  it('refuse et nomme chaque champ en faute', () => {
+    const r = contrôlerLaDemande({ nom: '', site: 'pas une adresse', slug: 'Espace Client', lecteurEmail: 'camille', exécuteur: 'autre', objectifs: 'x'.repeat(1501) })
+    expect(r.sorte === 'invalide' && [...r.champs].sort()).toEqual(['exécuteur', 'lecteurEmail', 'nom', 'objectifs', 'site', 'slug'])
+    expect(contrôlerLaDemande({ nom: 'Tarifs', site: 'https://tarifs.example' })).toEqual({ sorte: 'invalide', champs: ['slug'] })
+    expect(contrôlerLaDemande({ nom: 'Mastora', site: 'ftp://mastora.example' })).toEqual({ sorte: 'invalide', champs: ['site'] })
+  })
+
+  it('chaque dossier de premier niveau du portail est un slug réservé', () => {
+    const dossiers = (racine: string) => readdirSync(racine, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('[') && !e.name.startsWith('(')).map((e) => e.name)
+    for (const d of [...dossiers('app/(portail)'), ...dossiers('app/(payload)'), ...dossiers('app')]) expect(SLUGS_RÉSERVÉS.has(d), d).toBe(true)
+  })
+
+  it('compare les noms et les domaines comme l’anti-doublon de l’étape 1', () => {
+    expect(nomComparable('L’Hermitage')).toBe(nomComparable('l hermitage'))
+    expect(domaineDuSite('https://www.Mastora.example/a/b')).toBe('mastora.example')
+    expect(domaineDuSite('mastora.example')).toBe('mastora.example')
+    expect(domaineDuSite(null)).toBeNull()
+  })
+
+  it('la commande Cowork ne porte jamais d’adresse', () => {
+    const c = commandeCoworkDeLaDemande({ nom: 'Mastora', site: 'https://mastora.example/', objectifs: null, lecteurFinal: 'Camille' })
+    expect(c).toBe('/onboarding-demande Organisation : Mastora · URL : https://mastora.example/ · Objectifs de veille : à proposer · Lecteur final : Camille · Exécuteur : Cowork')
+    expect(c).not.toContain('@')
+  })
+
+  it('le lundi de Paris, y compris un dimanche soir en UTC', () => {
+    // 22 h 30 UTC le dimanche est encore dimanche à Paris ; 23 h 30 UTC est lundi 0 h 30.
+    expect(lundiDeParis(jour('2026-11-01T22:30:00Z'))).toBe('2026-10-26')
+    expect(lundiDeParis(jour('2026-11-01T23:30:00Z'))).toBe('2026-11-02')
+    expect(lundiDeParis(jour('2026-11-01T12:00:00Z'))).toBe('2026-10-26')
+  })
+})
+

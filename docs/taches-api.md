@@ -282,6 +282,14 @@ Mise en service, une fois :
 Le jeton ne sert qu'à déclencher le workflow ; il n'est lu que par
 `lib/github/workflow.ts` et n'apparaît dans aucun journal.
 
+**Demande enregistrée dans le portail (lot 3).** Une demande saisie sur
+`/espaces/onboardings/nouveau` arrive au harnais avec le début du run ; la
+consigne « DEMANDE ENREGISTRÉE DANS LE PORTAIL » demande de trouver ou créer la
+ligne du registre comme l'étape 1 de la page Notion (anti-doublon, garde 3.0),
+avec le slug du portail, puis de la rapporter par `rapporter_onboarding`. Le
+portail efface alors sa copie. La page Notion n'a pas à changer : la consigne
+s'appuie sur l'étape 1 telle qu'elle est écrite.
+
 Le contrôle du soir signale `onboarding-sans-nouvelles` (lancé depuis le portail
 sans début rapporté au bout d'une heure, ou en cours depuis trois heures sans
 fin) et `onboarding-immobile` (sans nouvelle depuis sept jours, avant

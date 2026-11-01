@@ -31,10 +31,10 @@ export const instant = false
 /** Les plafonds du harnais (`scripts/taches/executer.ts`), rappelés à côté du budget. */
 const PLAFONDS = 'balayage 30 $, premiere-lettre 40 $'
 
-export default async function Onboardings({ searchParams }: { searchParams: Promise<{ lancement?: string | string[]; slug?: string | string[] }> }) {
+export default async function Onboardings({ searchParams }: { searchParams: Promise<{ lancement?: string | string[]; demande?: string | string[]; slug?: string | string[] }> }) {
   const { accès, tableau } = await listerLesOnboardings()
   const paramètres = await searchParams
-  const code = typeof paramètres.lancement === 'string' ? paramètres.lancement : undefined
+  const code = typeof paramètres.lancement === 'string' ? paramètres.lancement : paramètres.demande === 'enregistree' ? 'enregistree' : undefined
   const slugDuGeste = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
   const disponible = lancementDisponible()
 
@@ -50,6 +50,13 @@ export default async function Onboardings({ searchParams }: { searchParams: Prom
             Choisir un espace
           </Link>
         </p>
+        {tableau !== null ? (
+          <p>
+            <Link href="/espaces/onboardings/nouveau" className="inline-block rounded-douce bg-encre px-4 py-3 text-corps font-medium text-blanc">
+              Enregistrer une demande
+            </Link>
+          </p>
+        ) : null}
       </header>
 
       {tableau === null ? (
@@ -64,8 +71,8 @@ export default async function Onboardings({ searchParams }: { searchParams: Prom
           <Budget mois={tableau.mois} budget={tableau.budget} />
           {tableau.enCours.length === 0 ? (
             <p className="text-ardoise">
-              Aucun onboarding en cours. Un onboarding apparaît ici au premier run `balayage` ou `premiere-lettre` lancé sur une
-              organisation.
+              Aucun onboarding en cours. Un onboarding apparaît ici quand une demande est enregistrée, ou au premier run `balayage`
+              ou `premiere-lettre` lancé sur une organisation.
             </p>
           ) : (
             <div className="flex flex-col gap-6">

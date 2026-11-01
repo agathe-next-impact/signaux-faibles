@@ -2,8 +2,8 @@
 
 1er novembre 2026. Proposition **acceptée par l'opératrice le même jour**, avec
 les cinq décisions du §9 (tranchées, voir §10). Elle tient lieu de la discussion
-qu'appelle tout nouvel écran. **Lots 1 et 2 codés le 1er novembre 2026** (§10 et
-§11, avec leurs écarts à la proposition).
+qu'appelle tout nouvel écran. **Lots 1, 2 et 3 codés le 1er novembre 2026** (§10 à
+§12, avec leurs écarts à la proposition).
 
 ## 1. Le constat
 
@@ -352,4 +352,48 @@ poser `ONBOARDING_BUDGET_MENSUEL_USD` dans Vercel (production) et redéployer.
 **À faire par l'opératrice :** créer le jeton et le poser dans Vercel
 (`docs/taches-api.md`, « Lancer depuis le portail »). La migration 0020 part
 avec le build de production.
+
+## 12. Lot 3 (1er novembre 2026)
+
+**Tel que codé :**
+
+- `/espaces/onboardings/nouveau` (lien « Enregistrer une demande » sur la
+  liste ; garde dans `lireLeFormulaireDeDemande`) : organisation, adresse du
+  site, slug facultatif (dérivé du nom), objectifs de veille (vide ou « à
+  proposer » : l'étape A formule l'hypothèse), lecteur final et son adresse,
+  exécuteur. Formulaire client sur `useActionState` : en cas de refus, les
+  valeurs reviennent du serveur, jamais par l'URL.
+- Porte pure `contrôlerLaDemande` (`lib/domaine/onboarding.ts`) : champs requis,
+  bornes, site en http(s), slug valide et hors de `SLUGS_RÉSERVÉS` (chaque
+  dossier de premier niveau de `app/`, tenu par un test : `payload-api` y a été
+  trouvé ainsi). Puis `enregistrerUneDemande`, sous verrou : slug libre, même nom
+  ou même domaine nulle part parmi les onboardings et les organisations, deux
+  créneaux Cowork par semaine de Paris au plus.
+- **Décision 4, lancement au second clic** : la demande enregistrée mène à la
+  liste, à l'étape « Demande enregistrée », avec le bouton « Générer les
+  référentiels » du lot 2. Rien ne part à l'envoi.
+- **Décision 1, l'intake en base, puis effacé** : `onboardings.intake` garde
+  objectifs, lecteur final et, pour l'API seulement, son adresse. Le début du
+  run les transmet au harnais (`demande` dans la réponse 201), qui ajoute la
+  consigne « DEMANDE ENREGISTRÉE DANS LE PORTAIL » : trouver ou créer la ligne
+  du registre comme l'étape 1 de la page Notion, avec ces valeurs et le slug du
+  portail, puis la rapporter. Dès que la ligne est rapportée, le portail efface
+  l'intake ; sinon le passage quotidien (`/api/veille/parcours`) l'efface au
+  bout de trente jours. L'adresse n'est nommée que par le domaine, la base et
+  le harnais (garde d'architecture) ; les écrans ne la montrent jamais.
+- **Cowork** : la demande est enregistrée sans adresse et l'écran donne la
+  commande `/onboarding-demande` toute prête, à compléter de l'adresse ; les
+  créneaux comptés sont ceux du portail, la vue Notion fait foi.
+
+**Écarts :**
+
+- La demande part avec la réponse au **début du run**, et non par un appel
+  `GET /api/veille/onboardings/<id>` de la tâche : le harnais la reçoit sans
+  que le modèle ait à la demander, et elle cesse d'être servie dès la ligne
+  rapportée.
+- **Effacement au bout de trente jours**, ajouté : une demande jamais lancée ne
+  garde pas l'intake indéfiniment.
+
+**À faire par l'opératrice :** rien. Aucune migration nouvelle : la colonne
+`intake` existe depuis la migration 0019.
 

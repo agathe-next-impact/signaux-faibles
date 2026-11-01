@@ -1,11 +1,16 @@
 import {
   conclureUnLancement,
   conclureUnRunDOnboarding,
+  demandeÀTransmettre,
+  effacerLesDemandesAnciennes,
+  enregistrerUneDemande,
   onboardingDUnSlug,
   onboardingsPourLeContrôle,
   ouvrirUnRunDOnboarding,
   réserverUnLancement,
   rapporterUnOnboarding,
+  type DemandeÀTransmettre,
+  type EnregistrementDeDemande,
   type OnboardingLu,
   type OuvertureDeRun,
   type RunLu,
@@ -15,6 +20,8 @@ import { configurationGithub, déclencherLeWorkflow } from '@/lib/github/workflo
 import type { Défaut } from '@/lib/portail/etat'
 import {
   alertesDUnOnboarding,
+  contrôlerLaDemande,
+  type ChampDeLaDemande,
   débutDuMoisDeParis,
   gesteDisponible,
   PLAFONDS_DES_TÂCHES,
@@ -74,8 +81,12 @@ export async function recevoirUnDébut(
     readonly lancement?: string | null
   },
   maintenant: Date = new Date(),
-): Promise<OuvertureDeRun> {
-  return ouvrirUnRunDOnboarding({ ...entrée, budgetUsd: budgetDesOnboardings(), débutDuMois: débutDuMoisDeParis(maintenant), maintenant })
+): Promise<OuvertureDeRun & { readonly demande: DemandeÀTransmettre | null }> {
+  const ouverture = await ouvrirUnRunDOnboarding({ ...entrée, budgetUsd: budgetDesOnboardings(), débutDuMois: débutDuMoisDeParis(maintenant), maintenant })
+  // La demande du formulaire (lot 3) part avec le début, tant que la ligne du
+  // registre n'est pas rapportée : la tâche la recopie dans le registre.
+  const demande = ouverture.sorte === 'refusé' ? null : await demandeÀTransmettre(entrée.slug)
+  return { ...ouverture, demande }
 }
 
 export function recevoirUneFin(
@@ -244,5 +255,35 @@ export async function alertesDesOnboardings(maintenant: Date = new Date()): Prom
     }
   }
   return défauts
+}
+
+// ── La demande du formulaire (lot 3, 1er novembre 2026) ──────────────────────
+
+export type IssueDeLaDemande =
+  | { readonly sorte: 'invalide'; readonly champs: readonly ChampDeLaDemande[] }
+  | Exclude<EnregistrementDeDemande, { readonly sorte: 'enregistrée' }>
+  | { readonly sorte: 'enregistrée'; readonly onboardingId: string; readonly slug: string }
+
+/**
+ * La porte puis l'écriture : `contrôlerLaDemande` avant `enregistrerUneDemande`
+ * (`tests/architecture.test.ts` tient l'ordre). L'appelant a vérifié le
+ * privilège. Rien n'est lancé : le geste « Générer les référentiels » suit.
+ */
+export async function enregistrerLaDemande(
+  entrée: {
+    readonly champs: { readonly nom: string; readonly site: string; readonly slug?: string; readonly objectifs?: string; readonly lecteurNom?: string; readonly lecteurEmail?: string; readonly exécuteur?: string }
+    readonly opératrice: string
+  },
+  maintenant: Date = new Date(),
+): Promise<IssueDeLaDemande> {
+  const contrôle = contrôlerLaDemande(entrée.champs)
+  if (contrôle.sorte === 'invalide') return contrôle
+  const r = await enregistrerUneDemande({ demande: contrôle.demande, opératrice: entrée.opératrice, maintenant })
+  return r.sorte === 'enregistrée' ? { ...r, slug: contrôle.demande.slug } : r
+}
+
+/** Pour le passage quotidien : l'intake de plus de trente jours est effacé. */
+export function effacerLesDemandesExpirées(maintenant: Date = new Date()): Promise<number> {
+  return effacerLesDemandesAnciennes(maintenant)
 }
 

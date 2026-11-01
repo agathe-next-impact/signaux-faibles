@@ -1192,7 +1192,12 @@ reçoit par son entrée `lancement` et le harnais la renvoie ici. Le début repr
 alors cette ligne au lieu d'en créer une, et le budget ne compte pas deux fois son
 plafond.
 
-201 `{ état: "ouvert" | "déjà-ouvert", run: "<uuid>", budget }`. Le premier
+201 `{ état: "ouvert" | "déjà-ouvert", run: "<uuid>", budget, demande }`.
+`demande` (lot 3) : la demande enregistrée par le formulaire de l'opératrice
+(`nom`, `site`, `objectifs`, `lecteurFinal`, `emailDuLecteurFinal`), tant que la
+ligne du registre n'est pas rapportée ; `null` sinon. C'est la seule réponse qui
+porte une adresse, au seul harnais, derrière le jeton. Un rapport avec
+`registre` efface la demande côté portail. Le premier
 début crée l'onboarding du slug ; un rejeu du même run GitHub (même identifiant,
 même tentative) rend le run déjà consigné. **409 `{ état: "budget-atteint" }`**
 quand `ONBOARDING_BUDGET_MENSUEL_USD` est posée et que la dépense du mois de

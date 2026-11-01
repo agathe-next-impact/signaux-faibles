@@ -884,7 +884,18 @@ après (essai, J0, espace ouvert). **Budget bloquant et réglable** :
 `ONBOARDING_BUDGET_MENSUEL_USD` (facultative) fait refuser au début un run dont le
 plafond ne tient pas dans le reste du mois de Paris, avant l'ouverture de la
 session ; le même contrôle se fait au clic. Le contrôle du soir signale
-`onboarding-sans-nouvelles` et `onboarding-immobile`. L'opératrice lit le suivi sur `/espaces/onboardings`
+`onboarding-sans-nouvelles` et `onboarding-immobile`. Depuis le lot 3 (même
+jour, §12), l'opératrice **enregistre la demande** sur
+`/espaces/onboardings/nouveau` (`lireLeFormulaireDeDemande`, garde dans la
+fonction ; porte `contrôlerLaDemande` puis `enregistrerUneDemande` : slug libre
+et hors de `SLUGS_RÉSERVÉS`, aucun doublon de nom ni de domaine, deux créneaux
+Cowork par semaine), sans rien lancer : « Générer les référentiels » est un
+second geste. **Exception bornée à la règle de Postgres** (décision 1 du
+1er novembre 2026) : `onboardings.intake` garde objectifs de veille, lecteur
+final et, pour l'API seulement, son adresse, transmis au harnais avec le début
+du run et effacés dès que la tâche rapporte la ligne du registre, trente jours
+au plus (passage quotidien) ; l'adresse n'est jamais montrée à l'écran.
+L'opératrice lit le suivi sur `/espaces/onboardings`
 (`listerLesOnboardings`, garde dans la fonction) et dans la section
 « Onboarding » de sa fiche.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un

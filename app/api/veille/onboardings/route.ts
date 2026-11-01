@@ -16,7 +16,9 @@ import { lireUnOnboarding, recevoirUnDébut, recevoirUneFin, recevoirUnRapport, 
  *     "lancement": "<uuid>" | null }
  *     `lancement` : la ligne réservée par le portail quand l'opératrice a lancé le
  *     run depuis son écran (lot 2), reçue par l'entrée du même nom du workflow.
- *     → 201 { état: "ouvert" | "déjà-ouvert", run: "<uuid>", budget }
+ *     → 201 { état: "ouvert" | "déjà-ouvert", run: "<uuid>", budget, demande }
+ *       `demande` : la demande enregistrée par le formulaire de l'opératrice
+ *       (lot 3), tant que la ligne du registre n'est pas rapportée ; sinon null.
  *     → 409 { état: "budget-atteint", run, budget } quand le budget du mois
  *       (`ONBOARDING_BUDGET_MENSUEL_USD`) ne laisse pas la place du plafond du run.
  *       Le harnais s'arrête alors, sans ouvrir de session.
@@ -107,7 +109,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
         console.info(`[veille/onboardings] ${d.slug} : début de ${d.tache}, ${r.sorte} (budget ${r.budget.sorte}, ${r.budget.dépenséUsd} $ ce mois).`)
         // Un état propre au budget : le 409 de `SOURCE_ACCES=notion` dit « refusé », et le harnais ne doit pas les confondre.
         if (r.sorte === 'refusé') return NextResponse.json({ état: 'budget-atteint', run: r.runId, budget: r.budget }, { status: 409 })
-        return NextResponse.json({ état: r.sorte, run: r.runId, budget: r.budget }, { status: 201 })
+        return NextResponse.json({ état: r.sorte, run: r.runId, budget: r.budget, demande: r.demande }, { status: 201 })
       }
       case 'fin': {
         const r = await recevoirUneFin({ slug: d.slug, runId: d.run, issue: d.issue, coûtUsd: d.coutUsd ?? null })

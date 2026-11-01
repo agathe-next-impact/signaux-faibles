@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { FriseDOnboarding, MotifDeBlocage, RunsDOnboarding, résuméDeLÉtape } from '@/components/onboarding-operatrice'
+import { FriseDOnboarding, GesteDOnboarding, MotifDeBlocage, RunsDOnboarding, résuméDeLÉtape } from '@/components/onboarding-operatrice'
 import type { OnboardingLu } from '@/lib/base/onboardings'
 import { vueDUnOnboarding } from '@/lib/portail/onboarding'
 
@@ -22,6 +22,8 @@ const onboarding = (plus: Partial<OnboardingLu> = {}): OnboardingLu => ({
   organisation: null,
   lecteursActifs: 0,
   dernierLienEnvoyéLe: null,
+  crééPar: 'tache',
+  demande: null,
   runs: [
     {
       id: 'r-1',
@@ -71,5 +73,27 @@ describe('le suivi d’un onboarding à l’écran', () => {
     expect(runs).toContain('premiere-lettre, sans nouvelles')
     expect(runs).toContain('plafond 40,00 $')
     expect(runs).toContain('hors GitHub')
+  })
+})
+
+describe('le formulaire de demande (lot 3)', () => {
+  it('rend les champs, et désactive Cowork quand les créneaux sont pris', async () => {
+    const { FormulaireDeDemande } = await import('@/app/(portail)/espaces/onboardings/nouveau/formulaire')
+    const libre = renderToStaticMarkup(createElement(FormulaireDeDemande, { créneauxCowork: { pris: 1, max: 2 } }))
+    for (const nom of ['nom', 'site', 'slug', 'objectifs', 'lecteurNom', 'lecteurEmail', 'executeur']) expect(libre).toContain(`name="${nom}"`)
+    expect(libre).toContain('1 sur 2 créneaux pris')
+    expect(libre).not.toMatch(/<input[^>]*disabled=""[^>]*value="cowork"/)
+    const plein = renderToStaticMarkup(createElement(FormulaireDeDemande, { créneauxCowork: { pris: 2, max: 2 } }))
+    expect(plein).toMatch(/<input[^>]*disabled=""[^>]*value="cowork"/)
+  })
+
+  it('une demande Cowork montre la commande à copier, sans adresse', () => {
+    const vue = vueDUnOnboarding(
+      onboarding({ exécuteur: 'cowork', statutRapporté: null, runs: [], site: 'https://mastora.example/', demande: { objectifs: null, lecteurFinal: 'Camille', avecAdresse: false } }),
+      MAINTENANT,
+    )
+    const rendu = renderToStaticMarkup(createElement(GesteDOnboarding, { vue, retour: 'liste', disponible: true }))
+    expect(rendu).toContain('/onboarding-demande Organisation : Mastora')
+    expect(rendu).not.toContain('@')
   })
 })

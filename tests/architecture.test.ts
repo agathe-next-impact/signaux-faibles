@@ -1025,6 +1025,31 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     }
     for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercher(join(process.cwd(), racine))
     expect(lecteursDuJeton).toEqual(['lib/github/workflow.ts'])
+    // Lot 3 : la demande passe la porte avant l'écriture, derrière la garde ;
+    // l'adresse du lecteur final n'est nommée que par le domaine, la base et le harnais.
+    expect(appelants('enregistrerUneDemande')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('enregistrerLaDemande')).toEqual(['lib/portail/onboarding-actions.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('demandeÀTransmettre')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('effacerLesDemandesAnciennes')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('créneauxCoworkPris')).toEqual(['lib/auth/appartenance.ts', 'lib/base/onboardings.ts'])
+    expect(appelants('lireLeFormulaireDeDemande')).toEqual(['app/(portail)/espaces/onboardings/nouveau/page.tsx', 'lib/auth/appartenance.ts'])
+    const formulaire = action.slice(action.indexOf('export async function enregistrerUneDemandeDOnboarding'))
+    expect(formulaire.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(formulaire.indexOf('exigerOpérateur()')).toBeLessThan(formulaire.indexOf('enregistrerLaDemande('))
+    const enregistrer = orchestration.slice(orchestration.indexOf('export async function enregistrerLaDemande'))
+    expect(enregistrer.indexOf('contrôlerLaDemande(')).toBeGreaterThan(0)
+    expect(enregistrer.indexOf('contrôlerLaDemande(')).toBeLessThan(enregistrer.indexOf('enregistrerUneDemande('))
+    const nommentLAdresse: string[] = []
+    const chercherLAdresse = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) chercherLAdresse(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && readFileSync(chemin, 'utf8').includes('emailDuLecteurFinal')) nommentLAdresse.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercherLAdresse(join(process.cwd(), racine))
+    expect(nommentLAdresse.sort()).toEqual(['lib/base/onboardings.ts', 'lib/domaine/onboarding.ts', 'scripts/taches/onboarding.ts'])
     // La route garde le jeton et la base avant tout appel.
     const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'onboardings', 'route.ts'), 'utf8')
     const post = route.slice(route.indexOf('export async function POST'))

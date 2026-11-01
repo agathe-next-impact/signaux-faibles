@@ -6,6 +6,7 @@ import {
   LIBELLÉS_DES_ÉTAPES,
   LIBELLÉS_DES_RUNS,
   PLAFONDS_DES_TÂCHES,
+  commandeCoworkDeLaDemande,
   type Provenance,
 } from '@/lib/domaine/onboarding'
 import type { IssueDuLancement, RunVuÀLÉcran, VueDOnboarding } from '@/lib/portail/onboarding'
@@ -138,7 +139,8 @@ export function MétaDOnboarding({ vue }: { vue: VueDOnboarding }) {
   const o = vue.onboarding
   return (
     <p className="label-mono text-ardoise">
-      suivi depuis le {dateLongueDeParis(o.crééLe)} · dernière nouvelle {dateEtHeure(o.misÀJourLe)} · {formaterDollars(vue.coûtTotalUsd)} au total
+      {o.crééPar === 'tache' ? 'suivi depuis le' : `demande enregistrée par ${o.crééPar} le`} {dateLongueDeParis(o.crééLe)}
+      {o.demande ? ' · demande gardée jusqu’à la ligne du registre' : ''} · dernière nouvelle {dateEtHeure(o.misÀJourLe)} · {formaterDollars(vue.coûtTotalUsd)} au total
       {o.registreNotion ? (
         <>
           {' · '}
@@ -154,7 +156,7 @@ export function MétaDOnboarding({ vue }: { vue: VueDOnboarding }) {
 // ── Le geste (lot 2, 1er novembre 2026) ──────────────────────────────────────
 
 /** Ce que l'écran dit après un geste, par le code que l'action renvoie dans l'URL. */
-export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | 'échec', string>> = {
+export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | 'échec' | 'enregistree', string>> = {
   lancé: 'Run déclenché dans GitHub Actions. Il apparaît « en cours » dès que le harnais démarre, en général sous deux minutes.',
   indisponible: 'Déclenchement indisponible : GITHUB_JETON_ACTIONS n’est pas posée. Lancer le run à la main dans GitHub Actions.',
   inconnu: 'Onboarding inconnu.',
@@ -162,6 +164,7 @@ export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | 'échec',
   'en-cours': 'Un run est déjà en cours pour cet onboarding : rien n’a été lancé.',
   cowork: 'Onboarding confié à Cowork : il se lance par les commandes /onboarding-* dans Claude Code, pas depuis le portail.',
   'budget-atteint': 'Budget du mois atteint (ONBOARDING_BUDGET_MENSUEL_USD) : le plafond de ce run ne tient pas dans ce qui reste. Rien n’a été lancé.',
+  enregistree: 'Demande enregistrée. Rien n’est parti : lancer les référentiels quand la demande est prête.',
   'échec-github': 'GitHub a refusé le déclenchement ou n’a pas répondu : rien n’a tourné. Vérifier le jeton (permission « Actions ») et la branche, puis recommencer.',
   échec: 'La base n’a pas répondu : rien n’a été lancé.',
 }
@@ -189,6 +192,17 @@ const COMMANDE_COWORK: Readonly<Record<string, string>> = {
 export function GesteDOnboarding({ vue, retour, disponible }: { vue: VueDOnboarding; retour: 'liste' | 'fiche'; disponible: boolean }) {
   const g = vue.geste
   const o = vue.onboarding
+  if (g.sorte === 'aucun' && g.raison === 'cowork' && vue.étape.étape === 'demande' && o.nom) {
+    // Une demande Cowork enregistrée dans le portail : la commande toute prête,
+    // sans l'adresse du lecteur final, que le portail ne garde pas pour Cowork.
+    const commande = commandeCoworkDeLaDemande({ nom: o.nom, site: o.site, objectifs: o.demande?.objectifs ?? null, lecteurFinal: o.demande?.lecteurFinal ?? null })
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-ardoise">Onboarding confié à Cowork : lancer dans Claude Code, en ajoutant « · Email du lecteur final : … » si elle est connue.</p>
+        <p className="border border-gris-ligne bg-fond-neutre p-4 font-mono text-label text-encre select-all">{commande}</p>
+      </div>
+    )
+  }
   if (g.sorte === 'aucun') {
     const textes: Record<typeof g.raison, string | null> = {
       'en-cours': 'Un run est en cours : attendre sa fin avant tout autre geste.',

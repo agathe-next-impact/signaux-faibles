@@ -4,6 +4,10 @@ import type { Base } from '@/lib/base/client'
 import { courriers, lecteurs, onboardingRuns, onboardings, organisations } from '@/lib/base/schema'
 import {
   conclureUnLancement,
+  créneauxCoworkPris,
+  demandeÀTransmettre,
+  effacerLesDemandesAnciennes,
+  enregistrerUneDemande,
   conclureUnRunDOnboarding,
   onboardingsPourLeContrôle,
   réserverUnLancement,
@@ -215,4 +219,62 @@ describe('le suivi des onboardings en base', () => {
       expect((await onboardingsPourLeContrôle(db)).map((o) => o.slug)).toEqual(['mastora'])
     })
   })
+
+  describe('la demande du formulaire (lot 3)', () => {
+    const demande = (plus: Record<string, unknown> = {}) => ({
+      slug: 'mastora',
+      nom: 'Mastora',
+      site: 'https://mastora.example/',
+      exécuteur: 'api' as const,
+      intake: { objectifs: 'Suivre les appels d’offres.', lecteurFinal: 'Camille', emailDuLecteurFinal: 'camille@mastora.example' },
+      ...plus,
+    })
+    const enregistrer = (plus: Record<string, unknown> = {}, maintenant = MAINTENANT) => enregistrerUneDemande({ demande: demande(plus), opératrice: 'Agathe', maintenant }, db)
+
+    it('enregistre sans rien lancer, et transmet la demande jusqu’à la ligne du registre', async () => {
+      expect((await enregistrer()).sorte).toBe('enregistrée')
+      expect(await db.select().from(onboardingRuns)).toHaveLength(0)
+      const [ligne] = await db.select().from(onboardings)
+      expect(ligne).toMatchObject({ slug: 'mastora', crééPar: 'Agathe', exécuteur: 'api', registreNotion: null })
+      expect(await demandeÀTransmettre('mastora', db)).toEqual({ nom: 'Mastora', site: 'https://mastora.example/', objectifs: 'Suivre les appels d’offres.', lecteurFinal: 'Camille', emailDuLecteurFinal: 'camille@mastora.example' })
+      // La liste ne montre jamais l'adresse.
+      const lu = await onboardingDUnSlug('mastora', db)
+      expect(lu?.demande).toEqual({ objectifs: 'Suivre les appels d’offres.', lecteurFinal: 'Camille', avecAdresse: true })
+      expect(JSON.stringify(lu)).not.toContain('@')
+      // Le premier run reprend la ligne du formulaire, puis la tâche rapporte la ligne du registre : l'intake est effacé.
+      await ouvrir(db)
+      await rapporterUnOnboarding({ slug: 'mastora', statut: 1, registre: REGISTRE, motif: null, nom: null, site: null, maintenant: MAINTENANT }, db)
+      expect(await demandeÀTransmettre('mastora', db)).toBeNull()
+      expect((await db.select().from(onboardings))[0]!.intake).toBeNull()
+    })
+
+    it('refuse un doublon par slug, par nom ou par domaine, contre les onboardings et les organisations', async () => {
+      await enregistrer()
+      expect(await enregistrer({ nom: 'Autre' })).toMatchObject({ sorte: 'doublon', par: 'slug', où: 'onboarding' })
+      expect(await enregistrer({ slug: 'mastora-2', nom: 'MASTORA' , site: 'https://autre.example' })).toMatchObject({ sorte: 'doublon', par: 'nom' })
+      expect(await enregistrer({ slug: 'mastora-2', nom: 'Autre', site: 'https://www.mastora.example/contact' })).toMatchObject({ sorte: 'doublon', par: 'site' })
+      await db.insert(organisations).values({ slug: 'heritech', nom: 'Héritech', état: 'abonnee' })
+      expect(await enregistrer({ slug: 'heritech-bis', nom: 'Heritech', site: 'https://heritech.example' })).toMatchObject({ sorte: 'doublon', par: 'nom', où: 'organisation', slug: 'heritech' })
+    })
+
+    it('deux créneaux Cowork par semaine de Paris, pas trois', async () => {
+      const cowork = (n: number) => ({ slug: `c-${n}`, nom: `Cowork ${n}`, site: `https://c${n}.example/`, exécuteur: 'cowork' })
+      expect((await enregistrer(cowork(1))).sorte).toBe('enregistrée')
+      expect((await enregistrer(cowork(2))).sorte).toBe('enregistrée')
+      expect(await créneauxCoworkPris(MAINTENANT, db)).toBe(2)
+      expect(await enregistrer(cowork(3))).toEqual({ sorte: 'créneaux-cowork', pris: 2 })
+      // La semaine suivante, les créneaux se libèrent.
+      expect((await enregistrer(cowork(3), new Date('2026-11-09T10:00:00Z'))).sorte).toBe('enregistrée')
+    })
+
+    it('efface l’intake au-delà de trente jours, et seulement lui', async () => {
+      await enregistrer({}, new Date('2026-09-20T10:00:00Z'))
+      await enregistrer({ slug: 'recent', nom: 'Récent', site: 'https://recent.example/' })
+      expect(await effacerLesDemandesAnciennes(MAINTENANT, db)).toBe(1)
+      const lignes = await db.select().from(onboardings)
+      expect(lignes.find((l) => l.slug === 'mastora')).toMatchObject({ intake: null, nom: 'Mastora' })
+      expect(lignes.find((l) => l.slug === 'recent')!.intake).not.toBeNull()
+    })
+  })
 })
+

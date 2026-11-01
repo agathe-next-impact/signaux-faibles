@@ -40,7 +40,7 @@ import { contrôler } from './controle'
 import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RéponseDuModèle, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
-import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, lancementDuPortail, runDeGithub } from './onboarding'
+import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, lancementDuPortail, runDeGithub, type DemandeDuPortail } from './onboarding'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
 import { périodePassée, PÉRIODES_MAX, promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
 
@@ -294,7 +294,7 @@ export async function déroulerLaSession(prompt: string, options: Options, sorti
 const PARIS = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'full', timeStyle: 'short' })
 
 /** Les consignes du harnais : l'environnement d'exécution, jamais une règle métier. */
-export function consignesDuHarnais(maintenant: Date, portail: string, onboarding: string | null = null): string {
+export function consignesDuHarnais(maintenant: Date, portail: string, onboarding: string | null = null, demande: DemandeDuPortail | null = null): string {
   return [
     '# Environnement d’exécution (harnais)',
     '',
@@ -326,7 +326,7 @@ export function consignesDuHarnais(maintenant: Date, portail: string, onboarding
     '· Aucun appel d’outil ne doit durer plus de quatre minutes : au-delà, ton cache expire et tout ton contexte est réécrit. Découpe un lot de sources trop long.',
     '',
     'SECRETS. N’écris jamais un jeton, une clé ou un mot de passe dans un texte, une page, un courriel ou un fichier, même pour diagnostiquer une erreur.',
-    ...(onboarding ? ['', consigneDuSuivi(onboarding, SERVEURS.veille)] : []),
+    ...(onboarding ? ['', consigneDuSuivi(onboarding, SERVEURS.veille, demande)] : []),
   ].join('\n')
 }
 
@@ -422,7 +422,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
   // Le suivi de l'onboarding (1er novembre 2026) : annoncé avant la session,
   // pour que le budget du mois puisse refuser le run sans rien dépenser.
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
-  let suivi: { readonly slug: string; readonly runId: string } | null = null
+  let suivi: { readonly slug: string; readonly runId: string; readonly demande: DemandeDuPortail | null } | null = null
   if (estUnOnboarding(tâche, organisation)) {
     const début = await annoncerLeDébut(configurationDeBase, { slug: organisation, tâche, plafondUsd, run: runDeGithub(), lancement: lancementDuPortail() })
     if (début.sorte === 'refusé') {
@@ -432,7 +432,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
       écrireLeRésuméDuJob(`## ${tâche} : non lancée\n\n**Refusée** : ${début.message}\n`, masques)
       return 1
     }
-    if (début.sorte === 'suivi') suivi = { slug: organisation, runId: début.runId }
+    if (début.sorte === 'suivi') suivi = { slug: organisation, runId: début.runId, demande: début.demande }
     else sorties.journal(`suivi d’onboarding : non suivi (${début.raison}), le run part quand même`)
   }
   const configuration: ConfigurationDesOutils = suivi ? { ...configurationDeBase, onboarding: { slug: suivi.slug } } : configurationDeBase
@@ -445,7 +445,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
     cwd: sorties.espace,
     model: modèle,
     effort: EFFORT,
-    systemPrompt: { type: 'preset', preset: 'claude_code', append: consignesDuHarnais(maintenant, portail, suivi?.slug ?? null) },
+    systemPrompt: { type: 'preset', preset: 'claude_code', append: consignesDuHarnais(maintenant, portail, suivi?.slug ?? null, suivi?.demande ?? null) },
     tools: ['Agent', 'WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'ToolSearch'],
     agents: { [SOUS_AGENT_LECTEUR]: définitionDuLecteur(), [SOUS_AGENT_COLLECTEUR]: définitionDuCollecteur() },
     mcpServers: { [SERVEURS.notion]: serveurNotion(secrets.jetonNotion), ...serveursDesOutils(configuration) },

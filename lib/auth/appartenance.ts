@@ -10,7 +10,7 @@ import { identifiantDeLaSession } from '@/lib/auth/session'
 import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
 import { tableauDesPrescripteurs, type LigneDePrescripteur } from '@/lib/base/prescripteurs'
-import { tableauDesOnboardings } from '@/lib/base/onboardings'
+import { créneauxCoworkPris, tableauDesOnboardings } from '@/lib/base/onboardings'
 import { débutDuMoisDeParis } from '@/lib/domaine/onboarding'
 import { vueDuTableau, type TableauDesOnboardings } from '@/lib/portail/onboarding'
 import { lireLaFile } from '@/lib/portail/file'
@@ -244,6 +244,18 @@ export async function listerLesOnboardings(maintenant: Date = new Date()): Promi
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, tableau: null }
   return { accès, tableau: vueDuTableau(await tableauDesOnboardings(débutDuMoisDeParis(maintenant)), maintenant) }
+}
+
+/**
+ * Le formulaire de demande d'onboarding (lot 3, 1er novembre 2026) : la garde
+ * d'abord, puis le seul chiffre que l'écran montre, les créneaux Cowork pris
+ * cette semaine depuis le portail. `créneaux` vaut `null` quand Postgres n'est
+ * pas en service : l'écran le dit et ne propose pas le formulaire.
+ */
+export async function lireLeFormulaireDeDemande(maintenant: Date = new Date()): Promise<{ readonly accès: Accès; readonly créneaux: number | null }> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, créneaux: null }
+  return { accès, créneaux: await créneauxCoworkPris(maintenant) }
 }
 
 /**
