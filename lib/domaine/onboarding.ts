@@ -230,10 +230,17 @@ export function formaterDollars(n: number): string {
 
 // ── Le geste de l'opératrice (lot 2, 1er novembre 2026) ─────────────────────
 
-export type Geste = 'referentiels' | 'premiere-lettre' | 'relancer'
+/** `onboarding` : le run complet du moteur (lot 5, `SOURCE_DOCUMENTS=payload`). */
+export type Geste = 'referentiels' | 'premiere-lettre' | 'relancer' | 'onboarding'
 
-/** La tâche du workflow, telle que `taches.yml` la nomme. */
-export type TâcheDuWorkflow = 'balayage' | 'premiere-lettre'
+/** La tâche lancée, telle que `taches.yml` la nomme, ou `onboarding` pour le moteur Trigger.dev (lot 5). */
+export type TâcheDuWorkflow = 'balayage' | 'premiere-lettre' | 'onboarding'
+
+/** Qui exécute les onboardings : les tâches GitHub tant que Notion porte les documents, le moteur Trigger.dev après la bascule. */
+export type Moteur = 'github' | 'trigger'
+
+/** La tâche telle que la table `onboarding_runs` la nomme. */
+export type TâcheEnregistrée = 'balayage' | 'premiere_lettre' | 'onboarding'
 
 export type GesteDisponible =
   | { readonly sorte: 'geste'; readonly geste: Geste; readonly tâche: TâcheDuWorkflow; readonly libellé: string }
@@ -241,7 +248,7 @@ export type GesteDisponible =
   | { readonly sorte: 'ouvrir'; readonly libellé: string }
   | { readonly sorte: 'aucun'; readonly raison: 'en-cours' | 'cowork' | 'validation-notion' | 'attente' | 'terminé' }
 
-const versLeWorkflow = (tâche: 'balayage' | 'premiere_lettre'): TâcheDuWorkflow => (tâche === 'premiere_lettre' ? 'premiere-lettre' : 'balayage')
+const versLeWorkflow = (tâche: TâcheEnregistrée): TâcheDuWorkflow => (tâche === 'premiere_lettre' ? 'premiere-lettre' : tâche)
 
 /**
  * Le seul geste possible à l'étape, et rien d'autre (§5 de la proposition).
@@ -256,13 +263,26 @@ export function gesteDisponible(entrée: {
   readonly étape: ÉtapeDOnboarding
   readonly exécuteur: 'api' | 'cowork'
   readonly bloqué: boolean
-  readonly dernierRun: { readonly tâche: 'balayage' | 'premiere_lettre'; readonly montré: ÉtatDeRun | 'sans_nouvelles' } | null
+  readonly dernierRun: { readonly tâche: TâcheEnregistrée; readonly montré: ÉtatDeRun | 'sans_nouvelles' } | null
+  /**
+   * Lot 5 : avec le moteur, un seul run fait le référentiel puis la première
+   * lettre, sans validation humaine entre les deux (programme du 22 octobre
+   * 2026) ; le geste unique est « Lancer l'onboarding ». Défaut : GitHub.
+   */
+  readonly moteur?: Moteur
 }): GesteDisponible {
   const enCours = entrée.dernierRun && ['demande', 'lance', 'en_cours'].includes(entrée.dernierRun.montré)
   if (enCours) return { sorte: 'aucun', raison: 'en-cours' }
   // L'ouverture ne dépend pas de l'exécuteur : c'est le portail qui envoie le lien.
   if (entrée.étape === 'premiere_lettre_publiee') return { sorte: 'ouvrir', libellé: 'Ouvrir l’espace' }
   if (entrée.exécuteur === 'cowork') return { sorte: 'aucun', raison: 'cowork' }
+  if (entrée.moteur === 'trigger') {
+    // Un blocage relance le run complet ; avant l'essai, on le lance ; ensuite,
+    // le run est passé et l'on attend la publication ou l'ouverture.
+    if (entrée.bloqué && rang(entrée.étape) < rang('premiere_lettre_publiee')) return { sorte: 'geste', geste: 'relancer', tâche: 'onboarding', libellé: 'Relancer l’onboarding' }
+    if (rang(entrée.étape) < rang('en_essai')) return { sorte: 'geste', geste: 'onboarding', tâche: 'onboarding', libellé: 'Lancer l’onboarding' }
+    return entrée.étape === 'espace_ouvert' ? { sorte: 'aucun', raison: 'terminé' } : { sorte: 'aucun', raison: 'attente' }
+  }
   if (entrée.bloqué && entrée.dernierRun && rang(entrée.étape) < rang('premiere_lettre_publiee')) {
     const tâche = versLeWorkflow(entrée.dernierRun.tâche)
     return { sorte: 'geste', geste: 'relancer', tâche, libellé: `Relancer ${tâche}` }
@@ -281,8 +301,13 @@ export function gesteDisponible(entrée: {
   }
 }
 
-/** Le plafond de chaque tâche, recopié de `PARAMÈTRES` du harnais ; un test tient l'égalité. */
-export const PLAFONDS_DES_TÂCHES: Readonly<Record<TâcheDuWorkflow, number>> = { balayage: 30, 'premiere-lettre': 40 }
+/**
+ * Le plafond de chaque tâche. Pour les tâches GitHub, recopié de `PARAMÈTRES`
+ * du harnais (un test tient l'égalité) ; pour le moteur (lot 5), le plafond que
+ * `trigger/onboarding.ts` impose au run (décision du 1er novembre 2026 : un
+ * plafond dur, vérifié avant chaque appel du modèle).
+ */
+export const PLAFONDS_DES_TÂCHES: Readonly<Record<TâcheDuWorkflow, number>> = { balayage: 30, 'premiere-lettre': 40, onboarding: 40 }
 
 // ── Ce que le contrôle du soir signale (lot 2) ───────────────────────────────
 
@@ -298,7 +323,7 @@ export function alertesDUnOnboarding(
     readonly étape: ÉtapeDOnboarding
     readonly clos: boolean
     readonly misÀJourLe: Date
-    readonly dernierRun: (RunVu & { readonly tâche: 'balayage' | 'premiere_lettre' }) | null
+    readonly dernierRun: (RunVu & { readonly tâche: TâcheEnregistrée }) | null
   },
   maintenant: Date,
 ): AlerteDOnboarding[] {

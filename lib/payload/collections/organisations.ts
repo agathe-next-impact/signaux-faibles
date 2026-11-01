@@ -1,15 +1,16 @@
 import type { CollectionConfig } from 'payload'
-import { déclencherLOnboarding } from '@/lib/moteur/declencher'
 import { ACCÈS_AUTHENTIFIÉ } from '@/lib/payload/acces'
-import { ouvrirDansLePortail } from '@/lib/payload/portail'
+import { CONTEXTE_LANCÉ_PAR_LE_PORTAIL } from '@/lib/payload/contexte-onboarding'
+import { lancerDepuisLeRegistre } from '@/lib/portail/onboarding'
 
 /**
  * Le registre des organisations, tenu dans Payload à la place de la base
  * Notion « Organisations, pipeline et activation ».
  *
- * Passer `etat` à « à onboarder » déclenche la tâche Trigger.dev d'onboarding
- * par le crochet `afterChange` : Payload ne porte jamais un run long, il le
- * confie. Si la clé Trigger.dev est absente, rien ne part et le déclencheur
+ * Passer `etat` à « à onboarder » lance l'onboarding par le crochet
+ * `afterChange`, qui passe par le portail (`lancerDepuisLeRegistre`, lot 5 du
+ * 1er novembre 2026 : réservation, budget, suivi), puis Trigger.dev : Payload ne
+ * porte jamais un run long, il le confie. Si la clé Trigger.dev est absente, rien ne part et le déclencheur
  * le journalise ; l'enregistrement n'échoue jamais pour autant.
  */
 export const ÉTATS_D_ORGANISATION = [
@@ -84,14 +85,19 @@ export const organisations: CollectionConfig = {
   ],
   hooks: {
     afterChange: [
-      async ({ doc, previousDoc, operation }) => {
+      async ({ doc, previousDoc, operation, context }) => {
         const passeÀOnboarder =
           doc?.etat === 'a_onboarder' && (operation === 'create' || previousDoc?.etat !== 'a_onboarder')
         if (!passeÀOnboarder) return doc
+        // Le portail vient de lancer le run et marque l'organisation : rien à relancer.
+        if (context?.[CONTEXTE_LANCÉ_PAR_LE_PORTAIL]) return doc
         try {
-          // La ligne du portail d'abord (parcours, lecteurs), la tâche ensuite.
-          await ouvrirDansLePortail({ id: String(doc.id), nom: doc.nom, slug: doc.slug, contact: doc.contact }, { prospection: false })
-          await déclencherLOnboarding(String(doc.id))
+          // Lot 5 de docs/proposition-onboarding-admin.md (1er novembre 2026) :
+          // le lancement passe par le portail, qui réserve, tient le budget,
+          // ouvre l'organisation dans le portail puis déclenche Trigger.dev.
+          // Le refus éventuel se lit sur /espaces/onboardings.
+          const issue = await lancerDepuisLeRegistre({ slug: String(doc.slug) })
+          if (issue !== 'lancé') console.warn(`[moteur] onboarding de ${String(doc.slug)} non lancé depuis le registre (${issue}).`)
         } catch (erreur) {
           console.error(`[moteur] onboarding non déclenché pour ${String(doc.id)} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
         }

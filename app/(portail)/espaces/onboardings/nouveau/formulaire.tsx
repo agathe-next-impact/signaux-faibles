@@ -27,7 +27,14 @@ const PAR = { slug: 'le même slug', nom: 'le même nom', site: 'le même domain
  * refus (jamais par l'URL, l'adresse du lecteur final n'y passe pas). Une
  * demande enregistrée redirige vers la liste.
  */
-export function FormulaireDeDemande({ créneauxCowork }: { créneauxCowork: { pris: number; max: number } }) {
+export function FormulaireDeDemande({
+  créneauxCowork,
+  moteur = 'github',
+}: {
+  créneauxCowork: { pris: number; max: number }
+  /** Lot 5 : après la bascule Payload, le moteur seul exécute ; Cowork n'a plus de place et le registre est Payload. */
+  moteur?: 'github' | 'trigger'
+}) {
   const [résultat, action, enCours] = useActionState(enregistrerUneDemandeDOnboarding, DÉPART)
   const valeurs = résultat.état === 'repos' ? null : résultat.valeurs
   const enErreur = new Set(résultat.état === 'invalide' ? résultat.champs : [])
@@ -97,21 +104,32 @@ export function FormulaireDeDemande({ créneauxCowork }: { créneauxCowork: { pr
         </div>
       </div>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-corps text-ardoise">Exécuteur</legend>
-        <label className="flex items-center gap-2 text-encre">
-          <input type="radio" name="executeur" value="api" defaultChecked={valeurs?.exécuteur !== 'cowork'} /> API (lancé depuis le portail)
-        </label>
-        <label className={`flex items-center gap-2 ${coworkPlein ? 'text-ardoise' : 'text-encre'}`}>
-          <input type="radio" name="executeur" value="cowork" defaultChecked={valeurs?.exécuteur === 'cowork'} disabled={coworkPlein} /> Cowork (commande
-          à lancer dans Claude Code), {créneauxCowork.pris} sur {créneauxCowork.max} créneaux pris cette semaine depuis le portail
-        </label>
-        <p className="text-label text-ardoise">
-          Pour Cowork, l’adresse du lecteur final n’est pas gardée : elle se donne dans la commande. La vue Notion « Créneaux Cowork
-          de la semaine » fait foi.
-        </p>
-        {erreur('exécuteur')}
-      </fieldset>
+      {moteur === 'trigger' ? (
+        <div className="flex flex-col gap-2">
+          <input type="hidden" name="executeur" value="api" />
+          <p className="text-label text-ardoise">
+            L’organisation est créée au registre Payload, au statut « prospect », avec le lecteur final en contact. Le moteur fait le
+            référentiel puis la première lettre en un seul run, lancé depuis la liste.
+          </p>
+          {erreur('exécuteur')}
+        </div>
+      ) : (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-corps text-ardoise">Exécuteur</legend>
+          <label className="flex items-center gap-2 text-encre">
+            <input type="radio" name="executeur" value="api" defaultChecked={valeurs?.exécuteur !== 'cowork'} /> API (lancé depuis le portail)
+          </label>
+          <label className={`flex items-center gap-2 ${coworkPlein ? 'text-ardoise' : 'text-encre'}`}>
+            <input type="radio" name="executeur" value="cowork" defaultChecked={valeurs?.exécuteur === 'cowork'} disabled={coworkPlein} /> Cowork (commande
+            à lancer dans Claude Code), {créneauxCowork.pris} sur {créneauxCowork.max} créneaux pris cette semaine depuis le portail
+          </label>
+          <p className="text-label text-ardoise">
+            Pour Cowork, l’adresse du lecteur final n’est pas gardée : elle se donne dans la commande. La vue Notion « Créneaux Cowork
+            de la semaine » fait foi.
+          </p>
+          {erreur('exécuteur')}
+        </fieldset>
+      )}
 
       <div>
         <button type="submit" disabled={enCours} aria-busy={enCours} className="rounded-douce bg-encre px-4 py-3 text-corps font-medium text-blanc disabled:cursor-wait disabled:opacity-60">

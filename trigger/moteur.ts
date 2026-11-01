@@ -22,7 +22,7 @@ export function gelDuDossier(dossier: DossierDeParution): Map<string, Gel> {
 
 export async function produireDepuisLeDossier(
   dossier: DossierDeParution,
-  options: { journal?: (ligne: string) => void; reprisesMax?: number } = {},
+  options: { journal?: (ligne: string) => void; reprisesMax?: number; plafondUsd?: number } = {},
 ): Promise<{ production: Production; sélection: Sélection }> {
   const référentiel = lireRéférentielUnique(dossier.référentiel)
   const sélection: Sélection = dossier.sélection
@@ -35,6 +35,7 @@ export async function produireDepuisLeDossier(
       effort: 'high',
       journal: options.journal,
       ...(options.reprisesMax !== undefined ? { reprisesMax: options.reprisesMax } : {}),
+      ...(options.plafondUsd !== undefined ? { plafondUsd: options.plafondUsd } : {}),
     },
   )
   return { production, sélection }

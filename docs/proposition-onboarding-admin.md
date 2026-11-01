@@ -2,7 +2,7 @@
 
 1er novembre 2026. Proposition **acceptée par l'opératrice le même jour**, avec
 les cinq décisions du §9 (tranchées, voir §10). Elle tient lieu de la discussion
-qu'appelle tout nouvel écran. **Lots 1 à 4 codés le 1er novembre 2026** (§10 à §13,
+qu'appelle tout nouvel écran. **Lots 1 à 5 codés le 1er novembre 2026** (§10 à §14,
 avec leurs écarts à la proposition).
 
 ## 1. Le constat
@@ -442,4 +442,66 @@ arrêtées.
 **À faire par l'opératrice :** rien pour le rapport Cowork, qui part avec les
 commandes du dépôt. L'ouverture depuis le portail attend la bascule
 `SOURCE_ACCES=postgres`.
+
+## 14. Lot 5 (1er novembre 2026) : le moteur Trigger.dev
+
+**Décisions de l'opératrice, le même jour :**
+
+1. Le crochet de l'admin Payload (passage « à onboarder ») **passe par le
+   portail** : un seul point de lancement, avec réservation, budget et suivi.
+2. Le formulaire de demande **crée l'organisation au registre Payload**.
+3. Le moteur reçoit **un plafond de dépense dur**.
+
+**Tel que codé :**
+
+- **Aiguillage** dans `lib/portail/onboarding.ts` seulement :
+  `moteurDesOnboardings()` vaut `trigger` quand `SOURCE_DOCUMENTS=payload`,
+  `github` sinon. Le geste suit (`gesteDisponible`, `moteur`) : avec le moteur,
+  un seul run fait le référentiel puis la première lettre, sans validation
+  humaine entre les deux (programme du 22 octobre 2026), d'où le geste unique
+  « Lancer l'onboarding », « Relancer l'onboarding » sur un blocage, puis
+  « Ouvrir l'espace » comme au lot 4.
+- **Un seul chemin de lancement**, `lancerParLeMoteur`, pour le bouton et pour
+  le crochet (`lancerDepuisLeRegistre`) : clé Trigger.dev, organisation au
+  registre Payload, onboarding (créé s'il manque, pour le crochet), geste,
+  réservation au plafond du moteur, ouverture dans le portail (ce que faisait le
+  crochet : organisation en essai, veille unique, lecteur), puis
+  `déclencherLOnboarding` avec la réservation. Depuis le bouton, l'organisation
+  passe enfin « à onboarder » avec un contexte Payload qui empêche le crochet de
+  relancer (`lib/payload/contexte-onboarding.ts`).
+- **Registre Payload** : `lib/payload/registre-onboarding.ts` (lire par slug,
+  créer, marquer), chargé à la demande seulement : la collection importe
+  l'orchestration, un import statique bouclerait sur la configuration. Le
+  formulaire y crée l'organisation au statut « prospect », lecteur final en
+  contact, puis efface la copie du portail ; Cowork n'y a pas de place.
+- **Plafond dur** (`lib/moteur/produire.ts`, `plafondUsd`) : le coût engagé est
+  vérifié avant la rédaction et avant chaque reprise ; au-delà, aucun appel au
+  modèle ne part, la lettre n'est pas acceptée (`plafondAtteint`) ou le run
+  s'arrête (`PlafondAtteint`). La tâche `onboarding` tient 40 $ en tout :
+  référentiel, puis lettre sous ce qui reste. Le dépassement possible se borne
+  à l'appel en cours quand le plafond est franchi.
+- **Suivi du run** (`trigger/onboarding.ts`, `trigger/portail.ts`) : début
+  annoncé avant toute dépense (budget, reprise de la réservation, refus qui
+  arrête le run), statut 2 rapporté au référentiel remis, motif rapporté au
+  plafond, fin et coût rapportés dans tous les cas.
+- **Migration 0021** : tâche `onboarding`, colonne `run_trigger`.
+
+**Défaut corrigé en passant**, antérieur aux lots : `lib/moteur/declencher.ts`
+envoyait `organisationId` et `prospectId`, alors que les trois tâches lisent
+`organisation` et `prospect`. À la bascule, chaque run serait parti sur une
+organisation indéfinie. Un test tient désormais l'accord des deux côtés.
+
+**Limites, assumées :**
+
+- Le coût rapporté à la fin d'un run interrompu en pleine lettre ne compte que
+  le référentiel : le moteur ne rend son coût qu'à la fin de la production.
+- Un travail `premiere_lettre` pris par un run arrêté au plafond revient dans la
+  file au bout de trois heures, comme tout travail pris sans conclusion.
+- Dès le lancement, l'organisation est en essai dans le portail (ouverture
+  avant le run, que la veille unique exige) : l'étape « Première lettre
+  produite, en essai » est constatée avant que la lettre existe.
+
+**À faire par l'opératrice :** rien avant la bascule `SOURCE_DOCUMENTS=payload`.
+À la bascule : `TRIGGER_SECRET_KEY` dans Vercel, et, côté Trigger.dev,
+`PORTAIL_URL` et `ACTIVATION_SECRET` (déjà requis par les tâches).
 

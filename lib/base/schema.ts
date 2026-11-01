@@ -965,7 +965,8 @@ export type LigneDeFiche = typeof fichesDeVeille.$inferSelect
  * rapporte la ligne du registre, puis effacé. Rien ne l'écrit au lot 1.
  */
 export const exécuteurOnboarding = pgEnum('exécuteur_onboarding', ['api', 'cowork'])
-export const tâcheOnboarding = pgEnum('tâche_onboarding', ['balayage', 'premiere_lettre'])
+/** `onboarding` : le run complet du moteur Trigger.dev (lot 5, `SOURCE_DOCUMENTS=payload`), référentiel puis première lettre. */
+export const tâcheOnboarding = pgEnum('tâche_onboarding', ['balayage', 'premiere_lettre', 'onboarding'])
 export const étatRunOnboarding = pgEnum('état_run_onboarding', ['demande', 'lance', 'en_cours', 'reussi', 'bloque', 'echec', 'refuse'])
 
 export const onboardings = pgTable(
@@ -1015,6 +1016,8 @@ export const onboardingRuns = pgTable(
     tentative: smallint('tentative'),
     /** L'adresse du job, toujours sous https://github.com/. */
     lien: text('lien'),
+    /** L'identifiant du run Trigger.dev (`run_…`), pour un onboarding du moteur (lot 5, migration 0021). */
+    runTrigger: text('run_trigger'),
     /** Le plafond de dépense du run, annoncé au début ; sert au contrôle du budget. */
     plafondUsd: numeric('plafond_usd', { precision: 10, scale: 4, mode: 'number' }),
     /** Lu dans `mesure.json`, jamais recalculé. */
@@ -1036,6 +1039,7 @@ export const onboardingRuns = pgTable(
     uniqueIndex('onboarding_runs_github_unique').on(table.runGithub, table.tentative).where(sql`${table.runGithub} is not null`),
     check('onboarding_runs_lien_forme', sql`${table.lien} is null or ${table.lien} ~ '^https://github[.]com/'`),
     check('onboarding_runs_coût', sql`${table.coûtUsd} is null or ${table.coûtUsd} >= 0`),
+    check('onboarding_runs_trigger_forme', sql`${table.runTrigger} is null or ${table.runTrigger} ~ '^run_[a-z0-9]{6,40}$'`),
   ],
 )
 

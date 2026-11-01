@@ -1,4 +1,8 @@
+import { sourceDocuments } from '@/lib/documents/source'
+import { déclencherLOnboarding, déclencheurConfiguré } from '@/lib/moteur/declencher'
+import { cléDeCloisonnement, ouvrirDansLePortail } from '@/lib/payload/portail'
 import {
+  assurerUnOnboarding,
   conclureUnLancement,
   conclureUnRunDOnboarding,
   demandeÀTransmettre,
@@ -27,6 +31,7 @@ import {
   PLAFONDS_DES_TÂCHES,
   type Geste,
   type GesteDisponible,
+  type Moteur,
   déciderDuBudget,
   dépenseDuMois,
   estBloqué,
@@ -68,6 +73,16 @@ export function budgetDesOnboardings(): number | null {
 export const TÂCHES_SUIVIES: Readonly<Record<string, TâcheDOnboarding>> = {
   balayage: 'balayage',
   'premiere-lettre': 'premiere_lettre',
+  onboarding: 'onboarding',
+}
+
+/**
+ * Le moteur des onboardings (lot 5) : les tâches GitHub tant que Notion porte
+ * les documents, le moteur Trigger.dev après la bascule `SOURCE_DOCUMENTS=payload`.
+ * Lu à chaque appel, comme l'aiguillage des documents dont il dépend.
+ */
+export function moteurDesOnboardings(): Moteur {
+  return sourceDocuments() === 'payload' ? 'trigger' : 'github'
 }
 
 export async function recevoirUnDébut(
@@ -79,6 +94,7 @@ export async function recevoirUnDébut(
     readonly lien: string | null
     readonly plafondUsd: number
     readonly lancement?: string | null
+    readonly runTrigger?: string | null
   },
   maintenant: Date = new Date(),
 ): Promise<OuvertureDeRun & { readonly demande: DemandeÀTransmettre | null }> {
@@ -156,7 +172,7 @@ export function vueDUnOnboarding(onboarding: OnboardingLu, maintenant: Date): Vu
     onboarding,
     étape,
     bloqué,
-    geste: gesteDisponible({ étape: étape.étape, exécuteur: onboarding.exécuteur, bloqué, dernierRun }),
+    geste: gesteDisponible({ étape: étape.étape, exécuteur: onboarding.exécuteur, bloqué, dernierRun, moteur: moteurDesOnboardings() }),
     clos: estClos(étape.étape, onboarding.dernierLienEnvoyéLe, maintenant),
     runs,
     dernierRun,
@@ -198,9 +214,14 @@ export type IssueDuLancement =
   | 'cowork'
   | 'budget-atteint'
   | 'échec-github'
+  /** Lot 5 : l'organisation n'est pas au registre Payload sous ce slug. */
+  | 'hors-registre'
+  /** Lot 5 : Trigger.dev n'a pas accepté le run. */
+  | 'échec-moteur'
 
 /** Vrai si le portail peut déclencher le workflow : l'écran montre sinon la commande à lancer à la main. */
 export function lancementDisponible(): boolean {
+  if (moteurDesOnboardings() === 'trigger') return déclencheurConfiguré()
   return configurationGithub() !== null
 }
 
@@ -217,6 +238,7 @@ export async function lancerDepuisLePortail(
   entrée: { readonly slug: string; readonly geste: Geste; readonly opératrice: string },
   maintenant: Date = new Date(),
 ): Promise<IssueDuLancement> {
+  if (moteurDesOnboardings() === 'trigger') return lancerParLeMoteur({ ...entrée, origine: 'portail' }, maintenant)
   const github = configurationGithub()
   if (!github) return 'indisponible'
   const lu = await onboardingDUnSlug(entrée.slug)
@@ -227,6 +249,8 @@ export async function lancerDepuisLePortail(
   if (vue.geste.geste !== entrée.geste) return 'geste-périmé'
 
   const tâche = vue.geste.tâche
+  // Le run complet du moteur ne se lance pas par GitHub.
+  if (tâche === 'onboarding') return 'geste-périmé'
   const réservation = await réserverUnLancement({
     slug: entrée.slug,
     tâche: TÂCHES_SUIVIES[tâche]!,
@@ -251,6 +275,77 @@ export async function lancerDepuisLePortail(
   }
   await conclureUnLancement({ runId: réservation.runId, sorte: 'lancé', runGithub: déclenchement.runGithub, lien: déclenchement.lien, maintenant })
   return 'lancé'
+}
+
+// ── Le moteur Trigger.dev (lot 5, 1er novembre 2026) ─────────────────────────
+
+/** Le registre Payload, chargé à la demande : la collection `organisations` importe ce module, un import statique bouclerait. */
+const registre = () => import('@/lib/payload/registre-onboarding')
+
+/**
+ * Le lancement par le moteur, commun au bouton de l'opératrice et au crochet
+ * de l'admin Payload, dans l'ordre : la clé Trigger.dev, l'organisation au
+ * registre, l'onboarding (créé s'il manque, pour le crochet), le geste de
+ * l'étape, la réservation (run en cours, budget au plafond du run), l'ouverture
+ * dans le portail (organisation en essai, veille unique, lecteur : ce que le
+ * crochet faisait avant), puis le déclenchement et sa conclusion. Depuis le
+ * bouton seulement, l'organisation passe enfin « à onboarder », sans que le
+ * crochet relance (`CONTEXTE_LANCÉ_PAR_LE_PORTAIL`).
+ */
+async function lancerParLeMoteur(
+  entrée: { readonly slug: string; readonly geste: Geste | 'depuis-le-registre'; readonly opératrice: string; readonly origine: 'portail' | 'registre' },
+  maintenant: Date,
+): Promise<IssueDuLancement> {
+  if (!déclencheurConfiguré()) return 'indisponible'
+  const { organisationDuRegistre, marquerÀOnboarder } = await registre()
+  const organisation = await organisationDuRegistre(entrée.slug)
+  if (!organisation) return 'hors-registre'
+  if (entrée.origine === 'registre') await assurerUnOnboarding({ slug: entrée.slug, nom: organisation.nom, crééPar: entrée.opératrice, maintenant })
+
+  const lu = await onboardingDUnSlug(entrée.slug)
+  if (!lu) return 'inconnu'
+  const vue = vueDUnOnboarding(lu, maintenant)
+  if (vue.geste.sorte === 'ouvrir') return 'geste-périmé'
+  if (vue.geste.sorte !== 'geste') return vue.geste.raison === 'en-cours' ? 'en-cours' : vue.geste.raison === 'cowork' ? 'cowork' : 'geste-périmé'
+  // Le crochet accepte le geste de l'étape, quel qu'il soit ; le bouton, le sien seulement.
+  if (entrée.geste !== 'depuis-le-registre' && vue.geste.geste !== entrée.geste) return 'geste-périmé'
+
+  const réservation = await réserverUnLancement({
+    slug: entrée.slug,
+    tâche: 'onboarding',
+    plafondUsd: PLAFONDS_DES_TÂCHES.onboarding,
+    budgetUsd: budgetDesOnboardings(),
+    débutDuMois: débutDuMoisDeParis(maintenant),
+    opératrice: entrée.opératrice,
+    maintenant,
+  })
+  if (réservation.sorte !== 'réservé') return réservation.sorte
+
+  try {
+    await ouvrirDansLePortail({ id: organisation.id, nom: organisation.nom, slug: organisation.slug, contact: organisation.contact }, { prospection: false })
+    // La ligne du registre est connue : la copie de la demande est effacée (décision 1).
+    await rapporterUnOnboarding({ slug: entrée.slug, statut: null, registre: cléDeCloisonnement(organisation.id), motif: null, nom: null, site: null, maintenant })
+    const déclenchement = await déclencherLOnboarding(organisation.id, { lancement: réservation.runId })
+    if (!déclenchement.déclenché) throw new Error('clé Trigger.dev absente au déclenchement')
+    await conclureUnLancement({ runId: réservation.runId, sorte: 'lancé', runGithub: null, lien: null, runTrigger: déclenchement.run, maintenant })
+  } catch (erreur) {
+    await conclureUnLancement({ runId: réservation.runId, sorte: 'échec', codeHttp: null, maintenant })
+    console.warn(`[onboarding] ${entrée.slug} : onboarding non déclenché (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    return 'échec-moteur'
+  }
+  if (entrée.origine === 'portail' && organisation.etat !== 'a_onboarder') await marquerÀOnboarder(organisation.id)
+  return 'lancé'
+}
+
+/**
+ * Le crochet `afterChange` de la collection `organisations` (passage « à
+ * onboarder » dans l'admin Payload) passe par ici, et non plus directement par
+ * Trigger.dev (décision du 1er novembre 2026) : réservation, budget et suivi
+ * valent pour tous les lancements. Le refus éventuel (budget, run en cours) se
+ * lit sur `/espaces/onboardings`.
+ */
+export async function lancerDepuisLeRegistre(entrée: { readonly slug: string }, maintenant: Date = new Date()): Promise<IssueDuLancement> {
+  return lancerParLeMoteur({ slug: entrée.slug, geste: 'depuis-le-registre', opératrice: 'admin Payload', origine: 'registre' }, maintenant)
 }
 
 /** Les alertes du contrôle du soir sur les onboardings (lot 2), en défauts rangés par slug. */
@@ -286,8 +381,30 @@ export async function enregistrerLaDemande(
 ): Promise<IssueDeLaDemande> {
   const contrôle = contrôlerLaDemande(entrée.champs)
   if (contrôle.sorte === 'invalide') return contrôle
-  const r = await enregistrerUneDemande({ demande: contrôle.demande, opératrice: entrée.opératrice, maintenant })
-  return r.sorte === 'enregistrée' ? { ...r, slug: contrôle.demande.slug } : r
+  const d = contrôle.demande
+  if (moteurDesOnboardings() === 'github') {
+    const r = await enregistrerUneDemande({ demande: d, opératrice: entrée.opératrice, maintenant })
+    return r.sorte === 'enregistrée' ? { ...r, slug: d.slug } : r
+  }
+
+  // Lot 5 : le registre est la collection `organisations` de Payload. Cowork
+  // n'y a pas de place (il écrit dans Notion) ; le slug doit y être libre ;
+  // l'organisation y est créée au statut « prospect », avec le lecteur final en
+  // contact, puis la copie du portail est effacée (décision 1).
+  if (d.exécuteur === 'cowork') return { sorte: 'invalide', champs: ['exécuteur'] }
+  const { organisationDuRegistre, créerDansLeRegistre } = await registre()
+  if (await organisationDuRegistre(d.slug)) return { sorte: 'doublon', par: 'slug', slug: d.slug, où: 'organisation' }
+  const r = await enregistrerUneDemande({ demande: d, opératrice: entrée.opératrice, maintenant })
+  if (r.sorte !== 'enregistrée') return r
+  const créée = await créerDansLeRegistre({
+    nom: d.nom,
+    slug: d.slug,
+    site: d.site,
+    contact: { nom: d.intake.lecteurFinal, email: d.intake.emailDuLecteurFinal },
+  })
+  if (créée.sorte === 'slug-pris') return { sorte: 'doublon', par: 'slug', slug: d.slug, où: 'organisation' }
+  await rapporterUnOnboarding({ slug: d.slug, statut: 1, registre: cléDeCloisonnement(créée.id), motif: null, nom: null, site: null, maintenant })
+  return { ...r, slug: d.slug }
 }
 
 /** Pour le passage quotidien : l'intake de plus de trente jours est effacé. */

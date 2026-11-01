@@ -27,7 +27,7 @@ import {
  * dernier lien d'accès parti.
  */
 
-export type TâcheDOnboarding = 'balayage' | 'premiere_lettre'
+export type TâcheDOnboarding = 'balayage' | 'premiere_lettre' | 'onboarding'
 
 export type OuvertureDeRun = {
   /** `refusé` : le budget du mois ne permet pas ce run, qui est consigné sans être lancé. */
@@ -51,6 +51,8 @@ export async function ouvrirUnRunDOnboarding(
     readonly runGithub: number | null
     readonly tentative: number | null
     readonly lien: string | null
+    /** Le run Trigger.dev, pour le moteur (lot 5). */
+    readonly runTrigger?: string | null
     readonly plafondUsd: number
     readonly budgetUsd: number | null
     readonly débutDuMois: Date
@@ -103,6 +105,7 @@ export async function ouvrirUnRunDOnboarding(
             runGithub: entrée.runGithub,
             tentative: entrée.tentative,
             lien: entrée.lien,
+            ...(entrée.runTrigger ? { runTrigger: entrée.runTrigger } : {}),
             plafondUsd: entrée.plafondUsd,
             début: entrée.maintenant,
             ...(refusé ? { fin: entrée.maintenant, coûtUsd: 0 } : {}),
@@ -132,6 +135,7 @@ export async function ouvrirUnRunDOnboarding(
           runGithub: entrée.runGithub,
           tentative: entrée.tentative,
           lien: entrée.lien,
+          runTrigger: entrée.runTrigger ?? null,
           plafondUsd: entrée.plafondUsd,
           début: entrée.maintenant,
           ...(refusé ? { fin: entrée.maintenant, coûtUsd: 0 } : {}),
@@ -250,6 +254,25 @@ export async function rapporterUnOnboarding(
   )
 }
 
+/**
+ * L'onboarding d'un slug, créé s'il manque (lot 5) : quand l'opératrice passe
+ * une organisation « à onboarder » dans l'admin Payload sans avoir rempli le
+ * formulaire du portail, le lancement a besoin d'une ligne à réserver.
+ */
+export async function assurerUnOnboarding(
+  entrée: { readonly slug: string; readonly nom: string | null; readonly crééPar: string; readonly maintenant: Date },
+  db: Base = base(),
+): Promise<'créé' | 'existant'> {
+  return protéger('création d’un onboarding manquant', async () => {
+    const créés = await db
+      .insert(onboardings)
+      .values({ slug: entrée.slug, nom: entrée.nom, crééPar: entrée.crééPar, crééLe: entrée.maintenant, misÀJourLe: entrée.maintenant })
+      .onConflictDoNothing({ target: onboardings.slug })
+      .returning({ id: onboardings.id })
+    return créés.length > 0 ? 'créé' : 'existant'
+  })
+}
+
 // ── Lancement depuis le portail (lot 2, 1er novembre 2026) ───────────────────
 
 export type RéservationDeLancement =
@@ -313,14 +336,14 @@ export async function réserverUnLancement(
  */
 export async function conclureUnLancement(
   entrée:
-    | { readonly runId: string; readonly sorte: 'lancé'; readonly runGithub: number | null; readonly lien: string | null; readonly maintenant: Date }
+    | { readonly runId: string; readonly sorte: 'lancé'; readonly runGithub: number | null; readonly lien: string | null; readonly runTrigger?: string | null; readonly maintenant: Date }
     | { readonly runId: string; readonly sorte: 'échec'; readonly codeHttp: number | null; readonly maintenant: Date },
   db: Base = base(),
 ): Promise<void> {
   await protéger('conclusion d’un lancement d’onboarding', async () => {
     const où = and(eq(onboardingRuns.id, entrée.runId), eq(onboardingRuns.état, 'demande'))
     if (entrée.sorte === 'lancé') {
-      await db.update(onboardingRuns).set({ état: 'lance', runGithub: entrée.runGithub, lien: entrée.lien }).where(où)
+      await db.update(onboardingRuns).set({ état: 'lance', runGithub: entrée.runGithub, lien: entrée.lien, runTrigger: entrée.runTrigger ?? null }).where(où)
     } else {
       await db.update(onboardingRuns).set({ état: 'echec', codeHttp: entrée.codeHttp, fin: entrée.maintenant, coûtUsd: 0 }).where(où)
     }
@@ -453,6 +476,7 @@ export type RunLu = {
   readonly état: ÉtatDeRun
   readonly runGithub: number | null
   readonly lien: string | null
+  readonly runTrigger: string | null
   readonly plafondUsd: number | null
   readonly coûtUsd: number | null
   readonly début: Date | null
@@ -492,6 +516,7 @@ const versLeRunLu = (r: typeof onboardingRuns.$inferSelect): RunLu => ({
   tâche: r.tâche,
   état: r.état,
   runGithub: r.runGithub,
+  runTrigger: r.runTrigger,
   lien: r.lien,
   plafondUsd: r.plafondUsd,
   coûtUsd: r.coûtUsd,

@@ -47,7 +47,8 @@ function durée(ms: number | null): string {
 }
 
 export function libelléDuRun(run: RunVuÀLÉcran): string {
-  return `${run.tâche === 'premiere_lettre' ? 'premiere-lettre' : 'balayage'}, ${LIBELLÉS_DES_RUNS[run.montré]}`
+  const tâche = run.tâche === 'premiere_lettre' ? 'premiere-lettre' : run.tâche === 'onboarding' ? 'onboarding (moteur)' : 'balayage'
+  return `${tâche}, ${LIBELLÉS_DES_RUNS[run.montré]}`
 }
 
 /** « 3 sur 6 · Référentiels validés », la ligne courte de la liste. */
@@ -123,6 +124,10 @@ export function RunsDOnboarding({ runs }: { runs: readonly RunVuÀLÉcran[] }) {
                   <a href={run.lien} target="_blank" rel="noreferrer" className="text-label text-encre underline underline-offset-2">
                     ouvrir
                   </a>
+                ) : run.runTrigger ? (
+                  <span className="label-mono text-ardoise select-all" title="Run Trigger.dev">
+                    {run.runTrigger}
+                  </span>
                 ) : (
                   <span className="text-ardoise">hors GitHub</span>
                 )}
@@ -168,14 +173,16 @@ export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | IssueDeLO
   'sans-lecteur': 'Aucun lecteur actif : inscrire le lecteur final dans la section Lecteurs de la fiche, le lien part à l’inscription.',
   débit: 'Lien refusé par la limitation de débit : réessayer dans dix minutes.',
   'lien-non-envoyé': 'Le lien n’est parti à aucun lecteur : voir le journal des courriers de la fiche.',
-  lancé: 'Run déclenché dans GitHub Actions. Il apparaît « en cours » dès que le harnais démarre, en général sous deux minutes.',
-  indisponible: 'Déclenchement indisponible : GITHUB_JETON_ACTIONS n’est pas posée. Lancer le run à la main dans GitHub Actions.',
+  lancé: 'Run déclenché. Il apparaît « en cours » dès que la tâche démarre, en général sous deux minutes.',
+  indisponible: 'Déclenchement indisponible : GITHUB_JETON_ACTIONS (tâches GitHub) ou TRIGGER_SECRET_KEY (moteur, après la bascule Payload) n’est pas posée.',
   inconnu: 'Onboarding inconnu.',
   'geste-périmé': 'L’étape a changé depuis l’affichage de la page : rien n’a été lancé. Relire l’étape avant de recommencer.',
   'en-cours': 'Un run est déjà en cours pour cet onboarding : rien n’a été lancé.',
   cowork: 'Onboarding confié à Cowork : il se lance par les commandes /onboarding-* dans Claude Code, pas depuis le portail.',
   'budget-atteint': 'Budget du mois atteint (ONBOARDING_BUDGET_MENSUEL_USD) : le plafond de ce run ne tient pas dans ce qui reste. Rien n’a été lancé.',
-  enregistree: 'Demande enregistrée. Rien n’est parti : lancer les référentiels quand la demande est prête.',
+  enregistree: 'Demande enregistrée. Rien n’est parti : le lancement se fait d’ici, quand la demande est prête.',
+  'hors-registre': 'L’organisation n’est pas au registre Payload sous ce slug : la créer dans /admin (ou par le formulaire de demande), puis relancer.',
+  'échec-moteur': 'Trigger.dev n’a pas accepté le run : rien n’a tourné. Vérifier TRIGGER_SECRET_KEY et le projet Trigger.dev, puis recommencer.',
   'échec-github': 'GitHub a refusé le déclenchement ou n’a pas répondu : rien n’a tourné. Vérifier le jeton (permission « Actions ») et la branche, puis recommencer.',
   échec: 'La base n’a pas répondu : rien n’a été lancé.',
 }
@@ -259,6 +266,13 @@ export function GesteDOnboarding({
     }
     const texte = textes[g.raison]
     return texte ? <p className="text-ardoise">{texte}</p> : null
+  }
+  if (!disponible && g.tâche === 'onboarding') {
+    return (
+      <p className="text-ardoise">
+        Déclenchement indisponible (TRIGGER_SECRET_KEY absente) : le moteur Trigger.dev ne peut pas être appelé depuis le portail.
+      </p>
+    )
   }
   if (!disponible) {
     return (

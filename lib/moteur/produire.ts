@@ -29,6 +29,8 @@ export type Production = {
     readonly coût: number
     readonly duréeMs: number
     readonly modèle: string
+    /** Vrai si le plafond de dépense a arrêté les reprises (lot 5 de l'onboarding) : la lettre n'est pas acceptée. */
+    readonly plafondAtteint: boolean
   }
   readonly collecte: {
     readonly lectures: ReadonlyArray<Pick<Lecture, 'url' | 'état' | 'changée'> & { nouveautés: number }>
@@ -52,9 +54,25 @@ export type Dépendances = {
   readonly reprisesMax?: number
   readonly tarif?: Tarif
   readonly journal?: (ligne: string) => void
+  /**
+   * Le plafond de dépense, en dollars (lot 5 de
+   * `docs/proposition-onboarding-admin.md`, 1er novembre 2026). Vérifié avant la
+   * rédaction et avant chaque reprise, sur le coût déjà engagé : au-delà, aucun
+   * appel au modèle ne part. Le dépassement possible se borne donc à l'appel en
+   * cours au moment où le plafond est franchi. Absent : aucune borne.
+   */
+  readonly plafondUsd?: number
 }
 
 export const REPRISES_MAX = 2
+
+/** Le plafond franchi avant la rédaction : rien n'est rédigé, la tâche le rapporte et s'arrête. */
+export class PlafondAtteint extends Error {
+  constructor(readonly coûtUsd: number, readonly plafondUsd: number) {
+    super(`plafond de dépense atteint : ${coûtUsd.toFixed(2)} $ engagés pour un plafond de ${plafondUsd.toFixed(2)} $`)
+    this.name = 'PlafondAtteint'
+  }
+}
 
 export async function produireLaLettre(
   entrée: { référentiel: RéférentielUnique; sélection: Sélection },
@@ -90,12 +108,21 @@ export async function produireLaLettre(
   // 3. Rédaction, 4. portes, reprises.
   const rédacteur = dépendances.rédacteur ?? rédacteurAnthropic(dépendances.anthropic, { modèle: dépendances.modèle, effort: dépendances.effort })
   const dossier = { lectures, résultats: recherche.résultats }
+  const coûtEngagé = () => coûtDe(rédacteur.modèle, usageTotal(rédacteur.usage, recherche), recherche.recherches, dépendances.tarif)
+  const plafond = dépendances.plafondUsd
+  if (plafond !== undefined && coûtEngagé() >= plafond) throw new PlafondAtteint(coûtEngagé(), plafond)
   let sortie = await rédacteur.rédiger(référentiel, sélection, dossier)
   let lettre = assemblerLaLettre(sortie, référentiel, sélection)
   let contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises })
   let reprises = 0
+  let plafondAtteint = false
   const reprisesMax = dépendances.reprisesMax ?? REPRISES_MAX
   while (!contrôle.franchies && reprises < reprisesMax) {
+    if (plafond !== undefined && coûtEngagé() >= plafond) {
+      plafondAtteint = true
+      journal(`plafond de ${plafond.toFixed(2)} $ atteint (${coûtEngagé().toFixed(2)} $) : aucune reprise de plus`)
+      break
+    }
     reprises += 1
     journal(`reprise ${reprises} : ${contrôle.manquements.map((m) => m.code).join(', ')}`)
     sortie = await rédacteur.reprendre(contrôle.messageDeReprise ?? '')
@@ -103,14 +130,7 @@ export async function produireLaLettre(
     contrôle = contrôlerLaProduction({ lettre, sortie, sélection, urlsAdmises })
   }
 
-  const usage: Usage = { ...rédacteur.usage }
-  for (const u of Array.isArray(recherche.usage) ? recherche.usage : [recherche.usage]) {
-    const r = (u ?? {}) as { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null }
-    usage.entrée += r.input_tokens ?? 0
-    usage.sortie += r.output_tokens ?? 0
-    usage.cacheLecture += r.cache_read_input_tokens ?? 0
-    usage.cacheÉcriture += r.cache_creation_input_tokens ?? 0
-  }
+  const usage = usageTotal(rédacteur.usage, recherche)
   const gelSuivant = new Map<string, Gel>(dépendances.gel ?? [])
   for (const l of lectures) if (l.état.startsWith('ouverte')) gelSuivant.set(l.url, gelDe(l))
 
@@ -128,6 +148,7 @@ export async function produireLaLettre(
       coût: coûtDe(rédacteur.modèle, usage, recherche.recherches, dépendances.tarif),
       duréeMs: Date.now() - début,
       modèle: rédacteur.modèle,
+      plafondAtteint,
     },
     collecte: {
       lectures: lectures.map((l) => ({ url: l.url, état: l.état, changée: l.changée, nouveautés: l.nouveautés.length })),
@@ -136,3 +157,17 @@ export async function produireLaLettre(
     },
   }
 }
+
+/** L'usage du rédacteur et de la recherche réunis : celui que le coût mesure, à la fin comme en cours de route. */
+function usageTotal(rédaction: Usage, recherche: Recherche): Usage {
+  const usage: Usage = { ...rédaction }
+  for (const u of Array.isArray(recherche.usage) ? recherche.usage : [recherche.usage]) {
+    const r = (u ?? {}) as { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null }
+    usage.entrée += r.input_tokens ?? 0
+    usage.sortie += r.output_tokens ?? 0
+    usage.cacheLecture += r.cache_read_input_tokens ?? 0
+    usage.cacheÉcriture += r.cache_creation_input_tokens ?? 0
+  }
+  return usage
+}
+

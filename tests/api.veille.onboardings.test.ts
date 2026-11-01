@@ -62,7 +62,7 @@ describe('POST /api/veille/onboardings', () => {
     const ouvert = await poster({ evenement: 'debut', slug: 'mastora', tache: 'premiere-lettre', plafondUsd: 40, run: { id: 12, tentative: 1, lien: 'https://github.com/a/b/actions/runs/12' } })
     expect(ouvert.status).toBe(201)
     expect(await ouvert.json()).toMatchObject({ état: 'ouvert', run: RUN })
-    expect(portail.recevoirUnDébut).toHaveBeenCalledWith({ slug: 'mastora', tâche: 'premiere_lettre', runGithub: 12, tentative: 1, lien: 'https://github.com/a/b/actions/runs/12', plafondUsd: 40, lancement: null })
+    expect(portail.recevoirUnDébut).toHaveBeenCalledWith({ slug: 'mastora', tâche: 'premiere_lettre', runGithub: 12, tentative: 1, lien: 'https://github.com/a/b/actions/runs/12', plafondUsd: 40, lancement: null, runTrigger: null })
     portail.recevoirUnDébut.mockResolvedValueOnce({ sorte: 'ouvert', runId: RUN, onboardingId: 'o', budget: { sorte: 'sans-budget', dépenséUsd: 0 } })
     await poster({ evenement: 'debut', slug: 'mastora', tache: 'balayage', plafondUsd: 30, lancement: RUN })
     expect(portail.recevoirUnDébut).toHaveBeenLastCalledWith(expect.objectContaining({ lancement: RUN }))

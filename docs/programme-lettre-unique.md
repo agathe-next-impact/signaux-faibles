@@ -344,7 +344,14 @@ figurent jamais : ils n'ont ni compte Payload ni mot de passe.
   portail (`ouvrirEnEssai`, clé de cloisonnement = identifiant Payload sans
   tirets), déclare sa veille `unique` (lundi 6 h, hebdomadaire, numéro courant
   zéro : c'est elle que la file planifie) et crée le lecteur du contact quand
-  Postgres fait foi ; puis la tâche Trigger.dev part. La première visite d'une organisation entrée par
+  Postgres fait foi ; puis la tâche Trigger.dev part. **Depuis le 1er novembre
+  2026** (lot 5 de `docs/proposition-onboarding-admin.md`), le passage « à
+  onboarder » ne déclenche plus Trigger.dev directement : le crochet appelle
+  `lancerDepuisLeRegistre` (`lib/portail/onboarding.ts`), qui réserve le run,
+  tient le budget du mois, fait l'ouverture ci-dessus, puis déclenche ; le même
+  chemin sert le bouton de `/espaces/onboardings`. Les charges des trois tâches
+  portent `organisation` et `prospect`, les clés que les tâches lisent
+  (`organisationId` et `prospectId` jusque-là, que rien ne lisait). La première visite d'une organisation entrée par
   prospection déclenche l'édition de découverte quand `SOURCE_DOCUMENTS=payload`
   (`lib/portail/prospection.ts`).
 - **Trigger.dev** : `trigger.config.ts` (extension Playwright), `trigger/portail.ts`
