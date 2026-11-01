@@ -276,5 +276,36 @@ describe('le suivi des onboardings en base', () => {
       expect(lignes.find((l) => l.slug === 'recent')!.intake).not.toBeNull()
     })
   })
+
+  describe('le rapport des commandes Cowork (lot 4)', () => {
+    const rapport = (plus: Partial<Parameters<typeof rapporterUnOnboarding>[0]> = {}) =>
+      rapporterUnOnboarding({ slug: 'suneido', statut: 2, registre: REGISTRE, motif: null, nom: 'Suneido', site: 'https://suneido.example/', maintenant: MAINTENANT, exécuteur: 'cowork', ...plus }, db)
+
+    it('crée l’onboarding Cowork qui manque ; sans « cowork », le rapport reste refusé', async () => {
+      expect(await rapport({ exécuteur: null })).toBe('inconnu')
+      expect(await rapport()).toBe('créé')
+      const [ligne] = await db.select().from(onboardings)
+      expect(ligne).toMatchObject({ slug: 'suneido', exécuteur: 'cowork', crééPar: 'cowork', statutRapporté: 2, registreNotion: REGISTRE, nom: 'Suneido' })
+      expect(await rapport({ statut: 4 })).toBe('rapporté')
+      expect(await db.select().from(onboardings)).toHaveLength(1)
+    })
+
+    it('rattache la demande Cowork du formulaire de même nom, et prend le slug du registre', async () => {
+      await enregistrerUneDemande(
+        { demande: { slug: 'suneido-sas', nom: 'Suneido SAS', site: 'https://suneido.example/', exécuteur: 'cowork', intake: { objectifs: null, lecteurFinal: null, emailDuLecteurFinal: null } }, opératrice: 'Agathe', maintenant: MAINTENANT },
+        db,
+      )
+      expect(await rapport({ nom: 'SUNEIDO sas' })).toBe('rattaché')
+      const lignes = await db.select().from(onboardings)
+      expect(lignes).toHaveLength(1)
+      expect(lignes[0]).toMatchObject({ slug: 'suneido', crééPar: 'Agathe', registreNotion: REGISTRE, intake: null })
+    })
+
+    it('un onboarding de l’API garde son exécuteur quand une commande Cowork rapporte dessus', async () => {
+      await ouvrir(db, { slug: 'suneido' })
+      expect(await rapport({ statut: 6 })).toBe('rapporté')
+      expect((await db.select().from(onboardings))[0]).toMatchObject({ exécuteur: 'api', statutRapporté: 6 })
+    })
+  })
 })
 

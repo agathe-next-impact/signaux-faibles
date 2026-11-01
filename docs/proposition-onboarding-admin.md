@@ -2,8 +2,8 @@
 
 1er novembre 2026. Proposition **acceptée par l'opératrice le même jour**, avec
 les cinq décisions du §9 (tranchées, voir §10). Elle tient lieu de la discussion
-qu'appelle tout nouvel écran. **Lots 1, 2 et 3 codés le 1er novembre 2026** (§10 à
-§12, avec leurs écarts à la proposition).
+qu'appelle tout nouvel écran. **Lots 1 à 4 codés le 1er novembre 2026** (§10 à §13,
+avec leurs écarts à la proposition).
 
 ## 1. Le constat
 
@@ -396,4 +396,50 @@ avec le build de production.
 
 **À faire par l'opératrice :** rien. Aucune migration nouvelle : la colonne
 `intake` existe depuis la migration 0019.
+
+## 13. Lot 4 (1er novembre 2026)
+
+**Ouvrir l'espace depuis le portail.** À l'étape « Première lettre publiée »
+(J0 posé, donc au moins une édition `Envoyé`), le geste est « Ouvrir l'espace »,
+quel que soit l'exécuteur : c'est le portail qui envoie le lien.
+`ouvrirLEspaceDepuisLOnboarding` (`lib/portail/gestion-actions.ts`, à côté des
+gestes de la fiche dont il reprend l'envoi) vérifie dans l'ordre : le privilège,
+Postgres qui fait foi pour les accès (`SOURCE_ACCES=postgres`), l'étape, la clé de
+cloisonnement de l'organisation (`registre_notion`), au moins un lecteur actif ;
+puis le lien part à chaque lecteur actif par le chemin de l'activation (relecture
+par la façade, limitation de débit, journal des courriers, déclencheur
+`onboarding`). L'étape « Espace ouvert » se constate ensuite d'elle-même.
+Sans lecteur actif, l'écran renvoie à la section « Lecteurs » de la fiche, où
+l'inscription envoie le lien. Tant que Notion fait foi, l'écran renvoie à
+`/onboarding-ouvrir-espace` : le portail ne coche pas « Actif » dans Notion.
+
+**Rapport des commandes Cowork.** `POST /api/veille/onboardings`, `rapport`,
+accepte `"executeur": "cowork"` : l'onboarding est créé s'il manque (201), ou
+rattaché à la demande Cowork du formulaire de même nom, encore sans ligne du
+registre (la commande ne connaît que le slug du registre, posé au §3 : le
+portail le prend). Un onboarding qui existe garde son exécuteur. Les commandes
+`/onboarding-referentiels` (statut 2), `/onboarding-premiere-lettre` (statut 4),
+`/onboarding-activation` et `/onboarding-ouvrir-espace` (statut 6) rapportent en
+fin de run par `curl`, déjà autorisé vers `/api/veille/`, sans que l'échec du
+rapport arrête quoi que ce soit, et jamais quand la garde d'exécuteur les a
+arrêtées.
+
+**Écarts :**
+
+- **En mode `notion` ou `double`, le portail ne lance pas `balayage` pour
+  ouvrir l'espace**, contrairement à ce que prévoyait le §5 : le §1.3 du
+  balayage dépend de cases du registre (« ▶ Activer », « Invitation
+  manuelle ») que le portail ne lit pas, et le déclencher à l'aveugle aurait pu
+  ouvrir ou ne pas ouvrir selon un état invisible. L'écran donne la commande.
+- **Le lien part à tous les lecteurs actifs**, et pas au seul lecteur final :
+  à cette étape aucun lien n'est encore parti pour l'organisation (sinon l'étape
+  serait « Espace ouvert »), et l'adresse du lecteur final n'est plus gardée par
+  le portail (décision 1).
+- **Les commandes Cowork ne rapportent pas de run** (ni début, ni fin, ni
+  coût) : elles tournent sur l'abonnement, sans coût d'API à suivre ni budget à
+  tenir.
+
+**À faire par l'opératrice :** rien pour le rapport Cowork, qui part avec les
+commandes du dépôt. L'ouverture depuis le portail attend la bascule
+`SOURCE_ACCES=postgres`.
 

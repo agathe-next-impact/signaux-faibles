@@ -28,6 +28,10 @@ import { lireUnOnboarding, recevoirUnDébut, recevoirUneFin, recevoirUnRapport, 
  *   { "evenement": "rapport", "slug", "statut": 1..6?, "registre": "<32 hex>"?,
  *     "motif": "…" (300 caractères)?, "nom"?, "site"? }
  *     → 404 si aucun run n'a encore ouvert l'onboarding de ce slug.
+ *     Avec `"executeur": "cowork"` (lot 4, commandes `/onboarding-*`) : l'onboarding
+ *     est créé s'il manque (201 « créé »), ou rattaché à la demande Cowork du
+ *     formulaire de même nom (200 « rattaché ») ; un onboarding existant garde
+ *     son exécuteur.
  *
  *   GET /api/veille/onboardings?slug=<slug>
  *
@@ -77,6 +81,8 @@ const rapport = z
     motif: z.string().trim().min(1).max(300).nullish(),
     nom: z.string().trim().min(1).max(200).nullish(),
     site: z.url().max(500).nullish(),
+    /** `cowork` : rapport d'une commande `/onboarding-*` (lot 4), qui crée ou rattache l'onboarding s'il manque. */
+    executeur: z.literal('cowork').nullish(),
   })
   .refine((r) => r.statut != null || r.registre != null || r.motif != null || r.nom != null || r.site != null, { message: 'rapport vide' })
 
@@ -124,9 +130,10 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
           motif: d.motif ?? null,
           nom: d.nom ?? null,
           site: d.site ?? null,
+          exécuteur: d.executeur ?? null,
         })
         console.info(`[veille/onboardings] ${d.slug} : rapport${d.statut ? `, statut ${d.statut}` : ''}${d.motif ? ', bloqué' : ''}, ${r}.`)
-        return NextResponse.json({ état: r }, { status: r === 'inconnu' ? 404 : 200 })
+        return NextResponse.json({ état: r }, { status: r === 'inconnu' ? 404 : r === 'créé' ? 201 : 200 })
       }
     }
   } catch (erreur) {

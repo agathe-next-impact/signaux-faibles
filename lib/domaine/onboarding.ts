@@ -237,6 +237,8 @@ export type TâcheDuWorkflow = 'balayage' | 'premiere-lettre'
 
 export type GesteDisponible =
   | { readonly sorte: 'geste'; readonly geste: Geste; readonly tâche: TâcheDuWorkflow; readonly libellé: string }
+  /** Lot 4 : la première lettre est publiée, l'espace s'ouvre en envoyant le lien d'accès. Ni tâche ni GitHub. */
+  | { readonly sorte: 'ouvrir'; readonly libellé: string }
   | { readonly sorte: 'aucun'; readonly raison: 'en-cours' | 'cowork' | 'validation-notion' | 'attente' | 'terminé' }
 
 const versLeWorkflow = (tâche: 'balayage' | 'premiere_lettre'): TâcheDuWorkflow => (tâche === 'premiere_lettre' ? 'premiere-lettre' : 'balayage')
@@ -258,6 +260,8 @@ export function gesteDisponible(entrée: {
 }): GesteDisponible {
   const enCours = entrée.dernierRun && ['demande', 'lance', 'en_cours'].includes(entrée.dernierRun.montré)
   if (enCours) return { sorte: 'aucun', raison: 'en-cours' }
+  // L'ouverture ne dépend pas de l'exécuteur : c'est le portail qui envoie le lien.
+  if (entrée.étape === 'premiere_lettre_publiee') return { sorte: 'ouvrir', libellé: 'Ouvrir l’espace' }
   if (entrée.exécuteur === 'cowork') return { sorte: 'aucun', raison: 'cowork' }
   if (entrée.bloqué && entrée.dernierRun && rang(entrée.étape) < rang('premiere_lettre_publiee')) {
     const tâche = versLeWorkflow(entrée.dernierRun.tâche)

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Logo } from '@/components/marque'
+import { lecteursModifiables } from '@/lib/portail/situation'
 import { Panneau } from '@/components/coquille'
 import { Repliable } from '@/components/repliable'
 import { FriseDOnboarding, GesteDOnboarding, libelléDuRun, MessageDeLancement, MétaDOnboarding, MotifDeBlocage, résuméDeLÉtape } from '@/components/onboarding-operatrice'
@@ -149,7 +150,7 @@ function Onboarding({ vue, disponible, message }: { vue: VueDOnboarding; disponi
       <MessageDeLancement code={message} />
       <MotifDeBlocage vue={vue} />
       <FriseDOnboarding vue={vue} />
-      <GesteDOnboarding vue={vue} retour="liste" disponible={disponible} />
+      <GesteDOnboarding vue={vue} retour="liste" disponible={disponible} ouverture={lecteursModifiables()} />
       <MétaDOnboarding vue={vue} />
       {o.organisation ? null : (
         <p className="text-ardoise">L’organisation n’est pas encore dans le portail : elle y entre à l’étape B, à la première lettre.</p>

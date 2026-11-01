@@ -104,10 +104,17 @@ export function recevoirUnRapport(
     readonly motif: string | null
     readonly nom: string | null
     readonly site: string | null
+    readonly exécuteur?: 'cowork' | null
   },
   maintenant: Date = new Date(),
 ) {
   return rapporterUnOnboarding({ ...entrée, maintenant })
+}
+
+/** La vue d'un onboarding, pour le geste d'ouverture de l'espace (lot 4) ; `null` sans onboarding suivi. */
+export async function vueDeLOnboarding(slug: string, maintenant: Date = new Date()): Promise<VueDOnboarding | null> {
+  const lu = await onboardingDUnSlug(slug)
+  return lu ? vueDUnOnboarding(lu, maintenant) : null
 }
 
 /** Pour `GET /api/veille/onboardings` : la tâche ou l'opératrice relisent ce que le portail a reçu. */
@@ -215,6 +222,7 @@ export async function lancerDepuisLePortail(
   const lu = await onboardingDUnSlug(entrée.slug)
   if (!lu) return 'inconnu'
   const vue = vueDUnOnboarding(lu, maintenant)
+  if (vue.geste.sorte === 'ouvrir') return 'geste-périmé'
   if (vue.geste.sorte !== 'geste') return vue.geste.raison === 'en-cours' ? 'en-cours' : vue.geste.raison === 'cowork' ? 'cowork' : 'geste-périmé'
   if (vue.geste.geste !== entrée.geste) return 'geste-périmé'
 

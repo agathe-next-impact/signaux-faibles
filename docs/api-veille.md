@@ -1217,7 +1217,10 @@ reste. 404 si le run n'est pas celui de ce slug.
   "registre": "aaaabbbbccccddddeeeeffff00005555", "motif": "…", "nom": "…", "site": "https://…" }
 ```
 
-Un champ au moins. `statut` de 1 à 6 (statut du registre), `registre` avec ou
+Un champ au moins. `"executeur": "cowork"` (lot 4) : rapport d'une commande
+`/onboarding-*`, qui crée l'onboarding s'il manque (201 `créé`) ou le rattache à
+la demande Cowork du formulaire de même nom (200 `rattaché`) ; un onboarding
+existant garde son exécuteur. `statut` de 1 à 6 (statut du registre), `registre` avec ou
 sans tirets, `motif` de 300 caractères au plus : il marque bloqué le run en cours ;
 un statut sans motif lève le blocage. 404 tant qu'aucun run n'a ouvert
 l'onboarding.

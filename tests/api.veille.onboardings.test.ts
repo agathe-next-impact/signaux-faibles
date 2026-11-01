@@ -83,6 +83,14 @@ describe('POST /api/veille/onboardings', () => {
     expect(portail.recevoirUnRapport).toHaveBeenCalledWith(expect.objectContaining({ statut: 2, registre: 'aaaabbbbccccddddeeeeffff00005555', motif: null }))
   })
 
+  it('un rapport Cowork passe l’exécuteur, et répond 201 quand il crée l’onboarding (lot 4)', async () => {
+    portail.recevoirUnRapport.mockResolvedValueOnce('créé')
+    const r = await poster({ evenement: 'rapport', executeur: 'cowork', slug: 'suneido', nom: 'Suneido', statut: 2 })
+    expect(r.status).toBe(201)
+    expect(portail.recevoirUnRapport).toHaveBeenLastCalledWith(expect.objectContaining({ slug: 'suneido', exécuteur: 'cowork', statut: 2 }))
+    expect((await poster({ evenement: 'rapport', executeur: 'api', slug: 'suneido', statut: 2 })).status).toBe(400)
+  })
+
   it('une panne de base répond 502 sans détail', async () => {
     portail.recevoirUnDébut.mockRejectedValueOnce(new Error('SQLSTATE 42P01 onboardings'))
     const r = await poster({ evenement: 'debut', slug: 'mastora', tache: 'balayage', plafondUsd: 30 })

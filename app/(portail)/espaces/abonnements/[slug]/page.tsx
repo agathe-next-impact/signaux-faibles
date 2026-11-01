@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from 'react'
 import { lireLaGestionDUneOrganisation, lireLaSantéDesEspaces } from '@/lib/auth/appartenance'
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
+import { lecteursModifiables } from '@/lib/portail/situation'
 import { Panneau } from '@/components/coquille'
 import { FriseDOnboarding, GesteDOnboarding, MESSAGES_DE_LANCEMENT, MétaDOnboarding, MotifDeBlocage, RunsDOnboarding } from '@/components/onboarding-operatrice'
 import type { LigneDAbonnement } from '@/lib/base/situation'
@@ -198,7 +199,7 @@ function SuiviDOnboarding({ onboarding, disponible }: { onboarding: VueDOnboardi
     <>
       <MotifDeBlocage vue={onboarding} />
       <FriseDOnboarding vue={onboarding} />
-      <GesteDOnboarding vue={onboarding} retour="fiche" disponible={disponible} />
+      <GesteDOnboarding vue={onboarding} retour="fiche" disponible={disponible} ouverture={lecteursModifiables()} />
       <MétaDOnboarding vue={onboarding} />
       <RunsDOnboarding runs={onboarding.runs} />
     </>

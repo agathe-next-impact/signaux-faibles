@@ -106,13 +106,31 @@ Organisation visée : $ARGUMENTS
    stratégiques » est cochée sur la ligne du registre, le référentiel
    concurrentiel porte la section « Grille stratégique » (après le §2, pour les
    deux veilles) et ses deux points de validation entrent dans le plafond de dix,
-   après le scoring. Rien n'est posté au portail à cette étape : l'organisation
-   n'y existe qu'à la première lettre.
+   après le scoring. Rien n'est posté au portail à cette étape, hors du rapport
+   de suivi du point 5 : l'organisation n'y existe qu'à la première lettre.
 
-5. **Consomme la case.** En fin de run, réussi ou non, décoche « ▶ Générer les
+5. **Rapporte au portail** (1er novembre 2026, lot 4 de
+   `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans
+   que son échec arrête quoi que ce soit** : il ne sert qu'au suivi de
+   l'opératrice sur `/espaces/onboardings`. Aucun en-tête `Authorization` (le
+   secret réseau l'ajoute) :
+
+   ```
+   curl -sS -m 60 -X POST https://www.signauxfaibles.io/api/veille/onboardings -H 'content-type: application/json' -d '<corps>'
+   ```
+
+   Corps : `{ "evenement": "rapport", "executeur": "cowork", "slug": "<Slug de la ligne>", "nom": "<Organisation>", "site": "<URL du site>", "registre": "<identifiant de la ligne du registre>", "statut": 2 }`.
+   Le slug est celui que le §3 vient de poser ; sans slug (le §3 s'est arrêté avant), ne rapporte rien. Si tu t'es arrêté sur une garde, mets à la place de `statut` un `motif`
+   d'une phrase (300 caractères au plus). Jamais d'adresse ni de jeton dans le
+   corps. Une réponse autre que 200 ou 201 se signale dans le compte rendu, sans
+   rien refaire.
+   Ne rapporte rien quand la garde d'exécuteur t'a arrêté (ligne de l'API) :
+   c'est l'API qui la suit.
+
+6. **Consomme la case.** En fin de run, réussi ou non, décoche « ▶ Générer les
    référentiels (A) » et écris le résultat dans « Dernier lancement manuel ».
 
-6. **Notification et compte rendu** : ceux que prévoit le §3.8, puis l'étape
+7. **Notification et compte rendu** : ceux que prévoit le §3.8, puis l'étape
    suivante en clair — réponses du relecteur et du client attendues, puis
    `/onboarding-repercussion <nom>`.
 

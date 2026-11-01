@@ -10,6 +10,7 @@ import {
   type Provenance,
 } from '@/lib/domaine/onboarding'
 import type { IssueDuLancement, RunVuÀLÉcran, VueDOnboarding } from '@/lib/portail/onboarding'
+import { ouvrirLEspaceDepuisLOnboarding } from '@/lib/portail/gestion-actions'
 import { lancerUneÉtapeDOnboarding } from '@/lib/portail/onboarding-actions'
 
 /**
@@ -156,7 +157,17 @@ export function MétaDOnboarding({ vue }: { vue: VueDOnboarding }) {
 // ── Le geste (lot 2, 1er novembre 2026) ──────────────────────────────────────
 
 /** Ce que l'écran dit après un geste, par le code que l'action renvoie dans l'URL. */
-export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | 'échec' | 'enregistree', string>> = {
+/** Les issues de l'ouverture de l'espace (lot 4), renvoyées par `ouvrirLEspaceDepuisLOnboarding`. */
+type IssueDeLOuverture = 'espace-ouvert' | 'ouverture-partielle' | 'notion-fait-foi' | 'sans-registre' | 'sans-lecteur' | 'débit' | 'lien-non-envoyé'
+
+export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | IssueDeLOuverture | 'échec' | 'enregistree', string>> = {
+  'espace-ouvert': 'Espace ouvert : le lien d’accès est parti à chaque lecteur actif.',
+  'ouverture-partielle': 'Espace ouvert en partie : le lien n’est pas parti à tous les lecteurs actifs. Voir le journal des courriers de la fiche, puis renvoyer le lien depuis la section Lecteurs.',
+  'notion-fait-foi': 'Notion fait foi pour les accès (SOURCE_ACCES n’est pas postgres) : l’espace s’ouvre par /onboarding-ouvrir-espace.',
+  'sans-registre': 'L’organisation n’a pas d’identifiant de registre dans le portail : aucun lecteur ne pourrait entrer. Rejouer l’entrée en essai avec le registre.',
+  'sans-lecteur': 'Aucun lecteur actif : inscrire le lecteur final dans la section Lecteurs de la fiche, le lien part à l’inscription.',
+  débit: 'Lien refusé par la limitation de débit : réessayer dans dix minutes.',
+  'lien-non-envoyé': 'Le lien n’est parti à aucun lecteur : voir le journal des courriers de la fiche.',
   lancé: 'Run déclenché dans GitHub Actions. Il apparaît « en cours » dès que le harnais démarre, en général sous deux minutes.',
   indisponible: 'Déclenchement indisponible : GITHUB_JETON_ACTIONS n’est pas posée. Lancer le run à la main dans GitHub Actions.',
   inconnu: 'Onboarding inconnu.',
@@ -189,9 +200,44 @@ const COMMANDE_COWORK: Readonly<Record<string, string>> = {
  * une phrase. Sans jeton GitHub, le bouton est remplacé par la commande à
  * lancer à la main, pour que rien ne se perde.
  */
-export function GesteDOnboarding({ vue, retour, disponible }: { vue: VueDOnboarding; retour: 'liste' | 'fiche'; disponible: boolean }) {
+export function GesteDOnboarding({
+  vue,
+  retour,
+  disponible,
+  ouverture = false,
+}: {
+  vue: VueDOnboarding
+  retour: 'liste' | 'fiche'
+  disponible: boolean
+  /** Vrai quand Postgres fait foi pour les accès (`lecteursModifiables`) : le portail ouvre l'espace lui-même (lot 4). */
+  ouverture?: boolean
+}) {
   const g = vue.geste
   const o = vue.onboarding
+  if (g.sorte === 'ouvrir') {
+    if (!ouverture) return <p className="text-ardoise">Première lettre publiée : l’espace s’ouvre par /onboarding-ouvrir-espace {o.nom ?? o.slug}, tant que Notion fait foi pour les accès.</p>
+    if (o.lecteursActifs === 0) {
+      return (
+        <p className="text-ardoise">
+          Première lettre publiée, aucun lecteur actif : inscrire le lecteur final dans la section{' '}
+          <a href={`/espaces/abonnements/${o.slug}#lecteurs`} className="text-encre underline underline-offset-2">
+            Lecteurs
+          </a>{' '}
+          de la fiche ; le lien part à l’inscription.
+        </p>
+      )
+    }
+    return (
+      <form action={ouvrirLEspaceDepuisLOnboarding} className="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="slug" value={o.slug} />
+        <input type="hidden" name="retour" value={retour} />
+        <BoutonEnvoi className="rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc">{g.libellé}</BoutonEnvoi>
+        <span className="label-mono text-ardoise">
+          lien d’accès à {o.lecteursActifs} lecteur{o.lecteursActifs > 1 ? 's' : ''} actif{o.lecteursActifs > 1 ? 's' : ''}
+        </span>
+      </form>
+    )
+  }
   if (g.sorte === 'aucun' && g.raison === 'cowork' && vue.étape.étape === 'demande' && o.nom) {
     // Une demande Cowork enregistrée dans le portail : la commande toute prête,
     // sans l'adresse du lecteur final, que le portail ne garde pas pour Cowork.
@@ -208,10 +254,7 @@ export function GesteDOnboarding({ vue, retour, disponible }: { vue: VueDOnboard
       'en-cours': 'Un run est en cours : attendre sa fin avant tout autre geste.',
       cowork: `Onboarding confié à Cowork${COMMANDE_COWORK[vue.étape.étape] ? ` : lancer ${COMMANDE_COWORK[vue.étape.étape]} ${o.nom ?? o.slug} dans Claude Code` : ''}.`,
       'validation-notion': 'Valider les référentiels dans Notion (statut 3) ; le bouton « Produire la première lettre » apparaît au rapport suivant.',
-      attente:
-        vue.étape.étape === 'premiere_lettre_publiee'
-          ? 'Première lettre publiée : l’espace s’ouvre par /onboarding-ouvrir-espace.'
-          : 'Rien à lancer : la relectrice relit et publie la première lettre.',
+      attente: 'Rien à lancer : la relectrice relit et publie la première lettre.',
       terminé: null,
     }
     const texte = textes[g.raison]

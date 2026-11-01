@@ -22,6 +22,8 @@ export type OrganisationÀGérer = {
   readonly suspendueLe: Date | null
   readonly outilsStratégiques: boolean
   readonly espaceRéorganisé: boolean
+  /** Vrai si l'organisation porte sa clé de cloisonnement : sans elle, aucun lecteur ne peut entrer (règle 2). */
+  readonly avecRegistre: boolean
 }
 
 export async function organisationÀGérer(slug: string, db: Base = base()): Promise<OrganisationÀGérer | null> {
@@ -36,11 +38,14 @@ export async function organisationÀGérer(slug: string, db: Base = base()): Pro
         suspendueLe: organisations.suspendueLe,
         outilsStratégiques: organisations.outilsStratégiques,
         espaceRéorganisé: organisations.espaceRéorganisé,
+        registreNotion: organisations.registreNotion,
       })
       .from(organisations)
       .where(eq(organisations.slug, slug))
       .limit(1)
-    return ligne ?? null
+    if (!ligne) return null
+    const { registreNotion, ...reste } = ligne
+    return { ...reste, avecRegistre: registreNotion !== null && registreNotion !== '' }
   })
 }
 

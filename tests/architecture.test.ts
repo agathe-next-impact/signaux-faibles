@@ -817,7 +817,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('la gestion d’une organisation est gardée par le privilège opérateur, avant toute lecture et toute écriture', () => {
     expect(appelants('gestionDUneOrganisation')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
     expect(appelants('santéDesEspaces')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
-    expect(appelants('lecteursÀGérer')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion.ts'])
+    // L'ouverture de l'espace depuis l'onboarding (lot 4, 1er novembre 2026) lit
+    // les lecteurs actifs derrière `exigerOpérateur`, comme `adresseDUnLecteur`.
+    expect(appelants('lecteursÀGérer')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts', 'lib/portail/gestion.ts'])
     expect(appelants('adresseDUnLecteur')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts'])
     const garde = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
     for (const [fonction, lecture] of [
@@ -1050,6 +1052,15 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     }
     for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercherLAdresse(join(process.cwd(), racine))
     expect(nommentLAdresse.sort()).toEqual(['lib/base/onboardings.ts', 'lib/domaine/onboarding.ts', 'scripts/taches/onboarding.ts'])
+    // Lot 4 : l'ouverture de l'espace vit avec les gestes de la fiche, derrière la
+    // garde, et n'écrit rien tant que Notion fait foi pour les accès.
+    expect(appelants('vueDeLOnboarding')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/onboarding.ts'])
+    const gestes = readFileSync(join(process.cwd(), 'lib', 'portail', 'gestion-actions.ts'), 'utf8')
+    const ouvrir = gestes.slice(gestes.indexOf('export async function ouvrirLEspaceDepuisLOnboarding'))
+    expect(ouvrir.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(ouvrir.indexOf('exigerOpérateur()')).toBeLessThan(ouvrir.indexOf('lecteursModifiables()'))
+    expect(ouvrir.indexOf('lecteursModifiables()')).toBeLessThan(ouvrir.indexOf('vueDeLOnboarding('))
+    expect(ouvrir.indexOf('vueDeLOnboarding(')).toBeLessThan(ouvrir.indexOf('envoyerLeLien('))
     // La route garde le jeton et la base avant tout appel.
     const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'onboardings', 'route.ts'), 'utf8')
     const post = route.slice(route.indexOf('export async function POST'))

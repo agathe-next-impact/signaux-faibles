@@ -895,7 +895,15 @@ second geste. **Exception bornée à la règle de Postgres** (décision 1 du
 final et, pour l'API seulement, son adresse, transmis au harnais avec le début
 du run et effacés dès que la tâche rapporte la ligne du registre, trente jours
 au plus (passage quotidien) ; l'adresse n'est jamais montrée à l'écran.
-L'opératrice lit le suivi sur `/espaces/onboardings`
+Depuis le lot 4 (même jour, §13), à la première lettre publiée, le geste est
+**« Ouvrir l'espace »** (`ouvrirLEspaceDepuisLOnboarding`,
+`lib/portail/gestion-actions.ts` : privilège, puis `SOURCE_ACCES=postgres`,
+étape, clé de cloisonnement, lecteur actif, puis le lien à chaque lecteur actif
+par l'envoi de l'activation ; tant que Notion fait foi, l'écran renvoie à
+`/onboarding-ouvrir-espace`), et les **commandes Cowork rapportent** en fin de
+run (`rapport` avec `"executeur": "cowork"`, qui crée l'onboarding ou le
+rattache à la demande Cowork de même nom ; un onboarding existant garde son
+exécuteur). L'opératrice lit le suivi sur `/espaces/onboardings`
 (`listerLesOnboardings`, garde dans la fonction) et dans la section
 « Onboarding » de sa fiche.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un

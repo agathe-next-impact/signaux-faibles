@@ -242,3 +242,13 @@ describe('la demande du formulaire (lot 3)', () => {
   })
 })
 
+describe('l’ouverture de l’espace (lot 4)', () => {
+  it('à la première lettre publiée, le geste est « Ouvrir l’espace », que l’exécuteur soit l’API ou Cowork', () => {
+    for (const exécuteur of ['api', 'cowork'] as const) {
+      expect(gesteDisponible({ étape: 'premiere_lettre_publiee', exécuteur, bloqué: false, dernierRun: null })).toEqual({ sorte: 'ouvrir', libellé: 'Ouvrir l’espace' })
+    }
+    // Un run en cours ferme encore tout geste.
+    expect(gesteDisponible({ étape: 'premiere_lettre_publiee', exécuteur: 'api', bloqué: false, dernierRun: { tâche: 'balayage', montré: 'en_cours' } })).toEqual({ sorte: 'aucun', raison: 'en-cours' })
+  })
+})
+

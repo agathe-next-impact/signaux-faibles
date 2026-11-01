@@ -183,12 +183,45 @@ export async function rapporterUnOnboarding(
     readonly nom: string | null
     readonly site: string | null
     readonly maintenant: Date
+    /**
+     * `cowork` : le rapport vient d'une commande `/onboarding-*` (lot 4), qui
+     * n'a pas de run à annoncer. L'onboarding est alors créé s'il manque, ou
+     * rattaché à la demande Cowork du formulaire de même nom, encore sans ligne
+     * du registre : la commande ne connaît que le slug du registre, posé au §3.
+     * Un onboarding qui existe garde son exécuteur : l'activation et
+     * l'ouverture de l'espace rapportent aussi sur les onboardings de l'API.
+     */
+    readonly exécuteur?: 'cowork' | null
   },
   db: Base = base(),
-): Promise<'rapporté' | 'inconnu'> {
+): Promise<'rapporté' | 'inconnu' | 'créé' | 'rattaché'> {
   return protéger('rapport d’un onboarding', () =>
     db.transaction(async (tx) => {
-      const [onboarding] = await tx.select({ id: onboardings.id }).from(onboardings).where(eq(onboardings.slug, entrée.slug)).limit(1)
+      let [onboarding] = await tx.select({ id: onboardings.id }).from(onboardings).where(eq(onboardings.slug, entrée.slug)).limit(1)
+      let issue: 'rapporté' | 'créé' | 'rattaché' = 'rapporté'
+      if (!onboarding && entrée.exécuteur === 'cowork') {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext('demandes-d-onboarding'))`)
+        const candidates = entrée.nom
+          ? (
+              await tx
+                .select({ id: onboardings.id, nom: onboardings.nom })
+                .from(onboardings)
+                .where(and(eq(onboardings.exécuteur, 'cowork'), isNull(onboardings.registreNotion)))
+            ).filter((c) => c.nom && nomComparable(c.nom) === nomComparable(entrée.nom!))
+          : []
+        if (candidates.length === 1) {
+          await tx.update(onboardings).set({ slug: entrée.slug }).where(eq(onboardings.id, candidates[0]!.id))
+          onboarding = { id: candidates[0]!.id }
+          issue = 'rattaché'
+        } else {
+          const [créé] = await tx
+            .insert(onboardings)
+            .values({ slug: entrée.slug, exécuteur: 'cowork', crééPar: 'cowork', crééLe: entrée.maintenant, misÀJourLe: entrée.maintenant })
+            .returning({ id: onboardings.id })
+          onboarding = créé
+          issue = 'créé'
+        }
+      }
       if (!onboarding) return 'inconnu'
       await tx
         .update(onboardings)
@@ -212,7 +245,7 @@ export async function rapporterUnOnboarding(
           .limit(1)
         if (enCours) await tx.update(onboardingRuns).set({ état: 'bloque' }).where(eq(onboardingRuns.id, enCours.id))
       }
-      return 'rapporté'
+      return issue
     }),
   )
 }

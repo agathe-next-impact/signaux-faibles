@@ -229,10 +229,28 @@ Organisation visée : $ARGUMENTS
    notification). Aucun de ces pas ne bloque la lettre ; rien n'en va au client
    avant que l'opératrice ne publie la synthèse.
 
-6. **Consomme la case** en fin de run, lettre produite ou non, et écris le
+6. **Rapporte au portail** (1er novembre 2026, lot 4 de
+   `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans
+   que son échec arrête quoi que ce soit** : il ne sert qu'au suivi de
+   l'opératrice sur `/espaces/onboardings`. Aucun en-tête `Authorization` (le
+   secret réseau l'ajoute) :
+
+   ```
+   curl -sS -m 60 -X POST https://www.signauxfaibles.io/api/veille/onboardings -H 'content-type: application/json' -d '<corps>'
+   ```
+
+   Corps : `{ "evenement": "rapport", "executeur": "cowork", "slug": "<Slug de la ligne>", "nom": "<Organisation>", "site": "<URL du site>", "registre": "<identifiant de la ligne du registre>", "statut": 4 }`.
+   Statut 4 si la lettre est produite et la ligne passée au statut 4. Si tu t'es arrêté sur une garde, mets à la place de `statut` un `motif`
+   d'une phrase (300 caractères au plus). Jamais d'adresse ni de jeton dans le
+   corps. Une réponse autre que 200 ou 201 se signale dans le compte rendu, sans
+   rien refaire.
+   Ne rapporte rien quand la garde d'exécuteur t'a arrêté (ligne de l'API) :
+   c'est l'API qui la suit.
+
+7. **Consomme la case** en fin de run, lettre produite ou non, et écris le
    résultat dans « Dernier lancement manuel ».
 
-7. **Notification `[Relecture]` et compte rendu** prévus par le prompt.
+8. **Notification `[Relecture]` et compte rendu** prévus par le prompt.
    L'étape suivante appartient au relecteur : relire, envoyer les brouillons,
    puis, le lendemain, une fois la lettre passée au statut « Envoyé » par la
    réconciliation du soir, `/onboarding-activation <nom>`, qui ouvre l'espace
