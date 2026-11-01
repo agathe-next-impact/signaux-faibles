@@ -916,6 +916,33 @@ l'organisation au registre Payload (`lib/payload/registre-onboarding.ts`, charg�
 `run_trigger`). L'opératrice lit le suivi sur `/espaces/onboardings`
 (`listerLesOnboardings`, garde dans la fonction) et dans la section
 « Onboarding » de sa fiche.
+**Aperçu avant envoi** (1er novembre 2026, décision de l'opératrice : « je veux
+toujours prévisualiser dans l'espace avant tout envoi, et gérer depuis
+l'admin »). Réglage Postgres `organisations.apercu_avant_envoi` (migration
+0022), **vrai par défaut pour toutes les organisations**, réglé sur la fiche
+(`/espaces/abonnements/[slug]`, section « Envois », action `réglerLAperçu`) ou
+par `PATCH /api/veille/organisations` (`action: apercu`). Tant qu'il est vrai,
+rien ne part d'une tâche : `POST /api/acces/ouvrir` répond 409
+`apercu-avant-envoi` sans courrier (le lien part de la fiche, « Renvoyer le
+lien » ou « Ouvrir l'espace ») ; une lettre acceptée par le moteur est écrite
+`a_publier` dans Payload (migration Payload `20261101_090000_edition_a_publier`),
+sans courrier, et l'opératrice la publie de la fiche (« Publier et envoyer »,
+`publierLaLettre`, privilège d'abord ; seule orchestration
+`lib/portail/lettres-a-publier.ts`, seul écrivain `lib/payload/publication.ts`).
+Dans le doute, l'aperçu tient (`lib/portail/apercu.ts`). Une lettre de filière
+garde son envoi direct. **Exception bornée à la règle 3** : une session au
+privilège « Tous les espaces » (`accès.aperçu`) voit dans l'espace, en plus des
+lettres publiées, les lettres non publiées (Brouillon et Relu dans Notion,
+`a_publier` dans Payload ; `listerÉditionsÀPrévisualiser`, cache distinct, mêmes
+filtres d'appartenance), marquées `aperçu: true` et signalées par un bandeau ;
+un client ne les voit jamais. Tous les écrans de l'espace lisent les semaines
+par `semainesDeLEspace(accès)`, seul appelant de l'aperçu ; les corps par
+`lireBlocsDeLÉdition`. `tests/architecture.test.ts` tient ces frontières. Le
+proxy des médias reste fermé à l'aperçu, comme il l'est déjà à une visite
+opérateur. Les tâches Cowork (Notion) déposaient déjà la lettre en brouillon
+Gmail, envoyée par l'opératrice : l'aperçu lui permet de la lire dans l'espace
+avant de l'envoyer ; « Invitation manuelle » reste la case Notion du registre.
+
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
 `envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit

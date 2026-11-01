@@ -149,6 +149,16 @@ export const organisations = pgTable(
    * l'opératrice, et seulement pour une organisation du pilote des outils.
    */
   espaceRéorganisé: boolean('espace_reorganise').notNull().default(false),
+  /**
+   * L'aperçu avant envoi (1er novembre 2026, décision de l'opératrice) : tant
+   * que vrai, rien ne part au client sans son geste. `POST /api/acces/ouvrir`
+   * refuse (`apercu-avant-envoi`) : le lien part de la fiche de l'organisation ;
+   * le moteur écrit une lettre acceptée en brouillon, non envoyée, que
+   * l'opératrice publie de la fiche après l'avoir lue dans l'espace. Vrai par
+   * défaut, pour toutes les organisations ; réglé sur la fiche ou par
+   * `PATCH /api/veille/organisations` (`action: apercu`).
+   */
+  aperçuAvantEnvoi: boolean('apercu_avant_envoi').notNull().default(true),
   /** Tant que vrai, les envois partent à l'adresse de relecture, pas au client. */
   relectureRequise: boolean('relecture_requise').notNull().default(true),
   emailRelecture: text('email_relecture'),

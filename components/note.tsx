@@ -1,6 +1,6 @@
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { tronquerÀLEssentiel } from '@/lib/domaine/troncature'
-import { lireBlocsDePage, type Édition } from '@/lib/documents'
+import { lireBlocsDeLÉdition, type Édition } from '@/lib/documents'
 import { ÀRetenir } from '@/components/a-retenir'
 import { ancreDAxe, RenduDocument } from '@/components/document'
 import { axesÀRetenir, suivreLesAxes } from '@/lib/domaine/tendances'
@@ -39,7 +39,7 @@ export async function Note({
    */
   précédente?: Édition | null
 }) {
-  const blocs = await lireBlocsDePage(édition.pageId)
+  const blocs = await lireBlocsDeLÉdition(édition)
   const document = lecture === 'essentiel' ? tronquerÀLEssentiel(construireDocument(blocs)) : construireDocument(blocs)
 
   if (lecture === 'essentiel') {
@@ -90,7 +90,7 @@ export async function Note({
 
 /** Les axes à retenir d'une lettre, comparée à la précédente de la même veille. */
 async function àRetenirDeLaLettre(document: Document, précédente: Édition | null) {
-  const avant = précédente ? construireDocument(await lireBlocsDePage(précédente.pageId)) : null
+  const avant = précédente ? construireDocument(await lireBlocsDeLÉdition(précédente)) : null
   const suivis = suivreLesAxes([document], avant ? [avant] : [])
   const axes = axesÀRetenir(suivis, { avecPrécédent: avant !== null })
   const nouveaux = new Set(

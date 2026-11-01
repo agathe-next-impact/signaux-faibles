@@ -29,9 +29,17 @@ export type Édition = {
   readonly fenêtreÉlargie: boolean
   readonly actionDeLaSemaine: string
   readonly dossiersOuvertsBruts: string
+  /**
+   * Vrai pour une édition **non publiée**, lue pour l'aperçu de l'opératrice
+   * (1er novembre 2026) : jamais présent sur une édition que voit un client.
+   */
+  readonly aperçu?: true
 }
 
 const STATUT_PUBLIÉ = 'Envoyé'
+
+/** Les statuts d'une lettre écrite et pas encore partie, que l'opératrice prévisualise. */
+const STATUTS_D_APERÇU = ['Brouillon', 'Relu'] as const
 
 /**
  * Les éditions publiées d'une organisation, de la plus récente à la plus ancienne.
@@ -83,6 +91,59 @@ export async function listerÉditionsPubliées(
     .filter((page) => lireSélection(page, 'Statut') === STATUT_PUBLIÉ)
     .map(versÉdition)
     .filter((édition): édition is Édition => édition !== null)
+}
+
+/**
+ * Les éditions **non publiées** d'une organisation (Brouillon, Relu), pour
+ * l'aperçu de l'opératrice avant tout envoi (1er novembre 2026).
+ *
+ * C'est l'exception bornée à la règle 3, et elle est tenue étroite : mêmes
+ * filtres portés par la requête (statut, appartenance par `contains`), même
+ * revérification en mémoire, un cache à part de celui des clients ; son seul
+ * appelant est `lib/portail/semaine.ts`, qui ne la demande que pour une session
+ * qui porte le privilège « Tous les espaces » (`accès.aperçu`), et
+ * `tests/architecture.test.ts` le vérifie. Chaque édition rendue porte
+ * `aperçu: true`, que les écrans marquent.
+ */
+export async function listerÉditionsÀPrévisualiser(organisationId: string): Promise<Édition[]> {
+  'use cache: remote'
+
+  const { cacheLife, cacheTag } = await import('next/cache')
+  cacheLife('notion')
+
+  const { éditions: sourceId } = await sourcesDeDonnées()
+  cacheTag(`liste:${sourceId}`)
+
+  const pages: unknown[] = []
+  let curseur: string | undefined
+
+  do {
+    const réponse = await notion().dataSources.query({
+      data_source_id: sourceId,
+      filter: {
+        and: [
+          { or: STATUTS_D_APERÇU.map((statut) => ({ property: 'Statut', select: { equals: statut } })) },
+          { property: 'Organisation', relation: { contains: organisationId } },
+        ],
+      },
+      sorts: [{ property: "Date d'édition", direction: 'descending' }],
+      page_size: 100,
+      start_cursor: curseur,
+    })
+
+    pages.push(...réponse.results)
+    curseur = réponse.next_cursor ?? undefined
+  } while (curseur)
+
+  const attendu = normaliserIdentifiant(organisationId)
+  const statuts: readonly string[] = STATUTS_D_APERÇU
+
+  return pages
+    .filter((page) => lireRelation(page, 'Organisation').includes(attendu))
+    .filter((page) => statuts.includes(lireSélection(page, 'Statut') ?? ''))
+    .map(versÉdition)
+    .filter((édition): édition is Édition => édition !== null)
+    .map((édition) => ({ ...édition, aperçu: true as const }))
 }
 
 function versÉdition(page: unknown): Édition | null {

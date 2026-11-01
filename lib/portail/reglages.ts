@@ -119,3 +119,25 @@ export async function déciderDeLOrganisation(données: FormData): Promise<void>
   console.info(`[réglage] ${accès.nom} : ${slug}, ${décision}, ${sorte}.`)
   redirect(`/espaces/abonnements/${encodeURIComponent(slug)}?reglage=${encodeURIComponent(sorte)}&section=decision#decision`)
 }
+
+/**
+ * L'aperçu avant envoi (1er novembre 2026) : tant qu'il est actif, ni le lien
+ * d'accès ni une lettre du moteur ne partent sans le geste de l'opératrice, qui
+ * lit d'abord l'édition dans l'espace. Retour à la section « Envois » de la fiche.
+ */
+export async function réglerLAperçu(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const actif = données.get('actif')
+  if (actif !== 'oui' && actif !== 'non') notFound()
+  const accès = await exigerOpérateur()
+
+  let sorte: RésultatDuRéglage['sorte'] | 'échec'
+  try {
+    sorte = (await réglerLeParcours(slug, { sorte: 'apercu', actif: actif === 'oui' })).sorte
+  } catch (erreur) {
+    console.error(`[réglage] ${slug} : aperçu impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    sorte = 'échec'
+  }
+  console.info(`[réglage] ${accès.nom} : ${slug}, aperçu avant envoi ${actif === 'oui' ? 'actif' : 'levé'}, ${sorte}.`)
+  redirect(`/espaces/abonnements/${encodeURIComponent(slug)}?reglage=${encodeURIComponent(sorte)}&section=envois#envois`)
+}

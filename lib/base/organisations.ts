@@ -247,6 +247,7 @@ async function néeDeLImportPendantLOnboarding(
 export type Réglage =
   | { readonly sorte: 'prolonger'; readonly semaines: 1 | 2 | 3 }
   | { readonly sorte: 'relecture'; readonly requise: boolean }
+  | { readonly sorte: 'apercu'; readonly actif: boolean }
   | { readonly sorte: 'offre'; readonly offre: Offre }
   | { readonly sorte: 'parutions'; readonly parutions: number }
   | { readonly sorte: 'parcours'; readonly prochaineLettre: string; readonly restantes: number }
@@ -270,6 +271,7 @@ const ÉTATS_DÉCIDABLES = new Set(['demande', 'generation', 'essai', 'abonnee']
 export type RésultatDuRéglage =
   | { readonly sorte: 'prolongé'; readonly ancienJ0: string; readonly nouveauJ0: string }
   | { readonly sorte: 'relecture-réglée'; readonly requise: boolean }
+  | { readonly sorte: 'aperçu-réglé'; readonly actif: boolean }
   | { readonly sorte: 'offre-posée'; readonly offre: Offre; readonly état: string }
   | { readonly sorte: 'parutions-réglées'; readonly parutions: number }
   | { readonly sorte: 'mis-en-parcours'; readonly j0: string; readonly parutions: number; readonly restantes: number }
@@ -393,6 +395,16 @@ export async function réglerLeParcours(
         return { sorte: 'mis-en-parcours', j0: dateDeParis(j0), parutions, restantes: réglage.restantes } as const
       }
 
+      // L'aperçu avant envoi (1er novembre 2026) : un interrupteur, quel que
+      // soit l'état. Il ne touche ni à J0 ni aux courriers déjà partis.
+      if (réglage.sorte === 'apercu') {
+        await tx
+          .update(organisations)
+          .set({ aperçuAvantEnvoi: réglage.actif, modifiéeLe: maintenant })
+          .where(eq(organisations.id, organisation.id))
+        return { sorte: 'aperçu-réglé', actif: réglage.actif } as const
+      }
+
       if (réglage.sorte === 'relecture') {
         await tx
           .update(organisations)
@@ -453,5 +465,22 @@ export async function slugsHorsService(slugs: readonly string[], db: Base = base
       .from(organisations)
       .where(and(inArray(organisations.slug, [...slugs]), inArray(organisations.état, ['suspendue', 'ecartee'])))
     return lignes.map((l) => l.slug)
+  })
+}
+
+/**
+ * L'aperçu avant envoi d'une organisation, par sa clé de cloisonnement
+ * (1er novembre 2026). `null` si aucune organisation ne porte cette clé :
+ * l'appelant (`lib/portail/apercu.ts`) tient alors l'aperçu.
+ */
+export async function aperçuAvantEnvoiDuRegistre(registre: string, db: Base = base()): Promise<boolean | null> {
+  const clé = registre.replaceAll('-', '').toLowerCase()
+  return protéger('lecture de l’aperçu avant envoi', async () => {
+    const [ligne] = await db
+      .select({ aperçu: organisations.aperçuAvantEnvoi })
+      .from(organisations)
+      .where(eq(organisations.registreNotion, clé))
+      .limit(1)
+    return ligne ? ligne.aperçu : null
   })
 }

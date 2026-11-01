@@ -84,11 +84,11 @@ describe('la collection editions', () => {
     expect(editions.indexes).toEqual([{ fields: ['organisation', 'statut', 'dateEdition'] }])
   })
 
-  it('ne demande que les statuts brouillon, publiee et retiree', () => {
+  it('ne demande que les statuts brouillon, a_publier (aperçu avant envoi), publiee et retiree', () => {
     const statut = editions.fields.find((champ) => 'name' in champ && champ.name === 'statut')
     expect(statut?.type).toBe('select')
     const options = (statut as { options?: Array<{ value: string }> }).options ?? []
-    expect(options.map((option) => option.value)).toEqual(['brouillon', 'publiee', 'retiree'])
+    expect(options.map((option) => option.value)).toEqual(['brouillon', 'a_publier', 'publiee', 'retiree'])
   })
 })
 

@@ -6,7 +6,7 @@ import { FaitsParSemaine } from '@/components/graphiques-strategie'
 import { faitsDeLaLettre } from '@/lib/domaine/strategie'
 import { dateCourte } from '@/lib/domaine/strategie-vues'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
-import { dernièresNotes, lettresPubliées, LETTRES_SUIVIES, semainesPubliées } from '@/lib/portail/semaine'
+import { dernièresNotes, lettresPubliées, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, faitsDeLAxeDeLEspace } from '@/lib/portail/strategie'
 
 /**
@@ -25,7 +25,7 @@ export default async function FaitsDUnAxe({ params }: { params: Promise<{ slug: 
   const { slug, axe: segment } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
   const fin = semaines[0]?.éditions.map((é) => é.dateÉdition).sort().at(-1)
   const lu = espace && fin ? await faitsDeLAxeDeLEspace({ registre: accès.organisationId, segment, fin }) : null

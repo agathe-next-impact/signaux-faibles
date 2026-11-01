@@ -6,7 +6,9 @@ const dispositif = vi.hoisted(() => ({ enregistrerLÉdition: vi.fn() }))
 const parution = vi.hoisted(() => ({ envoyerLaLettreAuxLecteurs: vi.fn(), envoyerLaLettreDeFilière: vi.fn() }))
 vi.mock('@/lib/portail/file', () => file)
 vi.mock('@/lib/payload/dispositif', () => dispositif)
+const apercu = vi.hoisted(() => ({ aperçuAvantEnvoi: vi.fn() }))
 vi.mock('@/lib/portail/parution', () => parution)
+vi.mock('@/lib/portail/apercu', () => apercu)
 
 const route = await import('@/app/api/veille/editions/route')
 
@@ -56,6 +58,8 @@ beforeEach(() => {
   dispositif.enregistrerLÉdition.mockResolvedValue({ edition: 'ed_1', run: 'run_1', statut: 'publiee' })
   parution.envoyerLaLettreAuxLecteurs.mockResolvedValue({ envoyés: 2 })
   parution.envoyerLaLettreDeFilière.mockResolvedValue({ envoyés: 5 })
+  // Les tests historiques décrivent l'envoi direct : l'aperçu est levé par défaut ici.
+  apercu.aperçuAvantEnvoi.mockResolvedValue(false)
   vi.spyOn(console, 'info').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -88,6 +92,19 @@ describe('POST /api/veille/editions, par la file de travaux', () => {
     expect(dispositif.enregistrerLÉdition).toHaveBeenCalledWith(expect.objectContaining({ run: 'run_1' }), 'publiee')
     expect(parution.envoyerLaLettreAuxLecteurs).toHaveBeenCalledWith(expect.objectContaining({ organisationPayload: ORGANISATION, édition: expect.objectContaining({ id: 'ed_1', numéro: 4 }) }))
     expect(parution.envoyerLaLettreDeFilière).not.toHaveBeenCalled()
+  })
+
+  it('aperçu avant envoi : acceptée, l’édition est écrite à publier et aucun courrier ne part', async () => {
+    apercu.aperçuAvantEnvoi.mockResolvedValue(true)
+    dispositif.enregistrerLÉdition.mockResolvedValue({ edition: 'ed_1', run: 'run_1', statut: 'a_publier' })
+    file.recevoirUneÉdition.mockResolvedValue({ sorte: 'accepté', conclusion: { sorte: 'accepté', runId: 'r', numéro: 4 }, portes: portesVides, aperçu: null })
+    const réponse = await poster(remise())
+    expect(réponse.status).toBe(200)
+    expect(await réponse.json()).toMatchObject({ edition: 'ed_1', statut: 'a_publier', travail: 'accepte', courriers: null })
+    // La clé de cloisonnement de l'organisation Payload : sans tirets.
+    expect(apercu.aperçuAvantEnvoi).toHaveBeenCalledWith(ORGANISATION.replaceAll('-', ''))
+    expect(dispositif.enregistrerLÉdition).toHaveBeenCalledWith(expect.objectContaining({ organisation: ORGANISATION }), 'a_publier')
+    expect(parution.envoyerLaLettreAuxLecteurs).not.toHaveBeenCalled()
   })
 
   it('refusée ou abandonnée par la file : rien n’est écrit, ni envoyé, et la réponse porte les portes', async () => {

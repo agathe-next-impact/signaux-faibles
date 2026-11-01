@@ -13,6 +13,7 @@ import { env } from '@/lib/env'
 import { envoyerCourrier } from '@/lib/portail/courriers'
 import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
 import { publierLaFicheDuPilote } from '@/lib/portail/fiche-veille'
+import { publierEtEnvoyer } from '@/lib/portail/lettres-a-publier'
 import { vueDeLOnboarding } from '@/lib/portail/onboarding'
 import { lecteursModifiables } from '@/lib/portail/situation'
 import { réglerLEspace, réglerLePilote, validerLaVersion } from '@/lib/portail/strategie'
@@ -84,6 +85,29 @@ export async function basculerLEspace(données: FormData): Promise<void> {
   }
   console.info(`[gestion] ${accès.nom} : ${slug}, espace ${actif ? 'ouvert' : 'refermé'}, ${code}.`)
   retour(slug, code, 'pilote')
+}
+
+/**
+ * Publier une lettre à publier (1er novembre 2026, aperçu avant envoi), après
+ * l'avoir lue dans l'espace : elle devient visible du client et part aux
+ * lecteurs actifs, par le même envoi que le moteur. Le privilège d'abord.
+ */
+export async function publierLaLettre(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const id = données.get('edition')
+  if (typeof id !== 'string' || !/^[0-9a-zA-Z-]{1,64}$/.test(id)) notFound()
+  const accès = await exigerOpérateur()
+  let code: string
+  try {
+    const r = await publierEtEnvoyer({ slug, id })
+    code = r.sorte === 'publiée' ? (r.envoi.envoyés > 0 ? 'lettre-publiée' : 'lettre-publiée-sans-envoi') : `lettre-${r.sorte}`
+    if (r.sorte === 'publiée') console.info(`[gestion] ${slug} : lettre ${id} publiée, ${r.envoi.envoyés} envoi(s) sur ${r.envoi.destinataires}${r.envoi.issues.length ? ` (${r.envoi.issues.join(', ')})` : ''}.`)
+  } catch (erreur) {
+    console.error(`[gestion] ${slug} : publication de la lettre ${id} impossible (${messageDe(erreur)}).`)
+    code = 'échec'
+  }
+  console.info(`[gestion] ${accès.nom} : ${slug}, lettre ${id}, ${code}.`)
+  retour(slug, code, 'envois')
 }
 
 export async function validerLaGrille(données: FormData): Promise<void> {

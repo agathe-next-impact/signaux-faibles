@@ -4,7 +4,7 @@ import { exigerLecture } from '@/lib/auth/appartenance'
 import { Coquille } from '@/components/coquille'
 import { SqueletteDÉcran } from '@/components/squelette'
 import { COOKIE_DU_RAIL } from '@/lib/portail/rail'
-import { ongletsDe, semainesPubliées } from '@/lib/portail/semaine'
+import { ongletsDe, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
 /**
@@ -49,7 +49,7 @@ async function Garde({
   // aucun corps de note n'est chargé pour les afficher.
   // L'espace réorganisé (lot 2) ajoute « Concurrents » au rail ; lu en même
   // temps que la liste, mémoïsé pour la page, borné à 400 ms, et absent dans le doute.
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
 
   // Un accès valide qui ne voit aucune édition n'est pas forcément une
   // anomalie — un client fraîchement équipé attend sa première lettre. Mais
@@ -75,6 +75,11 @@ async function Garde({
   // tel que le lecteur l'a laissé, sans ouverture puis fermeture au chargement.
   const railReplié = (await cookies()).get(COOKIE_DU_RAIL)?.value === 'replie'
 
+  // L'aperçu de l'opératrice (1er novembre 2026) : les lettres non publiées sont
+  // mêlées aux autres, et le bandeau le dit, avec leur nombre. Un client n'a
+  // jamais d'édition en aperçu : le bandeau ne peut pas paraître chez lui.
+  const enAperçu = semaines.reduce((total, semaine) => total + semaine.éditions.filter((é) => é.aperçu).length, 0)
+
   const recommandations = semaines.filter((semaine) =>
     semaine.éditions.some((édition) => édition.actionDeLaSemaine.length > 0),
   ).length
@@ -93,6 +98,13 @@ async function Garde({
         archives: semaines.length,
       }, lecture, { réorganisé: espace?.réorganisé ?? false })}
     >
+      {enAperçu > 0 ? (
+        <p role="note" className="mb-6 border border-gris-ligne bg-fond-ardoise p-4 text-encre">
+          <span className="label-mono text-ardoise">aperçu</span>{' '}
+          {enAperçu === 1 ? 'Une lettre non publiée est incluse' : `${enAperçu} lettres non publiées sont incluses`} dans cet
+          espace, visible par l’opératrice seulement : le client ne voit une lettre qu’une fois publiée.
+        </p>
+      ) : null}
       {children}
     </Coquille>
   )

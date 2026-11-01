@@ -9,6 +9,7 @@ import { sourcesDeDonnées } from '@/lib/notion/client'
 import { listerÉditionsPubliées } from '@/lib/documents'
 import { interpréterDemande, vérifierJeton } from '@/lib/portail/activation'
 import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
+import { aperçuAvantEnvoi } from '@/lib/portail/apercu'
 
 /**
  * Ouvrir l'espace d'un lecteur, appelée par l'onboarding Cowork.
@@ -26,6 +27,10 @@ import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
  *
  * Le lien composé n'apparaît jamais dans la réponse ni dans les journaux : il
  * ne vit que dans le courrier, et le jeton ne se lit que dans `/acces/[jeton]`.
+ *
+ * Tant que l'aperçu avant envoi de l'organisation est actif (défaut, 1er novembre
+ * 2026), la route répond 409 `apercu-avant-envoi` sans rien envoyer : le lien
+ * part de la fiche de l'organisation, par le geste de l'opératrice.
  */
 /**
  * Vérification préalable (18 octobre 2026) : le jeton est-il porté sur cette
@@ -109,6 +114,16 @@ async function ouvrir(email: string, origine: string | null): Promise<NextRespon
           "l'orthographe de l'adresse dans « Accès — portail ».",
       )
       return NextResponse.json({ état: 'introuvable' }, { status: 404 })
+    }
+
+    // L'aperçu avant envoi (1er novembre 2026) : tant que l'opératrice ne l'a pas
+    // levé pour cette organisation, le lien ne part pas d'une tâche. Elle le fait
+    // partir de la fiche de l'organisation, après avoir vu l'espace. 409 et non
+    // une erreur : la demande est valide, c'est une décision qui la retient.
+    // L'opératrice globale n'a pas d'espace à prévisualiser : elle passe.
+    if (!accès.tousLesEspaces && accès.organisationId && (await aperçuAvantEnvoi(accès.organisationId))) {
+      console.info(`[activation] ${marque} (${accès.slug}) : aperçu avant envoi actif, rien n'est parti ; l'envoi se fait de la fiche de l'organisation.`)
+      return NextResponse.json({ état: 'apercu-avant-envoi', slug: accès.slug }, { status: 409 })
     }
 
     // La tâche d'onboarding appelle une fois par activation. Une boucle qui

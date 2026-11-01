@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Note } from '@/components/note'
-import { semainesPubliées } from '@/lib/portail/semaine'
+import { semainesDeLEspace } from '@/lib/portail/semaine'
 
 /**
  * Une semaine archivée, avec les notes qu'elle porte.
@@ -19,7 +19,7 @@ export default async function UneSemaine({
   const { slug, semaine: clé } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesPubliées(accès.organisationId)
+  const semaines = await semainesDeLEspace(accès)
   const semaine = semaines.find((candidate) => candidate.clé === clé)
 
   if (!semaine) notFound()

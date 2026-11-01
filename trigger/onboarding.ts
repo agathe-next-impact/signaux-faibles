@@ -148,6 +148,8 @@ export const onboarding = task({
       const accusé = await remettreLÉdition({ ...remiseDe(production, { organisation: dossier.organisation.id, filiere: null }, 'onboarding', ctx.run.id, début), travail, session: ctx.run.id })
       if (production.mesures.plafondAtteint) await rapporterLOnboarding({ slug, motif: `Plafond de ${PLAFOND_DE_L_ONBOARDING_USD} $ atteint pendant les reprises : lettre non acceptée.` })
       // Règle du 20 octobre 2026 : le lien d'accès ne part qu'après une lettre publiée.
+      // Une lettre `a_publier` (aperçu avant envoi) n'ouvre rien : l'opératrice
+      // publie, puis ouvre l'espace de la fiche.
       if (payload.ouvrirLEspace !== false && accusé.statut === 'publiee' && dossier.organisation.contactEmail) {
         await ouvrirLEspace(dossier.organisation.contactEmail)
       }

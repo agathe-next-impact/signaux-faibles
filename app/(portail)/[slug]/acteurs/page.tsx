@@ -5,7 +5,7 @@ import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { normaliserTitre } from '@/lib/domaine/strategie'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
-import { semainesPubliées } from '@/lib/portail/semaine'
+import { semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 import { Repliable } from '@/components/repliable'
 import { SynthèseDesActeurs } from '@/components/strategie-ecrans'
@@ -31,7 +31,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const [semaines, espace] = await Promise.all([semainesPubliées(accès.organisationId), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 2, pilote sur L'Hermitage) envoie les concurrents
   // de la grille et leur carte sur « Concurrents » : ici restent les
   // institutions, réseaux et parties prenantes, et les dossiers sans entité.
