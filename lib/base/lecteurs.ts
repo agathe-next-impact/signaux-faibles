@@ -158,9 +158,11 @@ export async function lireLecteurActifParEmail(
  * L'organisation que désigne un slug **exact**, pour l'accès opérateur.
  *
  * Même contrat que la lecture Notion par slug : réservée à `exigerAccès` (par
- * la façade), elle ne rend un identifiant que si au moins un lecteur actif est
- * rattaché à cette organisation. Un espace dont tous les accès sont révoqués
- * reste `notFound`, comme il l'était avec Notion.
+ * la façade, après la vérification du privilège), elle rend l'identifiant d'une
+ * organisation non archivée qui porte sa clé de cloisonnement, **avec ou sans
+ * lecteur actif** depuis le 1er novembre 2026 : à l'issue de la première lettre,
+ * l'espace n'est pas encore ouvert, et l'opératrice doit pouvoir le visiter pour
+ * lire l'aperçu avant tout envoi. Un slug inconnu reste `notFound`.
  */
 export async function organisationParSlug(
   slug: string,
@@ -170,8 +172,10 @@ export async function organisationParSlug(
     db
       .select({ registreNotion: organisations.registreNotion, nom: organisations.nom })
       .from(organisations)
-      .innerJoin(lecteurs, eq(lecteurs.organisationId, organisations.id))
-      .where(and(eq(organisations.slug, slug), eq(lecteurs.actif, true), isNull(organisations.archivéeLe)))
+      // Depuis le 1er novembre 2026, sans lecteur actif aussi : à l'issue de la
+      // première lettre, l'espace n'est pas encore ouvert, et l'opératrice doit
+      // pouvoir le visiter pour en lire l'aperçu avant tout envoi.
+      .where(and(eq(organisations.slug, slug), isNull(organisations.archivéeLe)))
       .limit(1),
   )
 

@@ -163,15 +163,20 @@ describe('import et lectures sur une vraie base', () => {
     expect(await lireLecteurActifParEmail('claire@hermitage.fr', db)).toBeNull()
   })
 
-  it('l’accès opérateur ne trouve qu’un espace qui a un lecteur actif', async () => {
+  it('l’accès opérateur trouve un espace même sans lecteur actif, pour l’aperçu d’avant l’ouverture', async () => {
     await importer(deuxClients)
     expect(await organisationParSlug('konica-minolta-france', db)).toEqual({
       organisationId: REGISTRE_KONICA,
       organisationLibellé: 'Konica Minolta',
     })
     await db.update(lecteurs).set({ actif: false }).where(eq(lecteurs.identifiantAcces, 'd'.repeat(32)))
-    expect(await organisationParSlug('konica-minolta-france', db)).toBeNull()
+    expect(await organisationParSlug('konica-minolta-france', db)).toEqual({
+      organisationId: REGISTRE_KONICA,
+      organisationLibellé: 'Konica Minolta',
+    })
     expect(await organisationParSlug('inconnu', db)).toBeNull()
+    await db.update(organisations).set({ archivéeLe: new Date() }).where(eq(organisations.slug, 'konica-minolta-france'))
+    expect(await organisationParSlug('konica-minolta-france', db)).toBeNull()
   })
 
   it('liste les espaces avec leurs lecteurs actifs, sans compter l’opérateur global', async () => {
