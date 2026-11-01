@@ -1061,6 +1061,11 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(ouvrir.indexOf('exigerOpérateur()')).toBeLessThan(ouvrir.indexOf('lecteursModifiables()'))
     expect(ouvrir.indexOf('lecteursModifiables()')).toBeLessThan(ouvrir.indexOf('vueDeLOnboarding('))
     expect(ouvrir.indexOf('vueDeLOnboarding(')).toBeLessThan(ouvrir.indexOf('envoyerLeLien('))
+    // Les gardes des écrans de l'opératrice ne lisent jamais l'heure en
+    // paramètre par défaut : évaluée avant la lecture du cookie, elle fait
+    // échouer le prérendu (`next build`, cacheComponents ; aperçus Vercel des
+    // lots 1 à 4, 1er novembre 2026).
+    expect(appartenance).not.toMatch(/:\s*Date\s*=\s*new Date\(\)/)
     // La route garde le jeton et la base avant tout appel.
     const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'onboardings', 'route.ts'), 'utf8')
     const post = route.slice(route.indexOf('export async function POST'))

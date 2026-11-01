@@ -237,12 +237,16 @@ export async function listerLesPrescripteurs(): Promise<{
  * `tableauDesOnboardings` n'a pas d'autre appelant (`tests/architecture.test.ts`).
  * `tableau` vaut `null` quand Postgres n'est pas en service.
  */
-export async function listerLesOnboardings(maintenant: Date = new Date()): Promise<{
+export async function listerLesOnboardings(instant?: Date): Promise<{
   readonly accès: Accès
   readonly tableau: TableauDesOnboardings | null
 }> {
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, tableau: null }
+  // L'heure se lit après la garde, qui lit le cookie de session : avec
+  // `cacheComponents`, un `new Date()` évalué avant tout accès dynamique fait
+  // échouer le prérendu de la page (`next build`).
+  const maintenant = instant ?? new Date()
   return { accès, tableau: vueDuTableau(await tableauDesOnboardings(débutDuMoisDeParis(maintenant)), maintenant) }
 }
 
@@ -252,10 +256,11 @@ export async function listerLesOnboardings(maintenant: Date = new Date()): Promi
  * cette semaine depuis le portail. `créneaux` vaut `null` quand Postgres n'est
  * pas en service : l'écran le dit et ne propose pas le formulaire.
  */
-export async function lireLeFormulaireDeDemande(maintenant: Date = new Date()): Promise<{ readonly accès: Accès; readonly créneaux: number | null }> {
+export async function lireLeFormulaireDeDemande(instant?: Date): Promise<{ readonly accès: Accès; readonly créneaux: number | null }> {
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, créneaux: null }
-  return { accès, créneaux: await créneauxCoworkPris(maintenant) }
+  // Après la garde, comme pour `listerLesOnboardings` : jamais d'heure lue pendant le prérendu.
+  return { accès, créneaux: await créneauxCoworkPris(instant ?? new Date()) }
 }
 
 /**
