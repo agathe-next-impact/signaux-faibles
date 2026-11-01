@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
 import { courriers, lecteurs, onboardingRuns, onboardings, organisations } from '@/lib/base/schema'
 import {
+  assurerUnOnboarding,
   conclureUnLancement,
   créneauxCoworkPris,
   demandeÀTransmettre,
@@ -305,6 +306,25 @@ describe('le suivi des onboardings en base', () => {
       await ouvrir(db, { slug: 'suneido' })
       expect(await rapport({ statut: 6 })).toBe('rapporté')
       expect((await db.select().from(onboardings))[0]).toMatchObject({ exécuteur: 'api', statutRapporté: 6 })
+    })
+  })
+
+  describe('le moteur Trigger.dev (lot 5)', () => {
+    it('réserve un run « onboarding », le marque lancé avec son run Trigger.dev, que le début reprend', async () => {
+      expect(await assurerUnOnboarding({ slug: 'mastora', nom: 'Mastora', crééPar: 'admin Payload', maintenant: MAINTENANT }, db)).toBe('créé')
+      expect(await assurerUnOnboarding({ slug: 'mastora', nom: 'Autre', crééPar: 'admin Payload', maintenant: MAINTENANT }, db)).toBe('existant')
+      const r = await réserverUnLancement({ slug: 'mastora', tâche: 'onboarding', plafondUsd: 40, budgetUsd: null, débutDuMois: DÉBUT_DU_MOIS, opératrice: 'Agathe', maintenant: MAINTENANT }, db)
+      if (r.sorte !== 'réservé') throw new Error(r.sorte)
+      await conclureUnLancement({ runId: r.runId, sorte: 'lancé', runGithub: null, lien: null, runTrigger: 'run_abc123def', maintenant: MAINTENANT }, db)
+      const début = await ouvrir(db, { tâche: 'onboarding', runGithub: null, tentative: null, lien: null, plafondUsd: 40, runTrigger: 'run_abc123def', lancement: r.runId })
+      expect(début).toMatchObject({ sorte: 'ouvert', runId: r.runId })
+      const [ligne] = await db.select().from(onboardingRuns).where(eq(onboardingRuns.id, r.runId))
+      expect(ligne).toMatchObject({ tâche: 'onboarding', état: 'en_cours', runTrigger: 'run_abc123def' })
+      expect((await onboardingDUnSlug('mastora', db))?.runs[0]).toMatchObject({ tâche: 'onboarding', runTrigger: 'run_abc123def' })
+    })
+
+    it('la base refuse un identifiant de run Trigger.dev mal formé', async () => {
+      await expect(ouvrir(db, { runGithub: null, runTrigger: 'RUN DROP TABLE' })).rejects.toThrow()
     })
   })
 })

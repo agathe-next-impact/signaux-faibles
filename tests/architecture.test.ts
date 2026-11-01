@@ -1051,7 +1051,29 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       }
     }
     for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercherLAdresse(join(process.cwd(), racine))
-    expect(nommentLAdresse.sort()).toEqual(['lib/base/onboardings.ts', 'lib/domaine/onboarding.ts', 'scripts/taches/onboarding.ts'])
+    // Lot 5 : l'orchestration la passe au contact du registre Payload, puis efface la copie.
+    expect(nommentLAdresse.sort()).toEqual(['lib/base/onboardings.ts', 'lib/domaine/onboarding.ts', 'lib/portail/onboarding.ts', 'scripts/taches/onboarding.ts'])
+    // Lot 5 : le moteur. Le registre Payload ne s'importe qu'à la demande (le
+    // crochet de la collection appelle l'orchestration ; un import statique
+    // bouclerait sur la configuration) ; un seul appelant pour chaque déclencheur.
+    const importentLeRegistre: string[] = []
+    const chercherLeRegistre = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) chercherLeRegistre(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && /from '@\/lib\/payload\/registre-onboarding'/.test(readFileSync(chemin, 'utf8'))) importentLeRegistre.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercherLeRegistre(join(process.cwd(), racine))
+    expect(importentLeRegistre).toEqual([])
+    expect(readFileSync(join(process.cwd(), 'lib', 'payload', 'contexte-onboarding.ts'), 'utf8')).not.toMatch(/^import /m)
+    expect(appelants('déclencherLOnboarding')).toEqual(['lib/moteur/declencher.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('lancerDepuisLeRegistre')).toEqual(['lib/payload/collections/organisations.ts', 'lib/portail/onboarding.ts'])
+    const moteur = orchestration.slice(orchestration.indexOf('async function lancerParLeMoteur'))
+    expect(moteur.indexOf('réserverUnLancement(')).toBeGreaterThan(0)
+    expect(moteur.indexOf('réserverUnLancement(')).toBeLessThan(moteur.indexOf('déclencherLOnboarding('))
+    expect(moteur.indexOf('déclencherLOnboarding(')).toBeLessThan(moteur.indexOf('marquerÀOnboarder('))
     // Lot 4 : l'ouverture de l'espace vit avec les gestes de la fiche, derrière la
     // garde, et n'écrit rien tant que Notion fait foi pour les accès.
     expect(appelants('vueDeLOnboarding')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/onboarding.ts'])

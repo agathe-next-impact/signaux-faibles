@@ -117,3 +117,52 @@ export async function ouvrirLEspace(email: string): Promise<void> {
   })
   if (!réponse.ok) throw new Error(`POST /api/acces/ouvrir : ${réponse.status}`)
 }
+
+// ── Le suivi de l'onboarding (lot 5 de docs/proposition-onboarding-admin.md) ──
+
+export type DébutDeRun =
+  | { readonly sorte: 'suivi'; readonly run: string }
+  | { readonly sorte: 'refusé'; readonly message: string }
+  | { readonly sorte: 'non-suivi'; readonly raison: string }
+
+/**
+ * Le début du run, avant toute dépense : le portail reprend la ligne réservée
+ * (`lancement`) et décide du budget du mois. Un refus arrête le run ; un portail
+ * qui ne répond pas, non (le run part sans suivi, comme pour le harnais GitHub).
+ */
+export async function annoncerLeDébutDuRun(entrée: { slug: string; plafondUsd: number; runTrigger: string; lancement: string | null }): Promise<DébutDeRun> {
+  const { url, jeton } = portail()
+  try {
+    const réponse = await fetch(`${url}/api/veille/onboardings`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${jeton}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ evenement: 'debut', slug: entrée.slug, tache: 'onboarding', plafondUsd: entrée.plafondUsd, run: null, runTrigger: entrée.runTrigger, lancement: entrée.lancement }),
+    })
+    const corps = (await réponse.json().catch(() => null)) as { état?: string; run?: string; budget?: { dépenséUsd?: number; budgetUsd?: number } } | null
+    if (réponse.status === 409 && corps?.état === 'budget-atteint') {
+      return { sorte: 'refusé', message: `budget des onboardings atteint (${corps.budget?.dépenséUsd ?? '?'} $ dépensés sur ${corps.budget?.budgetUsd ?? '?'} $)` }
+    }
+    if (réponse.status === 201 && typeof corps?.run === 'string') return { sorte: 'suivi', run: corps.run }
+    return { sorte: 'non-suivi', raison: `réponse ${réponse.status}` }
+  } catch (erreur) {
+    return { sorte: 'non-suivi', raison: erreur instanceof Error ? erreur.message : String(erreur) }
+  }
+}
+
+/** La fin du run, avec son coût ; ne lève jamais. */
+export async function annoncerLaFinDuRun(entrée: { slug: string; run: string; réussi: boolean; coûtUsd: number }): Promise<void> {
+  try {
+    await appeler('POST', '/api/veille/onboardings', { evenement: 'fin', slug: entrée.slug, run: entrée.run, issue: entrée.réussi ? 'reussi' : 'echec', coutUsd: Math.round(entrée.coûtUsd * 10_000) / 10_000 })
+  } catch {
+    // le suivi ne fait jamais échouer un run
+  }
+}
+
+/** Ce que le run sait de son avancement : statut atteint, ou motif d'arrêt. Ne lève jamais. */
+export async function rapporterLOnboarding(entrée: { slug: string; statut?: number; motif?: string }): Promise<void> {
+  try {
+    await appeler('POST', '/api/veille/onboardings', { evenement: 'rapport', slug: entrée.slug, ...(entrée.statut ? { statut: entrée.statut } : {}), ...(entrée.motif ? { motif: entrée.motif.slice(0, 300) } : {}) })
+  } catch {
+    // idem
+  }
+}

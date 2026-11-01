@@ -3,7 +3,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { assemblerLaLettre, phraseDatée, titreDÉdition } from '@/lib/moteur/assemblage'
 import { collecterLesSources, collecterLesUrls, couvertureDe, phrasesDuTexte, versTexte, type Gel } from '@/lib/moteur/collecte'
 import { contrôlerLaProduction, urlsDuMarkdown } from '@/lib/moteur/portes'
-import { produireLaLettre } from '@/lib/moteur/produire'
+import { PlafondAtteint, produireLaLettre } from '@/lib/moteur/produire'
 import type { Rédacteur, SortieRédigée, Sélection } from '@/lib/moteur/redaction'
 import { lireRéférentielUnique, écrireRéférentielUnique } from '@/lib/moteur/referentiel'
 
@@ -288,3 +288,58 @@ describe('produireLaLettre', () => {
     expect(production.mesures.usage.entrée).toBe(1100)
   })
 })
+
+describe('le plafond de dépense du moteur (lot 5 de l’onboarding)', () => {
+  const fausse = () => {
+    const f = sortieConforme()
+    f.axes[0]!.faits[0]!.url = 'https://invente.example/x'
+    return f
+  }
+
+  it('un plafond au-dessus du coût ne change rien', async () => {
+    const production = await produireLaLettre(
+      { référentiel: RÉFÉRENTIEL, sélection: SÉLECTION },
+      { anthropic: {} as Anthropic, rédacteur: rédacteurSimulé([sortieConforme()]), rechercher: null, fetch: fetchDuCycle, plafondUsd: 40 },
+    )
+    expect(production.acceptée).toBe(true)
+    expect(production.mesures.plafondAtteint).toBe(false)
+  })
+
+  /** Comme le vrai rédacteur : l'usage part de zéro et s'ajoute à chaque appel (1 000 jetons en entrée, 500 en sortie, soit 0,014 $). */
+  function rédacteurQuiCumule(réponses: SortieRédigée[]): Rédacteur & { corrections: string[] } {
+    const corrections: string[] = []
+    const usage = { entrée: 0, sortie: 0, cacheLecture: 0, cacheÉcriture: 0 }
+    let i = 0
+    const appel = () => {
+      usage.entrée += 1000
+      usage.sortie += 500
+      return réponses[i++]!
+    }
+    return { modèle: 'claude-opus-5-5', usage, corrections, rédiger: async () => appel(), reprendre: async (c) => (corrections.push(c), appel()) }
+  }
+
+  it('le plafond franchi arrête les reprises : la lettre n’est pas acceptée', async () => {
+    const rédacteur = rédacteurQuiCumule([fausse(), fausse(), sortieConforme()])
+    const journal: string[] = []
+    // Une rédaction simulée coûte 0,014 $ : le plafond de 0,01 $ est franchi après elle.
+    const production = await produireLaLettre(
+      { référentiel: RÉFÉRENTIEL, sélection: SÉLECTION },
+      { anthropic: {} as Anthropic, rédacteur, rechercher: null, fetch: fetchDuCycle, plafondUsd: 0.01, journal: (l) => journal.push(l) },
+    )
+    expect(production.acceptée).toBe(false)
+    expect(production.mesures.reprises).toBe(0)
+    expect(production.mesures.plafondAtteint).toBe(true)
+    expect(rédacteur.corrections).toEqual([])
+    expect(journal.some((l) => l.includes('plafond'))).toBe(true)
+  })
+
+  it('un plafond déjà épuisé avant la rédaction n’appelle pas le modèle', async () => {
+    let appelé = false
+    const rédacteur = { ...rédacteurSimulé([sortieConforme()]), rédiger: async () => { appelé = true; return sortieConforme() } }
+    await expect(
+      produireLaLettre({ référentiel: RÉFÉRENTIEL, sélection: SÉLECTION }, { anthropic: {} as Anthropic, rédacteur, rechercher: null, fetch: fetchDuCycle, plafondUsd: 0 }),
+    ).rejects.toBeInstanceOf(PlafondAtteint)
+    expect(appelé).toBe(false)
+  })
+})
+

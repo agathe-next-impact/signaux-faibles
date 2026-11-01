@@ -1186,6 +1186,9 @@ espace ouvert) dans Postgres.
   "run": { "id": 123, "tentative": 1, "lien": "https://github.com/…/actions/runs/123" } }
 ```
 
+`tache` vaut aussi `onboarding` depuis le lot 5 : le run complet du moteur
+Trigger.dev (`trigger/onboarding.ts`), qui donne `runTrigger` (`run_…`) au lieu
+de `run`, et le même plafond de 40 $ que celui qu'il tient lui-même.
 `lancement` (uuid, facultatif, lot 2) : la ligne que le portail a réservée
 quand l'opératrice a lancé le run depuis `/espaces/onboardings` ; le workflow la
 reçoit par son entrée `lancement` et le harnais la renvoie ici. Le début reprend

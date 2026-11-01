@@ -4,6 +4,7 @@ import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
 import { lireLeFormulaireDeDemande } from '@/lib/auth/appartenance'
 import { CRÉNEAUX_COWORK_PAR_SEMAINE } from '@/lib/domaine/onboarding'
+import { moteurDesOnboardings } from '@/lib/portail/onboarding'
 import { FormulaireDeDemande } from './formulaire'
 
 export const metadata: Metadata = { title: 'Nouvelle demande — signauxfaibles' }
@@ -42,7 +43,7 @@ export default async function NouvelleDemande() {
           </p>
         </Panneau>
       ) : (
-        <FormulaireDeDemande créneauxCowork={{ pris: créneaux, max: CRÉNEAUX_COWORK_PAR_SEMAINE }} />
+        <FormulaireDeDemande créneauxCowork={{ pris: créneaux, max: CRÉNEAUX_COWORK_PAR_SEMAINE }} moteur={moteurDesOnboardings()} />
       )}
     </main>
   )

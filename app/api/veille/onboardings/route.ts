@@ -46,7 +46,9 @@ const slug = z.string().trim().max(80).regex(SLUG)
 const début = z.object({
   evenement: z.literal('debut'),
   slug,
-  tache: z.enum(['balayage', 'premiere-lettre']),
+  tache: z.enum(['balayage', 'premiere-lettre', 'onboarding']),
+  /** Le run Trigger.dev, pour le moteur (lot 5). */
+  runTrigger: z.string().regex(/^run_[a-z0-9]{6,40}$/).nullish(),
   plafondUsd: z.number().min(0).max(1_000),
   /** La réservation faite par le portail quand le run a été lancé depuis l'écran de l'opératrice (lot 2). */
   lancement: z.uuid().nullish(),
@@ -111,6 +113,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
           lien: d.run?.lien ?? null,
           plafondUsd: d.plafondUsd,
           lancement: d.lancement ?? null,
+          runTrigger: d.runTrigger ?? null,
         })
         console.info(`[veille/onboardings] ${d.slug} : début de ${d.tache}, ${r.sorte} (budget ${r.budget.sorte}, ${r.budget.dépenséUsd} $ ce mois).`)
         // Un état propre au budget : le 409 de `SOURCE_ACCES=notion` dit « refusé », et le harnais ne doit pas les confondre.

@@ -168,7 +168,10 @@ describe('le geste de l’opératrice (lot 2)', () => {
 
   it('les plafonds affichés et réservés sont ceux du harnais', async () => {
     const { PARAMÈTRES } = await import('@/scripts/taches/executer')
-    expect(PLAFONDS_DES_TÂCHES).toEqual({ balayage: PARAMÈTRES.balayage.plafondUsd, 'premiere-lettre': PARAMÈTRES['premiere-lettre'].plafondUsd })
+    expect(PLAFONDS_DES_TÂCHES.balayage).toBe(PARAMÈTRES.balayage.plafondUsd)
+    expect(PLAFONDS_DES_TÂCHES['premiere-lettre']).toBe(PARAMÈTRES['premiere-lettre'].plafondUsd)
+    // Le moteur (lot 5) lit ce même plafond dans `trigger/onboarding.ts`.
+    expect(PLAFONDS_DES_TÂCHES.onboarding).toBe(40)
   })
 })
 
@@ -249,6 +252,24 @@ describe('l’ouverture de l’espace (lot 4)', () => {
     }
     // Un run en cours ferme encore tout geste.
     expect(gesteDisponible({ étape: 'premiere_lettre_publiee', exécuteur: 'api', bloqué: false, dernierRun: { tâche: 'balayage', montré: 'en_cours' } })).toEqual({ sorte: 'aucun', raison: 'en-cours' })
+  })
+})
+
+describe('le geste avec le moteur (lot 5)', () => {
+  const g = (étape: Parameters<typeof gesteDisponible>[0]['étape'], plus: Partial<Parameters<typeof gesteDisponible>[0]> = {}) =>
+    gesteDisponible({ étape, exécuteur: 'api', bloqué: false, dernierRun: null, moteur: 'trigger', ...plus })
+
+  it('un seul run : « Lancer l’onboarding » avant l’essai, sans étape de validation', () => {
+    expect(g('demande')).toEqual({ sorte: 'geste', geste: 'onboarding', tâche: 'onboarding', libellé: 'Lancer l’onboarding' })
+    expect(g('referentiels_generes')).toMatchObject({ geste: 'onboarding' })
+    expect(g('en_essai')).toEqual({ sorte: 'aucun', raison: 'attente' })
+    expect(g('premiere_lettre_publiee')).toEqual({ sorte: 'ouvrir', libellé: 'Ouvrir l’espace' })
+    expect(g('espace_ouvert')).toEqual({ sorte: 'aucun', raison: 'terminé' })
+  })
+
+  it('un blocage relance le run complet ; un run en cours ferme tout', () => {
+    expect(g('referentiels_generes', { bloqué: true, dernierRun: { tâche: 'onboarding', montré: 'echec' } })).toMatchObject({ geste: 'relancer', tâche: 'onboarding' })
+    expect(g('demande', { dernierRun: { tâche: 'onboarding', montré: 'en_cours' } })).toEqual({ sorte: 'aucun', raison: 'en-cours' })
   })
 })
 

@@ -903,7 +903,17 @@ par l'envoi de l'activation ; tant que Notion fait foi, l'écran renvoie à
 `/onboarding-ouvrir-espace`), et les **commandes Cowork rapportent** en fin de
 run (`rapport` avec `"executeur": "cowork"`, qui crée l'onboarding ou le
 rattache à la demande Cowork de même nom ; un onboarding existant garde son
-exécuteur). L'opératrice lit le suivi sur `/espaces/onboardings`
+exécuteur). Depuis le lot 5 (même jour, §14), **à la bascule
+`SOURCE_DOCUMENTS=payload`**, le moteur Trigger.dev exécute
+(`moteurDesOnboardings`) : un seul geste « Lancer l'onboarding », un seul chemin
+(`lancerParLeMoteur`) pour le bouton et pour le crochet de l'admin Payload, qui
+ne déclenche plus Trigger.dev lui-même (`lancerDepuisLeRegistre`, contexte
+`CONTEXTE_LANCÉ_PAR_LE_PORTAIL` contre la relance) ; le formulaire crée
+l'organisation au registre Payload (`lib/payload/registre-onboarding.ts`, chargé
+à la demande seulement) ; le moteur tient un **plafond de dépense dur**
+(`plafondUsd`, 40 $ pour l'onboarding) ; les charges des tâches portent
+`organisation` et `prospect` (migration 0021 : tâche `onboarding`,
+`run_trigger`). L'opératrice lit le suivi sur `/espaces/onboardings`
 (`listerLesOnboardings`, garde dans la fonction) et dans la section
 « Onboarding » de sa fiche.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un

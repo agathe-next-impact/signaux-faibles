@@ -13,7 +13,9 @@ import { collecterLesSources, navigateurPlaywright } from '@/lib/moteur/collecte
 import { convertirLesRéférentiels, lireRéférentielUnique, schémaDuRéférentielUnique, écrireRéférentielUnique } from '@/lib/moteur/referentiel'
 import type { DossierDOnboarding } from '@/lib/moteur/remise'
 import { clientAnthropic, produireDepuisLeDossier, remiseDe } from './moteur'
-import { lireLeDossierDuTravail, ouvrirLEspace, poserUnTravail, prendreUnTravail, remettreLÉdition, remettreLeRéférentiel, type DossierDUnTravail } from './portail'
+import { PLAFONDS_DES_TÂCHES } from '@/lib/domaine/onboarding'
+import { PlafondAtteint } from '@/lib/moteur/produire'
+import { annoncerLaFinDuRun, annoncerLeDébutDuRun, lireLeDossierDuTravail, ouvrirLEspace, poserUnTravail, prendreUnTravail, rapporterLOnboarding, remettreLÉdition, remettreLeRéférentiel, type DossierDUnTravail } from './portail'
 
 /**
  * Le référentiel unique d'une nouvelle organisation, dérivé du référentiel de
@@ -80,47 +82,83 @@ async function lireLeDossierDOnboarding(organisation: string): Promise<DossierDO
   return (await réponse.json()) as DossierDOnboarding
 }
 
-/** Palier 4 : fiche, référentiel unique, première lettre (par la file), remise, ouverture de l'espace. */
+/**
+ * Le plafond de dépense d'un onboarding complet (décision du 1er novembre 2026,
+ * lot 5 de `docs/proposition-onboarding-admin.md`) : le même que
+ * `PLAFONDS_DES_TÂCHES.onboarding`, que le portail réserve sur le budget du
+ * mois. Tenu ici en dur : référentiel, puis lettre sous ce qui reste.
+ */
+export const PLAFOND_DE_L_ONBOARDING_USD = PLAFONDS_DES_TÂCHES.onboarding
+
+/**
+ * Palier 4 : fiche, référentiel unique, première lettre (par la file), remise,
+ * ouverture de l'espace. Depuis le lot 5, le run annonce son début au portail
+ * avant toute dépense (budget du mois, reprise de la ligne réservée
+ * `lancement`), tient son plafond, et rapporte sa fin et son coût.
+ */
 export const onboarding = task({
   id: 'onboarding',
   maxDuration: 45 * 60,
   retry: { maxAttempts: 1 },
-  run: async (payload: { organisation: string; ouvrirLEspace?: boolean }, { ctx }) => {
+  run: async (payload: { organisation: string; lancement?: string; ouvrirLEspace?: boolean }, { ctx }) => {
     const anthropic = clientAnthropic()
     const dossier = await lireLeDossierDOnboarding(payload.organisation)
-    let coûtDuRéférentiel = 0
-    if (!dossier.référentielUnique) {
-      const référentiel = dossier.référentielsNotion
-        ? await convertirLesRéférentiels(anthropic, { organisation: dossier.organisation.nom, fiche: dossier.fiche ?? '', ...dossier.référentielsNotion }).then((r) => ({ markdown: r.markdown, fiche: dossier.fiche ?? '', coût: 0 }))
-        : await dériverLeRéférentiel(anthropic, {
-            organisation: dossier.organisation.nom,
-            site: dossier.organisation.site,
-            filière: dossier.filière?.nom ?? null,
-            référentielDeFilière: dossier.filière?.référentiel ?? null,
-            fiche: dossier.fiche,
-          })
-      coûtDuRéférentiel = référentiel.coût
-      await remettreLeRéférentiel({
-        organisation: dossier.organisation.id,
-        filiere: null,
-        run: ctx.run.id,
-        titre: `Référentiel unique : ${dossier.organisation.nom}`,
-        markdown: référentiel.markdown,
-        fiche: référentiel.fiche,
-        cout: référentiel.coût,
-      })
-      logger.info('référentiel remis', { coût: référentiel.coût })
+    const slug = dossier.organisation.slug
+    if (!slug) throw new Error(`Onboarding de ${dossier.organisation.nom} : organisation sans slug, aucune veille à poser.`)
+
+    const suivi = await annoncerLeDébutDuRun({ slug, plafondUsd: PLAFOND_DE_L_ONBOARDING_USD, runTrigger: ctx.run.id, lancement: payload.lancement ?? null })
+    if (suivi.sorte === 'refusé') {
+      logger.warn(`onboarding de ${slug} refusé avant toute dépense : ${suivi.message}`)
+      return { refusé: suivi.message, coût: 0 }
     }
-    if (!dossier.organisation.slug) throw new Error(`Onboarding de ${dossier.organisation.nom} : organisation sans slug, aucune veille à poser.`)
-    const début = new Date()
-    const { travail, dossier: dossierDeParution } = await prendreLaPremièreLettre(dossier.organisation.slug, ctx.run.id)
-    const { production } = await produireDepuisLeDossier(dossierDeParution, { journal: (l) => logger.info(l) })
-    const accusé = await remettreLÉdition({ ...remiseDe(production, { organisation: dossier.organisation.id, filiere: null }, 'onboarding', ctx.run.id, début), travail, session: ctx.run.id })
-    // Règle du 20 octobre 2026 : le lien d'accès ne part qu'après une lettre publiée.
-    if (payload.ouvrirLEspace !== false && accusé.statut === 'publiee' && dossier.organisation.contactEmail) {
-      await ouvrirLEspace(dossier.organisation.contactEmail)
+    if (suivi.sorte === 'non-suivi') logger.warn(`onboarding de ${slug} sans suivi au portail : ${suivi.raison}`)
+    let coût = 0
+    let réussi = false
+    try {
+      if (!dossier.référentielUnique) {
+        const référentiel = dossier.référentielsNotion
+          ? await convertirLesRéférentiels(anthropic, { organisation: dossier.organisation.nom, fiche: dossier.fiche ?? '', ...dossier.référentielsNotion }).then((r) => ({ markdown: r.markdown, fiche: dossier.fiche ?? '', coût: 0 }))
+          : await dériverLeRéférentiel(anthropic, {
+              organisation: dossier.organisation.nom,
+              site: dossier.organisation.site,
+              filière: dossier.filière?.nom ?? null,
+              référentielDeFilière: dossier.filière?.référentiel ?? null,
+              fiche: dossier.fiche,
+            })
+        coût += référentiel.coût
+        await remettreLeRéférentiel({
+          organisation: dossier.organisation.id,
+          filiere: null,
+          run: ctx.run.id,
+          titre: `Référentiel unique : ${dossier.organisation.nom}`,
+          markdown: référentiel.markdown,
+          fiche: référentiel.fiche,
+          cout: référentiel.coût,
+        })
+        logger.info('référentiel remis', { coût: référentiel.coût })
+        await rapporterLOnboarding({ slug, statut: 2 })
+      }
+      const reste = PLAFOND_DE_L_ONBOARDING_USD - coût
+      if (reste <= 0) throw new PlafondAtteint(coût, PLAFOND_DE_L_ONBOARDING_USD)
+
+      const début = new Date()
+      const { travail, dossier: dossierDeParution } = await prendreLaPremièreLettre(slug, ctx.run.id)
+      const { production } = await produireDepuisLeDossier(dossierDeParution, { journal: (l) => logger.info(l), plafondUsd: reste })
+      coût += production.mesures.coût
+      const accusé = await remettreLÉdition({ ...remiseDe(production, { organisation: dossier.organisation.id, filiere: null }, 'onboarding', ctx.run.id, début), travail, session: ctx.run.id })
+      if (production.mesures.plafondAtteint) await rapporterLOnboarding({ slug, motif: `Plafond de ${PLAFOND_DE_L_ONBOARDING_USD} $ atteint pendant les reprises : lettre non acceptée.` })
+      // Règle du 20 octobre 2026 : le lien d'accès ne part qu'après une lettre publiée.
+      if (payload.ouvrirLEspace !== false && accusé.statut === 'publiee' && dossier.organisation.contactEmail) {
+        await ouvrirLEspace(dossier.organisation.contactEmail)
+      }
+      réussi = production.acceptée
+      return { accusé, acceptée: production.acceptée, coût }
+    } catch (erreur) {
+      if (erreur instanceof PlafondAtteint) await rapporterLOnboarding({ slug, motif: erreur.message })
+      throw erreur
+    } finally {
+      if (suivi.sorte === 'suivi') await annoncerLaFinDuRun({ slug, run: suivi.run, réussi, coûtUsd: coût })
     }
-    return { accusé, acceptée: production.acceptée, coût: coûtDuRéférentiel + production.mesures.coût }
   },
 })
 

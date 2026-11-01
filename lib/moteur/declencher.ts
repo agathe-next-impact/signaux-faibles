@@ -31,17 +31,35 @@ async function déclencher(idDeLaTâche: string, charge: Record<string, string>)
   return { déclenché: true, run: handle.id }
 }
 
-/** L'onboarding complet d'une organisation (palier 4), à l'état « à onboarder ». */
-export function déclencherLOnboarding(organisationId: string): Promise<Déclenchement> {
-  return déclencher(TÂCHES.onboarding, { organisationId })
+/** Vrai si le portail peut déclencher une tâche : sans clé, l'écran le dit au lieu de réserver un run qui ne partirait pas. */
+export function déclencheurConfiguré(): boolean {
+  return Boolean(process.env['TRIGGER_SECRET_KEY'])
+}
+
+/*
+ * Les charges portent les clés que les tâches lisent (`trigger/onboarding.ts` :
+ * `payload.organisation`, `payload.prospect`). Jusqu'au 1er novembre 2026, elles
+ * portaient `organisationId` et `prospectId`, que les tâches ne lisaient pas :
+ * à la bascule, chaque run serait parti sur une organisation indéfinie. Le test
+ * `tests/moteur.declencher.test.ts` tient l'accord des deux côtés.
+ */
+
+/**
+ * L'onboarding complet d'une organisation (palier 4). Depuis le lot 5 de
+ * `docs/proposition-onboarding-admin.md`, seul `lib/portail/onboarding.ts`
+ * l'appelle, après la réservation et le budget ; `lancement` est la ligne
+ * réservée, que la tâche renvoie au début de son run.
+ */
+export function déclencherLOnboarding(organisationId: string, options: { readonly lancement?: string } = {}): Promise<Déclenchement> {
+  return déclencher(TÂCHES.onboarding, { organisation: organisationId, ...(options.lancement ? { lancement: options.lancement } : {}) })
 }
 
 /** Le bloc « pour <organisation> » de la lettre de filière (palier 1), à la création du prospect. */
 export function déclencherLeBlocPersonnalisé(prospectId: string): Promise<Déclenchement> {
-  return déclencher(TÂCHES.blocPersonnalisé, { prospectId })
+  return déclencher(TÂCHES.blocPersonnalisé, { prospect: prospectId })
 }
 
 /** L'édition de découverte (palier 3), à la première visite. */
 export function déclencherLÉditionDeDécouverte(organisationId: string): Promise<Déclenchement> {
-  return déclencher(TÂCHES.éditionDeDécouverte, { organisationId })
+  return déclencher(TÂCHES.éditionDeDécouverte, { organisation: organisationId })
 }
