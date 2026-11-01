@@ -941,7 +941,13 @@ par `semainesDeLEspace(accès)`, seul appelant de l'aperçu ; les corps par
 proxy des médias reste fermé à l'aperçu, comme il l'est déjà à une visite
 opérateur. Les tâches Cowork (Notion) déposaient déjà la lettre en brouillon
 Gmail, envoyée par l'opératrice : l'aperçu lui permet de la lire dans l'espace
-avant de l'envoyer ; « Invitation manuelle » reste la case Notion du registre.
+avant de l'envoyer ; « Invitation manuelle » reste la case Notion du registre. **L'espace se visite dès la première lettre** (même jour) : la visite
+opératrice (`organisationDuSlug`) ne demande plus une ligne « Accès » active ni un
+lecteur actif, seulement une ligne qui porte le slug et la clé (Notion, une
+ligne active d'abord si le slug en porte plusieurs) ou une organisation non
+archivée (Postgres) : la ligne du §3.7bis, inactive jusqu'à l'ouverture, suffit
+à lire l'aperçu depuis la fiche (« Ouvrir l'espace »). Le privilège reste
+vérifié avant ; un slug inconnu reste `notFound`.
 
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par

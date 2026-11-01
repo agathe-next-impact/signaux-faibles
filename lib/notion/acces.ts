@@ -34,6 +34,12 @@ export type Accès = {
  * Réservé à l'accès opérateur. Un client ordinaire n'emprunte jamais ce chemin :
  * son identifiant d'organisation vient de sa propre ligne, et de nulle part
  * ailleurs.
+ *
+ * Une ligne **inactive** suffit depuis le 1er novembre 2026 : à l'issue de la
+ * première lettre, la ligne du §3.7bis existe, inactive tant que l'espace n'est
+ * pas ouvert, et l'opératrice doit pouvoir visiter l'espace pour en lire
+ * l'aperçu avant tout envoi. Une ligne active passe d'abord quand le slug en
+ * porte plusieurs. Le privilège reste vérifié avant, dans `exigerAccès`.
  */
 export async function organisationDuSlug(slug: string): Promise<{
   readonly organisationId: string
@@ -50,15 +56,13 @@ export async function organisationDuSlug(slug: string): Promise<{
   const réponse = await notion().dataSources.query({
     data_source_id: sourceId,
     filter: {
-      and: [
-        { property: 'Slug', rich_text: { equals: slug } },
-        { property: 'Actif', checkbox: { equals: true } },
-      ],
+      and: [{ property: 'Slug', rich_text: { equals: slug } }],
     },
-    page_size: 1,
+    page_size: 10,
   })
 
-  const page = réponse.results[0]
+  const lignes = réponse.results.filter((ligne) => lireTexte(ligne, "Identifiant Notion de l'organisation").length > 0)
+  const page = lignes.find((ligne) => lireCase(ligne, 'Actif')) ?? lignes[0]
   if (!page) return null
 
   const organisationId = lireTexte(page, "Identifiant Notion de l'organisation")

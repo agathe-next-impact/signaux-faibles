@@ -57,7 +57,7 @@ export type AccèsAccordé = Accès & {
  * - les fonctions cachées de contenu ne voient toujours qu'un identifiant
  *   d'organisation : le privilège ne change rien à ce qu'elles reçoivent, ni au
  *   cloisonnement de leurs entrées de cache ;
- * - un slug qu'aucune ligne active ne porte reste `notFound`, comme pour un
+ * - un slug qu'aucune ligne ne porte reste `notFound`, comme pour un
  *   client ordinaire : le privilège n'ouvre pas d'énumération ;
  * - la case `Actif` le révoque comme le reste, effective à la requête suivante ;
  * - la visite est journalisée, et l'écran la signale. Sans marque visible, une
