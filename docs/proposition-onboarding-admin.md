@@ -228,8 +228,9 @@ vers GitHub pour lire un coût ou un échec.
      rapportée ; exception bornée et datée, comme celle des outils
      stratégiques ;
    - B : passer ces champs en entrées du workflow GitHub, sans stockage ; à
-     écarter, les entrées d'un `workflow_dispatch` sont visibles dans l'onglet
-     Actions par quiconque lit le dépôt ;
+     écarter, les entrées d'un `workflow_dispatch` sont recopiées dans les
+     journaux du job (le workflow les pose en `env`), lisibles par quiconque a
+     accès au dépôt, pendant toute la durée de rétention ;
    - C : pas de formulaire, la demande reste `/onboarding-demande` ; le portail
      ne fait que lancer et suivre (lots 1, 2, 4).
 2. **Le jeton GitHub.** Un jeton à granularité fine limité à ce dépôt et à la
