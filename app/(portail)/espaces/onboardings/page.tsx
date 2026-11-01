@@ -3,10 +3,10 @@ import Link from 'next/link'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
 import { Repliable } from '@/components/repliable'
-import { FriseDOnboarding, libelléDuRun, MétaDOnboarding, MotifDeBlocage, résuméDeLÉtape } from '@/components/onboarding-operatrice'
+import { FriseDOnboarding, GesteDOnboarding, libelléDuRun, MessageDeLancement, MétaDOnboarding, MotifDeBlocage, résuméDeLÉtape } from '@/components/onboarding-operatrice'
 import { listerLesOnboardings } from '@/lib/auth/appartenance'
 import { formaterDollars, type DécisionDeBudget } from '@/lib/domaine/onboarding'
-import type { VueDOnboarding } from '@/lib/portail/onboarding'
+import { lancementDisponible, type VueDOnboarding } from '@/lib/portail/onboarding'
 
 export const metadata: Metadata = { title: 'Onboardings — signauxfaibles' }
 
@@ -14,11 +14,14 @@ export const metadata: Metadata = { title: 'Onboardings — signauxfaibles' }
  * Les onboardings suivis par le portail, pour l'opératrice (lot 1 de
  * `docs/proposition-onboarding-admin.md`, 1er novembre 2026).
  *
- * Lecture seule : un onboarding apparaît au premier run `balayage` ou
- * `premiere-lettre` lancé sur une organisation par le workflow « Tâches
- * planifiées (API Claude) », que le harnais rapporte au portail. Les gestes
- * (lancer, relancer, ouvrir l'espace) viennent aux lots suivants ; d'ici là, ils
- * se font dans GitHub Actions et par les commandes `/onboarding-*`.
+ * Un onboarding apparaît au premier run `balayage` ou `premiere-lettre` lancé
+ * sur une organisation par le workflow « Tâches planifiées (API Claude) », que
+ * le harnais rapporte au portail. Depuis le lot 2, chaque onboarding porte le
+ * seul geste possible à son étape (« Générer les référentiels », « Produire la
+ * première lettre », « Relancer »), qui déclenche le workflow
+ * (`lib/portail/onboarding-actions.ts`) ; sans `GITHUB_JETON_ACTIONS`, l'écran
+ * donne la commande à lancer à la main. L'ouverture de l'espace reste à
+ * `/onboarding-ouvrir-espace` jusqu'au lot 4.
  *
  * Comme les autres tableaux, la garde est dans `listerLesOnboardings`, avant
  * toute lecture. Aucune adresse, aucune lettre.
@@ -28,8 +31,12 @@ export const instant = false
 /** Les plafonds du harnais (`scripts/taches/executer.ts`), rappelés à côté du budget. */
 const PLAFONDS = 'balayage 30 $, premiere-lettre 40 $'
 
-export default async function Onboardings() {
+export default async function Onboardings({ searchParams }: { searchParams: Promise<{ lancement?: string | string[]; slug?: string | string[] }> }) {
   const { accès, tableau } = await listerLesOnboardings()
+  const paramètres = await searchParams
+  const code = typeof paramètres.lancement === 'string' ? paramètres.lancement : undefined
+  const slugDuGeste = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
+  const disponible = lancementDisponible()
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-6 py-12">
@@ -38,7 +45,7 @@ export default async function Onboardings() {
         <p className="label-mono text-rose-texte">accès opérateur · {accès.nom}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">Onboardings</h1>
         <p className="text-ardoise">
-          Les onboardings lancés sur l’API, tels que les tâches les rapportent. Le registre Notion reste la source du statut.{' '}
+          Les onboardings lancés sur l’API, tels que les tâches les rapportent, et le geste possible à chaque étape. Le registre Notion reste la source du statut.{' '}
           <Link href="/espaces" className="text-encre underline underline-offset-2">
             Choisir un espace
           </Link>
@@ -63,7 +70,7 @@ export default async function Onboardings() {
           ) : (
             <div className="flex flex-col gap-6">
               {tableau.enCours.map((vue) => (
-                <Onboarding key={vue.onboarding.id} vue={vue} />
+                <Onboarding key={vue.onboarding.id} vue={vue} disponible={disponible} message={vue.onboarding.slug === slugDuGeste ? code : undefined} />
               ))}
             </div>
           )}
@@ -112,11 +119,11 @@ function Budget({ mois, budget }: { mois: string; budget: DécisionDeBudget }) {
   )
 }
 
-function Onboarding({ vue }: { vue: VueDOnboarding }) {
+function Onboarding({ vue, disponible, message }: { vue: VueDOnboarding; disponible: boolean; message: string | undefined }) {
   const o = vue.onboarding
   const nom = o.organisation?.nom ?? o.nom ?? o.slug
   return (
-    <section className="flex flex-col gap-4 border border-gris-ligne p-6">
+    <section id={o.slug} className="flex scroll-mt-6 flex-col gap-4 border border-gris-ligne p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h2 className="font-titre text-h3 font-semibold text-encre">
           {o.organisation ? (
@@ -132,8 +139,10 @@ function Onboarding({ vue }: { vue: VueDOnboarding }) {
           {vue.dernierRun ? ` · ${libelléDuRun(vue.dernierRun)}` : ''}
         </p>
       </div>
+      <MessageDeLancement code={message} />
       <MotifDeBlocage vue={vue} />
       <FriseDOnboarding vue={vue} />
+      <GesteDOnboarding vue={vue} retour="liste" disponible={disponible} />
       <MétaDOnboarding vue={vue} />
       {o.organisation ? null : (
         <p className="text-ardoise">L’organisation n’est pas encore dans le portail : elle y entre à l’étape B, à la première lettre.</p>

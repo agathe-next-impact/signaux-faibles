@@ -1186,6 +1186,12 @@ espace ouvert) dans Postgres.
   "run": { "id": 123, "tentative": 1, "lien": "https://github.com/…/actions/runs/123" } }
 ```
 
+`lancement` (uuid, facultatif, lot 2) : la ligne que le portail a réservée
+quand l'opératrice a lancé le run depuis `/espaces/onboardings` ; le workflow la
+reçoit par son entrée `lancement` et le harnais la renvoie ici. Le début reprend
+alors cette ligne au lieu d'en créer une, et le budget ne compte pas deux fois son
+plafond.
+
 201 `{ état: "ouvert" | "déjà-ouvert", run: "<uuid>", budget }`. Le premier
 début crée l'onboarding du slug ; un rejeu du même run GitHub (même identifiant,
 même tentative) rend le run déjà consigné. **409 `{ état: "budget-atteint" }`**

@@ -35,6 +35,16 @@ export function runDeGithub(env: Readonly<Record<string, string | undefined>> = 
   return { id, tentative: Number.isSafeInteger(tentative) && tentative > 0 ? tentative : null, lien }
 }
 
+/**
+ * L'identifiant de la réservation faite par le portail (lot 2), reçu par
+ * l'entrée `lancement` du workflow dans `LANCEMENT` ; `null` pour un run lancé
+ * à la main dans GitHub, ou une valeur qui n'est pas un uuid.
+ */
+export function lancementDuPortail(env: Readonly<Record<string, string | undefined>> = process.env): string | null {
+  const valeur = (env['LANCEMENT'] ?? '').trim().toLowerCase()
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(valeur) ? valeur : null
+}
+
 export type Début =
   | { readonly sorte: 'suivi'; readonly runId: string }
   | { readonly sorte: 'refusé'; readonly message: string }
@@ -44,7 +54,7 @@ const dollars = (n: unknown) => (typeof n === 'number' ? `${n.toFixed(2)} $` : '
 
 export async function annoncerLeDébut(
   configuration: ConfigurationDesOutils,
-  entrée: { readonly slug: string; readonly tâche: Tâche; readonly plafondUsd: number; readonly run: RunGithub | null },
+  entrée: { readonly slug: string; readonly tâche: Tâche; readonly plafondUsd: number; readonly run: RunGithub | null; readonly lancement?: string | null },
 ): Promise<Début> {
   try {
     const r = await appelerLePortail(configuration, 'POST', CHEMIN_DU_SUIVI, {
@@ -53,6 +63,7 @@ export async function annoncerLeDébut(
       tache: entrée.tâche,
       plafondUsd: entrée.plafondUsd,
       run: entrée.run,
+      ...(entrée.lancement ? { lancement: entrée.lancement } : {}),
     })
     if ('refus' in r) return { sorte: 'non-suivi', raison: r.refus }
     const corps = (() => {

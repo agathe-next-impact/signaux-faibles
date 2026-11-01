@@ -256,7 +256,36 @@ balayage du matin sans organisation ne l'est pas.
   suivi, le journal le dit. Seul un refus de budget arrête un run.
 
 L'opératrice lit le tout sur `/espaces/onboardings` et dans la section
-« Onboarding » de la fiche `/espaces/abonnements/[slug]`. Les runs Cowork n'y
+« Onboarding » de la fiche `/espaces/abonnements/[slug]`.
+
+**Lancer depuis le portail (lot 2, 1er novembre 2026).** Chaque onboarding porte
+le seul geste possible à son étape : « Générer les référentiels » (`balayage`),
+« Produire la première lettre » (`premiere-lettre`, une fois les référentiels
+validés dans Notion), ou « Relancer » la tâche du dernier run bloqué ou en
+échec. Le portail vérifie l'étape, l'absence de run en cours et le budget,
+réserve une ligne, puis déclenche ce workflow par l'API GitHub avec `tache`,
+`organisation` et `lancement` (l'identifiant de la ligne réservée, que le
+harnais lit dans `LANCEMENT`). Un refus de GitHub clôt la ligne en échec, avec
+son code. « Run workflow » à la main reste possible : laisser `lancement` vide.
+
+Mise en service, une fois :
+
+1. Sur GitHub, Settings, Developer settings, Personal access tokens,
+   Fine-grained tokens, « Generate new token » : propriétaire
+   `agathe-next-impact`, « Only select repositories » avec
+   `signaux-faibles`, permission de dépôt « Actions : Read and write », et rien
+   d'autre ; une expiration d'un an au plus, à noter.
+2. Dans Vercel (production) : `GITHUB_JETON_ACTIONS` = ce jeton, puis
+   redéployer. Sans lui, l'écran donne la commande à lancer à la main.
+3. Si l'organisation GitHub exige l'approbation des jetons fins, l'approuver.
+
+Le jeton ne sert qu'à déclencher le workflow ; il n'est lu que par
+`lib/github/workflow.ts` et n'apparaît dans aucun journal.
+
+Le contrôle du soir signale `onboarding-sans-nouvelles` (lancé depuis le portail
+sans début rapporté au bout d'une heure, ou en cours depuis trois heures sans
+fin) et `onboarding-immobile` (sans nouvelle depuis sept jours, avant
+l'ouverture de l'espace). Les runs Cowork n'y
 rapportent rien encore (lot 4) : un onboarding Cowork n'apparaît que s'il a eu
 au moins un run API.
 

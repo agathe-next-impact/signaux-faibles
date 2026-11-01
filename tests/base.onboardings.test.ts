@@ -3,7 +3,10 @@ import { eq } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
 import { courriers, lecteurs, onboardingRuns, onboardings, organisations } from '@/lib/base/schema'
 import {
+  conclureUnLancement,
   conclureUnRunDOnboarding,
+  onboardingsPourLeContrôle,
+  réserverUnLancement,
   onboardingDUnSlug,
   ouvrirUnRunDOnboarding,
   rapporterUnOnboarding,
@@ -149,5 +152,67 @@ describe('le suivi des onboardings en base', () => {
     await expect(ouvrir(db, { lien: 'https://exemple.example/run' })).rejects.toThrow()
     await ouvrir(db)
     await expect(db.update(onboardings).set({ statutRapporté: 7 })).rejects.toThrow()
+  })
+
+  describe('le lancement depuis le portail (lot 2)', () => {
+    const réserver = (plus: Partial<Parameters<typeof réserverUnLancement>[0]> = {}) =>
+      réserverUnLancement({ slug: 'mastora', tâche: 'premiere_lettre', plafondUsd: 40, budgetUsd: null, débutDuMois: DÉBUT_DU_MOIS, opératrice: 'Agathe', maintenant: MAINTENANT, ...plus }, db)
+
+    it('réserve une ligne « demande », refuse un double clic, un inconnu et un Cowork', async () => {
+      expect((await réserver()).sorte).toBe('inconnu')
+      const premier = await ouvrir(db)
+      await conclureUnRunDOnboarding({ slug: 'mastora', runId: premier.runId, issue: 'reussi', coûtUsd: 4.82, maintenant: MAINTENANT }, db)
+      const r = await réserver()
+      expect(r.sorte).toBe('réservé')
+      expect((await réserver()).sorte).toBe('en-cours')
+      const [ligne] = await db.select().from(onboardingRuns).where(eq(onboardingRuns.id, (r as { runId: string }).runId))
+      expect(ligne).toMatchObject({ état: 'demande', tâche: 'premiere_lettre', plafondUsd: 40, lancéPar: 'Agathe', runGithub: null })
+      await db.update(onboardings).set({ exécuteur: 'cowork' })
+      expect((await réserver()).sorte).toBe('cowork')
+    })
+
+    it('refuse au clic un run dont le plafond dépasse le budget, sans rien réserver', async () => {
+      const premier = await ouvrir(db)
+      await conclureUnRunDOnboarding({ slug: 'mastora', runId: premier.runId, issue: 'reussi', coûtUsd: 20, maintenant: MAINTENANT }, db)
+      const r = await réserver({ budgetUsd: 50 })
+      expect(r).toMatchObject({ sorte: 'budget-atteint', budget: { dépenséUsd: 20, plafondUsd: 40 } })
+      expect(await db.select().from(onboardingRuns)).toHaveLength(1)
+    })
+
+    it('le début du run reprend la réservation, sans compter son plafond deux fois', async () => {
+      const premier = await ouvrir(db)
+      await conclureUnRunDOnboarding({ slug: 'mastora', runId: premier.runId, issue: 'reussi', coûtUsd: 5, maintenant: MAINTENANT }, db)
+      const r = await réserver({ budgetUsd: 50 })
+      if (r.sorte !== 'réservé') throw new Error(r.sorte)
+      await conclureUnLancement({ runId: r.runId, sorte: 'lancé', runGithub: 500, lien: 'https://github.com/a/b/actions/runs/500', maintenant: MAINTENANT }, db)
+      // 5 $ + 40 $ tiennent dans 50 $ : compter la réservation en plus refuserait le run.
+      const début = await ouvrir(db, { tâche: 'premiere_lettre', runGithub: 500, tentative: 1, plafondUsd: 40, budgetUsd: 50, lancement: r.runId })
+      expect(début).toMatchObject({ sorte: 'ouvert', runId: r.runId })
+      const [ligne] = await db.select().from(onboardingRuns).where(eq(onboardingRuns.id, r.runId))
+      expect(ligne).toMatchObject({ état: 'en_cours', runGithub: 500, tentative: 1, lancéPar: 'Agathe' })
+      expect(ligne!.début).not.toBeNull()
+      expect(await db.select().from(onboardingRuns)).toHaveLength(2)
+    })
+
+    it('un lancement d’un autre slug n’est pas repris : le début crée sa propre ligne', async () => {
+      await ouvrir(db, { runGithub: 1 })
+      await conclureUnRunDOnboarding({ slug: 'mastora', runId: (await db.select().from(onboardingRuns))[0]!.id, issue: 'reussi', coûtUsd: 1, maintenant: MAINTENANT }, db)
+      const r = await réserver()
+      if (r.sorte !== 'réservé') throw new Error(r.sorte)
+      const autre = await ouvrir(db, { slug: 'heritech', runGithub: 2, lancement: r.runId })
+      expect(autre.runId).not.toBe(r.runId)
+    })
+
+    it('un échec de GitHub clôt la réservation à coût nul, avec le code', async () => {
+      await ouvrir(db, { runGithub: 1 })
+      await conclureUnRunDOnboarding({ slug: 'mastora', runId: (await db.select().from(onboardingRuns))[0]!.id, issue: 'echec', coûtUsd: 1, maintenant: MAINTENANT }, db)
+      const r = await réserver()
+      if (r.sorte !== 'réservé') throw new Error(r.sorte)
+      await conclureUnLancement({ runId: r.runId, sorte: 'échec', codeHttp: 403, maintenant: MAINTENANT }, db)
+      const [ligne] = await db.select().from(onboardingRuns).where(eq(onboardingRuns.id, r.runId))
+      expect(ligne).toMatchObject({ état: 'echec', codeHttp: 403, coûtUsd: 0 })
+      expect((await réserver()).sorte).toBe('réservé')
+      expect((await onboardingsPourLeContrôle(db)).map((o) => o.slug)).toEqual(['mastora'])
+    })
   })
 })

@@ -227,3 +227,90 @@ const arrondir = (n: number) => Math.round(n * 10_000) / 10_000
 export function formaterDollars(n: number): string {
   return `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)} $`
 }
+
+// ── Le geste de l'opératrice (lot 2, 1er novembre 2026) ─────────────────────
+
+export type Geste = 'referentiels' | 'premiere-lettre' | 'relancer'
+
+/** La tâche du workflow, telle que `taches.yml` la nomme. */
+export type TâcheDuWorkflow = 'balayage' | 'premiere-lettre'
+
+export type GesteDisponible =
+  | { readonly sorte: 'geste'; readonly geste: Geste; readonly tâche: TâcheDuWorkflow; readonly libellé: string }
+  | { readonly sorte: 'aucun'; readonly raison: 'en-cours' | 'cowork' | 'validation-notion' | 'attente' | 'terminé' }
+
+const versLeWorkflow = (tâche: 'balayage' | 'premiere_lettre'): TâcheDuWorkflow => (tâche === 'premiere_lettre' ? 'premiere-lettre' : 'balayage')
+
+/**
+ * Le seul geste possible à l'étape, et rien d'autre (§5 de la proposition).
+ * Un run en cours ferme tout geste ; un onboarding Cowork ne se lance pas depuis
+ * le portail ; un blocage propose de relancer la tâche du dernier run ; sinon,
+ * « Générer les référentiels » à la demande et « Produire la première lettre »
+ * une fois les référentiels validés dans Notion. Entre les deux, la validation
+ * reste dans Notion (décision 3) ; après, la relectrice publie et l'ouverture
+ * viendra au lot 4.
+ */
+export function gesteDisponible(entrée: {
+  readonly étape: ÉtapeDOnboarding
+  readonly exécuteur: 'api' | 'cowork'
+  readonly bloqué: boolean
+  readonly dernierRun: { readonly tâche: 'balayage' | 'premiere_lettre'; readonly montré: ÉtatDeRun | 'sans_nouvelles' } | null
+}): GesteDisponible {
+  const enCours = entrée.dernierRun && ['demande', 'lance', 'en_cours'].includes(entrée.dernierRun.montré)
+  if (enCours) return { sorte: 'aucun', raison: 'en-cours' }
+  if (entrée.exécuteur === 'cowork') return { sorte: 'aucun', raison: 'cowork' }
+  if (entrée.bloqué && entrée.dernierRun && rang(entrée.étape) < rang('premiere_lettre_publiee')) {
+    const tâche = versLeWorkflow(entrée.dernierRun.tâche)
+    return { sorte: 'geste', geste: 'relancer', tâche, libellé: `Relancer ${tâche}` }
+  }
+  switch (entrée.étape) {
+    case 'demande':
+      return { sorte: 'geste', geste: 'referentiels', tâche: 'balayage', libellé: 'Générer les référentiels' }
+    case 'referentiels_generes':
+      return { sorte: 'aucun', raison: 'validation-notion' }
+    case 'referentiels_valides':
+      return { sorte: 'geste', geste: 'premiere-lettre', tâche: 'premiere-lettre', libellé: 'Produire la première lettre' }
+    case 'espace_ouvert':
+      return { sorte: 'aucun', raison: 'terminé' }
+    default:
+      return { sorte: 'aucun', raison: 'attente' }
+  }
+}
+
+/** Le plafond de chaque tâche, recopié de `PARAMÈTRES` du harnais ; un test tient l'égalité. */
+export const PLAFONDS_DES_TÂCHES: Readonly<Record<TâcheDuWorkflow, number>> = { balayage: 30, 'premiere-lettre': 40 }
+
+// ── Ce que le contrôle du soir signale (lot 2) ───────────────────────────────
+
+/** Un run lancé depuis le portail dont le harnais n'a rien dit au bout d'une heure : le job n'a pas démarré, ou n'a pas joint le portail. */
+export const DÉLAI_DE_DÉMARRAGE_MS = 60 * 60 * 1000
+/** Un onboarding sans nouvelle depuis sept jours, avant l'ouverture de l'espace. */
+export const JOURS_D_IMMOBILITÉ = 7
+
+export type AlerteDOnboarding = { readonly code: 'onboarding-sans-nouvelles' | 'onboarding-immobile'; readonly message: string }
+
+export function alertesDUnOnboarding(
+  entrée: {
+    readonly étape: ÉtapeDOnboarding
+    readonly clos: boolean
+    readonly misÀJourLe: Date
+    readonly dernierRun: (RunVu & { readonly tâche: 'balayage' | 'premiere_lettre' }) | null
+  },
+  maintenant: Date,
+): AlerteDOnboarding[] {
+  const alertes: AlerteDOnboarding[] = []
+  const run = entrée.dernierRun
+  if (run && !run.fin) {
+    const âge = maintenant.getTime() - run.crééLe.getTime()
+    const tâche = versLeWorkflow(run.tâche)
+    if ((run.état === 'demande' || run.état === 'lance') && âge > DÉLAI_DE_DÉMARRAGE_MS) {
+      alertes.push({ code: 'onboarding-sans-nouvelles', message: `${tâche} lancé depuis le portail il y a plus d’une heure, sans début rapporté : vérifier le job dans GitHub Actions.` })
+    } else if (étatMontré(run, maintenant) === 'sans_nouvelles') {
+      alertes.push({ code: 'onboarding-sans-nouvelles', message: `${tâche} en cours depuis plus de trois heures sans fin rapportée : le job a pu s’interrompre.` })
+    }
+  }
+  if (!entrée.clos && entrée.étape !== 'espace_ouvert' && maintenant.getTime() - entrée.misÀJourLe.getTime() > JOURS_D_IMMOBILITÉ * 24 * 60 * 60 * 1000) {
+    alertes.push({ code: 'onboarding-immobile', message: `onboarding à l’étape « ${LIBELLÉS_DES_ÉTAPES[entrée.étape]} » sans nouvelle depuis plus de ${JOURS_D_IMMOBILITÉ} jours.` })
+  }
+  return alertes
+}

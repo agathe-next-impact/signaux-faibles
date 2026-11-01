@@ -45,6 +45,11 @@ on:
         required: false
         type: string
         default: ''
+      lancement:
+        description: Posé par le portail quand l'opératrice lance un onboarding depuis /espaces/onboardings ; à laisser vide à la main
+        required: false
+        type: string
+        default: ''
   # Réconciliation basculée le 25 octobre 2026 : la tâche planifiée côté Claude
   # (trig_01BXfAjwQEdmitFkuiUkv6BB) est désactivée le même jour. Revue basculée
   # le 25 octobre 2026 : la tâche planifiée côté Claude (trig_01J6j4oBrxa7LsSXY89Qnqu9)
@@ -71,6 +76,7 @@ jobs:
       ORGANISATION: ${{ inputs.organisation }}
       REPRENDRE: ${{ inputs.reprendre && 'oui' || '' }}
       PERIODES: ${{ inputs.periodes }}
+      LANCEMENT: ${{ inputs.lancement }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       NOTION_MCP_TOKEN: ${{ secrets.NOTION_MCP_TOKEN }}
       ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}

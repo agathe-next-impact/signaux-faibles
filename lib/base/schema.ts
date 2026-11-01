@@ -1021,6 +1021,13 @@ export const onboardingRuns = pgTable(
     coûtUsd: numeric('coût_usd', { precision: 10, scale: 4, mode: 'number' }),
     début: horodatage('début'),
     fin: horodatage('fin'),
+    /**
+     * Le statut HTTP de GitHub quand le déclenchement depuis le portail a
+     * échoué (lot 2, migration 0020) ; nul sinon. Un code, jamais un message.
+     */
+    codeHttp: smallint('code_http'),
+    /** Le nom de l'opératrice qui a lancé le run depuis le portail ; nul pour un run lancé dans GitHub. */
+    lancéPar: text('lancé_par'),
     crééLe: horodatage('créé_le').notNull().defaultNow(),
   },
   (table) => [

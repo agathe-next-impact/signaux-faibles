@@ -5,7 +5,7 @@ import { lireLaGestionDUneOrganisation, lireLaSantéDesEspaces } from '@/lib/aut
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
-import { FriseDOnboarding, MétaDOnboarding, MotifDeBlocage, RunsDOnboarding } from '@/components/onboarding-operatrice'
+import { FriseDOnboarding, GesteDOnboarding, MESSAGES_DE_LANCEMENT, MétaDOnboarding, MotifDeBlocage, RunsDOnboarding } from '@/components/onboarding-operatrice'
 import type { LigneDAbonnement } from '@/lib/base/situation'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
@@ -24,7 +24,7 @@ import {
   validerLaGrille,
 } from '@/lib/portail/gestion-actions'
 import { JOURS_DU_JOURNAL } from '@/lib/portail/gestion'
-import type { VueDOnboarding } from '@/lib/portail/onboarding'
+import { lancementDisponible, type VueDOnboarding } from '@/lib/portail/onboarding'
 import { déciderDeLOrganisation } from '@/lib/portail/reglages'
 
 export const metadata: Metadata = { title: 'Gérer une organisation — signauxfaibles' }
@@ -148,13 +148,14 @@ export default async function GérerUneOrganisation({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ gestion?: string | string[]; reglage?: string | string[]; section?: string | string[] }>
+  searchParams: Promise<{ gestion?: string | string[]; reglage?: string | string[]; section?: string | string[]; onboarding?: string | string[] }>
 }) {
   const { slug } = await params
   const { accès, gestion, abonnement } = await lireLaGestionDUneOrganisation(slug)
   const paramètres = await searchParams
   const code = typeof paramètres.gestion === 'string' ? paramètres.gestion : typeof paramètres.reglage === 'string' ? paramètres.reglage : undefined
-  const message = code ? MESSAGES[code] : undefined
+  const codeDOnboarding = typeof paramètres.onboarding === 'string' ? paramètres.onboarding : undefined
+  const message = code ? MESSAGES[code] : codeDOnboarding ? MESSAGES_DE_LANCEMENT[codeDOnboarding as keyof typeof MESSAGES_DE_LANCEMENT] : undefined
   const section = typeof paramètres.section === 'string' ? paramètres.section : null
   const statut: Statut = message ? { section, message } : null
 
@@ -191,12 +192,13 @@ export default async function GérerUneOrganisation({
   )
 }
 
-/** La frise et les runs (lot 1 de `docs/proposition-onboarding-admin.md`) : lecture seule. */
-function SuiviDOnboarding({ onboarding }: { onboarding: VueDOnboarding }) {
+/** La frise, le geste possible et les runs (lots 1 et 2 de `docs/proposition-onboarding-admin.md`). */
+function SuiviDOnboarding({ onboarding, disponible }: { onboarding: VueDOnboarding; disponible: boolean }) {
   return (
     <>
       <MotifDeBlocage vue={onboarding} />
       <FriseDOnboarding vue={onboarding} />
+      <GesteDOnboarding vue={onboarding} retour="fiche" disponible={disponible} />
       <MétaDOnboarding vue={onboarding} />
       <RunsDOnboarding runs={onboarding.runs} />
     </>
@@ -393,11 +395,11 @@ function Gestion({
             <details>
               <summary className="cursor-pointer text-encre">Espace ouvert : voir le suivi de l’onboarding</summary>
               <div className="mt-4 flex flex-col gap-4">
-                <SuiviDOnboarding onboarding={onboarding} />
+                <SuiviDOnboarding onboarding={onboarding} disponible={lancementDisponible()} />
               </div>
             </details>
           ) : (
-            <SuiviDOnboarding onboarding={onboarding} />
+            <SuiviDOnboarding onboarding={onboarding} disponible={lancementDisponible()} />
           )}
         </Section>
       ) : null}

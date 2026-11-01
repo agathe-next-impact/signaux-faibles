@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { consignesDuHarnais } from '@/scripts/taches/executer'
-import { annoncerLaFin, annoncerLeDébut, estUnOnboarding, runDeGithub } from '@/scripts/taches/onboarding'
+import { annoncerLaFin, annoncerLeDébut, estUnOnboarding, lancementDuPortail, runDeGithub } from '@/scripts/taches/onboarding'
 import { serveursDesOutils, visLeSuivi, type ConfigurationDesOutils } from '@/scripts/taches/outils'
 import { SERVEURS } from '@/scripts/taches/garde'
 
@@ -120,3 +120,23 @@ describe('l’outil de rapport', () => {
     expect(suivi).toContain(`mcp__${SERVEURS.veille}__rapporter_onboarding`)
   })
 })
+
+describe('le lancement venu du portail (lot 2)', () => {
+  it('lit LANCEMENT seulement s’il est un uuid, et le transmet au début', async () => {
+    expect(lancementDuPortail({ LANCEMENT: '0B6F2A6E-1C1E-4C4E-9A2A-0D6F5B1E2C3D' })).toBe('0b6f2a6e-1c1e-4c4e-9a2a-0d6f5b1e2c3d')
+    expect(lancementDuPortail({ LANCEMENT: '' })).toBeNull()
+    expect(lancementDuPortail({ LANCEMENT: 'mastora; rm -rf' })).toBeNull()
+    expect(lancementDuPortail({})).toBeNull()
+    const { conf, appels } = configuration(() => json({ état: 'ouvert', run: 'r-1' }, 201))
+    await annoncerLeDébut(conf, { slug: 'mastora', tâche: 'balayage', plafondUsd: 30, run: null, lancement: '0b6f2a6e-1c1e-4c4e-9a2a-0d6f5b1e2c3d' })
+    expect(appels[0]!.corps).toMatchObject({ lancement: '0b6f2a6e-1c1e-4c4e-9a2a-0d6f5b1e2c3d' })
+  })
+
+  it('le workflow porte l’entrée lancement jusqu’à LANCEMENT', async () => {
+    const { readFileSync } = await import('node:fs')
+    const yml = readFileSync('.github/workflows/taches.yml', 'utf8')
+    expect(yml).toMatch(/\n {6}lancement:\n/)
+    expect(yml).toContain('LANCEMENT: ${{ inputs.lancement }}')
+  })
+})
+

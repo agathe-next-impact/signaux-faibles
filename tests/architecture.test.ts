@@ -998,6 +998,33 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     const lister = appartenance.slice(appartenance.indexOf('export async function listerLesOnboardings'))
     expect(lister.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
     expect(lister.indexOf('exigerOpérateur()')).toBeLessThan(lister.indexOf('tableauDesOnboardings('))
+    // Lot 2 : un seul module parle à GitHub, une seule orchestration l'appelle,
+    // une seule action la déclenche, derrière la garde ; la réservation précède l'appel.
+    expect(appelants('déclencherLeWorkflow')).toEqual(['lib/github/workflow.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('lancerDepuisLePortail')).toEqual(['lib/portail/onboarding-actions.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('réserverUnLancement')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('conclureUnLancement')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('onboardingsPourLeContrôle')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('alertesDesOnboardings')).toEqual(['lib/portail/controle-du-soir.ts', 'lib/portail/onboarding.ts'])
+    const action = readFileSync(join(process.cwd(), 'lib', 'portail', 'onboarding-actions.ts'), 'utf8')
+    expect(action.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(action.indexOf('exigerOpérateur()')).toBeLessThan(action.indexOf('lancerDepuisLePortail('))
+    const orchestration = readFileSync(join(process.cwd(), 'lib', 'portail', 'onboarding.ts'), 'utf8')
+    const lancer = orchestration.slice(orchestration.indexOf('export async function lancerDepuisLePortail'))
+    expect(lancer.indexOf('réserverUnLancement(')).toBeGreaterThan(0)
+    expect(lancer.indexOf('réserverUnLancement(')).toBeLessThan(lancer.indexOf('déclencherLeWorkflow('))
+    // Le jeton GitHub n'est lu qu'à un endroit.
+    const lecteursDuJeton: string[] = []
+    const chercher = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) chercher(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && readFileSync(chemin, 'utf8').includes("'GITHUB_JETON_ACTIONS'")) lecteursDuJeton.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) chercher(join(process.cwd(), racine))
+    expect(lecteursDuJeton).toEqual(['lib/github/workflow.ts'])
     // La route garde le jeton et la base avant tout appel.
     const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'onboardings', 'route.ts'), 'utf8')
     const post = route.slice(route.indexOf('export async function POST'))

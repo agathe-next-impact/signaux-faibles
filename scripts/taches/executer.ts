@@ -28,7 +28,7 @@
  * ACTIVATION_SECRET, GOOGLE_COMPTE_SERVICE_JSON, GMAIL_BOITE_OPERATRICE,
  * PORTAIL_URL, GMAIL_NOM_EXPEDITEUR, TACHES_SORTIES, GITHUB_STEP_SUMMARY, et,
  * pour le suivi d'un onboarding (`onboarding.ts`), GITHUB_RUN_ID,
- * GITHUB_RUN_ATTEMPT, GITHUB_SERVER_URL et GITHUB_REPOSITORY.
+ * GITHUB_RUN_ATTEMPT, GITHUB_SERVER_URL, GITHUB_REPOSITORY et LANCEMENT.
  */
 import { query, type AgentDefinition, type CanUseTool, type McpServerConfig, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -40,7 +40,7 @@ import { contrôler } from './controle'
 import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RéponseDuModèle, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
-import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, runDeGithub } from './onboarding'
+import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, lancementDuPortail, runDeGithub } from './onboarding'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
 import { périodePassée, PÉRIODES_MAX, promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
 
@@ -424,7 +424,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
   let suivi: { readonly slug: string; readonly runId: string } | null = null
   if (estUnOnboarding(tâche, organisation)) {
-    const début = await annoncerLeDébut(configurationDeBase, { slug: organisation, tâche, plafondUsd, run: runDeGithub() })
+    const début = await annoncerLeDébut(configurationDeBase, { slug: organisation, tâche, plafondUsd, run: runDeGithub(), lancement: lancementDuPortail() })
     if (début.sorte === 'refusé') {
       sorties.journal(`suivi d’onboarding : run refusé, ${début.message}`)
       sorties.écrire('mesure.json', JSON.stringify(lireLaMesure({ subtype: 'refusé' }, { tâche, organisation, date: new Date(), plafondUsd, organisationsTraitées: relevé.organisations, pagesNotionCréées: 0 }), null, 2) + '\n')

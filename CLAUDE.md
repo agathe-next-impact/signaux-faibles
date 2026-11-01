@@ -866,7 +866,13 @@ laisse lisible ; aucun courrier ne part, décision de l'opératrice.
 **Suivi des onboardings** (1er novembre 2026, lot 1 de
 `docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
 portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une
-organisation, sans rien lancer ni écrire dans Notion. Le harnais
+organisation, sans rien écrire dans Notion, et depuis le lot 2 (même jour, §11)
+**les lance** : un bouton par étape (`gesteDisponible`), action
+`lib/portail/onboarding-actions.ts` (`exigerOpérateur` d'abord), réservation
+d'une ligne avant l'appel, puis `lib/github/workflow.ts`, seul module qui parle à
+GitHub (`GITHUB_JETON_ACTIONS`, jeton fin limité au dépôt et à « Actions »,
+facultatif : sans lui, l'écran donne la commande) ; l'entrée `lancement` du
+workflow rend la réservation au début du run. Le harnais
 (`scripts/taches/onboarding.ts`) annonce début et fin à
 `POST /api/veille/onboardings` ; la tâche rapporte ligne du registre, statut et
 motif de blocage par l'outil `rapporter_onboarding`, lié au slug du run.
@@ -877,7 +883,8 @@ orchestration `lib/portail/onboarding.ts` ; l'étape est calculée
 après (essai, J0, espace ouvert). **Budget bloquant et réglable** :
 `ONBOARDING_BUDGET_MENSUEL_USD` (facultative) fait refuser au début un run dont le
 plafond ne tient pas dans le reste du mois de Paris, avant l'ouverture de la
-session. L'opératrice lit le suivi sur `/espaces/onboardings`
+session ; le même contrôle se fait au clic. Le contrôle du soir signale
+`onboarding-sans-nouvelles` et `onboarding-immobile`. L'opératrice lit le suivi sur `/espaces/onboardings`
 (`listerLesOnboardings`, garde dans la fonction) et dans la section
 « Onboarding » de sa fiche.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un

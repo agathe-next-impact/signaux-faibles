@@ -1,8 +1,8 @@
-import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { courriers, lecteurs, onboardingRuns, onboardings, organisations } from '@/lib/base/schema'
-import { déciderDuBudget, dépenseDuMois, type DécisionDeBudget, type ÉtatDeRun } from '@/lib/domaine/onboarding'
+import { déciderDuBudget, dépenseDuMois, étatMontré, type DécisionDeBudget, type ÉtatDeRun } from '@/lib/domaine/onboarding'
 
 /**
  * Le suivi des onboardings (lot 1 de `docs/proposition-onboarding-admin.md`,
@@ -44,6 +44,12 @@ export async function ouvrirUnRunDOnboarding(
     readonly budgetUsd: number | null
     readonly débutDuMois: Date
     readonly maintenant: Date
+    /**
+     * La ligne réservée par le portail quand l'opératrice a lancé le run (lot 2),
+     * reçue par l'entrée `lancement` du workflow : le début la reprend au lieu
+     * d'en créer une, et son plafond déjà compté ne l'est pas deux fois.
+     */
+    readonly lancement?: string | null
   },
   db: Base = base(),
 ): Promise<OuvertureDeRun> {
@@ -54,11 +60,46 @@ export async function ouvrirUnRunDOnboarding(
       const [onboarding] = await tx.select({ id: onboardings.id }).from(onboardings).where(eq(onboardings.slug, entrée.slug)).limit(1)
       if (!onboarding) throw new Error(`onboarding ${entrée.slug} introuvable après création`)
 
+      // Un lancement du portail encore en attente de son début : on le reprend.
+      const [réservé] = entrée.lancement
+        ? await tx
+            .select({ id: onboardingRuns.id })
+            .from(onboardingRuns)
+            .where(
+              and(
+                eq(onboardingRuns.id, entrée.lancement),
+                eq(onboardingRuns.onboardingId, onboarding.id),
+                eq(onboardingRuns.tâche, entrée.tâche),
+                inArray(onboardingRuns.état, ['demande', 'lance']),
+                isNull(onboardingRuns.fin),
+              ),
+            )
+            .limit(1)
+        : []
+
       const duMois = await tx
         .select({ état: onboardingRuns.état, coûtUsd: onboardingRuns.coûtUsd, plafondUsd: onboardingRuns.plafondUsd, début: onboardingRuns.début, fin: onboardingRuns.fin, crééLe: onboardingRuns.crééLe, runGithub: onboardingRuns.runGithub, tentative: onboardingRuns.tentative, id: onboardingRuns.id, onboardingId: onboardingRuns.onboardingId })
         .from(onboardingRuns)
-        .where(gte(onboardingRuns.crééLe, entrée.débutDuMois))
+        .where(réservé ? and(gte(onboardingRuns.crééLe, entrée.débutDuMois), ne(onboardingRuns.id, réservé.id)) : gte(onboardingRuns.crééLe, entrée.débutDuMois))
       const budget = déciderDuBudget({ dépenséUsd: dépenseDuMois(duMois, entrée.maintenant), plafondUsd: entrée.plafondUsd, budgetUsd: entrée.budgetUsd })
+
+      if (réservé) {
+        const refusé = budget.sorte === 'refusé'
+        await tx
+          .update(onboardingRuns)
+          .set({
+            état: refusé ? 'refuse' : 'en_cours',
+            runGithub: entrée.runGithub,
+            tentative: entrée.tentative,
+            lien: entrée.lien,
+            plafondUsd: entrée.plafondUsd,
+            début: entrée.maintenant,
+            ...(refusé ? { fin: entrée.maintenant, coûtUsd: 0 } : {}),
+          })
+          .where(eq(onboardingRuns.id, réservé.id))
+        await tx.update(onboardings).set({ misÀJourLe: entrée.maintenant }).where(eq(onboardings.id, onboarding.id))
+        return { sorte: refusé ? 'refusé' : 'ouvert', onboardingId: onboarding.id, runId: réservé.id, budget }
+      }
 
       if (entrée.runGithub !== null) {
         const [connu] = await tx
@@ -163,6 +204,83 @@ export async function rapporterUnOnboarding(
   )
 }
 
+// ── Lancement depuis le portail (lot 2, 1er novembre 2026) ───────────────────
+
+export type RéservationDeLancement =
+  | { readonly sorte: 'réservé'; readonly runId: string; readonly budget: DécisionDeBudget }
+  | { readonly sorte: 'budget-atteint'; readonly budget: DécisionDeBudget }
+  | { readonly sorte: 'en-cours' | 'inconnu' | 'cowork' }
+
+/**
+ * Réserve la ligne d'un run **avant** l'appel à GitHub, comme `envoyerCourrier`
+ * réserve avant Gmail : un double clic trouve la réservation et s'arrête. Sous
+ * le même verrou que le début d'un run, pour que le budget décidé ici et celui
+ * décidé au début ne se croisent pas. Un run sans fin et sans trois heures de
+ * silence (`étatMontré`) est en cours, qu'il vienne du portail ou de GitHub.
+ */
+export async function réserverUnLancement(
+  entrée: {
+    readonly slug: string
+    readonly tâche: TâcheDOnboarding
+    readonly plafondUsd: number
+    readonly budgetUsd: number | null
+    readonly débutDuMois: Date
+    readonly opératrice: string
+    readonly maintenant: Date
+  },
+  db: Base = base(),
+): Promise<RéservationDeLancement> {
+  return protéger('réservation d’un lancement d’onboarding', () =>
+    db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('budget-des-onboardings'))`)
+      const [onboarding] = await tx.select({ id: onboardings.id, exécuteur: onboardings.exécuteur }).from(onboardings).where(eq(onboardings.slug, entrée.slug)).limit(1)
+      if (!onboarding) return { sorte: 'inconnu' }
+      if (onboarding.exécuteur === 'cowork') return { sorte: 'cowork' }
+      const ouverts = await tx
+        .select({ état: onboardingRuns.état, début: onboardingRuns.début, fin: onboardingRuns.fin, crééLe: onboardingRuns.crééLe })
+        .from(onboardingRuns)
+        .where(and(eq(onboardingRuns.onboardingId, onboarding.id), isNull(onboardingRuns.fin)))
+      if (ouverts.some((r) => ['demande', 'lance', 'en_cours'].includes(étatMontré(r, entrée.maintenant)))) return { sorte: 'en-cours' }
+
+      const duMois = await tx
+        .select({ état: onboardingRuns.état, coûtUsd: onboardingRuns.coûtUsd, plafondUsd: onboardingRuns.plafondUsd, début: onboardingRuns.début, fin: onboardingRuns.fin, crééLe: onboardingRuns.crééLe })
+        .from(onboardingRuns)
+        .where(gte(onboardingRuns.crééLe, entrée.débutDuMois))
+      const budget = déciderDuBudget({ dépenséUsd: dépenseDuMois(duMois, entrée.maintenant), plafondUsd: entrée.plafondUsd, budgetUsd: entrée.budgetUsd })
+      if (budget.sorte === 'refusé') return { sorte: 'budget-atteint', budget }
+
+      const [run] = await tx
+        .insert(onboardingRuns)
+        .values({ onboardingId: onboarding.id, tâche: entrée.tâche, état: 'demande', plafondUsd: entrée.plafondUsd, lancéPar: entrée.opératrice })
+        .returning({ id: onboardingRuns.id })
+      if (!run) throw new Error('lancement non réservé')
+      await tx.update(onboardings).set({ misÀJourLe: entrée.maintenant }).where(eq(onboardings.id, onboarding.id))
+      return { sorte: 'réservé', runId: run.id, budget }
+    }),
+  )
+}
+
+/**
+ * Conclut la réservation selon la réponse de GitHub : `lance` (avec le run
+ * GitHub quand il est connu), ou `echec` avec le code, fin posée et coût nul :
+ * rien n'a tourné. Ne touche qu'une ligne encore en `demande`.
+ */
+export async function conclureUnLancement(
+  entrée:
+    | { readonly runId: string; readonly sorte: 'lancé'; readonly runGithub: number | null; readonly lien: string | null; readonly maintenant: Date }
+    | { readonly runId: string; readonly sorte: 'échec'; readonly codeHttp: number | null; readonly maintenant: Date },
+  db: Base = base(),
+): Promise<void> {
+  await protéger('conclusion d’un lancement d’onboarding', async () => {
+    const où = and(eq(onboardingRuns.id, entrée.runId), eq(onboardingRuns.état, 'demande'))
+    if (entrée.sorte === 'lancé') {
+      await db.update(onboardingRuns).set({ état: 'lance', runGithub: entrée.runGithub, lien: entrée.lien }).where(où)
+    } else {
+      await db.update(onboardingRuns).set({ état: 'echec', codeHttp: entrée.codeHttp, fin: entrée.maintenant, coûtUsd: 0 }).where(où)
+    }
+  })
+}
+
 // ── Lectures ─────────────────────────────────────────────────────────────────
 
 export type RunLu = {
@@ -176,6 +294,8 @@ export type RunLu = {
   readonly début: Date | null
   readonly fin: Date | null
   readonly crééLe: Date
+  readonly codeHttp: number | null
+  readonly lancéPar: string | null
 }
 
 export type OnboardingLu = {
@@ -199,6 +319,21 @@ export type OnboardingLu = {
 }
 
 export const RUNS_MONTRÉS = 10
+
+const versLeRunLu = (r: typeof onboardingRuns.$inferSelect): RunLu => ({
+  id: r.id,
+  tâche: r.tâche,
+  état: r.état,
+  runGithub: r.runGithub,
+  lien: r.lien,
+  plafondUsd: r.plafondUsd,
+  coûtUsd: r.coûtUsd,
+  début: r.début,
+  fin: r.fin,
+  crééLe: r.crééLe,
+  codeHttp: r.codeHttp,
+  lancéPar: r.lancéPar,
+})
 
 async function lire(filtre: { readonly slug: string } | null, db: Base): Promise<OnboardingLu[]> {
   const lignes = await db
@@ -258,18 +393,7 @@ async function lire(filtre: { readonly slug: string } | null, db: Base): Promise
           : null,
       lecteursActifs: Number(actifs.find((a) => a.organisationId === l.organisationId)?.n ?? 0),
       dernierLienEnvoyéLe: date(liens.find((c) => c.organisationId === l.organisationId)?.le),
-      runs: sesRuns.map((r) => ({
-        id: r.id,
-        tâche: r.tâche,
-        état: r.état,
-        runGithub: r.runGithub,
-        lien: r.lien,
-        plafondUsd: r.plafondUsd,
-        coûtUsd: r.coûtUsd,
-        début: r.début,
-        fin: r.fin,
-        crééLe: r.crééLe,
-      })),
+      runs: sesRuns.map(versLeRunLu),
     }
   })
 }
@@ -284,7 +408,7 @@ export async function tableauDesOnboardings(débutDuMois: Date, db: Base = base(
     const [liste, duMois] = await Promise.all([lire(null, db), db.select().from(onboardingRuns).where(gte(onboardingRuns.crééLe, débutDuMois))])
     return {
       onboardings: liste,
-      runsDuMois: duMois.map((r) => ({ id: r.id, tâche: r.tâche, état: r.état, runGithub: r.runGithub, lien: r.lien, plafondUsd: r.plafondUsd, coûtUsd: r.coûtUsd, début: r.début, fin: r.fin, crééLe: r.crééLe })),
+      runsDuMois: duMois.map(versLeRunLu),
     }
   })
 }
@@ -293,3 +417,13 @@ export async function tableauDesOnboardings(débutDuMois: Date, db: Base = base(
 export async function onboardingDUnSlug(slug: string, db: Base = base()): Promise<OnboardingLu | null> {
   return protéger('lecture d’un onboarding', async () => (await lire({ slug }, db))[0] ?? null)
 }
+
+/**
+ * Tous les onboardings, pour le contrôle du soir (lot 2) : il traverse les
+ * clients derrière le jeton du dispositif, comme le reste de son contrôle. Seul
+ * appelant `lib/portail/onboarding.ts` (`alertesDesOnboardings`).
+ */
+export async function onboardingsPourLeContrôle(db: Base = base()): Promise<OnboardingLu[]> {
+  return protéger('lecture des onboardings pour le contrôle', () => lire(null, db))
+}
+

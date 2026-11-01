@@ -12,7 +12,10 @@ import { lireUnOnboarding, recevoirUnDébut, recevoirUneFin, recevoirUnRapport, 
  *   Authorization: Bearer <ACTIVATION_SECRET>
  *
  *   { "evenement": "debut", "slug", "tache": "balayage" | "premiere-lettre",
- *     "plafondUsd": 30, "run": { "id": 123, "tentative": 1, "lien": "https://github.com/…" } | null }
+ *     "plafondUsd": 30, "run": { "id": 123, "tentative": 1, "lien": "https://github.com/…" } | null,
+ *     "lancement": "<uuid>" | null }
+ *     `lancement` : la ligne réservée par le portail quand l'opératrice a lancé le
+ *     run depuis son écran (lot 2), reçue par l'entrée du même nom du workflow.
  *     → 201 { état: "ouvert" | "déjà-ouvert", run: "<uuid>", budget }
  *     → 409 { état: "budget-atteint", run, budget } quand le budget du mois
  *       (`ONBOARDING_BUDGET_MENSUEL_USD`) ne laisse pas la place du plafond du run.
@@ -39,6 +42,8 @@ const début = z.object({
   slug,
   tache: z.enum(['balayage', 'premiere-lettre']),
   plafondUsd: z.number().min(0).max(1_000),
+  /** La réservation faite par le portail quand le run a été lancé depuis l'écran de l'opératrice (lot 2). */
+  lancement: z.uuid().nullish(),
   run: z
     .object({
       id: z.number().int().positive(),
@@ -97,6 +102,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
           tentative: d.run?.tentative ?? null,
           lien: d.run?.lien ?? null,
           plafondUsd: d.plafondUsd,
+          lancement: d.lancement ?? null,
         })
         console.info(`[veille/onboardings] ${d.slug} : début de ${d.tache}, ${r.sorte} (budget ${r.budget.sorte}, ${r.budget.dépenséUsd} $ ce mois).`)
         // Un état propre au budget : le 409 de `SOURCE_ACCES=notion` dit « refusé », et le harnais ne doit pas les confondre.

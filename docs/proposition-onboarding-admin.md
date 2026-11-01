@@ -2,8 +2,8 @@
 
 1er novembre 2026. Proposition **acceptée par l'opératrice le même jour**, avec
 les cinq décisions du §9 (tranchées, voir §10). Elle tient lieu de la discussion
-qu'appelle tout nouvel écran. **Lot 1 codé le 1er novembre 2026** (§10, avec ses
-écarts à la proposition).
+qu'appelle tout nouvel écran. **Lots 1 et 2 codés le 1er novembre 2026** (§10 et
+§11, avec leurs écarts à la proposition).
 
 ## 1. Le constat
 
@@ -310,4 +310,46 @@ vers GitHub pour lire un coût ou un échec.
 **À faire par l'opératrice pour mettre le lot 1 en service :** rien
 d'obligatoire, la migration part avec le build de production. Pour le blocage,
 poser `ONBOARDING_BUDGET_MENSUEL_USD` dans Vercel (production) et redéployer.
+
+## 11. Lot 2 (1er novembre 2026)
+
+**Tel que codé :**
+
+- `lib/github/workflow.ts`, seul module qui parle à GitHub :
+  `POST /repos/{dépôt}/actions/workflows/taches.yml/dispatches`, version d'API
+  `2026-03-10` (documentation lue le même jour : réponse 200 avec
+  `workflow_run_id` et `html_url` ; un 204 sans corps est aussi accepté).
+  Jeton `GITHUB_JETON_ACTIONS` (décision 2), dépôt et branche réglables.
+- Le geste, fonction pure `gesteDisponible` (`lib/domaine/onboarding.ts`) : un
+  seul par étape, aucun pendant un run en cours ni pour un onboarding Cowork,
+  « Relancer » sur un blocage avant la publication.
+- `lancerDepuisLePortail` (`lib/portail/onboarding.ts`), appelée par la seule
+  action `lancerUneÉtapeDOnboarding` (`lib/portail/onboarding-actions.ts`,
+  `exigerOpérateur` d'abord), dans l'ordre du §5 : jeton, étape calculée égale
+  au geste du bouton, réservation (`réserverUnLancement` : run en cours et
+  budget, sous le verrou du budget), appel à GitHub, conclusion
+  (`conclureUnLancement`, `lance` ou `echec` avec le code).
+- Workflow : entrée `lancement`, posée en `LANCEMENT` ; le harnais la renvoie au
+  début, qui reprend la ligne réservée.
+- Migration `0020_onboardings_lancement` : `code_http` et `lancé_par` sur
+  `onboarding_runs`.
+- Contrôle du soir : `onboarding-sans-nouvelles` et `onboarding-immobile`, dans
+  la colonne « santé » et dans l'alerte du soir.
+- Écrans : le bouton du geste et le message de son issue, sur la liste et sur la
+  fiche ; sans jeton, la commande à lancer à la main.
+
+**Écarts :**
+
+- **L'entrée du workflow s'appelle `lancement`**, et porte l'identifiant de la
+  ligne réservée, non celui de l'onboarding : c'est ce qui permet au début du run
+  de reprendre exactement la réservation et de ne pas compter son plafond deux
+  fois.
+- **Le budget est contrôlé deux fois** : au clic (rien n'est déclenché) et au
+  début du run (rien n'est dépensé), parce qu'un run peut aussi partir de GitHub.
+- **« Ouvrir l'espace » reste au lot 4**, comme prévu ; à l'étape « Première
+  lettre publiée », l'écran renvoie à `/onboarding-ouvrir-espace`.
+
+**À faire par l'opératrice :** créer le jeton et le poser dans Vercel
+(`docs/taches-api.md`, « Lancer depuis le portail »). La migration 0020 part
+avec le build de production.
 

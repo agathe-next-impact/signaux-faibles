@@ -1,15 +1,25 @@
 import {
+  conclureUnLancement,
   conclureUnRunDOnboarding,
   onboardingDUnSlug,
+  onboardingsPourLeContrôle,
   ouvrirUnRunDOnboarding,
+  réserverUnLancement,
   rapporterUnOnboarding,
   type OnboardingLu,
   type OuvertureDeRun,
   type RunLu,
   type TâcheDOnboarding,
 } from '@/lib/base/onboardings'
+import { configurationGithub, déclencherLeWorkflow } from '@/lib/github/workflow'
+import type { Défaut } from '@/lib/portail/etat'
 import {
+  alertesDUnOnboarding,
   débutDuMoisDeParis,
+  gesteDisponible,
+  PLAFONDS_DES_TÂCHES,
+  type Geste,
+  type GesteDisponible,
   déciderDuBudget,
   dépenseDuMois,
   estBloqué,
@@ -61,6 +71,7 @@ export async function recevoirUnDébut(
     readonly tentative: number | null
     readonly lien: string | null
     readonly plafondUsd: number
+    readonly lancement?: string | null
   },
   maintenant: Date = new Date(),
 ): Promise<OuvertureDeRun> {
@@ -105,6 +116,8 @@ export type VueDOnboarding = {
   readonly runs: readonly RunVuÀLÉcran[]
   readonly dernierRun: RunVuÀLÉcran | null
   readonly coûtTotalUsd: number
+  /** Le seul geste possible à cette étape (lot 2). */
+  readonly geste: GesteDisponible
 }
 
 export function vueDUnOnboarding(onboarding: OnboardingLu, maintenant: Date): VueDOnboarding {
@@ -120,10 +133,12 @@ export function vueDUnOnboarding(onboarding: OnboardingLu, maintenant: Date): Vu
     duréeMs: r.début && r.fin ? r.fin.getTime() - r.début.getTime() : null,
   }))
   const dernierRun = runs[0] ?? null
+  const bloqué = estBloqué({ motifDeBlocage: onboarding.motifDeBlocage, dernierRun }, maintenant)
   return {
     onboarding,
     étape,
-    bloqué: estBloqué({ motifDeBlocage: onboarding.motifDeBlocage, dernierRun }, maintenant),
+    bloqué,
+    geste: gesteDisponible({ étape: étape.étape, exécuteur: onboarding.exécuteur, bloqué, dernierRun }),
     clos: estClos(étape.étape, onboarding.dernierLienEnvoyéLe, maintenant),
     runs,
     dernierRun,
@@ -153,3 +168,81 @@ export function vueDuTableau(données: { readonly onboardings: readonly Onboardi
   const budget = déciderDuBudget({ dépenséUsd: dépenseDuMois(données.runsDuMois, maintenant), plafondUsd: 0, budgetUsd: budgetDesOnboardings() })
   return { enCours, clos, mois: moisDeParis(maintenant), budget }
 }
+
+// ── Lancer depuis le portail (lot 2, 1er novembre 2026) ──────────────────────
+
+export type IssueDuLancement =
+  | 'lancé'
+  | 'indisponible'
+  | 'inconnu'
+  | 'geste-périmé'
+  | 'en-cours'
+  | 'cowork'
+  | 'budget-atteint'
+  | 'échec-github'
+
+/** Vrai si le portail peut déclencher le workflow : l'écran montre sinon la commande à lancer à la main. */
+export function lancementDisponible(): boolean {
+  return configurationGithub() !== null
+}
+
+/**
+ * Le geste de l'opératrice, dans l'ordre du §5 de la proposition : l'appelant a
+ * vérifié le privilège (`exigerOpérateur`) ; ici, le jeton GitHub, l'étape
+ * calculée qui doit être celle du bouton (un formulaire rejoué ne relance
+ * rien), puis la réservation, qui refuse un run en cours et un budget dépassé,
+ * **avant** l'appel à GitHub, enfin l'appel et sa conclusion. Le run porte
+ * l'identifiant de la réservation dans l'entrée `lancement` du workflow : le
+ * harnais la reprend au début.
+ */
+export async function lancerDepuisLePortail(
+  entrée: { readonly slug: string; readonly geste: Geste; readonly opératrice: string },
+  maintenant: Date = new Date(),
+): Promise<IssueDuLancement> {
+  const github = configurationGithub()
+  if (!github) return 'indisponible'
+  const lu = await onboardingDUnSlug(entrée.slug)
+  if (!lu) return 'inconnu'
+  const vue = vueDUnOnboarding(lu, maintenant)
+  if (vue.geste.sorte !== 'geste') return vue.geste.raison === 'en-cours' ? 'en-cours' : vue.geste.raison === 'cowork' ? 'cowork' : 'geste-périmé'
+  if (vue.geste.geste !== entrée.geste) return 'geste-périmé'
+
+  const tâche = vue.geste.tâche
+  const réservation = await réserverUnLancement({
+    slug: entrée.slug,
+    tâche: TÂCHES_SUIVIES[tâche]!,
+    plafondUsd: PLAFONDS_DES_TÂCHES[tâche],
+    budgetUsd: budgetDesOnboardings(),
+    débutDuMois: débutDuMoisDeParis(maintenant),
+    opératrice: entrée.opératrice,
+    maintenant,
+  })
+  if (réservation.sorte !== 'réservé') return réservation.sorte
+
+  let déclenchement: Awaited<ReturnType<typeof déclencherLeWorkflow>>
+  try {
+    déclenchement = await déclencherLeWorkflow(github, { tache: tâche, organisation: entrée.slug, lancement: réservation.runId })
+  } catch {
+    déclenchement = { sorte: 'échec', codeHttp: null }
+  }
+  if (déclenchement.sorte === 'échec') {
+    await conclureUnLancement({ runId: réservation.runId, sorte: 'échec', codeHttp: déclenchement.codeHttp, maintenant })
+    console.warn(`[onboarding] ${entrée.slug} : ${tâche} non déclenché (GitHub ${déclenchement.codeHttp ?? 'sans réponse'}).`)
+    return 'échec-github'
+  }
+  await conclureUnLancement({ runId: réservation.runId, sorte: 'lancé', runGithub: déclenchement.runGithub, lien: déclenchement.lien, maintenant })
+  return 'lancé'
+}
+
+/** Les alertes du contrôle du soir sur les onboardings (lot 2), en défauts rangés par slug. */
+export async function alertesDesOnboardings(maintenant: Date = new Date()): Promise<Défaut[]> {
+  const défauts: Défaut[] = []
+  for (const o of await onboardingsPourLeContrôle()) {
+    const vue = vueDUnOnboarding(o, maintenant)
+    for (const a of alertesDUnOnboarding({ étape: vue.étape.étape, clos: vue.clos, misÀJourLe: o.misÀJourLe, dernierRun: o.runs[0] ?? null }, maintenant)) {
+      défauts.push({ slug: o.slug, code: a.code, message: a.message })
+    }
+  }
+  return défauts
+}
+
