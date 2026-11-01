@@ -227,6 +227,39 @@ coût des tâches.
 Une exécution qui échoue ou atteint son plafond rend le job rouge, et GitHub
 prévient par courriel.
 
+## Suivi des onboardings dans le portail (1er novembre 2026)
+
+Lot 1 de `docs/proposition-onboarding-admin.md`. Un run `balayage` ou
+`premiere-lettre` lancé **avec une organisation** est suivi par le portail ; le
+balayage du matin sans organisation ne l'est pas.
+
+- **Début.** Après la sonde Notion et avant d'ouvrir la session, le harnais
+  (`scripts/taches/onboarding.ts`) appelle `POST /api/veille/onboardings`
+  (`evenement: debut`) avec le slug, la tâche, son plafond (30 $ ou 40 $) et le
+  run GitHub (`GITHUB_RUN_ID`, `GITHUB_RUN_ATTEMPT`, lien du job). Le portail crée
+  l'onboarding du slug au premier run.
+- **Budget, bloquant et réglable** (décision 5 du 1er novembre 2026). Si
+  `ONBOARDING_BUDGET_MENSUEL_USD` est posée dans Vercel, le portail refuse un run
+  dont le plafond ne tient pas dans ce qui reste du mois de Paris (les runs en
+  cours comptent pour leur plafond). Le harnais s'arrête alors **sans ouvrir la
+  session, donc sans rien dépenser**, et le résumé du job dit « Refusée » avec
+  les chiffres. Variable vide : aucun blocage. Pour débloquer, relever la
+  variable et redéployer, ou attendre le mois suivant.
+- **Fin.** Issue et coût lus dans `mesure.json` (`evenement: fin`).
+- **Rapport de la tâche.** L'outil `rapporter_onboarding` (serveur « Veille »
+  du harnais, n'existe que pour un run suivi, n'écrit que sur son slug) donne ce
+  que seul le registre sait : l'identifiant de la ligne, le statut atteint (1 à
+  6), le motif d'un arrêt sur une garde. La consigne « SUIVI DE L'ONBOARDING »
+  s'ajoute aux consignes du harnais ; elle ne change aucune règle de la page
+  Notion. `appeler_portail` refuse la route du suivi.
+- **Portail injoignable** (panne, 503, `SOURCE_ACCES=notion`) : le run part sans
+  suivi, le journal le dit. Seul un refus de budget arrête un run.
+
+L'opératrice lit le tout sur `/espaces/onboardings` et dans la section
+« Onboarding » de la fiche `/espaces/abonnements/[slug]`. Les runs Cowork n'y
+rapportent rien encore (lot 4) : un onboarding Cowork n'apparaît que s'il a eu
+au moins un run API.
+
 ## Basculer, tâche par tâche
 
 Ordre : réconciliation, revue, lettres, puis balayage et première lettre. Le

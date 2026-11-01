@@ -961,6 +961,50 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     }
   })
 
+  /**
+   * Le suivi des onboardings (lot 1 de `docs/proposition-onboarding-admin.md`,
+   * 1er novembre 2026) : ses deux tables ne s'écrivent que par
+   * `lib/base/onboardings.ts`, appelé par la seule orchestration
+   * `lib/portail/onboarding.ts`, elle-même appelée par la seule route du
+   * dispositif ; le tableau qui traverse les clients n'a que la garde de
+   * l'appartenance pour appelant, et la fiche le lit par la gestion, déjà gardée.
+   */
+  it('le suivi des onboardings : un écrivain, une route, une garde pour le tableau', () => {
+    const tablesNommées: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+        } else if (/\.tsx?$/.test(entrée.name)) {
+          const source = readFileSync(chemin, 'utf8')
+          if (/\bonboardingRuns\b/.test(source) || /import\s*\{[^}]*\bonboardings\b[^}]*\}\s*from '@\/lib\/base\/schema'/.test(source)) tablesNommées.push(relatif(chemin))
+        }
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) parcourir(join(process.cwd(), racine))
+    expect(tablesNommées.sort()).toEqual(['lib/base/onboardings.ts', 'lib/base/schema.ts'])
+    for (const nom of ['ouvrirUnRunDOnboarding', 'conclureUnRunDOnboarding', 'rapporterUnOnboarding']) {
+      expect(appelants(nom), nom).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
+    }
+    for (const nom of ['recevoirUnDébut', 'recevoirUneFin', 'recevoirUnRapport', 'lireUnOnboarding']) {
+      expect(appelants(nom), nom).toEqual(['app/api/veille/onboardings/route.ts', 'lib/portail/onboarding.ts'])
+    }
+    expect(appelants('tableauDesOnboardings')).toEqual(['lib/auth/appartenance.ts', 'lib/base/onboardings.ts'])
+    expect(appelants('listerLesOnboardings')).toEqual(['app/(portail)/espaces/onboardings/page.tsx', 'lib/auth/appartenance.ts'])
+    expect(appelants('onboardingDUnSlug')).toEqual(['lib/base/onboardings.ts', 'lib/portail/gestion.ts', 'lib/portail/onboarding.ts'])
+    // La garde avant la lecture, dans la fonction.
+    const appartenance = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    const lister = appartenance.slice(appartenance.indexOf('export async function listerLesOnboardings'))
+    expect(lister.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(lister.indexOf('exigerOpérateur()')).toBeLessThan(lister.indexOf('tableauDesOnboardings('))
+    // La route garde le jeton et la base avant tout appel.
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'onboardings', 'route.ts'), 'utf8')
+    const post = route.slice(route.indexOf('export async function POST'))
+    expect(post.indexOf('refuserSiNonAutorisé(')).toBeLessThan(post.indexOf('refuserSiBaseIndisponible('))
+    expect(post.indexOf('refuserSiBaseIndisponible(')).toBeLessThan(post.indexOf('recevoirUnDébut('))
+  })
+
   it('le tableau des abonnements traverse les clients : sa garde est dans l’appartenance', () => {
     // La lecture Postgres n'a qu'un appelant, le contrôle qui vérifie le
     // privilège avant ; l'écran n'appelle que ce contrôle. Et l'écran client lit

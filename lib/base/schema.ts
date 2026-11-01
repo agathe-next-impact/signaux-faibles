@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm'
 import {
+  bigint,
   boolean,
   check,
   date,
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   smallint,
@@ -945,6 +947,93 @@ export const fichesDeVeille = pgTable(
 )
 
 export type LigneDeFiche = typeof fichesDeVeille.$inferSelect
+
+/**
+ * L'onboarding d'une organisation, suivi par le portail (lot 1 de
+ * `docs/proposition-onboarding-admin.md`, 1er novembre 2026, migration 0019).
+ *
+ * Le registre Notion reste la source du statut ; le portail n'y lit ni n'y
+ * écrit. Une ligne naît au premier rapport d'un run d'onboarding (`balayage`
+ * ou `premiere-lettre` sur une organisation), par son slug, puis au formulaire
+ * de l'opératrice (lot 3). L'étape n'est pas stockée quand le portail peut la
+ * calculer (organisation en essai, J0, espace ouvert) : seuls les rapports des
+ * tâches le sont. Le raccord à `organisations` se fait par le slug, à la
+ * lecture : aucune autre table n'est touchée.
+ *
+ * `intake` (objectifs de veille, lecteur final) est réservé au formulaire du
+ * lot 3, décision 1 du 1er novembre 2026 : tenu jusqu'à ce que la tâche
+ * rapporte la ligne du registre, puis effacé. Rien ne l'écrit au lot 1.
+ */
+export const exécuteurOnboarding = pgEnum('exécuteur_onboarding', ['api', 'cowork'])
+export const tâcheOnboarding = pgEnum('tâche_onboarding', ['balayage', 'premiere_lettre'])
+export const étatRunOnboarding = pgEnum('état_run_onboarding', ['demande', 'lance', 'en_cours', 'reussi', 'bloque', 'echec', 'refuse'])
+
+export const onboardings = pgTable(
+  'onboardings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull().unique(),
+    nom: text('nom'),
+    site: text('site'),
+    exécuteur: exécuteurOnboarding('exécuteur').notNull().default('api'),
+    /** La ligne du registre, rapportée par la tâche : 32 hexadécimaux sans tirets. */
+    registreNotion: text('registre_notion'),
+    /** Le statut du registre (1 à 6) que la tâche dit avoir atteint. */
+    statutRapporté: smallint('statut_rapporté'),
+    statutRapportéLe: horodatage('statut_rapporté_le'),
+    /** La garde sur laquelle la tâche s'est arrêtée, en une phrase ; nul après un rapport sans blocage. */
+    motifDeBlocage: text('motif_de_blocage'),
+    intake: jsonb('intake').$type<Record<string, unknown>>(),
+    /** `tache` pour une ligne née d'un rapport, sinon le nom de l'opératrice. */
+    crééPar: text('créé_par').notNull(),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+    misÀJourLe: horodatage('mis_à_jour_le').notNull().defaultNow(),
+  },
+  (table) => [
+    check('onboardings_slug_forme', sql`${table.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
+    check('onboardings_registre_forme', sql`${table.registreNotion} is null or ${table.registreNotion} ~ '^[0-9a-f]{32}$'`),
+    check('onboardings_statut', sql`${table.statutRapporté} is null or ${table.statutRapporté} between 1 and 6`),
+    check('onboardings_motif_taille', sql`${table.motifDeBlocage} is null or length(${table.motifDeBlocage}) <= 300`),
+    check('onboardings_nom_taille', sql`${table.nom} is null or length(${table.nom}) <= 200`),
+    check('onboardings_site_taille', sql`${table.site} is null or length(${table.site}) <= 500`),
+    check('onboardings_intake_taille', sql`${table.intake} is null or length(${table.intake}::text) <= 4000`),
+  ],
+)
+
+/** Un run d'une tâche d'onboarding, tel que le harnais le rapporte : début, fin, coût. */
+export const onboardingRuns = pgTable(
+  'onboarding_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    onboardingId: uuid('onboarding_id')
+      .notNull()
+      .references(() => onboardings.id),
+    tâche: tâcheOnboarding('tâche').notNull(),
+    état: étatRunOnboarding('état').notNull(),
+    /** `GITHUB_RUN_ID` et `GITHUB_RUN_ATTEMPT` ; nuls pour un run lancé hors de GitHub. */
+    runGithub: bigint('run_github', { mode: 'number' }),
+    tentative: smallint('tentative'),
+    /** L'adresse du job, toujours sous https://github.com/. */
+    lien: text('lien'),
+    /** Le plafond de dépense du run, annoncé au début ; sert au contrôle du budget. */
+    plafondUsd: numeric('plafond_usd', { precision: 10, scale: 4, mode: 'number' }),
+    /** Lu dans `mesure.json`, jamais recalculé. */
+    coûtUsd: numeric('coût_usd', { precision: 10, scale: 4, mode: 'number' }),
+    début: horodatage('début'),
+    fin: horodatage('fin'),
+    crééLe: horodatage('créé_le').notNull().defaultNow(),
+  },
+  (table) => [
+    index('onboarding_runs_onboarding').on(table.onboardingId, table.crééLe),
+    index('onboarding_runs_créé_le').on(table.crééLe),
+    uniqueIndex('onboarding_runs_github_unique').on(table.runGithub, table.tentative).where(sql`${table.runGithub} is not null`),
+    check('onboarding_runs_lien_forme', sql`${table.lien} is null or ${table.lien} ~ '^https://github[.]com/'`),
+    check('onboarding_runs_coût', sql`${table.coûtUsd} is null or ${table.coûtUsd} >= 0`),
+  ],
+)
+
+export type LigneDOnboarding = typeof onboardings.$inferSelect
+export type LigneDeRunDOnboarding = typeof onboardingRuns.$inferSelect
 
 export type FaitÉtiqueté = typeof faitsÉtiquetés.$inferSelect
 export type LigneDeGrille = typeof grilles.$inferSelect

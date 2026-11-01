@@ -10,6 +10,9 @@ import { identifiantDeLaSession } from '@/lib/auth/session'
 import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
 import { tableauDesPrescripteurs, type LigneDePrescripteur } from '@/lib/base/prescripteurs'
+import { tableauDesOnboardings } from '@/lib/base/onboardings'
+import { débutDuMoisDeParis } from '@/lib/domaine/onboarding'
+import { vueDuTableau, type TableauDesOnboardings } from '@/lib/portail/onboarding'
 import { lireLaFile } from '@/lib/portail/file'
 import { gestionDUneOrganisation, santéDesEspaces, type GestionDUneOrganisation, type SantéDesEspaces } from '@/lib/portail/gestion'
 import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
@@ -224,6 +227,23 @@ export async function listerLesPrescripteurs(): Promise<{
   const accès = await exigerOpérateur()
   if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null }
   return { accès, lignes: await tableauDesPrescripteurs() }
+}
+
+/**
+ * Les onboardings suivis par le portail (lot 1 de
+ * `docs/proposition-onboarding-admin.md`, 1er novembre 2026), pour
+ * `/espaces/onboardings`. Même forme que `listerLesAbonnements` : la garde est
+ * **dans** la fonction, avant la lecture qui traverse les clients, et
+ * `tableauDesOnboardings` n'a pas d'autre appelant (`tests/architecture.test.ts`).
+ * `tableau` vaut `null` quand Postgres n'est pas en service.
+ */
+export async function listerLesOnboardings(maintenant: Date = new Date()): Promise<{
+  readonly accès: Accès
+  readonly tableau: TableauDesOnboardings | null
+}> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, tableau: null }
+  return { accès, tableau: vueDuTableau(await tableauDesOnboardings(débutDuMoisDeParis(maintenant)), maintenant) }
 }
 
 /**

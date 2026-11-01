@@ -1,9 +1,11 @@
 import { courriersRécents } from '@/lib/base/courriers'
+import { onboardingDUnSlug } from '@/lib/base/onboardings'
 import { lecteursÀGérer, organisationÀGérer, type LecteurÀGérer, type OrganisationÀGérer } from '@/lib/base/gestion'
 import type { Défaut } from '@/lib/portail/etat'
 import { contrôlerLeDispositif } from '@/lib/portail/controle-du-soir'
 import { lireLaFicheDuPilote, type LectureDeLaFiche } from '@/lib/portail/fiche-veille'
 import { lecteursModifiables } from '@/lib/portail/situation'
+import { vueDUnOnboarding, type VueDOnboarding } from '@/lib/portail/onboarding'
 import { lireLaGrilleDuPilote, type LectureDeLaGrille } from '@/lib/portail/strategie'
 
 /**
@@ -60,6 +62,8 @@ export type GestionDUneOrganisation = {
   readonly grille: LectureDeLaGrille
   readonly fiche: LectureDeLaFiche
   readonly courriers: readonly CourrierÀGérer[]
+  /** L'onboarding suivi sous ce slug (1er novembre 2026), `null` s'il n'y en a pas. */
+  readonly onboarding: VueDOnboarding | null
 }
 
 export const JOURS_DU_JOURNAL = 30
@@ -69,11 +73,12 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
   const organisation = await organisationÀGérer(slug)
   if (!organisation) return null
   const depuis = new Date(maintenant.getTime() - JOURS_DU_JOURNAL * 24 * 60 * 60 * 1000)
-  const [lecteurs, grille, fiche, courriers] = await Promise.all([
+  const [lecteurs, grille, fiche, courriers, onboarding] = await Promise.all([
     lecteursÀGérer(organisation.id),
     lireLaGrilleDuPilote({ slug }),
     lireLaFicheDuPilote({ slug }),
     courriersRécents(depuis),
+    onboardingDUnSlug(slug),
   ])
   return {
     organisation,
@@ -82,5 +87,6 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
     grille,
     fiche,
     courriers: courriers.filter((c) => c.slug === slug),
+    onboarding: onboarding ? vueDUnOnboarding(onboarding, maintenant) : null,
   }
 }

@@ -1169,3 +1169,51 @@ curl -s -X POST https://www.signauxfaibles.io/api/veille/resultat \
 Boucler tant que `prendre` ne rend pas `vide`, et tant qu'un résultat est
 `refusé`, corriger la page puis reposter. Rien d'autre à calculer : le jeton
 est posé par le secret réseau de l'environnement, comme pour les autres routes.
+
+## Le suivi des onboardings (lot 1, 1er novembre 2026)
+
+`docs/proposition-onboarding-admin.md`. Appelée par le harnais des tâches
+(`scripts/taches/onboarding.ts`) et par l'outil `rapporter_onboarding`, jamais
+par un navigateur ; jeton `ACTIVATION_SECRET`, puis 503 sans base et 409 en
+`SOURCE_ACCES=notion` (`refuserSiBaseIndisponible`). Le portail n'écrit rien dans
+Notion : il consigne ce que la tâche lui dit, et calcule le reste (essai, J0,
+espace ouvert) dans Postgres.
+
+### `POST /api/veille/onboardings`
+
+```json
+{ "evenement": "debut", "slug": "mastora", "tache": "balayage", "plafondUsd": 30,
+  "run": { "id": 123, "tentative": 1, "lien": "https://github.com/…/actions/runs/123" } }
+```
+
+201 `{ état: "ouvert" | "déjà-ouvert", run: "<uuid>", budget }`. Le premier
+début crée l'onboarding du slug ; un rejeu du même run GitHub (même identifiant,
+même tentative) rend le run déjà consigné. **409 `{ état: "budget-atteint" }`**
+quand `ONBOARDING_BUDGET_MENSUEL_USD` est posée et que la dépense du mois de
+Paris plus le plafond du run la dépasse ; le run est consigné `refuse`, sans
+coût, et le harnais s'arrête. L'état `budget-atteint` est distinct du `refusé`
+du mode `notion`, que le harnais lit comme « suivi impossible ».
+
+```json
+{ "evenement": "fin", "slug": "mastora", "run": "<uuid>", "issue": "reussi", "coutUsd": 4.82 }
+```
+
+Une fois : un run conclu ne se réécrit pas, un run que la tâche a dit bloqué le
+reste. 404 si le run n'est pas celui de ce slug.
+
+```json
+{ "evenement": "rapport", "slug": "mastora", "statut": 2,
+  "registre": "aaaabbbbccccddddeeeeffff00005555", "motif": "…", "nom": "…", "site": "https://…" }
+```
+
+Un champ au moins. `statut` de 1 à 6 (statut du registre), `registre` avec ou
+sans tirets, `motif` de 300 caractères au plus : il marque bloqué le run en cours ;
+un statut sans motif lève le blocage. 404 tant qu'aucun run n'a ouvert
+l'onboarding.
+
+### `GET /api/veille/onboardings?slug=<slug>`
+
+L'onboarding, l'organisation du même slug (nom, état, J0), le nombre de lecteurs
+actifs, la date du dernier lien d'accès parti et les dix derniers runs. Aucune
+adresse.
+

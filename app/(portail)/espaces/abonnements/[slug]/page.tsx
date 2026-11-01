@@ -5,6 +5,7 @@ import { lireLaGestionDUneOrganisation, lireLaSantéDesEspaces } from '@/lib/aut
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
+import { FriseDOnboarding, MétaDOnboarding, MotifDeBlocage, RunsDOnboarding } from '@/components/onboarding-operatrice'
 import type { LigneDAbonnement } from '@/lib/base/situation'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
@@ -23,6 +24,7 @@ import {
   validerLaGrille,
 } from '@/lib/portail/gestion-actions'
 import { JOURS_DU_JOURNAL } from '@/lib/portail/gestion'
+import type { VueDOnboarding } from '@/lib/portail/onboarding'
 import { déciderDeLOrganisation } from '@/lib/portail/reglages'
 
 export const metadata: Metadata = { title: 'Gérer une organisation — signauxfaibles' }
@@ -186,6 +188,18 @@ export default async function GérerUneOrganisation({
         </>
       )}
     </main>
+  )
+}
+
+/** La frise et les runs (lot 1 de `docs/proposition-onboarding-admin.md`) : lecture seule. */
+function SuiviDOnboarding({ onboarding }: { onboarding: VueDOnboarding }) {
+  return (
+    <>
+      <MotifDeBlocage vue={onboarding} />
+      <FriseDOnboarding vue={onboarding} />
+      <MétaDOnboarding vue={onboarding} />
+      <RunsDOnboarding runs={onboarding.runs} />
+    </>
   )
 }
 
@@ -361,7 +375,7 @@ function Gestion({
   gestion: NonNullable<Awaited<ReturnType<typeof lireLaGestionDUneOrganisation>>['gestion']>
   statut: Statut
 }) {
-  const { organisation, lecteurs, grille, fiche, courriers } = gestion
+  const { organisation, lecteurs, grille, fiche, courriers, onboarding } = gestion
   const actifs = lecteurs.filter((l) => l.actif).length
   const horsService = organisation.état === 'suspendue' || organisation.état === 'ecartee'
 
@@ -372,6 +386,21 @@ function Gestion({
           <SantéDeLOrganisation slug={slug} />
         </Suspense>
       </Section>
+
+      {onboarding ? (
+        <Section id="onboarding" titre="Onboarding" statut={statut}>
+          {onboarding.étape.étape === 'espace_ouvert' ? (
+            <details>
+              <summary className="cursor-pointer text-encre">Espace ouvert : voir le suivi de l’onboarding</summary>
+              <div className="mt-4 flex flex-col gap-4">
+                <SuiviDOnboarding onboarding={onboarding} />
+              </div>
+            </details>
+          ) : (
+            <SuiviDOnboarding onboarding={onboarding} />
+          )}
+        </Section>
+      ) : null}
 
       <Section id="pilote" titre="Pilote et espace" statut={statut}>
         <Interrupteur action={basculerLePilote} slug={slug} actif={organisation.outilsStratégiques} libellé="Outils stratégiques" />

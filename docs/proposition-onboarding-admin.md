@@ -1,7 +1,9 @@
 # Proposition : lancer et suivre l'onboarding depuis le tableau de l'opératrice
 
-1er novembre 2026. Proposition, **rien n'est codé**. Elle tient lieu de la
-discussion qu'appelle tout nouvel écran ; les points à trancher sont au §9.
+1er novembre 2026. Proposition **acceptée par l'opératrice le même jour**, avec
+les cinq décisions du §9 (tranchées, voir §10). Elle tient lieu de la discussion
+qu'appelle tout nouvel écran. **Lot 1 codé le 1er novembre 2026** (§10, avec ses
+écarts à la proposition).
 
 ## 1. Le constat
 
@@ -175,6 +177,8 @@ la liste avec ses étapes calculées (essai, publication, ouverture), et ses
 
 ## 7. Données (migration 0019)
 
+Telle que proposée ; ce qui a été codé, et ses écarts, est au §10.
+
 ```
 onboardings
   id                 uuid
@@ -250,3 +254,60 @@ vers GitHub pour lire un coût ou un échec.
 5. **Le plafond de dépense.** Afficher seulement le coût (recommandé au lot 1),
    ou refuser un lancement au-delà d'un budget mensuel d'onboardings posé en
    variable d'environnement.
+
+## 10. Décisions et lot 1 (1er novembre 2026)
+
+**Décisions de l'opératrice, le 1er novembre 2026 :**
+
+1. Intake : **option A**, `onboardings.intake`, effacé dès la ligne du registre
+   rapportée (lot 3).
+2. Jeton GitHub : **jeton à granularité fine**, limité à ce dépôt et à la
+   permission « Actions » (lot 2).
+3. Validation des référentiels : **reste dans Notion**.
+4. Lancement : **au second clic**. Le formulaire du lot 3 enregistre la demande ;
+   « Générer les référentiels » est un geste distinct.
+5. Dépense : **bloquer, de façon paramétrable**. `ONBOARDING_BUDGET_MENSUEL_USD`
+   (facultative, en dollars, mois de Paris) ; vide, rien n'est bloqué.
+
+**Lot 1, tel que codé :**
+
+- Migration `0019_onboardings` : `onboardings` et `onboarding_runs`, seul
+  écrivain `lib/base/onboardings.ts`, seule orchestration
+  `lib/portail/onboarding.ts`, seule route `POST|GET /api/veille/onboardings`
+  (`docs/api-veille.md`). Étapes calculées et budget, fonctions pures, dans
+  `lib/domaine/onboarding.ts`.
+- Harnais : `scripts/taches/onboarding.ts` (début, fin, run GitHub) et l'outil
+  `rapporter_onboarding` (`scripts/taches/outils.ts`), lié au slug du run ;
+  `appeler_portail` refuse la route du suivi (`docs/taches-api.md`).
+- Écrans : `/espaces/onboardings` (lien depuis `/espaces`, garde dans
+  `listerLesOnboardings`) et la section « Onboarding » de la fiche
+  `/espaces/abonnements/[slug]`, repliée une fois l'espace ouvert ; composants
+  `components/onboarding-operatrice.tsx`. Lecture seule.
+- Garde d'architecture : un écrivain, une route, la garde avant la lecture
+  (`tests/architecture.test.ts`).
+
+**Écarts à la proposition, et pourquoi :**
+
+- **Pas de colonne `organisation_id`.** Le raccord à `organisations` se fait par
+  le slug, à la lecture : aucune autre route ni table n'est touchée, et un
+  onboarding né avant l'étape B se raccorde seul quand elle crée l'organisation.
+- **Un onboarding naît au premier run**, par son slug, `créé_par = 'tache'` :
+  sans formulaire (lot 3), c'est la seule entrée. Les runs lancés à la main par
+  « Run workflow » sont donc suivis dès maintenant.
+- **Le budget bloque dès le lot 1**, au début du run et non au clic : le harnais
+  demande au portail avant d'ouvrir la session, et s'arrête sur un refus sans
+  rien dépenser. Le plafond du run (30 $ pour `balayage`, 40 $ pour
+  `premiere-lettre`) doit tenir dans ce qui reste ; un run en cours compte pour
+  son plafond, un run muet depuis trois heures ne compte plus. Au lot 2, le
+  bouton fera le même contrôle avant d'appeler GitHub.
+- **Un état `refuse`** pour un run écarté par le budget, consigné à coût nul.
+- **Reporté au lot 2** : les défauts du contrôle du soir
+  (`onboarding-sans-nouvelles`, `onboarding-immobile`) ; l'écran dit déjà
+  « sans nouvelles » d'un run muet depuis trois heures. **Reporté aux lots 3 et
+  4** : les créneaux Cowork de la semaine, qui n'ont de sens qu'avec des
+  onboardings Cowork rapportés.
+
+**À faire par l'opératrice pour mettre le lot 1 en service :** rien
+d'obligatoire, la migration part avec le build de production. Pour le blocage,
+poser `ONBOARDING_BUDGET_MENSUEL_USD` dans Vercel (production) et redéployer.
+

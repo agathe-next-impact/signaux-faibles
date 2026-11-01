@@ -26,7 +26,9 @@
  * Variables lues (et elles seules : pas `env()` du portail, pour ne pas exiger
  * les secrets Stripe ou Postgres) : ANTHROPIC_API_KEY, NOTION_MCP_TOKEN,
  * ACTIVATION_SECRET, GOOGLE_COMPTE_SERVICE_JSON, GMAIL_BOITE_OPERATRICE,
- * PORTAIL_URL, GMAIL_NOM_EXPEDITEUR, TACHES_SORTIES, GITHUB_STEP_SUMMARY.
+ * PORTAIL_URL, GMAIL_NOM_EXPEDITEUR, TACHES_SORTIES, GITHUB_STEP_SUMMARY, et,
+ * pour le suivi d'un onboarding (`onboarding.ts`), GITHUB_RUN_ID,
+ * GITHUB_RUN_ATTEMPT, GITHUB_SERVER_URL et GITHUB_REPOSITORY.
  */
 import { query, type AgentDefinition, type CanUseTool, type McpServerConfig, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -38,6 +40,7 @@ import { contrôler } from './controle'
 import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
 import { lireLaMesure, résuméDeLaMesure, type RéponseDuModèle, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
+import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, runDeGithub } from './onboarding'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
 import { périodePassée, PÉRIODES_MAX, promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
 
@@ -291,7 +294,7 @@ export async function déroulerLaSession(prompt: string, options: Options, sorti
 const PARIS = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'full', timeStyle: 'short' })
 
 /** Les consignes du harnais : l'environnement d'exécution, jamais une règle métier. */
-export function consignesDuHarnais(maintenant: Date, portail: string): string {
+export function consignesDuHarnais(maintenant: Date, portail: string, onboarding: string | null = null): string {
   return [
     '# Environnement d’exécution (harnais)',
     '',
@@ -323,6 +326,7 @@ export function consignesDuHarnais(maintenant: Date, portail: string): string {
     '· Aucun appel d’outil ne doit durer plus de quatre minutes : au-delà, ton cache expire et tout ton contexte est réécrit. Découpe un lot de sources trop long.',
     '',
     'SECRETS. N’écris jamais un jeton, une clé ou un mot de passe dans un texte, une page, un courriel ou un fichier, même pour diagnostiquer une erreur.',
+    ...(onboarding ? ['', consigneDuSuivi(onboarding, SERVEURS.veille)] : []),
   ].join('\n')
 }
 
@@ -404,7 +408,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
   if (!secrets.jetonPortail) sorties.journal('ACTIVATION_SECRET absent : le portail répondra par un refus')
   if (!secrets.compteGoogle || !boîte) sorties.journal(`Gmail indisponible : ${secrets.erreurCompteGoogle ?? 'GOOGLE_COMPTE_SERVICE_JSON ou GMAIL_BOITE_OPERATRICE absent'}`)
 
-  const configuration: ConfigurationDesOutils = {
+  const configurationDeBase: ConfigurationDesOutils = {
     portail,
     jetonPortail: secrets.jetonPortail,
     compteGoogle: secrets.compteGoogle,
@@ -414,8 +418,25 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
     relevé,
     espace: sorties.espace,
   }
-  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
+
+  // Le suivi de l'onboarding (1er novembre 2026) : annoncé avant la session,
+  // pour que le budget du mois puisse refuser le run sans rien dépenser.
   const { modèle, plafondUsd } = PARAMÈTRES[tâche]
+  let suivi: { readonly slug: string; readonly runId: string } | null = null
+  if (estUnOnboarding(tâche, organisation)) {
+    const début = await annoncerLeDébut(configurationDeBase, { slug: organisation, tâche, plafondUsd, run: runDeGithub() })
+    if (début.sorte === 'refusé') {
+      sorties.journal(`suivi d’onboarding : run refusé, ${début.message}`)
+      sorties.écrire('mesure.json', JSON.stringify(lireLaMesure({ subtype: 'refusé' }, { tâche, organisation, date: new Date(), plafondUsd, organisationsTraitées: relevé.organisations, pagesNotionCréées: 0 }), null, 2) + '\n')
+      sorties.clore()
+      écrireLeRésuméDuJob(`## ${tâche} : non lancée\n\n**Refusée** : ${début.message}\n`, masques)
+      return 1
+    }
+    if (début.sorte === 'suivi') suivi = { slug: organisation, runId: début.runId }
+    else sorties.journal(`suivi d’onboarding : non suivi (${début.raison}), le run part quand même`)
+  }
+  const configuration: ConfigurationDesOutils = suivi ? { ...configurationDeBase, onboarding: { slug: suivi.slug } } : configurationDeBase
+  const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
   const maintenant = new Date()
   const prompt = promptDeLaTâche(tâche, organisation, reprendre, périodes)
   sorties.écrire('prompt.txt', prompt)
@@ -424,7 +445,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
     cwd: sorties.espace,
     model: modèle,
     effort: EFFORT,
-    systemPrompt: { type: 'preset', preset: 'claude_code', append: consignesDuHarnais(maintenant, portail) },
+    systemPrompt: { type: 'preset', preset: 'claude_code', append: consignesDuHarnais(maintenant, portail, suivi?.slug ?? null) },
     tools: ['Agent', 'WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'ToolSearch'],
     agents: { [SOUS_AGENT_LECTEUR]: définitionDuLecteur(), [SOUS_AGENT_COLLECTEUR]: définitionDuCollecteur() },
     mcpServers: { [SERVEURS.notion]: serveurNotion(secrets.jetonNotion), ...serveursDesOutils(configuration) },
@@ -460,7 +481,9 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
     [résuméDeLaMesure(mesure), échec ? `**Échec** : ${échec}\n` : '', compteRendu ? `### Compte rendu de l’agent\n\n${compteRendu}\n` : ''].join('\n'),
     masques,
   )
-  return !échec && issue.résultat?.subtype === 'success' ? 0 : 1
+  const réussi = !échec && issue.résultat?.subtype === 'success'
+  if (suivi) await annoncerLaFin(configuration, { slug: suivi.slug, runId: suivi.runId, réussi, coûtUsd: mesure.coûtTotalUsd })
+  return réussi ? 0 : 1
 }
 
 // ── Ligne de commande ────────────────────────────────────────────────────────

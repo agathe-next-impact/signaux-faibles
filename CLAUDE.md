@@ -863,6 +863,23 @@ les travaux non pris de la file et sort l'organisation du calendrier des tâches
 Notion (`suspendues` dans `POST /api/veille/calendrier`, consigne écrite dans les
 pages des lettres et de la revue) ; suspendre ferme aussi l'espace, écarter le
 laisse lisible ; aucun courrier ne part, décision de l'opératrice.
+**Suivi des onboardings** (1er novembre 2026, lot 1 de
+`docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
+portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une
+organisation, sans rien lancer ni écrire dans Notion. Le harnais
+(`scripts/taches/onboarding.ts`) annonce début et fin à
+`POST /api/veille/onboardings` ; la tâche rapporte ligne du registre, statut et
+motif de blocage par l'outil `rapporter_onboarding`, lié au slug du run.
+Tables `onboardings` et `onboarding_runs` (migration 0019, raccord à
+`organisations` par le slug), seul écrivain `lib/base/onboardings.ts`, seule
+orchestration `lib/portail/onboarding.ts` ; l'étape est calculée
+(`lib/domaine/onboarding.ts`) : rapportée avant l'étape B, constatée dans Postgres
+après (essai, J0, espace ouvert). **Budget bloquant et réglable** :
+`ONBOARDING_BUDGET_MENSUEL_USD` (facultative) fait refuser au début un run dont le
+plafond ne tient pas dans le reste du mois de Paris, avant l'ouverture de la
+session. L'opératrice lit le suivi sur `/espaces/onboardings`
+(`listerLesOnboardings`, garde dans la fonction) et dans la section
+« Onboarding » de sa fiche.
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
 `envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit
