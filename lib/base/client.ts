@@ -1,6 +1,7 @@
 import { Pool } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-serverless'
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
+import { adresseVérifiée } from '@/lib/base/adresse'
 import * as schema from '@/lib/base/schema'
 
 /**
@@ -35,7 +36,7 @@ export function base(): Base {
     )
   }
 
-  instance = drizzle({ client: new Pool({ connectionString: adresse }), schema })
+  instance = drizzle({ client: new Pool({ connectionString: adresseVérifiée(adresse) }), schema })
   return instance
 }
 

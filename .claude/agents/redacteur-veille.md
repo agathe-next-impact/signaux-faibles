@@ -41,7 +41,11 @@ n°1. Ces pages font foi.
    dernière publication trouvée.
 3. Crée la page dans « Éditions de veille », au statut **Brouillon**, avec toutes
    les propriétés de l'étape 4 (« Dossiers ouverts suivis » au format exact
-   `nom (compteur, précision)`, séparés par « · »).
+   `nom (compteur, précision)`, séparés par « · »). **Chaque entité du §2
+   que la lettre concurrentielle nomme est un dossier**, en plus des dossiers du
+   référentiel : compteur 0 à la lettre n°1, précision d'une ligne tirée de la
+   lettre, sans parenthèse ni « · » (décision du 2 novembre 2026 : sans elle,
+   « À la une » et « Acteurs » restaient vides de concurrents).
 4. `curl -sS -m 60 -X POST -H 'Content-Type: application/json' -d '{"page":"<id>"}' https://www.signauxfaibles.io/api/veille/lint`.
    Aucun en-tête Authorization : l'environnement l'ajoute. Corrige jusqu'à
    `"conforme": true`, **par remplacements ciblés** (`update_content`), jamais en

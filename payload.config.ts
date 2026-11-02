@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { buildConfig } from 'payload'
+import { adresseVérifiée } from './lib/base/adresse'
 import { collections } from './lib/payload/collections'
 
 /**
@@ -23,7 +24,7 @@ const racine = path.dirname(fileURLToPath(import.meta.url))
 export default buildConfig({
   secret: process.env.PAYLOAD_SECRET ?? '',
   db: postgresAdapter({
-    pool: { connectionString: process.env.DATABASE_URL ?? '' },
+    pool: { connectionString: adresseVérifiée(process.env.DATABASE_URL ?? '') },
     schemaName: 'payload',
     push: false,
     idType: 'uuid',

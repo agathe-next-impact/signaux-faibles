@@ -338,7 +338,10 @@ Les lire avant toute session.
   mémoire (PGlite, `tests/aide/base-en-memoire.ts`) avec ces mêmes
   migrations. `DATABASE_URL` est lue directement dans `process.env` : une
   page qui ne touche pas Postgres ne tombe pas parce que la base n'existe pas
-  encore
+  encore. Les deux pilotes (Neon `Pool`, Payload) reçoivent l'adresse par
+  `adresseVérifiée` (`lib/base/adresse.ts`, 2 novembre 2026) : `require`,
+  `prefer` et `verify-ca` y deviennent `verify-full`, ce que le pilote fait
+  déjà en silence ; la variable de l'intégration Neon n'est pas retouchée
 - **Migration de la base Accès, palier 1a** : l'appartenance est lue par une
   façade unique, `lib/auth/source-acces.ts`, aiguillée par `SOURCE_ACCES` —
   `notion` (défaut : comportement d'avant, Postgres jamais ouvert),

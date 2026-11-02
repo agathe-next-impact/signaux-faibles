@@ -102,12 +102,19 @@ Organisation visée : $ARGUMENTS
    d'activité, colonne SIREN du §2). Aucun §4 : il est retiré depuis le
    26 octobre 2026 (veille stratégique, scénario C).
 
-   **Outils stratégiques** (28 octobre 2026) : seulement si la case « Outils
-   stratégiques » est cochée sur la ligne du registre, le référentiel
-   concurrentiel porte la section « Grille stratégique » (après le §2, pour les
-   deux veilles) et ses deux points de validation entrent dans le plafond de dix,
-   après le scoring. Rien n'est posté au portail à cette étape, hors du rapport
-   de suivi du point 5 : l'organisation n'y existe qu'à la première lettre.
+   **Outils stratégiques** (28 octobre 2026, revu le 2 novembre 2026) : si la case
+   « Outils stratégiques » est cochée sur la ligne du registre, **relue au moment
+   de cette étape**, le référentiel concurrentiel porte la section « Grille
+   stratégique » (après le §2, pour les deux veilles), au modèle de celle de
+   Mastora : deux axes tirés des variables du §2, chaque famille des deux
+   référentiels rattachée à une dimension PESTEL ou à une force, toutes les
+   entités des deux §2, 8 à 15 parties prenantes. **Aucun point de validation
+   pour la grille** : l'onboarding tranche les axes et les rattachements, et le
+   journal du référentiel le dit (« décidé par l'onboarding »). Décision de
+   l'opératrice du 2 novembre 2026 : l'onboarding se fait intégralement dans
+   Claude, sans confirmation ; cette règle prime sur la page Notion. Rien n'est
+   posté au portail à cette étape, hors du rapport de suivi du point 5 :
+   l'organisation n'y existe qu'à la première lettre.
 
 5. **Rapporte au portail** (1er novembre 2026, lot 4 de
    `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans
