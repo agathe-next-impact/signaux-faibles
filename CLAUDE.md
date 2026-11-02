@@ -947,7 +947,16 @@ lecteur actif, seulement une ligne qui porte le slug et la clé (Notion, une
 ligne active d'abord si le slug en porte plusieurs) ou une organisation non
 archivée (Postgres) : la ligne du §3.7bis, inactive jusqu'à l'ouverture, suffit
 à lire l'aperçu depuis la fiche (« Ouvrir l'espace »). Le privilège reste
-vérifié avant ; un slug inconnu reste `notFound`.
+vérifié avant ; un slug inconnu reste `notFound`. **Incident du 1er novembre 2026** : `SOURCE_DOCUMENTS=payload` posée en
+production avant la migration des lettres a vidé tous les espaces (les lettres
+sont dans Notion) ; remise à `notion` le 2 novembre. La lecture Payload
+comparait en plus la clé de la session (sans tirets) à l'uuid de la relation
+(avec tirets) : aucune édition ne passait, et le tag de liste ne correspondait
+pas à celui de l'invalidation. Depuis, `lib/documents/payload.ts` interroge par
+l'uuid et revérifie et tague par la clé (`cléDeCloisonnement`, `identifiantPayload`,
+`lib/payload/relations.ts`), l'invalidation tague par la clé, et la
+resynchronisation expire aussi `liste:<clé>`. Ne repasser à `payload` qu'après
+la migration des lettres.
 
 **Les lecteurs se gèrent depuis « Mon abonnement »** (19 octobre 2026) : un
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par

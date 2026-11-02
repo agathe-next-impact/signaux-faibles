@@ -1,4 +1,5 @@
 import { revalidateTag } from 'next/cache'
+import { cléDeCloisonnement } from '@/lib/payload/relations'
 
 /**
  * L'invalidation du cache des écrans quand une édition Payload change.
@@ -21,7 +22,9 @@ export function invaliderLÉdition({
   readonly organisation: string | null
 }): void {
   const tags = [`page:${id}`]
-  if (organisation) tags.push(`liste:${organisation}`)
+  // Le tag porte la clé de cloisonnement (sans tirets), celle que lisent les
+  // écrans : l'uuid de la relation Payload ne l'atteignait jamais.
+  if (organisation) tags.push(`liste:${cléDeCloisonnement(organisation)}`)
   for (const tag of tags) {
     try {
       revalidateTag(tag, 'max')

@@ -1,4 +1,21 @@
 /**
+ * L'identifiant Payload (uuid avec tirets) sous la forme que `registre_notion`
+ * admet : 32 hexadécimaux, sans tirets ni majuscules. C'est la clé de
+ * cloisonnement d'une organisation Payload, celle que portent les sessions
+ * (`accès.organisationId`) et les tags de cache `liste:<clé>`.
+ */
+export function cléDeCloisonnement(identifiantPayload: string): string {
+  return identifiantPayload.replaceAll('-', '').toLowerCase()
+}
+
+/** L'opération inverse : la clé de la base du portail vers l'identifiant Payload. */
+export function identifiantPayload(clé: string): string {
+  const hex = clé.replaceAll('-', '').toLowerCase()
+  if (hex.length !== 32) return clé
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+/**
  * L'identifiant que porte une relation Payload, quelle que soit sa profondeur.
  *
  * Selon `depth`, une relation est un identifiant nu (chaîne ou nombre) ou le
