@@ -222,12 +222,32 @@ Organisation visée : $ARGUMENTS
    encadrés au moins ou fenêtre élargie dite, lint conforme, brouillon présent une
    seule fois. Une lettre qui manque l'un de ces points n'est pas prête.
 
-5bis. **Outils stratégiques**, seulement si la case « Outils stratégiques » est
-   cochée sur la ligne du registre : après l'entrée dans l'essai (e1) et le lint
-   des deux lettres, les pas s1 à s5 de l'étape 2 du prompt (drapeau, grille,
-   étiquettes des deux lettres, synthèse initiale, texte rendu dans la
-   notification). Aucun de ces pas ne bloque la lettre ; rien n'en va au client
-   avant que l'opératrice ne publie la synthèse.
+5bis. **Outils stratégiques**, si la case « Outils stratégiques » est cochée sur
+   la ligne du registre, **relue à cette étape** : après l'entrée dans l'essai (e1)
+   et le lint des deux lettres, les pas s1 à s5 de l'étape 2 du prompt (drapeau,
+   grille, étiquettes des deux lettres, synthèse initiale, texte rendu dans la
+   notification), **intégralement et sans confirmation** (décision de l'opératrice
+   du 2 novembre 2026, qui prime sur la page Notion) :
+   - si le référentiel concurrentiel n'a pas de section « Grille stratégique »,
+     écris-la toi-même (règle du point 4 de `/onboarding-referentiels`), en y
+     ajoutant chaque entité que les deux lettres nomment, puis note-le au journal ;
+   - passe la grille à la porte avant de la poster, `PATCH
+     /api/veille/organisations` `{ "slug", "action": "outils", "actif": true }`,
+     puis `POST /api/veille/grille`, puis **valide toi-même** la version rendue
+     (`PATCH /api/veille/grille` `{ "slug", "version" }`) : aucun point de
+     validation n'est créé pour la grille ;
+   - ouvre l'espace réorganisé : `PATCH /api/veille/organisations` `{ "slug",
+     "action": "espace", "actif": true }` ; sans lui, l'écran « Concurrents »
+     n'existe pas ;
+   - étiquette les deux lettres (s3) ; si l'étiquetage ne peut pas se faire dans
+     la session, lance le workflow `taches.yml` (`tache: etiquetage`,
+     `organisation: <slug>`) et vérifie le résultat par `GET
+     /api/veille/faits?slug=<slug>&debut=<J-99>&fin=<J>`.
+   Aucun de ces pas ne bloque la lettre ; rien n'en va au client avant que
+   l'opératrice ne publie la synthèse. Vérifie en fin d'étape que `GET
+   /api/veille/grille?slug=<slug>` rend `"état": "lue"` et `validéeLe` posé ; le
+   2 novembre 2026, Infrastructures services est sortie de l'onboarding case
+   cochée mais sans grille, et son écran « Concurrents » était vide.
 
 6. **Rapporte au portail** (1er novembre 2026, lot 4 de
    `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans
