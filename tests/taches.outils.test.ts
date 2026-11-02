@@ -160,6 +160,30 @@ describe('masquer et pointeurs', () => {
   })
 })
 
+describe('les consignes du portail (lot 6)', () => {
+  it('s’ajoutent après l’organisation, et disent ce que le portail fait à la place de la tâche', () => {
+    const sansValidation = promptDeLaTâche('premiere-lettre', 'cci-cantal', false, [], { sorte: 'sans-validation' })
+    expect(sansValidation.startsWith(`${POINTEURS['premiere-lettre'].texte}\n\nLimite-toi à l'organisation cci-cantal.\n\nCONSIGNE DU PORTAIL : PREMIÈRE LETTRE SANS VALIDATION.`)).toBe(true)
+    expect(sansValidation).toContain('passe-la au statut « 3 · Référentiels validés »')
+    expect(sansValidation).toContain('tu n’écris jamais dans « Valeur corrigée »')
+    expect(sansValidation).toContain('Ne dépose aucun brouillon Gmail adressé au client')
+    expect(sansValidation).toContain('n’appelle pas /api/acces/ouvrir')
+
+    const activation = promptDeLaTâche('balayage', 'cci-cantal', false, [], { sorte: 'activation' })
+    expect(activation).toContain('Coche « ▶ Activer » sur sa ligne du registre, puis exécute le §1 pour elle seule')
+    expect(activation).toContain('n’appelle pas /api/acces/ouvrir')
+    expect(activation).toContain('Ne traite aucune autre ligne ni aucune autre file')
+
+    const id = '40cfe829ce7181f183d9c46c4777ce00'
+    const publication = promptDeLaTâche('reconciliation', 'cci-cantal', false, [], { sorte: 'publication', éditions: [id] })
+    expect(publication).toContain(id)
+    expect(publication).toContain('passe « Statut » à « Envoyé »')
+    expect(publication).toContain('Ne traite aucune autre édition')
+    // Sans consigne, le prompt est celui d'avant.
+    expect(promptDeLaTâche('balayage', 'cci-cantal')).toBe(`${POINTEURS.balayage.texte}\n\nLimite-toi à l'organisation cci-cantal.`)
+  })
+})
+
 describe('pointeur de la rétrospective', () => {
   it('n’exécute que la section de synthèse de la revue, sans rien écrire dans Notion ni rien publier', () => {
     const texte = POINTEURS.retrospective.texte

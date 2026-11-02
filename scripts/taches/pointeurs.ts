@@ -26,6 +26,8 @@
  * reste dans la page.
  */
 
+import type { ConsigneDeTâche } from '../../lib/domaine/onboarding'
+
 export const TÂCHES = ['lettres', 'reconciliation', 'revue', 'balayage', 'premiere-lettre', 'etiquetage', 'retrospective'] as const
 export type Tâche = (typeof TÂCHES)[number]
 
@@ -124,15 +126,56 @@ Si la page est inaccessible ou ne contient pas de section « SYNTHÈSE STRATÉGI
  * Les seules phrases ajoutées au pointeur : l'organisation visée ; pour
  * l'étiquetage seulement, la reprise des éditions déjà étiquetées (après une
  * révision des règles de classement de l'étape 4ter, 26 octobre 2026) ; pour la
- * rétrospective seulement, les périodes, dans l'ordre (31 octobre 2026).
+ * rétrospective seulement, les périodes, dans l'ordre (31 octobre 2026) ; et,
+ * depuis le 2 novembre 2026 (lot 6 de `docs/proposition-onboarding-admin.md`),
+ * la consigne du portail, quand l'opératrice a lancé le run depuis son tableau.
  */
-export function promptDeLaTâche(tâche: Tâche, organisation: string | null, reprendre = false, périodes: readonly string[] = []): string {
+export function promptDeLaTâche(
+  tâche: Tâche,
+  organisation: string | null,
+  reprendre = false,
+  périodes: readonly string[] = [],
+  consigne: ConsigneDeTâche | null = null,
+): string {
   const texte = POINTEURS[tâche].texte
   const avecOrganisation = organisation ? `${texte}\n\nLimite-toi à l'organisation ${organisation}.` : texte
-  if (tâche === 'retrospective' && périodes.length > 0) return `${avecOrganisation}\n\nPériodes, dans cet ordre : ${périodes.join(', ')}.`
+  const avecConsigne = consigne ? `${avecOrganisation}\n\n${texteDeLaConsigne(consigne)}` : avecOrganisation
+  if (tâche === 'retrospective' && périodes.length > 0) return `${avecConsigne}\n\nPériodes, dans cet ordre : ${périodes.join(', ')}.`
   return tâche === 'etiquetage' && reprendre
-    ? `${avecOrganisation}\n\nReprends aussi les éditions qui ont déjà des faits : un nouveau lot remplace l'ancien.`
-    : avecOrganisation
+    ? `${avecConsigne}\n\nReprends aussi les éditions qui ont déjà des faits : un nouveau lot remplace l'ancien.`
+    : avecConsigne
+}
+
+/**
+ * Le texte de chaque consigne du portail (lot 6). Elles ne changent aucune règle
+ * de fond des pages : elles disent ce que l'opératrice a décidé depuis son
+ * tableau (décision du 2 novembre 2026 : l'onboarding se fait entièrement depuis
+ * l'admin, sans confirmation), et ce que le portail fait lui-même à la place de
+ * la tâche (envoyer les lettres, envoyer le lien d'accès).
+ */
+export function texteDeLaConsigne(consigne: ConsigneDeTâche): string {
+  switch (consigne.sorte) {
+    case 'sans-validation':
+      return [
+        'CONSIGNE DU PORTAIL : PREMIÈRE LETTRE SANS VALIDATION. L’opératrice a lancé l’onboarding depuis son tableau, qui enchaîne les référentiels et la première lettre sans validation entre les deux (décision du 2 novembre 2026).',
+        '· Si la ligne de l’organisation est au statut « 2 · Référentiels générés — à valider », passe-la au statut « 3 · Référentiels validés » avant la porte du prompt, sans attendre les points de validation. Ils restent ouverts, comme trace ; tu n’écris jamais dans « Valeur corrigée ». Les hypothèses des référentiels font foi pour cette lettre.',
+        '· Les lettres restent au statut « Brouillon » dans « Éditions de veille » : l’opératrice les lit dans l’espace et les envoie depuis son tableau, et le portail les passera au statut « Envoyé ». Ne dépose aucun brouillon Gmail adressé au client, et n’appelle pas /api/acces/ouvrir : le lien d’accès part du portail à l’ouverture de l’espace.',
+        '· Le reste de l’étape s’applique tel qu’écrit : entrée en essai par /api/veille/organisations, ligne « Accès » cochée « Actif » puis /api/veille/importer-acces, outils stratégiques si la case est cochée, notification [Relecture] à agathe@signauxfaibles.io.',
+      ].join('\n')
+    case 'activation':
+      return [
+        'CONSIGNE DU PORTAIL : ACTIVATION. L’opératrice a cliqué « Ouvrir l’espace et activer la veille » dans son tableau, pour cette organisation seulement.',
+        '· Coche « ▶ Activer » sur sa ligne du registre, puis exécute le §1 pour elle seule (1.1 à 1.3). La décision de l’opératrice vaut jugement de la première lettre.',
+        '· Au 1.3, le lien d’accès part du portail à la fin de ce run : contrôle la ligne « Accès », coche « Actif » si elle ne l’est pas et appelle POST /api/veille/importer-acces, mais n’appelle pas /api/acces/ouvrir, même si « Invitation manuelle » est cochée.',
+        '· Ne traite aucune autre ligne ni aucune autre file (§2, §2bis, §3) dans ce lancement.',
+      ].join('\n')
+    case 'publication':
+      return [
+        `CONSIGNE DU PORTAIL : PUBLICATION. L’opératrice a envoyé depuis son tableau, après les avoir lues dans l’espace, les éditions suivantes de l’organisation : ${consigne.éditions.join(', ')}. Le portail les a envoyées lui-même aux lecteurs actifs (journal des courriers du portail).`,
+        '· Pour chacune, et pour elles seules : passe « Statut » à « Envoyé » et écris dans « Livraison » « envoyée par le portail le JJ/MM/AAAA aux lecteurs actifs, depuis le tableau de l’opératrice ». Ne cherche pas leur envoi dans Gmail : il n’y figure pas.',
+        '· Ne traite aucune autre édition ni aucune autre étape de la page dans ce lancement, et n’envoie aucune notification si rien d’autre n’est à signaler.',
+      ].join('\n')
+  }
 }
 
 /** Le plus de périodes qu'une rétrospective traite en un lancement. */

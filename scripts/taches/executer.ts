@@ -4,6 +4,7 @@
  *   pnpm tache <lettres|reconciliation|revue|balayage|premiere-lettre> [--organisation <slug>]
  *   pnpm tache etiquetage --organisation <slug> [--reprendre]
  *   pnpm tache retrospective --organisation <slug> --periodes 2026-09,2026-T3
+ *   pnpm tache <premiere-lettre|balayage|reconciliation> --organisation <slug> --consigne <consigne du portail>
  *   pnpm tache controle
  *
  * Le prompt est le pointeur de la tâche en service (`pointeurs.ts`) : il dit
@@ -42,6 +43,7 @@ import { lireLaMesure, résuméDeLaMesure, type RéponseDuModèle, type Résulta
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, lancementDuPortail, runDeGithub, type DemandeDuPortail } from './onboarding'
 import { masquer, serveursDesOutils, type CompteGoogle, type ConfigurationDesOutils } from './outils'
+import { lireUneConsigne, TÂCHE_DE_LA_CONSIGNE, type ConsigneDeTâche } from '../../lib/domaine/onboarding'
 import { périodePassée, PÉRIODES_MAX, promptDeLaTâche, slugValide, TÂCHES, type Tâche } from './pointeurs'
 
 export const RACINE = resolve(fileURLToPath(new URL('../..', import.meta.url)))
@@ -381,7 +383,13 @@ export function définitionDuLecteur(): AgentDefinition {
   }
 }
 
-async function exécuterUneTâche(tâche: Tâche, organisation: string | null, reprendre = false, périodes: readonly string[] = []): Promise<number> {
+async function exécuterUneTâche(
+  tâche: Tâche,
+  organisation: string | null,
+  reprendre = false,
+  périodes: readonly string[] = [],
+  consigne: ConsigneDeTâche | null = null,
+): Promise<number> {
   const secrets = lireLesSecrets()
   const masques = valeursSecrètes(secrets)
   const portail = variable('PORTAIL_URL') ?? 'https://www.signauxfaibles.io'
@@ -438,7 +446,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
   const configuration: ConfigurationDesOutils = suivi ? { ...configurationDeBase, onboarding: { slug: suivi.slug } } : configurationDeBase
   const contexte: ContexteDeGarde = { espace: sorties.espace, lirePage: LIRE_PAGE, portail, mode: 'tâche', réponsesPersistées: réponsesPersistéesDe(sorties.espace) }
   const maintenant = new Date()
-  const prompt = promptDeLaTâche(tâche, organisation, reprendre, périodes)
+  const prompt = promptDeLaTâche(tâche, organisation, reprendre, périodes, consigne)
   sorties.écrire('prompt.txt', prompt)
 
   const options: Options = {
@@ -490,7 +498,7 @@ async function exécuterUneTâche(tâche: Tâche, organisation: string | null, r
 
 const DATE_DE_PARIS = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' })
 
-export type Commande = { tâche: Tâche | 'controle'; organisation: string | null; reprendre: boolean; périodes: string[] }
+export type Commande = { tâche: Tâche | 'controle'; organisation: string | null; reprendre: boolean; périodes: string[]; consigne: ConsigneDeTâche | null }
 
 export function lireLaCommande(argv: readonly string[], maintenant: Date = new Date()): Commande {
   const [premier, ...reste] = argv
@@ -500,6 +508,7 @@ export function lireLaCommande(argv: readonly string[], maintenant: Date = new D
   let organisation: string | null = null
   let reprendre = false
   let périodes: string[] = []
+  let consigne: ConsigneDeTâche | null = null
   for (let i = 0; i < reste.length; i++) {
     if (reste[i] === '--reprendre') {
       reprendre = true
@@ -509,6 +518,12 @@ export function lireLaCommande(argv: readonly string[], maintenant: Date = new D
       if (!valeur) continue
       if (!slugValide(valeur)) throw new Error(`slug d'organisation illisible : ${valeur}`)
       organisation = valeur
+    } else if (reste[i] === '--consigne') {
+      // Posée par le portail (lot 6, 2 novembre 2026) ; vide, elle ne compte pas.
+      const lue = lireUneConsigne(reste[i + 1])
+      i++
+      if (lue === 'illisible') throw new Error('consigne illisible : sans-validation, activation ou publication:<id>[,<id>…]')
+      consigne = lue
     } else if (reste[i] === '--periodes') {
       const valeur = (reste[i + 1] ?? '').trim()
       i++
@@ -531,12 +546,16 @@ export function lireLaCommande(argv: readonly string[], maintenant: Date = new D
     const refusée = périodes.find((p) => !périodePassée(p, aujourdhui))
     if (refusée) throw new Error(`période refusée : ${refusée} (AAAA-MM ou AAAA-Tn, terminée ; la période en cours est celle de la revue)`)
   }
-  return { tâche: premier as Tâche | 'controle', organisation, reprendre, périodes }
+  if (consigne) {
+    if (premier !== TÂCHE_DE_LA_CONSIGNE[consigne.sorte]) throw new Error(`la consigne « ${consigne.sorte} » ne vaut que pour la tâche « ${TÂCHE_DE_LA_CONSIGNE[consigne.sorte]} »`)
+    if (!organisation) throw new Error('une consigne du portail exige --organisation <slug>')
+  }
+  return { tâche: premier as Tâche | 'controle', organisation, reprendre, périodes, consigne }
 }
 
 async function main(): Promise<void> {
-  const { tâche, organisation, reprendre, périodes } = lireLaCommande(process.argv.slice(2))
-  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation, reprendre, périodes)
+  const { tâche, organisation, reprendre, périodes, consigne } = lireLaCommande(process.argv.slice(2))
+  process.exitCode = tâche === 'controle' ? await contrôler() : await exécuterUneTâche(tâche, organisation, reprendre, périodes, consigne)
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

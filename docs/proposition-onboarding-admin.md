@@ -505,3 +505,75 @@ organisation indéfinie. Un test tient désormais l'accord des deux côtés.
 À la bascule : `TRIGGER_SECRET_KEY` dans Vercel, et, côté Trigger.dev,
 `PORTAIL_URL` et `ACTIVATION_SECRET` (déjà requis par les tâches).
 
+
+## 15. Lot 6 (2 novembre 2026) : l'onboarding entier depuis l'admin
+
+Demande de l'opératrice : « l'ensemble de l'onboarding se fait depuis l'admin
+du site », sans confirmation. Trois décisions du même jour :
+
+1. **La validation des référentiels est supprimée.** « Lancer l'onboarding »
+   enchaîne les référentiels puis la première lettre, sur les hypothèses, comme
+   le lot du lundi des prospects. Les points de validation restent créés, comme
+   trace ; la revue mensuelle les répercutera.
+2. **Les lettres partent du portail.** Une fois la première lettre produite et
+   lue dans l'espace (aperçu), « Envoyer les lettres » les envoie aux lecteurs
+   actifs ; une tâche les passe ensuite au statut « Envoyé » dans Notion.
+3. **L'activation se fait avec l'ouverture.** « Ouvrir l'espace et activer la
+   veille » lance le §1 du balayage pour la seule organisation (Veille
+   automatique, statut 6, ligne « Accès » active et importée) ; le lien d'accès
+   part du portail à la fin du run.
+
+Le portail n'écrit toujours pas dans Notion (§2, point 1) : chaque écriture
+Notion est faite par une tâche, que le portail lance avec une **consigne**.
+
+| Étape | Geste | Ce qui se passe |
+|---|---|---|
+| Demande enregistrée | « Lancer l'onboarding » | `balayage` (§3) ; à sa fin réussie, le portail lance seul `premiere-lettre` avec la consigne `sans-validation` (`recevoirUneFin`) |
+| Référentiels générés ou validés | « Produire la première lettre » | le même run, si l'enchaînement n'a pas eu lieu (échec, run lancé à la main) |
+| Première lettre produite, en essai | « Envoyer les lettres » | le portail envoie chaque lettre non publiée, conforme au lint, à chaque lecteur actif revérifié par la façade ; puis `reconciliation` avec la consigne `publication:<id>,…` |
+| Première lettre publiée | « Ouvrir l'espace et activer la veille » | `balayage` avec la consigne `activation` ; à sa fin réussie, le lien d'accès part à chaque lecteur actif (`envoyerLesLiensDeLOrganisation`) |
+
+**Les consignes** (`lib/domaine/onboarding.ts`, `lireUneConsigne`,
+`écrireUneConsigne`) voyagent par l'entrée `consigne` du workflow et l'argument
+`--consigne` du harnais, qui refuse une consigne illisible ou posée sur une
+autre tâche (`TÂCHE_DE_LA_CONSIGNE`). Leur texte, ajouté au pointeur, est dans
+`scripts/taches/pointeurs.ts` (`texteDeLaConsigne`) :
+
+- `sans-validation` : passer la ligne du statut 2 au statut 3 sans attendre les
+  points, ne jamais écrire dans « Valeur corrigée » ; lettres laissées en
+  Brouillon, aucun brouillon Gmail au client, aucun appel à `/api/acces/ouvrir`.
+- `activation` : cocher « ▶ Activer » et faire le §1 pour cette ligne seule ;
+  ligne « Accès » active et importée, mais pas d'appel à `/api/acces/ouvrir`,
+  même en invitation manuelle.
+- `publication` : passer au statut « Envoyé » les éditions désignées, et elles
+  seules, avec « Livraison » renseignée ; ne pas chercher leur envoi dans Gmail.
+
+**Données** : migration 0023, colonne `onboarding_runs.consigne`, pour que la
+fin d'un run sache quoi enchaîner. La publication n'est pas un run d'onboarding
+(rien de réservé ni de compté au budget).
+
+**Gardes** :
+
+- `envoyerLesLettresÀPublier` (`lib/portail/envoi-des-lettres.ts`) lit les
+  éditions par le seul chemin de l'aperçu (`semainesDeLEspace`) avec la clé de
+  l'organisation ; chaque envoi est unique par lettre et par lecteur (clé
+  `lettre:<page>`, index `courriers_commerciaux_unique`) : un second clic ne
+  renvoie rien. Une lettre n'est publiée que partie à tous ses destinataires.
+  Tant que la relecture des courriers est requise, elle va à la relecture.
+- Les actions (`envoyerLesLettres`, `ouvrirLEspaceDepuisLOnboarding`) passent
+  `exigerOpérateur` d'abord ; un enchaînement ne suit qu'un run réussi lancé du
+  portail, jamais un échec, un blocage ou un run lancé à la main dans GitHub.
+- Le lien d'accès a un seul chemin hors de l'activation par une tâche,
+  `lib/portail/ouverture.ts` (`envoyerUnLienDAccès`), pour le renvoi depuis la
+  fiche comme pour la fin du run d'activation.
+
+**Limites, assumées :**
+
+- Après l'envoi, l'étape reste « en essai » jusqu'au passage quotidien qui
+  constate la publication (J0) : le bouton « Envoyer les lettres » reste
+  affiché, sans effet (rien ne part deux fois, `sans-lettre` une fois Notion à
+  jour).
+- Avec le moteur Trigger.dev (après la bascule Payload), l'ouverture reste celle
+  du lot 4 : le portail envoie le lien, sans tâche d'activation.
+- Les commandes Cowork (`/onboarding-*`) restent utilisables ; elles suivent
+  leurs propres règles.

@@ -20,6 +20,9 @@ import {
   étatMontré,
   lireLeBudget,
   moisDeParis,
+  lireUneConsigne,
+  TÂCHE_DE_LA_CONSIGNE,
+  écrireUneConsigne,
 } from '@/lib/domaine/onboarding'
 
 const sans = { statutRapporté: null, organisation: null, lecteursActifs: 0, dernierLienEnvoyéLe: null }
@@ -148,11 +151,14 @@ describe('le geste de l’opératrice (lot 2)', () => {
   type Montré = NonNullable<Parameters<typeof gesteDisponible>[0]['dernierRun']>['montré']
   const run = (tâche: 'balayage' | 'premiere_lettre', montré: Montré) => ({ tâche, montré })
 
-  it('un seul geste par étape : référentiels à la demande, première lettre après validation', () => {
-    expect(gesteDisponible({ étape: 'demande', exécuteur: 'api', bloqué: false, dernierRun: null })).toMatchObject({ sorte: 'geste', geste: 'referentiels', tâche: 'balayage' })
-    expect(gesteDisponible({ étape: 'referentiels_generes', exécuteur: 'api', bloqué: false, dernierRun: run('balayage', 'reussi') })).toEqual({ sorte: 'aucun', raison: 'validation-notion' })
+  it('un seul geste par étape, sans validation entre référentiels et première lettre (lot 6)', () => {
+    expect(gesteDisponible({ étape: 'demande', exécuteur: 'api', bloqué: false, dernierRun: null })).toEqual({ sorte: 'geste', geste: 'referentiels', tâche: 'balayage', libellé: 'Lancer l’onboarding' })
+    // Plus de validation dans Notion : la première lettre suit les référentiels.
+    expect(gesteDisponible({ étape: 'referentiels_generes', exécuteur: 'api', bloqué: false, dernierRun: run('balayage', 'reussi') })).toMatchObject({ sorte: 'geste', geste: 'premiere-lettre', tâche: 'premiere-lettre' })
     expect(gesteDisponible({ étape: 'referentiels_valides', exécuteur: 'api', bloqué: false, dernierRun: run('balayage', 'reussi') })).toMatchObject({ sorte: 'geste', geste: 'premiere-lettre', tâche: 'premiere-lettre' })
-    expect(gesteDisponible({ étape: 'en_essai', exécuteur: 'api', bloqué: false, dernierRun: run('premiere_lettre', 'reussi') })).toEqual({ sorte: 'aucun', raison: 'attente' })
+    // La première lettre produite, lue dans l'espace : le portail l'envoie, quel que soit l'exécuteur.
+    expect(gesteDisponible({ étape: 'en_essai', exécuteur: 'api', bloqué: false, dernierRun: run('premiere_lettre', 'reussi') })).toEqual({ sorte: 'envoyer', libellé: 'Envoyer les lettres' })
+    expect(gesteDisponible({ étape: 'en_essai', exécuteur: 'cowork', bloqué: false, dernierRun: null })).toEqual({ sorte: 'envoyer', libellé: 'Envoyer les lettres' })
     expect(gesteDisponible({ étape: 'espace_ouvert', exécuteur: 'api', bloqué: false, dernierRun: null })).toEqual({ sorte: 'aucun', raison: 'terminé' })
   })
 
@@ -246,9 +252,9 @@ describe('la demande du formulaire (lot 3)', () => {
 })
 
 describe('l’ouverture de l’espace (lot 4)', () => {
-  it('à la première lettre publiée, le geste est « Ouvrir l’espace », que l’exécuteur soit l’API ou Cowork', () => {
+  it('à la première lettre publiée, le geste ouvre l’espace et active la veille, que l’exécuteur soit l’API ou Cowork (lot 6)', () => {
     for (const exécuteur of ['api', 'cowork'] as const) {
-      expect(gesteDisponible({ étape: 'premiere_lettre_publiee', exécuteur, bloqué: false, dernierRun: null })).toEqual({ sorte: 'ouvrir', libellé: 'Ouvrir l’espace' })
+      expect(gesteDisponible({ étape: 'premiere_lettre_publiee', exécuteur, bloqué: false, dernierRun: null })).toEqual({ sorte: 'ouvrir', libellé: 'Ouvrir l’espace et activer la veille', activation: true })
     }
     // Un run en cours ferme encore tout geste.
     expect(gesteDisponible({ étape: 'premiere_lettre_publiee', exécuteur: 'api', bloqué: false, dernierRun: { tâche: 'balayage', montré: 'en_cours' } })).toEqual({ sorte: 'aucun', raison: 'en-cours' })
@@ -263,7 +269,7 @@ describe('le geste avec le moteur (lot 5)', () => {
     expect(g('demande')).toEqual({ sorte: 'geste', geste: 'onboarding', tâche: 'onboarding', libellé: 'Lancer l’onboarding' })
     expect(g('referentiels_generes')).toMatchObject({ geste: 'onboarding' })
     expect(g('en_essai')).toEqual({ sorte: 'aucun', raison: 'attente' })
-    expect(g('premiere_lettre_publiee')).toEqual({ sorte: 'ouvrir', libellé: 'Ouvrir l’espace' })
+    expect(g('premiere_lettre_publiee')).toEqual({ sorte: 'ouvrir', libellé: 'Ouvrir l’espace', activation: false })
     expect(g('espace_ouvert')).toEqual({ sorte: 'aucun', raison: 'terminé' })
   })
 
@@ -273,3 +279,23 @@ describe('le geste avec le moteur (lot 5)', () => {
   })
 })
 
+
+describe('les consignes du portail aux tâches (lot 6)', () => {
+  const id = '40cfe829ce7181f183d9c46c4777ce00'
+  it('s’écrivent et se relisent à l’identique, et rien d’autre ne passe', () => {
+    for (const c of [{ sorte: 'sans-validation' }, { sorte: 'activation' }, { sorte: 'publication', éditions: [id, '40cfe829ce71811d919bf29c8c10eecd'] }] as const) {
+      expect(lireUneConsigne(écrireUneConsigne(c))).toEqual(c)
+    }
+    expect(lireUneConsigne('')).toBeNull()
+    expect(lireUneConsigne(null)).toBeNull()
+    expect(lireUneConsigne('activation; rm -rf')).toBe('illisible')
+    expect(lireUneConsigne('publication:')).toBe('illisible')
+    expect(lireUneConsigne(`publication:${id.toUpperCase()}`)).toBe('illisible')
+    expect(lireUneConsigne(`publication:${Array(7).fill(0).map((_, i) => id.slice(0, 31) + i).join(',')}`)).toBe('illisible')
+    // Une édition donnée deux fois n'est publiée qu'une fois.
+    expect(lireUneConsigne(`publication:${id},${id}`)).toEqual({ sorte: 'publication', éditions: [id] })
+  })
+  it('chaque consigne a sa tâche', () => {
+    expect(TÂCHE_DE_LA_CONSIGNE).toEqual({ 'sans-validation': 'premiere-lettre', activation: 'balayage', publication: 'reconciliation' })
+  })
+})

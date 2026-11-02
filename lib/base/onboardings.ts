@@ -29,6 +29,17 @@ import {
 
 export type TâcheDOnboarding = 'balayage' | 'premiere_lettre' | 'onboarding'
 
+/** Ce que le portail demande à un run en plus de sa tâche (lot 6, 2 novembre 2026). */
+export type ConsigneDuRun = 'sans-validation' | 'activation'
+
+const lireLaConsigne = (valeur: string | null): ConsigneDuRun | null => (valeur === 'sans-validation' || valeur === 'activation' ? valeur : null)
+
+/** La fin d'un run, et ce qu'il faut savoir pour enchaîner (lot 6) : sa tâche, sa consigne, s'il a été lancé du portail. */
+export type ConclusionDeRun =
+  | { readonly sorte: 'conclu'; readonly état: ÉtatDeRun; readonly tâche: TâcheDOnboarding; readonly consigne: ConsigneDuRun | null; readonly lancéParLePortail: boolean }
+  | { readonly sorte: 'déjà-conclu' }
+  | { readonly sorte: 'inconnu' }
+
 export type OuvertureDeRun = {
   /** `refusé` : le budget du mois ne permet pas ce run, qui est consigné sans être lancé. */
   readonly sorte: 'ouvert' | 'déjà-ouvert' | 'refusé'
@@ -156,20 +167,28 @@ export async function ouvrirUnRunDOnboarding(
 export async function conclureUnRunDOnboarding(
   entrée: { readonly slug: string; readonly runId: string; readonly issue: 'reussi' | 'echec'; readonly coûtUsd: number | null; readonly maintenant: Date },
   db: Base = base(),
-): Promise<'conclu' | 'déjà-conclu' | 'inconnu'> {
+): Promise<ConclusionDeRun> {
   return protéger('conclusion d’un run d’onboarding', async () => {
     const [run] = await db
-      .select({ id: onboardingRuns.id, état: onboardingRuns.état, fin: onboardingRuns.fin, onboardingId: onboardingRuns.onboardingId })
+      .select({
+        id: onboardingRuns.id,
+        état: onboardingRuns.état,
+        fin: onboardingRuns.fin,
+        onboardingId: onboardingRuns.onboardingId,
+        tâche: onboardingRuns.tâche,
+        consigne: onboardingRuns.consigne,
+        lancéPar: onboardingRuns.lancéPar,
+      })
       .from(onboardingRuns)
       .innerJoin(onboardings, eq(onboardings.id, onboardingRuns.onboardingId))
       .where(and(eq(onboardingRuns.id, entrée.runId), eq(onboardings.slug, entrée.slug)))
       .limit(1)
-    if (!run) return 'inconnu'
-    if (run.fin) return 'déjà-conclu'
+    if (!run) return { sorte: 'inconnu' }
+    if (run.fin) return { sorte: 'déjà-conclu' }
     const état: ÉtatDeRun = run.état === 'bloque' ? 'bloque' : entrée.issue
     await db.update(onboardingRuns).set({ état, fin: entrée.maintenant, coûtUsd: entrée.coûtUsd }).where(eq(onboardingRuns.id, run.id))
     await db.update(onboardings).set({ misÀJourLe: entrée.maintenant }).where(eq(onboardings.id, run.onboardingId))
-    return 'conclu'
+    return { sorte: 'conclu', état, tâche: run.tâche, consigne: lireLaConsigne(run.consigne), lancéParLePortail: run.lancéPar !== null }
   })
 }
 
@@ -295,6 +314,8 @@ export async function réserverUnLancement(
     readonly budgetUsd: number | null
     readonly débutDuMois: Date
     readonly opératrice: string
+    /** Ce que le portail demande au run en plus de sa tâche (lot 6) ; nul pour un run ordinaire. */
+    readonly consigne?: ConsigneDuRun | null
     readonly maintenant: Date
   },
   db: Base = base(),
@@ -320,7 +341,7 @@ export async function réserverUnLancement(
 
       const [run] = await tx
         .insert(onboardingRuns)
-        .values({ onboardingId: onboarding.id, tâche: entrée.tâche, état: 'demande', plafondUsd: entrée.plafondUsd, lancéPar: entrée.opératrice })
+        .values({ onboardingId: onboarding.id, tâche: entrée.tâche, état: 'demande', plafondUsd: entrée.plafondUsd, lancéPar: entrée.opératrice, consigne: entrée.consigne ?? null })
         .returning({ id: onboardingRuns.id })
       if (!run) throw new Error('lancement non réservé')
       await tx.update(onboardings).set({ misÀJourLe: entrée.maintenant }).where(eq(onboardings.id, onboarding.id))
@@ -484,6 +505,7 @@ export type RunLu = {
   readonly crééLe: Date
   readonly codeHttp: number | null
   readonly lancéPar: string | null
+  readonly consigne: ConsigneDuRun | null
 }
 
 export type OnboardingLu = {
@@ -525,6 +547,7 @@ const versLeRunLu = (r: typeof onboardingRuns.$inferSelect): RunLu => ({
   crééLe: r.crééLe,
   codeHttp: r.codeHttp,
   lancéPar: r.lancéPar,
+  consigne: lireLaConsigne(r.consigne),
 })
 
 async function lire(filtre: { readonly slug: string } | null, db: Base): Promise<OnboardingLu[]> {

@@ -4,17 +4,14 @@ import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { z } from 'zod'
 import { exigerOpérateur } from '@/lib/auth/appartenance'
-import { composerLienDAccès } from '@/lib/auth/jeton'
-import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { changerActivation, créerLecteur, révoquerLecteurParId } from '@/lib/base/ecriture-lecteurs'
 import { adresseDUnLecteur, lecteursÀGérer, organisationÀGérer } from '@/lib/base/gestion'
-import { composerCourrierDAccès } from '@/lib/email/gmail'
-import { env } from '@/lib/env'
-import { envoyerCourrier } from '@/lib/portail/courriers'
-import { autoriserLEnvoi, empreinte, origineDe } from '@/lib/portail/debit'
+import { empreinte, origineDe } from '@/lib/portail/debit'
+import { envoyerLesLettresÀPublier } from '@/lib/portail/envoi-des-lettres'
 import { publierLaFicheDuPilote } from '@/lib/portail/fiche-veille'
 import { publierEtEnvoyer } from '@/lib/portail/lettres-a-publier'
-import { vueDeLOnboarding } from '@/lib/portail/onboarding'
+import { lancerLOuverture, moteurDesOnboardings, vueDeLOnboarding } from '@/lib/portail/onboarding'
+import { envoyerUnLienDAccès, type IssueDuLien } from '@/lib/portail/ouverture'
 import { lecteursModifiables } from '@/lib/portail/situation'
 import { réglerLEspace, réglerLePilote, validerLaVersion } from '@/lib/portail/strategie'
 
@@ -148,33 +145,9 @@ export async function publierLaFiche(données: FormData): Promise<void> {
  * ligne par la façade (Notion fait foi en mode `double`), limitation de débit,
  * journal des courriers. L'adresse n'est lue qu'ici, côté serveur.
  */
-async function envoyerLeLien(email: string, organisationId: string, déclencheur: string): Promise<'lien-envoyé' | 'lien-non-envoyé' | 'débit'> {
-  const marque = empreinte(email)
-  try {
-    const lecteur = await lireAccèsActifParEmail(email)
-    if (!lecteur?.email) {
-      console.warn(`[gestion] ${marque} introuvable ou révoqué à la relecture : lien non envoyé.`)
-      return 'lien-non-envoyé'
-    }
-    const débit = autoriserLEnvoi(email, origineDe(await headers()))
-    if (!débit.autorisé) {
-      console.warn(`[gestion] ${marque} : lien refusé par la limitation de débit (${débit.motif}).`)
-      return 'débit'
-    }
-    const lien = composerLienDAccès(lecteur.identifiant, env().ACCES_SECRET_HMAC, env().PORTAIL_URL)
-    await envoyerCourrier({
-      message: { ...composerCourrierDAccès(lecteur.nom, lien, { destinataire: lecteur.email }), destinataire: lecteur.email },
-      sorte: 'lien_acces',
-      déclencheur,
-      organisation: { id: organisationId },
-      lecteurId: null,
-      unique: false,
-    })
-    return 'lien-envoyé'
-  } catch (erreur) {
-    console.error(`[gestion] ${marque} : lien non envoyé (${messageDe(erreur)}).`)
-    return 'lien-non-envoyé'
-  }
+/** Le lien d'accès d'un lecteur, par le seul chemin du portail (`lib/portail/ouverture.ts`), avec l'origine réseau de l'opératrice. */
+async function envoyerLeLien(email: string, organisationId: string, déclencheur: string): Promise<IssueDuLien> {
+  return envoyerUnLienDAccès({ email, organisationId, déclencheur, origine: origineDe(await headers()) })
 }
 
 function lecteurDu(données: FormData): string {
@@ -275,6 +248,19 @@ export async function ouvrirLEspaceDepuisLOnboarding(données: FormData): Promis
         ? `/espaces/abonnements/${encodeURIComponent(slug)}?onboarding=${encodeURIComponent(code)}&section=onboarding#onboarding`
         : `/espaces/onboardings?lancement=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}#${encodeURIComponent(slug)}`,
     )
+  // Lot 6 (2 novembre 2026) : avec les tâches GitHub, l'ouverture active la veille
+  // (§1 du balayage, par une tâche) ; le lien part du portail à la fin du run.
+  if (moteurDesOnboardings() === 'github') {
+    let issue: string
+    try {
+      issue = await lancerLOuverture({ slug, opératrice: accès.nom })
+    } catch (erreur) {
+      console.error(`[gestion] ${slug} : ouverture non lancée (${messageDe(erreur)}).`)
+      issue = 'échec'
+    }
+    console.info(`[gestion] ${accès.nom} : ${slug}, ouverture et activation, ${issue}.`)
+    revenir(issue === 'lancé' ? 'ouverture-lancée' : issue)
+  }
   if (!lecteursModifiables()) revenir('notion-fait-foi')
 
   let code: string
@@ -305,3 +291,43 @@ export async function ouvrirLEspaceDepuisLOnboarding(données: FormData): Promis
   revenir(code)
 }
 
+
+/**
+ * « Envoyer les lettres » (lot 6, 2 novembre 2026) : les lettres que la première
+ * lettre a produites et que l'opératrice a lues dans l'espace partent du portail
+ * aux lecteurs actifs, puis une tâche les passe au statut « Envoyé » dans
+ * Notion. La garde d'abord, puis la seule orchestration de l'envoi.
+ */
+export async function envoyerLesLettres(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const versLaFiche = données.get('retour') === 'fiche'
+  const accès = await exigerOpérateur()
+  let code: string
+  try {
+    const bilan = await envoyerLesLettresÀPublier({ slug })
+    code =
+      bilan.sorte !== 'envoyées'
+        ? bilan.sorte
+        : bilan.publiées === 0
+          ? bilan.nonConformes > 0
+            ? 'lettres-non-conformes'
+            : 'lettres-non-envoyées'
+          : bilan.publication === 'publication-lancée'
+            ? bilan.nonConformes > 0 || bilan.incomplètes > 0
+              ? 'lettres-envoyées-en-partie'
+              : 'lettres-envoyées'
+            : 'lettres-envoyées-sans-publication'
+    if (bilan.sorte === 'envoyées') {
+      console.info(`[gestion] ${accès.nom} : ${slug}, lettres envoyées (${bilan.envoyés} envoi(s), ${bilan.déjàEnvoyés} déjà parti(s), ${bilan.nonConformes} non conforme(s), ${bilan.incomplètes} incomplète(s)), ${bilan.publication}.`)
+    }
+  } catch (erreur) {
+    console.error(`[gestion] ${slug} : envoi des lettres impossible (${messageDe(erreur)}).`)
+    code = 'échec'
+  }
+  console.info(`[gestion] ${accès.nom} : ${slug}, envoi des lettres, ${code}.`)
+  redirect(
+    versLaFiche
+      ? `/espaces/abonnements/${encodeURIComponent(slug)}?onboarding=${encodeURIComponent(code)}&section=onboarding#onboarding`
+      : `/espaces/onboardings?lancement=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}#${encodeURIComponent(slug)}`,
+  )
+}

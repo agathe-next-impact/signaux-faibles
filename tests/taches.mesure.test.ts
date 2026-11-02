@@ -53,16 +53,16 @@ describe('lireLaMesure', () => {
 
 describe('ligne de commande', () => {
   it('admet les cinq tâches et le contrôle, et un slug propre', () => {
-    expect(lireLaCommande(['lettres', '--organisation', 'next-impact'])).toEqual({ tâche: 'lettres', organisation: 'next-impact', reprendre: false, périodes: [] })
-    expect(lireLaCommande(['controle'])).toEqual({ tâche: 'controle', organisation: null, reprendre: false, périodes: [] })
-    expect(lireLaCommande(['revue', '--organisation', ''])).toEqual({ tâche: 'revue', organisation: null, reprendre: false, périodes: [] })
+    expect(lireLaCommande(['lettres', '--organisation', 'next-impact'])).toEqual({ tâche: 'lettres', organisation: 'next-impact', reprendre: false, périodes: [], consigne: null })
+    expect(lireLaCommande(['controle'])).toEqual({ tâche: 'controle', organisation: null, reprendre: false, périodes: [], consigne: null })
+    expect(lireLaCommande(['revue', '--organisation', ''])).toEqual({ tâche: 'revue', organisation: null, reprendre: false, périodes: [], consigne: null })
   })
 
   it('etiquetage ne se lance que pour une organisation', () => {
-    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: false, périodes: [] })
+    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: false, périodes: [], consigne: null })
     expect(() => lireLaCommande(['etiquetage'])).toThrow(/exige --organisation/)
     expect(() => lireLaCommande(['etiquetage', '--organisation', ''])).toThrow(/exige --organisation/)
-    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance', '--reprendre'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: true, périodes: [] })
+    expect(lireLaCommande(['etiquetage', '--organisation', 'infralliance', '--reprendre'])).toEqual({ tâche: 'etiquetage', organisation: 'infralliance', reprendre: true, périodes: [], consigne: null })
     expect(() => lireLaCommande(['lettres', '--reprendre'])).toThrow(/ne vaut que pour la tâche « etiquetage »/)
   })
 
@@ -72,6 +72,7 @@ describe('ligne de commande', () => {
       tâche: 'retrospective',
       organisation: 'konica-minolta-france',
       reprendre: false,
+      consigne: null,
       périodes: ['2026-09', '2026-T3'],
     })
     expect(() => lireLaCommande(['retrospective', '--periodes', '2026-09'], le31)).toThrow(/exige --organisation/)
@@ -86,6 +87,18 @@ describe('ligne de commande', () => {
     expect(() => lireLaCommande(['revue', '--periodes', '2026-09'], le31)).toThrow(/ne vaut que pour la tâche « retrospective »/)
     // Le premier novembre à Paris, octobre est passé.
     expect(lireLaCommande(['retrospective', '--organisation', 'heritech', '--periodes', '2026-10'], new Date('2026-10-31T23:30:00Z')).périodes).toEqual(['2026-10'])
+  })
+
+  it('la consigne du portail (lot 6) ne vaut que pour sa tâche, et pour une organisation', () => {
+    const id = '40cfe829ce7181f183d9c46c4777ce00'
+    expect(lireLaCommande(['premiere-lettre', '--organisation', 'cci-cantal', '--consigne', 'sans-validation']).consigne).toEqual({ sorte: 'sans-validation' })
+    expect(lireLaCommande(['balayage', '--organisation', 'cci-cantal', '--consigne', 'activation']).consigne).toEqual({ sorte: 'activation' })
+    expect(lireLaCommande(['reconciliation', '--organisation', 'cci-cantal', '--consigne', `publication:${id}`]).consigne).toEqual({ sorte: 'publication', éditions: [id] })
+    expect(lireLaCommande(['balayage', '--organisation', 'cci-cantal', '--consigne', '']).consigne).toBeNull()
+    expect(() => lireLaCommande(['balayage', '--organisation', 'cci-cantal', '--consigne', 'sans-validation'])).toThrow(/ne vaut que pour la tâche « premiere-lettre »/)
+    expect(() => lireLaCommande(['reconciliation', '--consigne', `publication:${id}`])).toThrow(/exige --organisation/)
+    expect(() => lireLaCommande(['balayage', '--organisation', 'cci-cantal', '--consigne', 'tout'])).toThrow(/consigne illisible/)
+    expect(() => lireLaCommande(['reconciliation', '--organisation', 'cci-cantal', '--consigne', 'publication:abc'])).toThrow(/consigne illisible/)
   })
 
   it('refuse une tâche inconnue, un slug douteux ou un argument de trop', () => {

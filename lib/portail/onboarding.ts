@@ -16,6 +16,7 @@ import {
   type DemandeÀTransmettre,
   type EnregistrementDeDemande,
   type OnboardingLu,
+  type ConsigneDuRun,
   type OuvertureDeRun,
   type RunLu,
   type TâcheDOnboarding,
@@ -41,6 +42,8 @@ import {
   lireLeBudget,
   moisDeParis,
   type DécisionDeBudget,
+  ÉDITIONS_PAR_PUBLICATION_MAX,
+  écrireUneConsigne,
   type ÉtapeCalculée,
   type ÉtatDeRun,
 } from '@/lib/domaine/onboarding'
@@ -105,12 +108,41 @@ export async function recevoirUnDébut(
   return { ...ouverture, demande }
 }
 
-export function recevoirUneFin(
+/**
+ * La fin d'un run, puis ce qui suit de lui-même (lot 6, 2 novembre 2026 :
+ * l'onboarding se fait entièrement depuis l'admin, sans confirmation) :
+ * - un run de référentiels réussi, lancé du portail, enchaîne la première
+ *   lettre, sans validation entre les deux ;
+ * - un run d'activation réussi fait partir le lien d'accès à chaque lecteur
+ *   actif, par le portail.
+ * Une suite qui échoue n'annule pas la conclusion : elle est journalisée, et le
+ * geste reste à l'écran pour la relancer à la main.
+ */
+export async function recevoirUneFin(
   entrée: { readonly slug: string; readonly runId: string; readonly issue: 'reussi' | 'echec'; readonly coûtUsd: number | null },
   maintenant: Date = new Date(),
-) {
-  return conclureUnRunDOnboarding({ ...entrée, maintenant })
+): Promise<'conclu' | 'déjà-conclu' | 'inconnu'> {
+  const conclusion = await conclureUnRunDOnboarding({ ...entrée, maintenant })
+  if (conclusion.sorte !== 'conclu') return conclusion.sorte
+  if (conclusion.état === 'reussi' && conclusion.lancéParLePortail) {
+    try {
+      if (conclusion.tâche === 'balayage' && conclusion.consigne === null) {
+        const issue = await lancerDepuisLePortail({ slug: entrée.slug, geste: 'premiere-lettre', opératrice: OPÉRATRICE_DE_L_ENCHAÎNEMENT }, maintenant)
+        console.info(`[onboarding] ${entrée.slug} : référentiels générés, première lettre enchaînée, ${issue}.`)
+      } else if (conclusion.tâche === 'balayage' && conclusion.consigne === 'activation') {
+        const { envoyerLesLiensDeLOrganisation } = await import('@/lib/portail/ouverture')
+        const issue = await envoyerLesLiensDeLOrganisation({ slug: entrée.slug, déclencheur: 'onboarding', origine: null })
+        console.info(`[onboarding] ${entrée.slug} : veille activée, ouverture de l’espace, ${issue}.`)
+      }
+    } catch (erreur) {
+      console.error(`[onboarding] ${entrée.slug} : suite du run non faite (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    }
+  }
+  return 'conclu'
 }
+
+/** Le nom porté par le run de première lettre que le portail enchaîne seul, au journal comme à l'écran. */
+export const OPÉRATRICE_DE_L_ENCHAÎNEMENT = 'enchaînement du portail'
 
 export function recevoirUnRapport(
   entrée: {
@@ -220,6 +252,12 @@ export type IssueDuLancement =
   | 'échec-moteur'
 
 /** Vrai si le portail peut déclencher le workflow : l'écran montre sinon la commande à lancer à la main. */
+/** Ce que l'écran dit quand l'étape n'offre pas ce geste : un run en cours, Cowork, ou une page affichée avant que l'étape change. */
+function issueSansGeste(geste: Exclude<GesteDisponible, { readonly sorte: 'geste' }>): IssueDuLancement {
+  if (geste.sorte !== 'aucun') return 'geste-périmé'
+  return geste.raison === 'en-cours' ? 'en-cours' : geste.raison === 'cowork' ? 'cowork' : 'geste-périmé'
+}
+
 export function lancementDisponible(): boolean {
   if (moteurDesOnboardings() === 'trigger') return déclencheurConfiguré()
   return configurationGithub() !== null
@@ -245,12 +283,33 @@ export async function lancerDepuisLePortail(
   if (!lu) return 'inconnu'
   const vue = vueDUnOnboarding(lu, maintenant)
   if (vue.geste.sorte === 'ouvrir') return 'geste-périmé'
-  if (vue.geste.sorte !== 'geste') return vue.geste.raison === 'en-cours' ? 'en-cours' : vue.geste.raison === 'cowork' ? 'cowork' : 'geste-périmé'
+  if (vue.geste.sorte !== 'geste') return issueSansGeste(vue.geste)
   if (vue.geste.geste !== entrée.geste) return 'geste-périmé'
 
   const tâche = vue.geste.tâche
   // Le run complet du moteur ne se lance pas par GitHub.
   if (tâche === 'onboarding') return 'geste-périmé'
+  // Lot 6 : la première lettre part toujours sans attendre la validation.
+  return réserverPuisDéclencher({ github, slug: entrée.slug, tâche, consigne: tâche === 'premiere-lettre' ? 'sans-validation' : null, opératrice: entrée.opératrice }, maintenant)
+}
+
+/**
+ * La réservation **avant** l'appel à GitHub, puis l'appel et sa conclusion :
+ * commun aux gestes de l'onboarding et à l'ouverture de l'espace (lot 6). La
+ * consigne est gardée sur le run, pour que sa fin sache quoi enchaîner, et
+ * transmise au workflow, pour que la tâche sache quoi faire.
+ */
+async function réserverPuisDéclencher(
+  entrée: {
+    readonly github: NonNullable<ReturnType<typeof configurationGithub>>
+    readonly slug: string
+    readonly tâche: 'balayage' | 'premiere-lettre'
+    readonly consigne: ConsigneDuRun | null
+    readonly opératrice: string
+  },
+  maintenant: Date,
+): Promise<IssueDuLancement> {
+  const { tâche } = entrée
   const réservation = await réserverUnLancement({
     slug: entrée.slug,
     tâche: TÂCHES_SUIVIES[tâche]!,
@@ -258,13 +317,19 @@ export async function lancerDepuisLePortail(
     budgetUsd: budgetDesOnboardings(),
     débutDuMois: débutDuMoisDeParis(maintenant),
     opératrice: entrée.opératrice,
+    consigne: entrée.consigne,
     maintenant,
   })
   if (réservation.sorte !== 'réservé') return réservation.sorte
 
   let déclenchement: Awaited<ReturnType<typeof déclencherLeWorkflow>>
   try {
-    déclenchement = await déclencherLeWorkflow(github, { tache: tâche, organisation: entrée.slug, lancement: réservation.runId })
+    déclenchement = await déclencherLeWorkflow(entrée.github, {
+      tache: tâche,
+      organisation: entrée.slug,
+      lancement: réservation.runId,
+      ...(entrée.consigne ? { consigne: écrireUneConsigne({ sorte: entrée.consigne }) } : {}),
+    })
   } catch {
     déclenchement = { sorte: 'échec', codeHttp: null }
   }
@@ -275,6 +340,55 @@ export async function lancerDepuisLePortail(
   }
   await conclureUnLancement({ runId: réservation.runId, sorte: 'lancé', runGithub: déclenchement.runGithub, lien: déclenchement.lien, maintenant })
   return 'lancé'
+}
+
+// ── L'ouverture et la publication depuis l'admin (lot 6, 2 novembre 2026) ────
+
+/**
+ * « Ouvrir l'espace et activer la veille », avec les tâches GitHub : un run
+ * `balayage` avec la consigne `activation` fait le §1 pour cette seule
+ * organisation (Veille automatique, statut 6, ligne « Accès » active et
+ * importée), et le portail envoie le lien d'accès à la fin du run
+ * (`recevoirUneFin`). L'appelant a vérifié le privilège ; ici, le jeton, l'étape
+ * (le geste doit être l'ouverture), puis la réservation avant l'appel.
+ */
+export async function lancerLOuverture(entrée: { readonly slug: string; readonly opératrice: string }, maintenant: Date = new Date()): Promise<IssueDuLancement> {
+  const github = configurationGithub()
+  if (!github) return 'indisponible'
+  const lu = await onboardingDUnSlug(entrée.slug)
+  if (!lu) return 'inconnu'
+  const vue = vueDUnOnboarding(lu, maintenant)
+  if (vue.geste.sorte !== 'ouvrir') return vue.geste.sorte === 'aucun' && vue.geste.raison === 'en-cours' ? 'en-cours' : 'geste-périmé'
+  return réserverPuisDéclencher({ github, slug: entrée.slug, tâche: 'balayage', consigne: 'activation', opératrice: entrée.opératrice }, maintenant)
+}
+
+export type IssueDeLaPublication = 'publication-lancée' | 'publication-indisponible' | 'publication-échouée'
+
+/**
+ * Après « Envoyer les lettres » : la réconciliation, avec la consigne
+ * `publication`, passe ces éditions au statut « Envoyé » dans Notion, ce que le
+ * portail ne fait jamais lui-même. Ce n'est pas un run d'onboarding : rien n'est
+ * réservé ni compté au budget. Sans jeton GitHub, les lettres sont parties et
+ * l'écran dit de lancer la tâche à la main.
+ */
+export async function déclencherLaPublication(entrée: { readonly slug: string; readonly éditions: readonly string[] }): Promise<IssueDeLaPublication> {
+  const github = configurationGithub()
+  if (!github) return 'publication-indisponible'
+  const éditions = [...new Set(entrée.éditions)].slice(0, ÉDITIONS_PAR_PUBLICATION_MAX)
+  try {
+    const déclenchement = await déclencherLeWorkflow(github, {
+      tache: 'reconciliation',
+      organisation: entrée.slug,
+      consigne: écrireUneConsigne({ sorte: 'publication', éditions }),
+    })
+    if (déclenchement.sorte === 'échec') {
+      console.warn(`[onboarding] ${entrée.slug} : publication non déclenchée (GitHub ${déclenchement.codeHttp ?? 'sans réponse'}).`)
+      return 'publication-échouée'
+    }
+    return 'publication-lancée'
+  } catch {
+    return 'publication-échouée'
+  }
 }
 
 // ── Le moteur Trigger.dev (lot 5, 1er novembre 2026) ─────────────────────────
@@ -306,7 +420,7 @@ async function lancerParLeMoteur(
   if (!lu) return 'inconnu'
   const vue = vueDUnOnboarding(lu, maintenant)
   if (vue.geste.sorte === 'ouvrir') return 'geste-périmé'
-  if (vue.geste.sorte !== 'geste') return vue.geste.raison === 'en-cours' ? 'en-cours' : vue.geste.raison === 'cowork' ? 'cowork' : 'geste-périmé'
+  if (vue.geste.sorte !== 'geste') return issueSansGeste(vue.geste)
   // Le crochet accepte le geste de l'étape, quel qu'il soit ; le bouton, le sien seulement.
   if (entrée.geste !== 'depuis-le-registre' && vue.geste.geste !== entrée.geste) return 'geste-périmé'
 

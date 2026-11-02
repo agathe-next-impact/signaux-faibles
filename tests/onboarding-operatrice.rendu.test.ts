@@ -38,6 +38,7 @@ const onboarding = (plus: Partial<OnboardingLu> = {}): OnboardingLu => ({
       crééLe: new Date('2026-10-25T08:00:00Z'),
       codeHttp: null,
       lancéPar: null,
+      consigne: null,
       runTrigger: null,
     },
   ],
@@ -64,7 +65,7 @@ describe('le suivi d’un onboarding à l’écran', () => {
     const vue = vueDUnOnboarding(
       onboarding({
         motifDeBlocage: 'Email du lecteur final manquant.',
-        runs: [{ id: 'r-2', tâche: 'premiere_lettre', état: 'en_cours', runGithub: 8, lien: null, plafondUsd: 40, coûtUsd: null, début: new Date('2026-11-01T06:00:00Z'), fin: null, crééLe: new Date('2026-11-01T06:00:00Z'), codeHttp: null, lancéPar: null, runTrigger: null }],
+        runs: [{ id: 'r-2', tâche: 'premiere_lettre', état: 'en_cours', runGithub: 8, lien: null, plafondUsd: 40, coûtUsd: null, début: new Date('2026-11-01T06:00:00Z'), fin: null, crééLe: new Date('2026-11-01T06:00:00Z'), codeHttp: null, lancéPar: null, runTrigger: null, consigne: null }],
       }),
       MAINTENANT,
     )

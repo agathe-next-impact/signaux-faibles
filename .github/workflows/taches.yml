@@ -50,6 +50,11 @@ on:
         required: false
         type: string
         default: ''
+      consigne:
+        description: Posée par le portail (sans-validation, activation, publication:<id>,…) quand l'opératrice agit depuis son tableau ; à laisser vide à la main
+        required: false
+        type: string
+        default: ''
   # Réconciliation basculée le 25 octobre 2026 : la tâche planifiée côté Claude
   # (trig_01BXfAjwQEdmitFkuiUkv6BB) est désactivée le même jour. Revue basculée
   # le 25 octobre 2026 : la tâche planifiée côté Claude (trig_01J6j4oBrxa7LsSXY89Qnqu9)
@@ -77,6 +82,7 @@ jobs:
       REPRENDRE: ${{ inputs.reprendre && 'oui' || '' }}
       PERIODES: ${{ inputs.periodes }}
       LANCEMENT: ${{ inputs.lancement }}
+      CONSIGNE: ${{ inputs.consigne }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       NOTION_MCP_TOKEN: ${{ secrets.NOTION_MCP_TOKEN }}
       ACTIVATION_SECRET: ${{ secrets.ACTIVATION_SECRET }}
@@ -109,6 +115,8 @@ jobs:
             pnpm tache "$TACHE" --organisation "$ORGANISATION" --periodes "$PERIODES"
           elif [ -n "$ORGANISATION" ] && [ "$TACHE" = "etiquetage" ] && [ -n "$REPRENDRE" ]; then
             pnpm tache "$TACHE" --organisation "$ORGANISATION" --reprendre
+          elif [ -n "$ORGANISATION" ] && [ -n "$CONSIGNE" ] && [ "$TACHE" != "controle" ]; then
+            pnpm tache "$TACHE" --organisation "$ORGANISATION" --consigne "$CONSIGNE"
           elif [ -n "$ORGANISATION" ] && [ "$TACHE" != "controle" ]; then
             pnpm tache "$TACHE" --organisation "$ORGANISATION"
           else
