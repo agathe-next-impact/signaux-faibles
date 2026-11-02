@@ -60,6 +60,8 @@ export async function resynchroniser(
 
     updateTag(`liste:${sources.éditions}`)
     updateTag(`liste:${sources.accès}`)
+    // La liste des éditions Payload de l'organisation, par sa clé (mode payload).
+    updateTag(`liste:${accès.organisationId}`)
     for (const lettre of lettres) updateTag(`page:${lettre.pageId}`)
 
     // `schema:notion` n'est délibérément pas invalidé. Il porte la garde de

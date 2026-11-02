@@ -1,6 +1,6 @@
 import type { BlocNotion } from '@/lib/domaine/document'
 import type { Édition } from '@/lib/notion/editions'
-import { identifiantDeRelation } from '@/lib/payload/relations'
+import { cléDeCloisonnement, identifiantDeRelation, identifiantPayload } from '@/lib/payload/relations'
 
 /**
  * Les documents lus dans Payload, derrière la façade `lib/documents`.
@@ -25,7 +25,10 @@ export async function listerÉditionsPubliées(organisationId: string): Promise<
 
   const { cacheLife, cacheTag } = await import('next/cache')
   cacheLife('notion')
-  cacheTag(`liste:${organisationId}`)
+  // La session porte la clé sans tirets (`registre_notion`), Payload l'uuid avec
+  // tirets : la requête prend l'uuid, la revérification et le tag la clé.
+  const clé = cléDeCloisonnement(organisationId)
+  cacheTag(`liste:${clé}`)
 
   const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')])
   const payload = await getPayload({ config })
@@ -33,7 +36,7 @@ export async function listerÉditionsPubliées(organisationId: string): Promise<
   const { docs } = await payload.find({
     collection: 'editions',
     where: {
-      and: [{ organisation: { equals: organisationId } }, { statut: { equals: STATUT_PUBLIÉ } }],
+      and: [{ organisation: { equals: identifiantPayload(clé) } }, { statut: { equals: STATUT_PUBLIÉ } }],
     },
     sort: '-dateEdition',
     depth: 0,
@@ -44,7 +47,7 @@ export async function listerÉditionsPubliées(organisationId: string): Promise<
     // Ceinture et bretelles, comme pour Notion : la requête a filtré, la
     // lecture revérifie. Une édition qui ne porte pas l'organisation attendue
     // ou qui n'est pas publiée ne passe pas, quoi qu'ait répondu la base.
-    .filter((doc) => identifiantDeRelation(champ(doc, 'organisation')) === organisationId)
+    .filter((doc) => cléDeCloisonnement(identifiantDeRelation(champ(doc, 'organisation')) ?? '') === clé)
     .filter((doc) => champ(doc, 'statut') === STATUT_PUBLIÉ)
     .map(versÉdition)
     .filter((édition): édition is Édition => édition !== null)
@@ -139,21 +142,24 @@ export async function listerÉditionsÀPrévisualiser(organisationId: string): P
 
   const { cacheLife, cacheTag } = await import('next/cache')
   cacheLife('notion')
-  cacheTag(`liste:${organisationId}`)
+  // La session porte la clé sans tirets (`registre_notion`), Payload l'uuid avec
+  // tirets : la requête prend l'uuid, la revérification et le tag la clé.
+  const clé = cléDeCloisonnement(organisationId)
+  cacheTag(`liste:${clé}`)
 
   const [{ getPayload }, { default: config }] = await Promise.all([import('payload'), import('@payload-config')])
   const payload = await getPayload({ config })
 
   const { docs } = await payload.find({
     collection: 'editions',
-    where: { and: [{ organisation: { equals: organisationId } }, { statut: { equals: STATUT_À_PUBLIER } }] },
+    where: { and: [{ organisation: { equals: identifiantPayload(clé) } }, { statut: { equals: STATUT_À_PUBLIER } }] },
     sort: '-dateEdition',
     depth: 0,
     pagination: false,
   })
 
   return (docs as unknown[])
-    .filter((doc) => identifiantDeRelation(champ(doc, 'organisation')) === organisationId)
+    .filter((doc) => cléDeCloisonnement(identifiantDeRelation(champ(doc, 'organisation')) ?? '') === clé)
     .filter((doc) => champ(doc, 'statut') === STATUT_À_PUBLIER)
     .map(versÉdition)
     .filter((édition): édition is Édition => édition !== null)

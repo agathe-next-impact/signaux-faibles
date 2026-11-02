@@ -24,17 +24,11 @@ export type OrganisationDuRegistre = {
   readonly contact?: { readonly nom?: string | null; readonly email?: string | null } | null
 }
 
-/** L'identifiant Payload (uuid avec tirets) sous la forme que `registre_notion` admet. */
-export function cléDeCloisonnement(identifiantPayload: string): string {
-  return identifiantPayload.replaceAll('-', '').toLowerCase()
-}
-
-/** L'opération inverse : la clé de la base du portail vers l'identifiant Payload. */
-export function identifiantPayload(clé: string): string {
-  const hex = clé.replaceAll('-', '').toLowerCase()
-  if (hex.length !== 32) return clé
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-}
+// Les deux formes de l'identifiant d'une organisation Payload vivent dans
+// `lib/payload/relations.ts`, sans dépendance, pour que la façade des documents
+// et l'invalidation les lisent sans charger ce module.
+import { cléDeCloisonnement, identifiantPayload } from '@/lib/payload/relations'
+export { cléDeCloisonnement, identifiantPayload }
 
 export type OuvertureDansLePortail = {
   readonly organisation: string
