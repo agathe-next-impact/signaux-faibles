@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import { abonnementQuiFaitFoi } from '@/lib/base/abonnements'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
-import { abonnements, organisations, prescripteurs, typePrescripteur } from '@/lib/base/schema'
+import { abonnements, organisations, prescripteurs, prospections, typePrescripteur } from '@/lib/base/schema'
 import type { Offre, ÉtatOrganisation } from '@/lib/domaine/parcours'
 
 /**
@@ -25,8 +25,9 @@ export type TypePrescripteur = (typeof typePrescripteur.enumValues)[number]
 export const TYPES_DE_PRESCRIPTEUR: readonly TypePrescripteur[] = typePrescripteur.enumValues
 
 export type RésultatDeCréation =
-  | { readonly sorte: 'créé' | 'déjà-prescripteur'; readonly code: string }
-  | { readonly sorte: 'organisation-inconnue' | 'code-pris' | 'en-prospection' }
+  | { readonly sorte: 'créé'; readonly code: string; readonly sortieDeProspection: boolean }
+  | { readonly sorte: 'déjà-prescripteur'; readonly code: string }
+  | { readonly sorte: 'organisation-inconnue' | 'code-pris' | 'en-prospection' | 'séquence-en-cours' }
 
 /**
  * Fait d'une organisation du portail un prescripteur, avec son code. Rejouable :
@@ -34,9 +35,17 @@ export type RésultatDeCréation =
  * entrée par prospection est refusée (`en-prospection`) : sa séquence est
  * peut-être en cours, et l'opératrice doit l'arrêter avant d'en faire un
  * prescripteur. Le code d'un prescripteur ne change pas ici.
+ *
+ * `sortirDeLaProspection` (2 novembre 2026, CCI du Cantal, prospectée puis
+ * reconnue chambre consulaire) : l'opératrice décide qu'elle quitte la
+ * prospection. La marque « entrée par prospection » est levée dans la même
+ * transaction que la création, et la liste d'exclusion la tient ensuite hors de
+ * toute séquence. La ligne de prospection reste, comme historique. Refus
+ * `séquence-en-cours` si une séquence lemlist n'a pas été arrêtée : l'arrêter
+ * d'abord, chez lemlist.
  */
 export async function créerPrescripteur(
-  entrée: { readonly slug: string; readonly code: string; readonly type: TypePrescripteur },
+  entrée: { readonly slug: string; readonly code: string; readonly type: TypePrescripteur; readonly sortirDeLaProspection?: boolean },
   db: Base = base(),
   maintenant: Date = new Date(),
 ): Promise<RésultatDeCréation> {
@@ -59,7 +68,15 @@ export async function créerPrescripteur(
           ? ({ sorte: 'déjà-prescripteur', code: existant.code } as const)
           : ({ sorte: 'code-pris' } as const)
       }
-      if (organisation.entréeParProspection) return { sorte: 'en-prospection' } as const
+      if (organisation.entréeParProspection && !entrée.sortirDeLaProspection) return { sorte: 'en-prospection' } as const
+      if (organisation.entréeParProspection) {
+        const [séquence] = await tx
+          .select({ id: prospections.id })
+          .from(prospections)
+          .where(and(eq(prospections.organisationId, organisation.id), isNotNull(prospections.leadLemlist), isNull(prospections.séquenceArrêtéeLe)))
+          .limit(1)
+        if (séquence) return { sorte: 'séquence-en-cours' } as const
+      }
 
       const [codeUtilisé] = await tx
         .select({ id: prescripteurs.id })
@@ -68,6 +85,9 @@ export async function créerPrescripteur(
         .limit(1)
       if (codeUtilisé) return { sorte: 'code-pris' } as const
 
+      if (organisation.entréeParProspection) {
+        await tx.update(organisations).set({ entréeParProspection: false }).where(eq(organisations.id, organisation.id))
+      }
       await tx.insert(prescripteurs).values({
         organisationId: organisation.id,
         code: entrée.code,
@@ -75,7 +95,7 @@ export async function créerPrescripteur(
         crééLe: maintenant,
         modifiéLe: maintenant,
       })
-      return { sorte: 'créé', code: entrée.code } as const
+      return { sorte: 'créé', code: entrée.code, sortieDeProspection: organisation.entréeParProspection } as const
     }),
   )
 }
