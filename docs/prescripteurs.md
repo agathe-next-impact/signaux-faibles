@@ -147,7 +147,14 @@ apporté trois abonnés, par un contrat à lui.
 
 1. Ouvrir son espace comme celui d'un client (`/onboarding-demande`,
    référentiels, première lettre, activation).
-2. `POST /api/veille/prescripteurs` `{ "slug", "code", "type" }`.
+2. `POST /api/veille/prescripteurs` `{ "slug", "code", "type" }`. Une
+   organisation entrée par prospection est refusée (`en-prospection`) ; si
+   l'opératrice décide qu'elle en sort (cas de la CCI du Cantal, prospectée le
+   21 octobre 2026 puis reconnue chambre consulaire le 2 novembre), ajouter
+   `"sortirDeLaProspection": true` : la marque « entrée par prospection » est
+   levée dans la même transaction, la ligne de prospection reste comme
+   historique, et la liste d'exclusion la tient hors de toute séquence. Refus
+   `séquence-en-cours` tant qu'une séquence lemlist n'est pas arrêtée.
 3. Poser l'accès offert : `PATCH /api/veille/organisations`
    `{ "slug", "action": "offre", "offre": "gratuite" }`, ou le tableau des
    abonnements.

@@ -20,7 +20,10 @@ import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
  *
  * Fait d'une organisation déjà ouverte dans le portail un prescripteur, avec
  * son code de recommandation (celui du lien `/demo?de=<code>`). Rejouable :
- * `déjà-prescripteur`. Elle ne pose pas l'accès offert : l'opératrice le pose
+ * `déjà-prescripteur`. Une organisation entrée par prospection est refusée
+ * (`en-prospection`), sauf avec `"sortirDeLaProspection": true` : elle quitte
+ * alors la prospection (`séquence-en-cours` si une séquence lemlist n'est pas
+ * arrêtée). Elle ne pose pas l'accès offert : l'opératrice le pose
  * par `PATCH /api/veille/organisations` (`offre: gratuite`), parce qu'un client
  * qui paie peut aussi devenir prescripteur.
  *
@@ -34,6 +37,8 @@ const demande = z.object({
   slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   code: z.string().trim().refine(codeDePrescripteurValide),
   type: z.enum(TYPES_DE_PRESCRIPTEUR as [TypePrescripteur, ...TypePrescripteur[]]),
+  /** L'opératrice fait sortir de la prospection une organisation prospectée (2 novembre 2026). */
+  sortirDeLaProspection: z.boolean().optional(),
 })
 
 const STATUT: Record<RésultatDeCréation['sorte'], number> = {
@@ -42,6 +47,7 @@ const STATUT: Record<RésultatDeCréation['sorte'], number> = {
   'organisation-inconnue': 404,
   'code-pris': 409,
   'en-prospection': 409,
+  'séquence-en-cours': 409,
 }
 
 export async function POST(requête: NextRequest): Promise<NextResponse> {

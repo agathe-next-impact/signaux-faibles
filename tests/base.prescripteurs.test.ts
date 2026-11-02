@@ -9,7 +9,7 @@ import {
   réglerLePartage,
   tableauDesPrescripteurs,
 } from '@/lib/base/prescripteurs'
-import { abonnements, organisations } from '@/lib/base/schema'
+import { abonnements, organisations, prospections } from '@/lib/base/schema'
 import { PARUTIONS_D_ESSAI, PARUTIONS_D_ESSAI_RECOMMANDÉE } from '@/lib/domaine/parcours'
 import { baseEnMémoire } from './aide/base-en-memoire'
 
@@ -33,7 +33,7 @@ describe('prescripteurs', () => {
   const lire = async (slug: string) => (await db.select().from(organisations).where(eq(organisations.slug, slug)))[0]!
 
   it('fait d’une organisation un prescripteur, de façon rejouable, et refuse un code déjà pris', async () => {
-    expect(await créerPrescripteur({ slug: 'cabinet', code: 'durand', type: 'conseil' }, db)).toEqual({ sorte: 'créé', code: 'durand' })
+    expect(await créerPrescripteur({ slug: 'cabinet', code: 'durand', type: 'conseil' }, db)).toEqual({ sorte: 'créé', code: 'durand', sortieDeProspection: false })
     expect(await créerPrescripteur({ slug: 'cabinet', code: 'durand', type: 'conseil' }, db)).toEqual({
       sorte: 'déjà-prescripteur',
       code: 'durand',
@@ -47,6 +47,20 @@ describe('prescripteurs', () => {
   it('refuse de faire un prescripteur d’une organisation entrée par prospection', async () => {
     await ouvrirEnEssai({ slug: 'prospect', nom: 'Prospect', registreNotion: registre(3), prospection: true }, db)
     expect((await créerPrescripteur({ slug: 'prospect', code: 'prospect', type: 'conseil' }, db)).sorte).toBe('en-prospection')
+  })
+
+  it('fait sortir de la prospection sur décision de l’opératrice, sauf séquence lemlist en cours', async () => {
+    await ouvrirEnEssai({ slug: 'prospect', nom: 'Prospect', registreNotion: registre(3), prospection: true }, db)
+    const [org] = await db.select({ id: organisations.id }).from(organisations).where(eq(organisations.slug, 'prospect'))
+    await db.insert(prospections).values({ organisationId: org!.id, destinataireEmpreinte: 'abcd1234', leadLemlist: 'lea_1' })
+    expect((await créerPrescripteur({ slug: 'prospect', code: 'prospect', type: 'chambre_consulaire', sortirDeLaProspection: true }, db)).sorte).toBe('séquence-en-cours')
+    await db.update(prospections).set({ séquenceArrêtéeLe: new Date() })
+    expect(await créerPrescripteur({ slug: 'prospect', code: 'prospect', type: 'chambre_consulaire', sortirDeLaProspection: true }, db)).toEqual({ sorte: 'créé', code: 'prospect', sortieDeProspection: true })
+    const [après] = await db.select({ entrée: organisations.entréeParProspection }).from(organisations).where(eq(organisations.id, org!.id))
+    expect(après!.entrée).toBe(false)
+    // La ligne de prospection reste, comme historique.
+    expect(await db.select().from(prospections)).toHaveLength(1)
+    expect((await listeDExclusion(db)).map((e) => e.slug)).toContain('prospect')
   })
 
   it('rattache une organisation recommandée à son prescripteur, avec un essai plus long', async () => {

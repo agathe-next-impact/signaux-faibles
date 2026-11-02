@@ -61,11 +61,19 @@ describe('POST /api/veille/prescripteurs', () => {
       [{ sorte: 'organisation-inconnue' }, 404],
       [{ sorte: 'code-pris' }, 409],
       [{ sorte: 'en-prospection' }, 409],
+      [{ sorte: 'séquence-en-cours' }, 409],
     ]
     for (const [résultat, statut] of cas) {
       prescripteurs.créerPrescripteur.mockResolvedValueOnce(résultat)
       expect((await créer(corps)).status).toBe(statut)
     }
+  })
+
+  it('transmet la sortie de la prospection seulement quand elle est demandée', async () => {
+    prescripteurs.créerPrescripteur.mockResolvedValue({ sorte: 'créé', code: 'durand', sortieDeProspection: true })
+    await créer({ ...corps, sortirDeLaProspection: true })
+    expect(prescripteurs.créerPrescripteur).toHaveBeenLastCalledWith({ ...corps, sortirDeLaProspection: true })
+    expect((await créer({ ...corps, sortirDeLaProspection: 'oui' })).status).toBe(400)
   })
 })
 
