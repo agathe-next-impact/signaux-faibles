@@ -53,7 +53,14 @@ export type Déclenchement =
  */
 export async function déclencherLeWorkflow(
   configuration: ConfigurationGithub,
-  entrées: { readonly tache: 'balayage' | 'premiere-lettre'; readonly organisation: string; readonly lancement: string },
+  entrées: {
+    readonly tache: 'balayage' | 'premiere-lettre' | 'reconciliation'
+    readonly organisation: string
+    /** La réservation du portail ; absente pour une publication, qui n'est pas un run d'onboarding (lot 6). */
+    readonly lancement?: string
+    /** La consigne du portail, écrite par `écrireUneConsigne` (lot 6) ; absente pour un run ordinaire. */
+    readonly consigne?: string
+  },
   faire: typeof fetch = fetch,
 ): Promise<Déclenchement> {
   let réponse: Response

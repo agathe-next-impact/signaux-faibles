@@ -919,6 +919,22 @@ l'organisation au registre Payload (`lib/payload/registre-onboarding.ts`, charg�
 `run_trigger`). L'opératrice lit le suivi sur `/espaces/onboardings`
 (`listerLesOnboardings`, garde dans la fonction) et dans la section
 « Onboarding » de sa fiche.
+**L'onboarding entier depuis l'admin** (2 novembre 2026, lot 6, §15 de la
+proposition ; décisions de l'opératrice du même jour) : **plus de validation des
+référentiels**, « Lancer l'onboarding » enchaîne `balayage` puis, à sa fin
+réussie lancée du portail, `premiere-lettre` (`recevoirUneFin`) ; une fois la
+lettre lue en aperçu, **« Envoyer les lettres »** (`envoyerLesLettresÀPublier`,
+`lib/portail/envoi-des-lettres.ts`, garde d'abord) l'envoie du portail aux
+lecteurs actifs, lint conforme, lecteur revérifié par la façade, un envoi unique
+par lettre et par lecteur (clé `lettre:<page>`), puis lance `reconciliation`
+qui la passe au statut « Envoyé » ; **« Ouvrir l'espace et activer la veille »**
+(`lancerLOuverture`) lance le §1 du balayage pour la seule organisation, et le
+lien part du portail à la fin du run (`lib/portail/ouverture.ts`, seul chemin du
+lien hors d'une tâche). Le portail n'écrit toujours pas dans Notion : il passe
+aux tâches une **consigne** (`sans-validation`, `activation`,
+`publication:<id>,…` ; entrée `consigne` du workflow, `--consigne` du harnais,
+`lireUneConsigne`, texte dans `texteDeLaConsigne`), gardée sur le run
+(`onboarding_runs.consigne`, migration 0023).
 **Aperçu avant envoi** (1er novembre 2026, décision de l'opératrice : « je veux
 toujours prévisualiser dans l'espace avant tout envoi, et gérer depuis
 l'admin »). Réglage Postgres `organisations.apercu_avant_envoi` (migration

@@ -1,0 +1,1 @@
+ALTER TABLE "onboarding_runs" ADD COLUMN "consigne" text;

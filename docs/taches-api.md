@@ -27,6 +27,14 @@ qu'une phrase : « Limite-toi à l'organisation <slug>. »
 | `etiquetage` | Sonnet 5.5 | 10 $ | à la main, `--organisation` obligatoire (26 octobre 2026) |
 | `retrospective` | Opus 5.5 | 15 $ | à la main, `--organisation` et `--periodes` obligatoires (31 octobre 2026) |
 
+Depuis le 2 novembre 2026 (lot 6 de `docs/proposition-onboarding-admin.md`),
+le portail ajoute une **consigne** aux runs qu'il lance depuis le tableau de
+l'opératrice, par l'entrée `consigne` du workflow (`--consigne`) : `sans-validation`
+(`premiere-lettre`), `activation` (`balayage`) ou `publication:<id>,…`
+(`reconciliation`). Le harnais refuse une consigne illisible, posée sur une autre
+tâche ou sans organisation ; son texte s'ajoute au pointeur
+(`texteDeLaConsigne`, `scripts/taches/pointeurs.ts`).
+
 `etiquetage` est la seule tâche sans tâche planifiée d'origine : elle applique
 après coup l'étape « 4ter ÉTIQUETTES » de la page des lettres aux éditions déjà
 publiées d'une organisation du pilote des outils stratégiques

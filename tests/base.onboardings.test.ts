@@ -94,8 +94,8 @@ describe('le suivi des onboardings en base', () => {
   it('la fin écrit l’issue et le coût, une seule fois, et garde un blocage rapporté', async () => {
     const run = await ouvrir(db)
     expect(await rapporterUnOnboarding({ slug: 'mastora', statut: null, registre: null, motif: 'Email du lecteur final manquant.', nom: null, site: null, maintenant: MAINTENANT }, db)).toBe('rapporté')
-    expect(await conclureUnRunDOnboarding({ slug: 'mastora', runId: run.runId, issue: 'reussi', coûtUsd: 4.82, maintenant: MAINTENANT }, db)).toBe('conclu')
-    expect(await conclureUnRunDOnboarding({ slug: 'mastora', runId: run.runId, issue: 'echec', coûtUsd: 9, maintenant: MAINTENANT }, db)).toBe('déjà-conclu')
+    expect(await conclureUnRunDOnboarding({ slug: 'mastora', runId: run.runId, issue: 'reussi', coûtUsd: 4.82, maintenant: MAINTENANT }, db)).toMatchObject({ sorte: 'conclu', état: 'bloque' })
+    expect(await conclureUnRunDOnboarding({ slug: 'mastora', runId: run.runId, issue: 'echec', coûtUsd: 9, maintenant: MAINTENANT }, db)).toEqual({ sorte: 'déjà-conclu' })
     const [ligne] = await db.select().from(onboardingRuns).where(eq(onboardingRuns.id, run.runId))
     expect(ligne).toMatchObject({ état: 'bloque', coûtUsd: 4.82 })
   })
@@ -103,7 +103,7 @@ describe('le suivi des onboardings en base', () => {
   it('la fin d’un run se refuse sur un autre slug', async () => {
     const run = await ouvrir(db)
     await ouvrir(db, { slug: 'heritech', runGithub: 200 })
-    expect(await conclureUnRunDOnboarding({ slug: 'heritech', runId: run.runId, issue: 'reussi', coûtUsd: 1, maintenant: MAINTENANT }, db)).toBe('inconnu')
+    expect(await conclureUnRunDOnboarding({ slug: 'heritech', runId: run.runId, issue: 'reussi', coûtUsd: 1, maintenant: MAINTENANT }, db)).toEqual({ sorte: 'inconnu' })
   })
 
   it('le rapport pose la ligne du registre et le statut, et un statut sans motif lève le blocage', async () => {
@@ -218,6 +218,26 @@ describe('le suivi des onboardings en base', () => {
       expect(ligne).toMatchObject({ état: 'echec', codeHttp: 403, coûtUsd: 0 })
       expect((await réserver()).sorte).toBe('réservé')
       expect((await onboardingsPourLeContrôle(db)).map((o) => o.slug)).toEqual(['mastora'])
+    })
+
+    it('la consigne du portail est gardée sur le run, et sa fin la rend avec la tâche (lot 6)', async () => {
+      const premier = await ouvrir(db)
+      await conclureUnRunDOnboarding({ slug: 'mastora', runId: premier.runId, issue: 'reussi', coûtUsd: 1, maintenant: MAINTENANT }, db)
+      const r = await réserver({ tâche: 'balayage', plafondUsd: 30, consigne: 'activation' })
+      if (r.sorte !== 'réservé') throw new Error(r.sorte)
+      await conclureUnLancement({ runId: r.runId, sorte: 'lancé', runGithub: 7, lien: null, maintenant: MAINTENANT }, db)
+      expect(await conclureUnRunDOnboarding({ slug: 'mastora', runId: r.runId, issue: 'reussi', coûtUsd: 2, maintenant: MAINTENANT }, db)).toEqual({
+        sorte: 'conclu',
+        état: 'reussi',
+        tâche: 'balayage',
+        consigne: 'activation',
+        lancéParLePortail: true,
+      })
+      // Un run lancé à la main dans GitHub n'a ni consigne ni lanceur.
+      expect(await conclureUnRunDOnboarding({ slug: 'mastora', runId: (await ouvrir(db, { runGithub: 8 })).runId, issue: 'reussi', coûtUsd: 1, maintenant: MAINTENANT }, db)).toMatchObject({
+        consigne: null,
+        lancéParLePortail: false,
+      })
     })
   })
 

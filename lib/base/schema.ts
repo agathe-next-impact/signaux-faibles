@@ -1041,6 +1041,13 @@ export const onboardingRuns = pgTable(
     codeHttp: smallint('code_http'),
     /** Le nom de l'opératrice qui a lancé le run depuis le portail ; nul pour un run lancé dans GitHub. */
     lancéPar: text('lancé_par'),
+    /**
+     * Ce que le portail demande au run en plus de sa tâche (2 novembre 2026,
+     * lot 6, migration 0023) : `sans-validation` (première lettre sans attendre
+     * les points de validation) ou `activation` (§1 du balayage, puis le lien
+     * d'accès part du portail à la fin du run). Nul pour un run ordinaire.
+     */
+    consigne: text('consigne'),
     crééLe: horodatage('créé_le').notNull().defaultNow(),
   },
   (table) => [

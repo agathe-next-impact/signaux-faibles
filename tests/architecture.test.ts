@@ -1005,6 +1005,28 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // une seule action la déclenche, derrière la garde ; la réservation précède l'appel.
     expect(appelants('déclencherLeWorkflow')).toEqual(['lib/github/workflow.ts', 'lib/portail/onboarding.ts'])
     expect(appelants('lancerDepuisLePortail')).toEqual(['lib/portail/onboarding-actions.ts', 'lib/portail/onboarding.ts'])
+    // Lot 6 (2 novembre 2026) : l'ouverture, l'envoi des lettres et la publication
+    // ont chacun un seul appelant, derrière la garde de l'opératrice ; la
+    // publication passe par l'orchestration des onboardings, seule à parler à GitHub.
+    expect(appelants('lancerLOuverture')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('envoyerLesLettresÀPublier')).toEqual(['lib/portail/envoi-des-lettres.ts', 'lib/portail/gestion-actions.ts'])
+    expect(appelants('déclencherLaPublication')).toEqual(['lib/portail/envoi-des-lettres.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('envoyerUnLienDAccès')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/ouverture.ts'])
+    {
+      const gestes6 = readFileSync(join(process.cwd(), 'lib', 'portail', 'gestion-actions.ts'), 'utf8')
+      const envoyer = gestes6.slice(gestes6.indexOf('export async function envoyerLesLettres'))
+      expect(envoyer.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+      expect(envoyer.indexOf('exigerOpérateur()')).toBeLessThan(envoyer.indexOf('envoyerLesLettresÀPublier('))
+      const ouvrir6 = gestes6.slice(gestes6.indexOf('export async function ouvrirLEspaceDepuisLOnboarding'))
+      expect(ouvrir6.indexOf('exigerOpérateur()')).toBeLessThan(ouvrir6.indexOf('lancerLOuverture('))
+      // L'envoi des lettres ne lit l'aperçu que par semainesDeLEspace, et chaque envoi est unique.
+      const envoi = readFileSync(join(process.cwd(), 'lib', 'portail', 'envoi-des-lettres.ts'), 'utf8')
+      expect(envoi).toContain('semainesDeLEspace(')
+      expect(envoi).not.toContain('listerÉditionsÀPrévisualiser')
+      expect(envoi).toContain('unique: true')
+      expect(envoi.indexOf('contrôlerLaLettre(')).toBeLessThan(envoi.indexOf('envoyerCourrier('))
+      expect(envoi.indexOf('lireAccèsActifParEmail(')).toBeLessThan(envoi.indexOf('envoyerCourrier('))
+    }
     expect(appelants('réserverUnLancement')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
     expect(appelants('conclureUnLancement')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
     expect(appelants('onboardingsPourLeContrôle')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])

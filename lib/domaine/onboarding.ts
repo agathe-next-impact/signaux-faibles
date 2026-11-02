@@ -244,9 +244,19 @@ export type TâcheEnregistrée = 'balayage' | 'premiere_lettre' | 'onboarding'
 
 export type GesteDisponible =
   | { readonly sorte: 'geste'; readonly geste: Geste; readonly tâche: TâcheDuWorkflow; readonly libellé: string }
-  /** Lot 4 : la première lettre est publiée, l'espace s'ouvre en envoyant le lien d'accès. Ni tâche ni GitHub. */
-  | { readonly sorte: 'ouvrir'; readonly libellé: string }
-  | { readonly sorte: 'aucun'; readonly raison: 'en-cours' | 'cowork' | 'validation-notion' | 'attente' | 'terminé' }
+  /**
+   * Lot 6 (2 novembre 2026) : la première lettre est produite et lue dans
+   * l'espace (aperçu) ; le portail l'envoie aux lecteurs, puis une tâche la
+   * passe au statut « Envoyé » dans Notion.
+   */
+  | { readonly sorte: 'envoyer'; readonly libellé: string }
+  /**
+   * Lot 4 : la première lettre est publiée, l'espace s'ouvre en envoyant le
+   * lien d'accès. Lot 6 : avec les tâches GitHub, le même geste active la veille
+   * (§1 du balayage), et le lien part du portail à la fin du run.
+   */
+  | { readonly sorte: 'ouvrir'; readonly libellé: string; readonly activation: boolean }
+  | { readonly sorte: 'aucun'; readonly raison: 'en-cours' | 'cowork' | 'attente' | 'terminé' }
 
 const versLeWorkflow = (tâche: TâcheEnregistrée): TâcheDuWorkflow => (tâche === 'premiere_lettre' ? 'premiere-lettre' : tâche)
 
@@ -254,10 +264,13 @@ const versLeWorkflow = (tâche: TâcheEnregistrée): TâcheDuWorkflow => (tâche
  * Le seul geste possible à l'étape, et rien d'autre (§5 de la proposition).
  * Un run en cours ferme tout geste ; un onboarding Cowork ne se lance pas depuis
  * le portail ; un blocage propose de relancer la tâche du dernier run ; sinon,
- * « Générer les référentiels » à la demande et « Produire la première lettre »
- * une fois les référentiels validés dans Notion. Entre les deux, la validation
- * reste dans Notion (décision 3) ; après, la relectrice publie et l'ouverture
- * viendra au lot 4.
+ * « Lancer l'onboarding » à la demande, qui enchaîne les référentiels puis la
+ * première lettre **sans validation entre les deux** (lot 6, décision de
+ * l'opératrice du 2 novembre 2026 : l'onboarding se fait entièrement depuis
+ * l'admin, sans confirmation) ; « Produire la première lettre » si
+ * l'enchaînement n'a pas eu lieu ; « Envoyer les lettres » une fois la première
+ * lettre produite et lue dans l'espace ; « Ouvrir l'espace et activer la
+ * veille » une fois publiée.
  */
 export function gesteDisponible(entrée: {
   readonly étape: ÉtapeDOnboarding
@@ -274,7 +287,13 @@ export function gesteDisponible(entrée: {
   const enCours = entrée.dernierRun && ['demande', 'lance', 'en_cours'].includes(entrée.dernierRun.montré)
   if (enCours) return { sorte: 'aucun', raison: 'en-cours' }
   // L'ouverture ne dépend pas de l'exécuteur : c'est le portail qui envoie le lien.
-  if (entrée.étape === 'premiere_lettre_publiee') return { sorte: 'ouvrir', libellé: 'Ouvrir l’espace' }
+  if (entrée.étape === 'premiere_lettre_publiee') {
+    return entrée.moteur === 'trigger'
+      ? { sorte: 'ouvrir', libellé: 'Ouvrir l’espace', activation: false }
+      : { sorte: 'ouvrir', libellé: 'Ouvrir l’espace et activer la veille', activation: true }
+  }
+  // L'envoi non plus : c'est le portail qui envoie les lettres (lot 6, tâches GitHub).
+  if (entrée.étape === 'en_essai' && entrée.moteur !== 'trigger') return { sorte: 'envoyer', libellé: 'Envoyer les lettres' }
   if (entrée.exécuteur === 'cowork') return { sorte: 'aucun', raison: 'cowork' }
   if (entrée.moteur === 'trigger') {
     // Un blocage relance le run complet ; avant l'essai, on le lance ; ensuite,
@@ -289,9 +308,10 @@ export function gesteDisponible(entrée: {
   }
   switch (entrée.étape) {
     case 'demande':
-      return { sorte: 'geste', geste: 'referentiels', tâche: 'balayage', libellé: 'Générer les référentiels' }
+      return { sorte: 'geste', geste: 'referentiels', tâche: 'balayage', libellé: 'Lancer l’onboarding' }
+    // Sans validation (lot 6) : la première lettre suit les référentiels, d'elle-même
+    // à la fin du run, ou par ce bouton si l'enchaînement n'a pas eu lieu.
     case 'referentiels_generes':
-      return { sorte: 'aucun', raison: 'validation-notion' }
     case 'referentiels_valides':
       return { sorte: 'geste', geste: 'premiere-lettre', tâche: 'premiere-lettre', libellé: 'Produire la première lettre' }
     case 'espace_ouvert':
@@ -486,4 +506,44 @@ export function lundiDeParis(instant: Date): string {
   const d = new Date(`${jour}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
   return d.toISOString().slice(0, 10)
+}
+
+// ── Les consignes du portail aux tâches (lot 6, 2 novembre 2026) ─────────────
+
+/**
+ * Ce que le portail demande à un run, en plus de sa tâche, par l'entrée
+ * `consigne` du workflow : la première lettre sans attendre la validation, le
+ * §1 du balayage pour une seule organisation, ou le passage au statut
+ * « Envoyé » d'éditions que le portail vient d'envoyer. La valeur voyage en
+ * texte ; `lireUneConsigne` est la seule à la lire, côté harnais comme côté
+ * portail.
+ */
+export type ConsigneDeTâche =
+  | { readonly sorte: 'sans-validation' }
+  | { readonly sorte: 'activation' }
+  | { readonly sorte: 'publication'; readonly éditions: readonly string[] }
+
+/** Le plus d'éditions qu'une consigne de publication désigne : deux lettres par parution, et une marge. */
+export const ÉDITIONS_PAR_PUBLICATION_MAX = 6
+
+export function écrireUneConsigne(consigne: ConsigneDeTâche): string {
+  return consigne.sorte === 'publication' ? `publication:${consigne.éditions.join(',')}` : consigne.sorte
+}
+
+/** `null` pour une valeur vide ; `'illisible'` pour toute autre valeur que les trois formes. */
+export function lireUneConsigne(valeur: string | null | undefined): ConsigneDeTâche | null | 'illisible' {
+  const v = (valeur ?? '').trim()
+  if (v === '') return null
+  if (v === 'sans-validation' || v === 'activation') return { sorte: v }
+  const publication = /^publication:([0-9a-f]{32}(?:,[0-9a-f]{32})*)$/.exec(v)
+  if (!publication) return 'illisible'
+  const éditions = [...new Set(publication[1]!.split(','))]
+  return éditions.length <= ÉDITIONS_PAR_PUBLICATION_MAX ? { sorte: 'publication', éditions } : 'illisible'
+}
+
+/** La tâche du workflow qui porte chaque consigne : une consigne ailleurs est refusée par le harnais. */
+export const TÂCHE_DE_LA_CONSIGNE: Readonly<Record<ConsigneDeTâche['sorte'], 'premiere-lettre' | 'balayage' | 'reconciliation'>> = {
+  'sans-validation': 'premiere-lettre',
+  activation: 'balayage',
+  publication: 'reconciliation',
 }

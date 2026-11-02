@@ -10,6 +10,8 @@ const m = vi.hoisted(() => ({
   lireAccèsActifParEmail: vi.fn(),
   autoriserLEnvoi: vi.fn(),
   envoyerCourrier: vi.fn(),
+  moteurDesOnboardings: vi.fn(),
+  lancerLOuverture: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT ${url}`)
   }),
@@ -26,7 +28,8 @@ vi.mock('@/lib/env', () => ({ env: () => ({ ACCES_SECRET_HMAC: 's', PORTAIL_URL:
 vi.mock('@/lib/portail/courriers', () => ({ envoyerCourrier: m.envoyerCourrier }))
 vi.mock('@/lib/portail/debit', () => ({ autoriserLEnvoi: m.autoriserLEnvoi, empreinte: () => 'abcd1234', origineDe: () => 'ip' }))
 vi.mock('@/lib/portail/fiche-veille', () => ({ publierLaFicheDuPilote: vi.fn() }))
-vi.mock('@/lib/portail/onboarding', () => ({ vueDeLOnboarding: m.vueDeLOnboarding }))
+vi.mock('@/lib/portail/onboarding', () => ({ vueDeLOnboarding: m.vueDeLOnboarding, moteurDesOnboardings: m.moteurDesOnboardings, lancerLOuverture: m.lancerLOuverture }))
+vi.mock('@/lib/portail/envoi-des-lettres', () => ({ envoyerLesLettresÀPublier: vi.fn() }))
 vi.mock('@/lib/portail/situation', () => ({ lecteursModifiables: m.lecteursModifiables }))
 vi.mock('@/lib/portail/strategie', () => ({ réglerLEspace: vi.fn(), réglerLePilote: vi.fn(), validerLaVersion: vi.fn() }))
 
@@ -52,6 +55,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   m.exigerOpérateur.mockResolvedValue({ nom: 'Agathe' })
   m.lecteursModifiables.mockReturnValue(true)
+  // Le chemin du lot 4 est celui du moteur (après la bascule Payload) ; celui des tâches GitHub est au lot 6, plus bas.
+  m.moteurDesOnboardings.mockReturnValue('trigger')
   m.vueDeLOnboarding.mockResolvedValue({ geste: { sorte: 'ouvrir', libellé: 'Ouvrir l’espace' } })
   m.organisationÀGérer.mockResolvedValue({ id: 'org-1', avecRegistre: true })
   m.lecteursÀGérer.mockResolvedValue([
@@ -114,5 +119,33 @@ describe('ouvrir l’espace depuis l’onboarding (lot 4)', () => {
     } catch (e) {
       expect(String((e as Error).message)).toContain('/espaces/abonnements/mastora?onboarding=espace-ouvert')
     }
+  })
+})
+
+describe('ouvrir l’espace avec les tâches GitHub : l’activation d’abord (lot 6)', () => {
+  beforeEach(() => m.moteurDesOnboardings.mockReturnValue('github'))
+
+  it('lance l’activation derrière la garde, sans envoyer de lien ni lire les lecteurs', async () => {
+    m.lancerLOuverture.mockResolvedValue('lancé')
+    expect(await issue()).toBe('ouverture-lancée')
+    expect(m.lancerLOuverture).toHaveBeenCalledWith({ slug: 'mastora', opératrice: 'Agathe' })
+    expect(m.envoyerCourrier).not.toHaveBeenCalled()
+    expect(m.lecteursÀGérer).not.toHaveBeenCalled()
+    // Notion peut faire foi pour les accès : c'est la tâche qui active la ligne « Accès ».
+    m.lecteursModifiables.mockReturnValue(false)
+    expect(await issue()).toBe('ouverture-lancée')
+  })
+
+  it('rend l’issue du lancement telle quelle, et « échec » sur une exception', async () => {
+    m.lancerLOuverture.mockResolvedValueOnce('geste-périmé')
+    expect(await issue()).toBe('geste-périmé')
+    m.lancerLOuverture.mockRejectedValueOnce(new Error('base injoignable'))
+    expect(await issue()).toBe('échec')
+  })
+
+  it('la garde passe avant le lancement', async () => {
+    m.exigerOpérateur.mockRejectedValue(new Error('NOT_FOUND'))
+    await expect(ouvrirLEspaceDepuisLOnboarding(formulaire())).rejects.toThrow('NOT_FOUND')
+    expect(m.lancerLOuverture).not.toHaveBeenCalled()
   })
 })

@@ -10,7 +10,7 @@ import {
   type Provenance,
 } from '@/lib/domaine/onboarding'
 import type { IssueDuLancement, RunVuÀLÉcran, VueDOnboarding } from '@/lib/portail/onboarding'
-import { ouvrirLEspaceDepuisLOnboarding } from '@/lib/portail/gestion-actions'
+import { envoyerLesLettres, ouvrirLEspaceDepuisLOnboarding } from '@/lib/portail/gestion-actions'
 import { lancerUneÉtapeDOnboarding } from '@/lib/portail/onboarding-actions'
 
 /**
@@ -47,7 +47,7 @@ function durée(ms: number | null): string {
 }
 
 export function libelléDuRun(run: RunVuÀLÉcran): string {
-  const tâche = run.tâche === 'premiere_lettre' ? 'premiere-lettre' : run.tâche === 'onboarding' ? 'onboarding (moteur)' : 'balayage'
+  const tâche = run.tâche === 'premiere_lettre' ? 'premiere-lettre' : run.tâche === 'onboarding' ? 'onboarding (moteur)' : run.consigne === 'activation' ? 'balayage (activation)' : 'balayage'
   return `${tâche}, ${LIBELLÉS_DES_RUNS[run.montré]}`
 }
 
@@ -163,9 +163,27 @@ export function MétaDOnboarding({ vue }: { vue: VueDOnboarding }) {
 
 /** Ce que l'écran dit après un geste, par le code que l'action renvoie dans l'URL. */
 /** Les issues de l'ouverture de l'espace (lot 4), renvoyées par `ouvrirLEspaceDepuisLOnboarding`. */
-type IssueDeLOuverture = 'espace-ouvert' | 'ouverture-partielle' | 'notion-fait-foi' | 'sans-registre' | 'sans-lecteur' | 'débit' | 'lien-non-envoyé'
+type IssueDeLOuverture = 'espace-ouvert' | 'ouverture-partielle' | 'notion-fait-foi' | 'sans-registre' | 'sans-lecteur' | 'débit' | 'lien-non-envoyé' | 'ouverture-lancée'
 
-export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | IssueDeLOuverture | 'échec' | 'enregistree', string>> = {
+/** Les issues de « Envoyer les lettres » (lot 6), renvoyées par `envoyerLesLettres`. */
+type IssueDeLEnvoi =
+  | 'lettres-envoyées'
+  | 'lettres-envoyées-en-partie'
+  | 'lettres-envoyées-sans-publication'
+  | 'lettres-non-conformes'
+  | 'lettres-non-envoyées'
+  | 'sans-lettre'
+  | 'sans-destinataire'
+
+export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | IssueDeLOuverture | IssueDeLEnvoi | 'échec' | 'enregistree', string>> = {
+  'ouverture-lancée': 'Activation lancée : la tâche active la veille (statut 6) et la ligne « Accès » ; le lien d’accès part du portail à la fin du run, à chaque lecteur actif.',
+  'lettres-envoyées': 'Lettres envoyées par le portail à chaque lecteur actif ; la tâche de publication les passe au statut « Envoyé » dans Notion, en général sous quelques minutes.',
+  'lettres-envoyées-en-partie': 'Lettres envoyées en partie : une lettre non conforme au lint, ou un lecteur non joint, est resté de côté. Voir le journal des courriers de la fiche ; la publication ne porte que sur les lettres parties à tous.',
+  'lettres-envoyées-sans-publication': 'Lettres envoyées, mais la tâche de publication n’a pas pu être lancée (jeton GitHub absent ou refusé) : les passer au statut « Envoyé » dans Notion, ou relancer la réconciliation sur cette organisation.',
+  'lettres-non-conformes': 'Aucune lettre envoyée : aucune ne passe le lint du portail. La corriger dans Notion, puis recommencer.',
+  'lettres-non-envoyées': 'Aucune lettre n’est partie : voir le journal des courriers de la fiche, puis recommencer (rien ne part deux fois).',
+  'sans-lettre': 'Aucune lettre à envoyer : toutes les lettres de l’organisation sont déjà publiées.',
+  'sans-destinataire': 'Aucun lecteur actif à qui envoyer les lettres : la première lettre active la ligne « Accès » ; vérifier la section Lecteurs de la fiche.',
   'espace-ouvert': 'Espace ouvert : le lien d’accès est parti à chaque lecteur actif.',
   'ouverture-partielle': 'Espace ouvert en partie : le lien n’est pas parti à tous les lecteurs actifs. Voir le journal des courriers de la fiche, puis renvoyer le lien depuis la section Lecteurs.',
   'notion-fait-foi': 'Notion fait foi pour les accès (SOURCE_ACCES n’est pas postgres) : l’espace s’ouvre par /onboarding-ouvrir-espace.',
@@ -221,6 +239,35 @@ export function GesteDOnboarding({
 }) {
   const g = vue.geste
   const o = vue.onboarding
+  if (g.sorte === 'envoyer') {
+    return (
+      <form action={envoyerLesLettres} className="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="slug" value={o.slug} />
+        <input type="hidden" name="retour" value={retour} />
+        <BoutonEnvoi className="rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc">{g.libellé}</BoutonEnvoi>
+        <span className="label-mono text-ardoise">après lecture dans l’espace · lecteurs actifs, puis statut « Envoyé »</span>
+      </form>
+    )
+  }
+  if (g.sorte === 'ouvrir' && g.activation) {
+    if (!disponible) {
+      return (
+        <p className="text-ardoise">
+          Déclenchement indisponible (GITHUB_JETON_ACTIONS absente). À la main : GitHub Actions, « Tâches planifiées (API Claude) », « Run workflow »,
+          tâche <span className="font-mono text-encre">balayage</span>, organisation <span className="font-mono text-encre select-all">{o.slug}</span>, consigne{' '}
+          <span className="font-mono text-encre select-all">activation</span>.
+        </p>
+      )
+    }
+    return (
+      <form action={ouvrirLEspaceDepuisLOnboarding} className="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="slug" value={o.slug} />
+        <input type="hidden" name="retour" value={retour} />
+        <BoutonEnvoi className="rounded-douce bg-encre px-3 py-1 text-label font-medium text-blanc">{g.libellé}</BoutonEnvoi>
+        <span className="label-mono text-ardoise">balayage · plafond {formaterDollars(PLAFONDS_DES_TÂCHES.balayage)} · lien d’accès à la fin du run</span>
+      </form>
+    )
+  }
   if (g.sorte === 'ouvrir') {
     if (!ouverture) return <p className="text-ardoise">Première lettre publiée : l’espace s’ouvre par /onboarding-ouvrir-espace {o.nom ?? o.slug}, tant que Notion fait foi pour les accès.</p>
     if (o.lecteursActifs === 0) {
@@ -260,8 +307,7 @@ export function GesteDOnboarding({
     const textes: Record<typeof g.raison, string | null> = {
       'en-cours': 'Un run est en cours : attendre sa fin avant tout autre geste.',
       cowork: `Onboarding confié à Cowork${COMMANDE_COWORK[vue.étape.étape] ? ` : lancer ${COMMANDE_COWORK[vue.étape.étape]} ${o.nom ?? o.slug} dans Claude Code` : ''}.`,
-      'validation-notion': 'Valider les référentiels dans Notion (statut 3) ; le bouton « Produire la première lettre » apparaît au rapport suivant.',
-      attente: 'Rien à lancer : la relectrice relit et publie la première lettre.',
+      attente: 'Rien à lancer pour l’instant : la première lettre attend sa publication.',
       terminé: null,
     }
     const texte = textes[g.raison]
