@@ -864,7 +864,8 @@ sorte `décision`, `état_avant_décision`, migration 0018 ; aussi par `PATCH
 /api/veille/organisations`, `action: decision`). Suspendre ou écarter abandonne
 les travaux non pris de la file et sort l'organisation du calendrier des tâches
 Notion (`suspendues` dans `POST /api/veille/calendrier`, consigne écrite dans les
-pages des lettres et de la revue) ; suspendre ferme aussi l'espace, écarter le
+pages des lettres et de la revue ; depuis le 5 novembre 2026, un essai terminé sans
+abonnement, étape `suspendue` calculée, y figure aussi : `slugsHorsService`) ; suspendre ferme aussi l'espace, écarter le
 laisse lisible ; aucun courrier ne part, décision de l'opératrice.
 **Suivi des onboardings** (1er novembre 2026, lot 1 de
 `docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le

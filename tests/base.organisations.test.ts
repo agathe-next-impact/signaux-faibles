@@ -285,7 +285,36 @@ describe('décisions de l’opératrice : suspendre, écarter, réactiver', () =
     expect(await lire('acme')).toMatchObject({ état: 'ecartee', étatAvantDécision: 'abonnee' })
     expect(await slugsHorsService(['acme', 'autre', 'inconnue'], db)).toEqual(['acme'])
     expect(await slugsHorsService([], db)).toEqual([])
+  })
 
+  it('le calendrier sort aussi un essai terminé sans abonnement, jamais une parution réduite ni un abonné', async () => {
+    // J0 le jeudi 15 octobre, deux parutions d'essai : essai les semaines 42 et 43,
+    // « L'essentiel » la semaine 44, suspendue à partir de la semaine 45 (cas Dalious).
+    const j0 = new Date('2026-10-15T06:00:00Z')
+    const [fini] = await db.insert(organisations).values({ slug: 'fini', nom: 'Fini', état: 'essai', activéeLe: j0 }).returning()
+    const [payé] = await db.insert(organisations).values({ slug: 'paye', nom: 'Payé', état: 'essai', activéeLe: j0 }).returning()
+    await db.insert(organisations).values({ slug: 'offert', nom: 'Offert', état: 'essai', activéeLe: j0, offre: 'gratuite' })
+    await db.insert(organisations).values({ slug: 'neuf', nom: 'Neuf', état: 'essai', activéeLe: null })
+    await db.insert(organisations).values({ slug: 'histo', nom: 'Histo', état: 'abonnee' })
+    await db.insert(abonnements).values({
+      organisationId: payé!.id, clientStripe: 'cus_2', abonnementStripe: 'sub_2', état: 'active',
+      dernierÉvénement: 'evt_2', événementLe: new Date(), dernierType: 'customer.subscription.created',
+    })
+    const tous = ['fini', 'paye', 'offert', 'neuf', 'histo']
+
+    expect(await slugsHorsService(tous, db, '2026-10-29')).toEqual([])
+    expect(await slugsHorsService(tous, db, '2026-11-05')).toEqual(['fini'])
+
+    // Un abonnement résilié ne rend pas le service.
+    await db.insert(abonnements).values({
+      organisationId: fini!.id, clientStripe: 'cus_3', abonnementStripe: 'sub_3', état: 'canceled',
+      dernierÉvénement: 'evt_3', événementLe: new Date(), dernierType: 'customer.subscription.deleted',
+    })
+    expect(await slugsHorsService(tous, db, '2026-11-05')).toEqual(['fini'])
+  })
+
+  it('une organisation de test ne se suspend pas', async () => {
+    await ouvrirEnEssai({ slug: 'autre', nom: 'Autre', registreNotion: AUTRE }, db)
     await db.update(organisations).set({ état: 'test' }).where(eq(organisations.slug, 'autre'))
     expect(await réglerLeParcours('autre', { sorte: 'décision', décision: 'suspendre' }, db, LE_31)).toEqual({
       sorte: 'décision-impossible',

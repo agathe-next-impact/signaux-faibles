@@ -203,6 +203,11 @@ prennent les options exactes du registre. Réponse :
 `suspendues` (31 octobre 2026) : les slugs donnés qu'une décision de
 l'opératrice a suspendus ou écartés (Postgres). Ils sont retirés de `parutions`
 et de `revuesDues`, et les pages des tâches disent de ne pas les traiter.
+Depuis le 5 novembre 2026, s'y ajoutent les organisations dont l'essai est
+terminé sans abonnement (étape `suspendue` de `étapeDuParcours`, calculée à la
+date du calendrier, jamais écrite en base) : ce jour-là, Dalious, suspendue par
+la fin de son essai depuis le 2, a reçu ses deux lettres. Une organisation à
+« L'essentiel » seul reste en service.
 `null` quand la base n'est pas en service, en mode `notion` ou au-delà de
 1 500 ms : la sélection reste alors celle du calendrier.
 

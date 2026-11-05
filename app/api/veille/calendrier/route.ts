@@ -30,16 +30,18 @@ import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
  * Depuis le 31 octobre 2026, une organisation suspendue ou écartée par
  * l'opératrice (Postgres) sort des parutions du jour et des revues dues, et
  * figure dans `suspendues` : les pages des tâches disent de ne pas la traiter.
+ * Depuis le 5 novembre 2026, une organisation dont l'essai est terminé sans
+ * abonnement (étape `suspendue` du parcours, calculée à `date`) y figure aussi.
  * Base absente, `SOURCE_ACCES=notion` ou base lente : personne n'est sorti, la
  * sélection reste celle du calendrier, et `suspendues` vaut `null`.
  */
 const DÉLAI_HORS_SERVICE_MS = 1_500
 
-async function horsService(slugs: readonly string[]): Promise<string[] | null> {
+async function horsService(slugs: readonly string[], date: string): Promise<string[] | null> {
   if (!baseConfigurée() || sourceAccès() === 'notion') return null
   try {
     return await Promise.race([
-      slugsHorsService(slugs),
+      slugsHorsService(slugs, undefined, date),
       new Promise<null>((résoudre) => setTimeout(() => résoudre(null), DÉLAI_HORS_SERVICE_MS)),
     ])
   } catch (erreur) {
@@ -90,7 +92,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   }
 
   const sélection = sélectionner(lecture.data.organisations, date)
-  const suspendues = await horsService(lecture.data.organisations.map((o) => o.slug))
+  const suspendues = await horsService(lecture.data.organisations.map((o) => o.slug), date)
   const enService = (slug: string) => !suspendues?.includes(slug)
 
   return NextResponse.json({

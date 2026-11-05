@@ -1,8 +1,9 @@
-import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { abonnements, organisations, prescripteurs, travaux } from '@/lib/base/schema'
-import { dateDeParis, PARUTIONS_D_ESSAI_RECOMMANDÉE, type Offre } from '@/lib/domaine/parcours'
+import { abonnementQuiFaitFoi } from '@/lib/base/abonnements'
+import { dateDeParis, PARUTIONS_D_ESSAI_RECOMMANDÉE, étapeDuParcours, type Offre } from '@/lib/domaine/parcours'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 
 /**
@@ -453,18 +454,58 @@ export async function fixerJ0(organisationId: string, j0: Date, db: Base = base(
 }
 
 /**
- * Parmi les slugs que donne une tâche Notion, ceux qu'une décision de
- * l'opératrice a sortis du service (suspendue, écartée) : le calendrier ne les
- * met ni dans les parutions du jour ni dans les revues dues (31 octobre 2026).
+ * Parmi les slugs que donne une tâche Notion, ceux qui sont sortis du service :
+ * le calendrier ne les met ni dans les parutions du jour ni dans les revues
+ * dues.
+ *
+ *   · une décision de l'opératrice (suspendue, écartée), depuis le 31 octobre
+ *     2026 ;
+ *   · un essai terminé sans abonnement, depuis le 5 novembre 2026 : l'étape
+ *     `suspendue` que calcule `étapeDuParcours` à la date du calendrier. Elle
+ *     n'est jamais écrite en base (l'état reste `essai`), et le calendrier ne
+ *     la voyait donc pas : le 5 novembre, Dalious, suspendue par la fin de son
+ *     essai depuis le 2, a reçu ses deux lettres de la semaine.
+ *
+ * Une organisation à « L'essentiel » seul (`tronquee`) reste en service : sa
+ * parution réduite est due.
  */
-export async function slugsHorsService(slugs: readonly string[], db: Base = base()): Promise<string[]> {
+export async function slugsHorsService(
+  slugs: readonly string[],
+  db: Base = base(),
+  aujourdHui: string = dateDeParis(new Date()),
+): Promise<string[]> {
   if (slugs.length === 0) return []
   return protéger('lecture des organisations hors service', async () => {
     const lignes = await db
-      .select({ slug: organisations.slug })
+      .select({
+        id: organisations.id,
+        slug: organisations.slug,
+        état: organisations.état,
+        activéeLe: organisations.activéeLe,
+        offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
+      })
       .from(organisations)
-      .where(and(inArray(organisations.slug, [...slugs]), inArray(organisations.état, ['suspendue', 'ecartee'])))
-    return lignes.map((l) => l.slug)
+      .where(inArray(organisations.slug, [...slugs]))
+    if (lignes.length === 0) return []
+
+    const lignesDAbonnement = await db
+      .select({ organisationId: abonnements.organisationId, état: abonnements.état })
+      .from(abonnements)
+      .where(inArray(abonnements.organisationId, lignes.map((l) => l.id)))
+      .orderBy(desc(abonnements.événementLe))
+
+    return lignes
+      .filter((ligne) => {
+        if (ligne.état === 'suspendue' || ligne.état === 'ecartee') return true
+        const étape = étapeDuParcours({
+          organisation: ligne,
+          abonnement: abonnementQuiFaitFoi(lignesDAbonnement.filter((a) => a.organisationId === ligne.id)),
+          aujourdHui,
+        })
+        return étape.étape === 'suspendue'
+      })
+      .map((l) => l.slug)
   })
 }
 
