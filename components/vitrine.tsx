@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { GoogleTagManager } from '@/components/google-tag-manager'
 import { Logo, MarqueIcone } from '@/components/marque'
 import { ADRESSE_DE_CONTACT } from '@/lib/email/gabarit'
 
@@ -89,6 +90,7 @@ export function CoquilleVitrine({ courante, children }: { courante: PageVitrine;
       <EnTêteVitrine courante={courante} />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-6 pt-12 sm:pt-12">{children}</main>
       <PiedVitrine />
+      <GoogleTagManager />
     </div>
   )
 }

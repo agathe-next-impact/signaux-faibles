@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { GoogleTagManager } from '@/components/google-tag-manager'
 import { LogoEmpile } from '@/components/marque'
 import { CHAMP_PIÈGE } from '@/lib/portail/demo'
 import { Formulaire } from './formulaire'
@@ -34,6 +35,7 @@ export default function Demo() {
         </Link>
         .
       </p>
+      <GoogleTagManager />
     </main>
   )
 }
