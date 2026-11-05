@@ -1,11 +1,13 @@
 import type { NextConfig } from 'next'
 import { withPayload } from '@payloadcms/next/withPayload'
+import { ORIGINES_GTM, PAGES_MESURÉES } from './lib/vitrine/mesure-audience'
 
 /**
  * La politique de contenu, minimale et honnête.
  *
  * Le portail ne charge rien d'ailleurs : polices servies par next/font depuis
- * `/_next`, images par `/api/media`, aucun script tiers. Tout est donc borné à
+ * `/_next`, images par `/api/media`, aucun script tiers hors des pages vitrines
+ * (Google Tag Manager, voir plus bas). Tout est donc borné à
  * l'origine, et les cadres, objets et bases externes sont interdits.
  *
  * `'unsafe-inline'` reste sur les scripts et les styles : Next.js hydrate par
@@ -18,22 +20,35 @@ import { withPayload } from '@payloadcms/next/withPayload'
  */
 const EN_DÉVELOPPEMENT = process.env.NODE_ENV !== 'production'
 
-const POLITIQUE_DE_CONTENU = [
-  "default-src 'self'",
-  // Le rechargement à chaud du serveur de développement évalue du code et ouvre
-  // un websocket ; en production, ni l'un ni l'autre.
-  `script-src 'self' 'unsafe-inline'${EN_DÉVELOPPEMENT ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  `connect-src 'self'${EN_DÉVELOPPEMENT ? ' ws: wss:' : ''}`,
-  "worker-src 'self'",
-  "manifest-src 'self'",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join('; ')
+function politiqueDeContenu(ajouts: { script?: readonly string[]; image?: readonly string[]; connexion?: readonly string[]; cadre?: readonly string[] } = {}) {
+  const avec = (base: string, origines: readonly string[] = []) => [base, ...origines].join(' ')
+  return [
+    "default-src 'self'",
+    // Le rechargement à chaud du serveur de développement évalue du code et ouvre
+    // un websocket ; en production, ni l'un ni l'autre.
+    avec(`script-src 'self' 'unsafe-inline'${EN_DÉVELOPPEMENT ? " 'unsafe-eval'" : ''}`, ajouts.script),
+    "style-src 'self' 'unsafe-inline'",
+    avec("img-src 'self' data:", ajouts.image),
+    "font-src 'self'",
+    avec(`connect-src 'self'${EN_DÉVELOPPEMENT ? ' ws: wss:' : ''}`, ajouts.connexion),
+    ...(ajouts.cadre ? [avec("frame-src 'self'", ajouts.cadre)] : []),
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ')
+}
+
+const POLITIQUE_DE_CONTENU = politiqueDeContenu()
+
+/**
+ * Les pages vitrines chargent Google Tag Manager (5 novembre 2026) : leur
+ * politique admet les origines de Google, et elles seules. L'espace d'un
+ * client garde la politique bornée à l'origine.
+ */
+const POLITIQUE_DES_PAGES_MESURÉES = politiqueDeContenu(ORIGINES_GTM)
 
 const nextConfig: NextConfig = {
   // Les migrations SQL sont lues à l'exécution par `POST /api/veille/migrer` :
@@ -147,6 +162,11 @@ const nextConfig: NextConfig = {
         source: '/((?!admin(?:/|$)|payload-api(?:/|$)).*)',
         headers: [{ key: 'Content-Security-Policy', value: POLITIQUE_DE_CONTENU }],
       },
+      // Posées après la règle générale : à clé égale, la dernière l'emporte.
+      ...PAGES_MESURÉES.map((page) => ({
+        source: page,
+        headers: [{ key: 'Content-Security-Policy', value: POLITIQUE_DES_PAGES_MESURÉES }],
+      })),
     ]
   },
 }
