@@ -13,7 +13,7 @@ import {
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
-import { COÛT_HORAIRE_ILLUSTRATIF, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
+import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
 
 /**
  * L'accueil des visiteurs sans session (23 octobre 2026). La racine le rend au
@@ -85,7 +85,7 @@ export function AccueilVitrine() {
       <SectionVitrine
         surtitre="Ce que vous gagnez"
         titre="Moins cher que le temps que vous y passeriez"
-        chapeau={`Une veille faite en interne prend des heures chaque semaine. Comptée à ${COÛT_HORAIRE_ILLUSTRATIF} € de l’heure, une seule heure par semaine vaut déjà ${enEuros(coûtDUneHeureParSemaine())} € par mois.`}
+        chapeau={`Une veille faite en interne prend des heures chaque semaine. Comptée à ${COÛT_HORAIRE_ILLUSTRATIF} € de l’heure, une seule heure par semaine vaut déjà ${enEuros(coûtDUneHeureParSemaine())} € par mois, et deux heures ${enEuros(coûtDeLaVeilleInterne()[1]!.parMois)} €, plus que l’abonnement.`}
       >
         <GraphiqueTempsDeVeille />
         <p className="max-w-3xl text-encre">

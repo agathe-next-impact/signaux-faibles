@@ -163,7 +163,7 @@ export function GraphiqueRepèresDeMarché() {
             <tr className="align-top">
               <td className="py-2 pr-4 font-medium text-encre">signauxfaibles</td>
               <td className="py-2 pr-4 text-encre">{fourchette(nous.min, nous.max)}</td>
-              <td className="py-2 text-ardoise">Annuel ramené au mois, puis mensuel</td>
+              <td className="py-2 text-ardoise">Abonnement mensuel, référentiel et prise en main compris</td>
             </tr>
           </tbody>
         </table>
