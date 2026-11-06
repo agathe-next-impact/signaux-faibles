@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
-import { enEuros, PRIX_ANNUEL_HT, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT, équivalentMensuelDeLAnnuel } from '@/lib/domaine/offre'
+import { enEuros, HEURES_DE_PRISE_EN_MAIN, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import type { Offre } from '@/lib/domaine/parcours'
 
 /**
@@ -26,12 +26,11 @@ export function LienMonAbonnement({ slug }: { slug: string }) {
  * slug voyage en champ caché et y est vérifié, et les boutons fonctionnent sans
  * JavaScript.
  *
- * Deux formules côte à côte, sur une grille à angle droit comme le reste de
- * l'espace. L'annuelle porte son équivalent mensuel : c'est la seule
- * comparaison que le lecteur fait de tête, autant la faire pour lui.
+ * Une seule formule depuis le 6 novembre 2026, la mensuelle, sur une grille à
+ * angle droit comme le reste de l'espace. L'annuelle n'est plus proposée ; un
+ * abonnement annuel en cours se gère dans l'espace de facturation.
  */
 export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; offre?: Offre }) {
-  const équivalent = enEuros(équivalentMensuelDeLAnnuel())
   // Le tarif fondateur (19 octobre 2026) ne voit que sa formule : afficher le prix standard
   // à qui paiera 29 € serait faux. L'action serveur revérifie l'offre.
   if (offre === 'fondateur') {
@@ -54,14 +53,7 @@ export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; off
         formule="mensuelle"
         intitulé="Mensuel"
         prix={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois`}
-        détail="Sans engagement, résiliable à tout moment."
-      />
-      <Formule
-        slug={slug}
-        formule="annuelle"
-        intitulé="Annuel"
-        prix={`${enEuros(PRIX_ANNUEL_HT)} € HT par an`}
-        détail={`Soit ${équivalent} € HT par mois, deux mois offerts.`}
+        détail={`Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Sans engagement, résiliable à tout moment.`}
       />
     </div>
   )

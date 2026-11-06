@@ -6,8 +6,9 @@ import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
 import {
   enEuros,
   finDuTarifEarlyAdopter,
+  FRAIS_DE_MISE_EN_PLACE_HT,
+  HEURES_DE_PRISE_EN_MAIN,
   LECTEURS_ACTIFS_MAX,
-  PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT,
   PRIX_MENSUEL_HT,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
@@ -43,8 +44,8 @@ export function AccueilVitrine() {
           <LienFlèche href="/offre">Découvrir l’offre</LienFlèche>
         </div>
         <p className="text-label text-ardoise">
-          Essai de {PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire ni engagement. Tarif
-          early adopter pour toute inscription avant le {finDuTarifEarlyAdopter()}.
+          Essai de {PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire ni engagement. Frais
+          de mise en place offerts pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}.
         </p>
       </OuvertureVitrine>
 
@@ -149,16 +150,16 @@ export function AccueilVitrine() {
       </SectionVitrine>
 
       <SectionVitrine
-        surtitre={`Tarif early adopter · jusqu’au ${finDuTarifEarlyAdopter()}`}
-        titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, au lieu de ${enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} €`}
+        surtitre="Tarif"
+        titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, référentiel et prise en main compris`}
       >
         <p className="max-w-3xl text-ardoise">
-          Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs : soit{' '}
-          {enEuros(prixParLecteur())} € HT par lecteur et par mois. Tarif early
-          adopter pour toute inscription avant le {finDuTarifEarlyAdopter()} ; ensuite,
-          l’abonnement passe à {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois. Prix
-          garanti tant que votre abonnement n’est pas interrompu. Sans engagement en formule
-          mensuelle, deux mois offerts en formule annuelle.
+          Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs, la
+          création de votre référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main : soit{' '}
+          {enEuros(prixParLecteur())} € HT par lecteur et par mois. Sans engagement. Frais de mise en
+          place offerts aux early adopters, pour toute inscription jusqu’au{' '}
+          {finDuTarifEarlyAdopter()} ; ensuite, {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, une seule
+          fois.
         </p>
         <LienFlèche href="/tarifs">Voir les tarifs</LienFlèche>
       </SectionVitrine>

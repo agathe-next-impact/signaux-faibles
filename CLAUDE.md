@@ -1011,15 +1011,16 @@ ni Notion ni Postgres ; elles présentent la **lettre unique** du programme du
 22 octobre et l'offre du 17 octobre. Aucun chiffre n'y est écrit en dur : prix,
 TVA et équivalent mensuel viennent de `lib/domaine/offre.ts`, les seuils de la
 lettre de `LETTRE_UNIQUE` et `ESSENTIEL_LIGNES_MAX`, l'essai de
-`PARUTIONS_D_ESSAI` ; le tarif fondateur à 29 € n'y figure pas. Les prix
-publics y sont annoncés comme **tarif early adopter**, pour toute inscription
-jusqu'au `FIN_DU_TARIF_EARLY_ADOPTER` (31 décembre 2026, décision du 27 octobre
-2026), puis `PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT` (290 € HT par mois, 2 900 € HT
-par an) pour les inscriptions suivantes, avec un **prix garanti** aux inscrits
-avant cette date tant que leur abonnement n'est pas interrompu (ne jamais migrer
-un abonné early adopter vers un autre prix), montants et date écrits dans
-`lib/domaine/offre.ts` seulement ; le prix facturé reste celui des prix Stripe,
-à créer et poser le 1er janvier 2027. Ce sont les seules
+`PARUTIONS_D_ESSAI` ; le tarif fondateur à 29 € n'y figure pas. Depuis le 6 novembre 2026, l'offre
+publique est **259 € HT par mois** (`PRIX_MENSUEL_HT`), création du référentiel et
+deux heures de prise en main comprises (`HEURES_DE_PRISE_EN_MAIN`), en formule
+mensuelle seule ; les **frais de mise en place** sont offerts aux early adopters,
+pour toute inscription jusqu'au `FIN_DU_TARIF_EARLY_ADOPTER` (31 décembre 2026),
+puis de 790 € HT une fois (`FRAIS_DE_MISE_EN_PLACE_HT`), montants et date écrits
+dans `lib/domaine/offre.ts` seulement ; `/tarifs` porte les données structurées de
+l'offre (schema.org). Le prix facturé reste celui des prix Stripe : un prix
+mensuel à 259 € HT est à créer et à poser dans `STRIPE_PRIX_MENSUEL`, et les frais
+de mise en place ne sont pas encore facturés. Ce sont les seules
 pages indexables (`robots: index`). Le proxy les ouvre à l'adresse exacte, et
 elles masquent un slug identique, qu'aucune organisation ne doit porter. Un seul
 bouton primaire par page, « Demander une démo », vers `/demo` ; « Se connecter »,

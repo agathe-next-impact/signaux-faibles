@@ -1,4 +1,4 @@
-import { ADRESSE_D_ABONNEMENT, enEuros, PRIX_ANNUEL_HT, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { ADRESSE_D_ABONNEMENT, enEuros, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { dateLongueDeParis, type Offre, type Étape } from '@/lib/domaine/parcours'
 import { composerCourriel, corpsDeParagraphes, dateDuJour, racineDuPortail, type Courriel } from '@/lib/email/gabarit'
 
@@ -76,7 +76,7 @@ export function parutionsEnLettres(parutions: number): string {
 export function prixDeLOffre(offre: Offre): string {
   return offre === 'fondateur'
     ? `${enEuros(PRIX_FONDATEUR_HT)} € HT par mois, tarif fondateur`
-    : `${enEuros(PRIX_MENSUEL_HT)} € HT par mois, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an`
+    : `${enEuros(PRIX_MENSUEL_HT)} € HT par mois`
 }
 
 export function composerCourrierDeParcours(entrée: {
@@ -338,7 +338,7 @@ export function composerCourrierDAbonnement(entrée: {
           titre: échéance ? `Votre abonnement se renouvelle le ${échéance}.` : 'Votre abonnement se renouvelle bientôt.',
           accroche: 'Rien à faire pour continuer.',
           paragraphes: [
-            `Votre abonnement annuel à la veille Signaux Faibles pour ${org} sera renouvelé automatiquement${échéance ? ` le ${échéance}` : ''}, au tarif de ${enEuros(PRIX_ANNUEL_HT)} € HT par an.`,
+            `Votre abonnement annuel à la veille Signaux Faibles pour ${org} sera renouvelé automatiquement${échéance ? ` le ${échéance}` : ''}, au tarif de votre abonnement en cours.`,
             'Pour changer de formule, mettre à jour votre moyen de paiement ou ne pas renouveler, rendez-vous sur la page « Mon abonnement » avant cette date. Pour toute question, répondez simplement à ce courriel.',
           ],
           action: { libellé: 'Mon abonnement', url: abonnement },
