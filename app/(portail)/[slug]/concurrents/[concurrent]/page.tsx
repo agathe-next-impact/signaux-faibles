@@ -59,6 +59,9 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
         état={`${fiche.faits.length} fait${fiche.faits.length > 1 ? 's' : ''} daté${fiche.faits.length > 1 ? 's' : ''}`}
       />
       {retour}
+      <p className="mt-2">
+        <LienFlèche href={`/${accès.slug}/veille/corpus/${segment}`}>Voir sa fiche de présentation</LienFlèche>
+      </p>
 
       <div className="mt-8">
         <FaitsParMois faits={fiche.faits} />

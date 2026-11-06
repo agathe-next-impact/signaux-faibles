@@ -281,11 +281,12 @@ describe('Postgres ne se lit que par lib/base, l’appartenance que par la faça
       }
     }
     for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) parcourir(join(process.cwd(), racine))
-    // La fiche de veille (lot 6, 30 octobre 2026) lit la grille et l'organisation, et rien d'autre : aucune écriture stratégique.
+    // La fiche de veille (lot 6, 30 octobre 2026) lit la grille et l'organisation, et, pour la fiche de
+    // présentation d'une entité (6 novembre 2026), les positions publiées : des lectures, aucune écriture stratégique.
     expect(importateurs.filter((chemin) => chemin !== 'lib/portail/strategie.ts' && chemin !== 'lib/portail/fiche-veille.ts')).toEqual([])
     const fiche = readFileSync(join(process.cwd(), 'lib', 'portail', 'fiche-veille.ts'), 'utf8')
     const importés = /import \{([^}]*)\} from '@\/lib\/base\/strategie'/.exec(fiche)?.[1]?.split(',').map((x) => x.trim()).filter(Boolean)
-    expect(importés).toEqual(['lireLaGrille', 'organisationPourLesOutils'])
+    expect(importés).toEqual(['lireLaGrille', 'organisationPourLesOutils', 'positionsPubliées'])
   })
 
 
@@ -529,8 +530,10 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/recommandations/page.tsx',
       'app/(portail)/[slug]/scenarios/page.tsx',
       'app/(portail)/[slug]/veille/calendrier/page.tsx',
+      'app/(portail)/[slug]/veille/corpus/[entite]/page.tsx',
       'app/(portail)/[slug]/veille/corpus/page.tsx',
       'app/(portail)/[slug]/veille/sources/page.tsx',
+      'app/(portail)/[slug]/veille/themes/[axe]/page.tsx',
       'app/(portail)/[slug]/veille/themes/page.tsx',
       'lib/portail/strategie.ts',
     ])
@@ -556,12 +559,15 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       join('veille', 'sources', 'page.tsx'),
       join('veille', 'corpus', 'page.tsx'),
       join('veille', 'calendrier', 'page.tsx'),
+      // Les fiches de présentation du référentiel (6 novembre 2026).
+      join('veille', 'corpus', '[entite]', 'page.tsx'),
+      join('veille', 'themes', '[axe]', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|présentationDeLEntité|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
     }
   })
 
@@ -593,10 +599,13 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/veille/calendrier/page.tsx',
       'app/(portail)/[slug]/veille/corpus/page.tsx',
       'app/(portail)/[slug]/veille/sources/page.tsx',
+      'app/(portail)/[slug]/veille/themes/[axe]/page.tsx',
       'app/(portail)/[slug]/veille/themes/page.tsx',
       'lib/portail/fiche-veille.ts',
       'lib/portail/tableau.ts',
     ])
+    // La fiche de présentation d'une entité (6 novembre 2026) : un écran, bornée, dans l'espace réorganisé.
+    expect(appelants('présentationDeLEntité')).toEqual(['app/(portail)/[slug]/veille/corpus/[entite]/page.tsx', 'lib/portail/fiche-veille.ts'])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'fiche-veille.ts'), 'utf8')
     const recevoir = source.slice(source.indexOf('export async function recevoirLaFiche'))
     expect(recevoir.indexOf('contrôlerLaFiche(')).toBeGreaterThan(0)
@@ -605,6 +614,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(écrans.indexOf("bornée('")).toBeGreaterThan(0)
     expect(écrans.indexOf('espaceRéorganisé')).toBeGreaterThan(0)
     expect(écrans).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
+    const présentation = source.slice(source.indexOf('export async function présentationDeLEntité'))
+    expect(présentation.indexOf("bornée('")).toBeGreaterThan(0)
+    expect(présentation.indexOf('espaceRéorganisé')).toBeGreaterThan(0)
   })
 
   it('les étiquettes : pilote, règle 2, porte, puis écriture, sans invalidation', () => {

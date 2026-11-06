@@ -1,7 +1,15 @@
 import type { Base } from '@/lib/base/client'
 import { dernièreFiche, enregistrerLaFiche, fichePubliée, réglerLaPublicationDeLaFiche, type ÉtatDeLaFiche } from '@/lib/base/fiche-veille'
-import { lireLaGrille, organisationPourLesOutils } from '@/lib/base/strategie'
-import { contrôlerLaFiche, messageDeRepriseDeLaFiche, rendreLaFiche, type FicheDeVeille, type RefusDeFiche } from '@/lib/domaine/fiche-veille'
+import { lireLaGrille, organisationPourLesOutils, positionsPubliées } from '@/lib/base/strategie'
+import {
+  contrôlerLaFiche,
+  messageDeRepriseDeLaFiche,
+  rendreLaFiche,
+  vueDeLaPrésentation,
+  type FicheDeVeille,
+  type PrésentationDEntité,
+  type RefusDeFiche,
+} from '@/lib/domaine/fiche-veille'
 import type { Grille } from '@/lib/domaine/strategie'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
 import { bornée } from '@/lib/portail/strategie'
@@ -90,5 +98,53 @@ export async function ficheDeLEspace(entrée: { readonly registre: string }, db?
     const [grille, fiche] = await Promise.all([lireLaGrille(organisation.id, db), fichePubliée(organisation.id, db)])
     if (!grille) return null
     return { grille: grille.grille, fiche: fiche ? (fiche.contenu as unknown as FicheDeVeille) : null, publiéeLe: fiche?.publiéeLe ?? null }
+  })
+}
+
+export type PrésentationLue = { readonly sorte: 'fiche'; readonly fiche: PrésentationDEntité } | { readonly sorte: 'inconnu' }
+
+/**
+ * La fiche de présentation d'une entité ou d'une partie prenante du corpus
+ * (6 novembre 2026) : la grille, la présentation de la fiche de veille
+ * **publiée**, et ses dernières positions publiées (carte des groupes,
+ * Mendelow). Le segment n'est comparé qu'à la grille de l'organisation de la
+ * session (règle 2) : inconnu, `inconnu`, et rien venu de l'URL n'atteint la
+ * base. Aucune lecture Notion ; `null` hors de l'espace réorganisé, sans grille,
+ * ou dans le doute.
+ */
+export async function présentationDeLEntité(
+  entrée: { readonly registre: string; readonly segment: string },
+  db?: Base,
+): Promise<PrésentationLue | null> {
+  return bornée('lecture d’une fiche de présentation', async () => {
+    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
+    const grille = await lireLaGrille(organisation.id, db)
+    if (!grille) return null
+    if (!vueDeLaPrésentation(grille.grille, null, entrée.segment, [], organisation.nom)) return { sorte: 'inconnu' }
+    const [fiche, groupes, mendelow] = await Promise.all([
+      fichePubliée(organisation.id, db),
+      positionsPubliées({ organisationId: organisation.id, outil: 'groupes' }, db),
+      positionsPubliées({ organisationId: organisation.id, outil: 'mendelow' }, db),
+    ])
+    const vue = vueDeLaPrésentation(
+      grille.grille,
+      fiche ? (fiche.contenu as unknown as FicheDeVeille) : null,
+      entrée.segment,
+      [...groupes, ...mendelow].map((p) => ({
+        outil: p.outil,
+        sujet: p.sujet,
+        axe: p.axe,
+        cran: p.cran,
+        nonSuivi: p.nonSuivi,
+        tendance: p.tendance,
+        faits: p.faits,
+        origine: p.origine,
+        période: p.période,
+        référence: p.référence,
+      })),
+      organisation.nom,
+    )
+    return vue ? { sorte: 'fiche', fiche: vue } : { sorte: 'inconnu' }
   })
 }

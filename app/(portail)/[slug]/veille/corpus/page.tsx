@@ -3,24 +3,20 @@ import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { AnneauDuCorpus } from '@/components/graphiques-strategie'
-import { enSlug } from '@/lib/domaine/slug'
+import { segmentDEntité } from '@/lib/domaine/fiche-veille'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
-/** Une liste de noms en colonnes ; `slug` donné, chaque nom mène à la fiche du concurrent. */
-function Liste({ noms, slug }: { noms: readonly string[]; slug?: string }) {
+/** Une liste de noms en colonnes ; chaque nom mène à sa fiche de présentation (6 novembre 2026). */
+function Liste({ noms, slug }: { noms: readonly string[]; slug: string }) {
   return (
     <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
       {noms.map((nom) => (
         <li key={nom} className="flex gap-3">
           <span aria-hidden="true" className="mt-[0.6em] size-1.5 shrink-0 bg-ardoise" />
-          {slug ? (
-            <Link href={`/${slug}/concurrents/${enSlug(nom)}`} className="text-encre underline decoration-gris-ligne underline-offset-2 hover:decoration-encre">
-              {nom}
-            </Link>
-          ) : (
-            <span className="text-encre">{nom}</span>
-          )}
+          <Link href={`/${slug}/veille/corpus/${segmentDEntité(nom)}`} className="text-encre underline decoration-gris-ligne underline-offset-2 hover:decoration-encre">
+            {nom}
+          </Link>
         </li>
       ))}
     </ul>
@@ -29,8 +25,8 @@ function Liste({ noms, slug }: { noms: readonly string[]; slug?: string }) {
 
 /**
  * Corpus (lot 6, 30 octobre 2026) : qui suivez-vous. Les entités de la grille,
- * concurrents (chacun menant à sa fiche) et acteurs de l'écosystème, les parties
- * prenantes, et les variables qui placent les concurrents sur la carte. Tout
+ * concurrents et acteurs de l'écosystème, les parties prenantes, chaque nom
+ * menant à sa fiche de présentation (`/[slug]/veille/corpus/[entite]`, 6 novembre 2026), et les variables qui placent les concurrents sur la carte. Tout
  * vient de la grille, déjà en base : rien n'attend la fiche de veille. Aucune
  * lecture Notion ; 404 hors de l'espace réorganisé.
  */
@@ -45,6 +41,7 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
   // Les concurrents de la grille, l'organisation exclue : `espaceDeLOrganisation` les a déjà.
   const concurrents = grille ? (espace?.concurrents ?? []) : []
   const écosystème = grille ? grille.entités.filter((e) => e.veille === 'ecosysteme') : []
+  const partiesPrenantes = grille ? grille.partiesPrenantes.map((p) => p.nom) : []
 
   return (
     <>
@@ -53,7 +50,7 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
         <p className="mt-6 text-ardoise">Le corpus de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
       ) : (
         <>
-          <p className="mt-6 max-w-[68ch] text-ardoise">Les entités que votre veille suit nommément, et les parties prenantes dont elle lit le pouvoir et l’intérêt. Un concurrent mène à sa fiche.</p>
+          <p className="mt-6 max-w-[68ch] text-ardoise">Les entités que votre veille suit nommément, et les parties prenantes dont elle lit le pouvoir et l’intérêt. Chaque nom ouvre sa fiche de présentation.</p>
           <div className="mt-6">
             <AnneauDuCorpus concurrents={concurrents.length} écosystème={écosystème.length} partiesPrenantes={grille.partiesPrenantes.length} />
           </div>
@@ -77,13 +74,13 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
           {écosystème.length > 0 ? (
             <section className="mt-8 flex flex-col gap-4">
               <h2 className="font-titre text-h2 font-bold text-encre">Acteurs de votre environnement</h2>
-              <Liste noms={écosystème.map((e) => e.nom)} />
+              <Liste noms={écosystème.map((e) => e.nom)} slug={accès.slug} />
             </section>
           ) : null}
-          {grille.partiesPrenantes.length > 0 ? (
+          {partiesPrenantes.length > 0 ? (
             <section className="mt-8 flex flex-col gap-4">
               <h2 className="font-titre text-h2 font-bold text-encre">Parties prenantes</h2>
-              <Liste noms={grille.partiesPrenantes.map((p) => p.nom)} />
+              <Liste noms={partiesPrenantes} slug={accès.slug} />
               <p>
                 <LienFlèche href={`/${accès.slug}/acteurs`}>Voir leur pouvoir et leur intérêt</LienFlèche>
               </p>

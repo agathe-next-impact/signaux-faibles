@@ -39,6 +39,17 @@ note d'accès, les niches et leur signal (120), les échéances datées (80) ; p
 `contrôlerLaFiche` (`lib/domaine/fiche-veille.ts`), seul écrivain
 `lib/base/fiche-veille.ts`, seule orchestration `lib/portail/fiche-veille.ts`,
 rien montré avant la publication par l'opératrice (`PATCH /api/veille/fiche`).
+**Extension du 6 novembre 2026** (demande de l'opératrice, fiches de présentation
+du référentiel) : la même fiche porte, facultatives, les **présentations** des
+entités et parties prenantes de la grille (qui elle est, pourquoi la veille la
+suit, 240 caractères, une par nom de la grille, `nom-inconnu` sinon). Elles
+s'affichent sur deux écrans de détail de « Votre veille », hors du rail :
+`/[slug]/veille/corpus/[entite]` (présentation, crans publiés sur la carte,
+pouvoir et intérêt, `présentationDeLEntité`, bornée, Postgres seul) et
+`/[slug]/veille/themes/[axe]` (la famille qui définit l'axe : cadre, cadence, ce
+qu'elle suit, ce qui la rend FORT, sources, échéances à venir, par
+`ficheDeLEspace`) ; ni l'une ni l'autre ne lit une lettre, elles renvoient à la
+fiche d'activité du concurrent et aux faits de l'axe.
 Rien d'autre : un fait étiqueté (`faits_etiquetes`)
 ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
 `lib/base/strategie.ts`, lui-même appelé par la seule orchestration

@@ -996,7 +996,8 @@ dans la fiche.
     "themes": [{ "veille": "ecosysteme", "numero": 1, "suit": "…", "fort": "…" }],
     "sources": [{ "veille": "ecosysteme", "numero": 1, "nom": "…", "site": "https://…" }],
     "niches": [{ "enonce": "…", "signal": "…" }],
-    "echeances": [{ "date": "2026-11-19", "libelle": "…", "veille": null, "numero": null }]
+    "echeances": [{ "date": "2026-11-19", "libelle": "…", "veille": null, "numero": null }],
+    "presentations": [{ "nom": "Chartreuse de Neuville", "texte": "…" }]
   }
 }
 ```
@@ -1009,12 +1010,20 @@ dans la fiche.
 - `niches` : l'énoncé et le signal déclencheur, 120 caractères chacun,
   12 au plus ;
 - `echeances` : une date réelle et un libellé de 80 caractères, rattachée à une
-  famille ou non, 24 au plus.
+  famille ou non, 24 au plus ;
+- `presentations` (facultatif, 6 novembre 2026) : qui est une entité ou une
+  partie prenante de la grille et pourquoi la veille la suit, écrit pour le
+  lecteur, 240 caractères ; une par nom, et seulement un nom de la grille
+  (casse et accents ignorés). Elles s'affichent sur la fiche de présentation
+  de l'entité (`/[slug]/veille/corpus/[entite]`) ; une fiche sans présentation
+  reste valable, la fiche de l'entité montre alors la grille seule.
 
 Porte (`contrôlerLaFiche`, `lib/domaine/fiche-veille.ts`) : `famille-inconnue`,
 `thème-en-double`, `fiche-vide`, `texte-hors-bornes`, `vocabulaire-interdit`
 (« faible »), `note-interne` (mot de passe, identifiant, « à valider », point
-de validation…), `site-invalide`, `date-invalide`, `trop-de-lignes`. Refusée :
+de validation…), `site-invalide`, `date-invalide`, `trop-de-lignes`,
+`nom-inconnu` et `présentation-en-double` (présentations), `fiche-trop-longue`
+(au-delà de 36 000 caractères de JSON, sous la borne de la table). Refusée :
 422 avec `refus` et `message` de reprise. `grille-absente` et `grille-périmée`
 (409, avec la version `attendue`). Acceptée : 201, une **nouvelle version
 proposée**, et `texte`, à recopier dans le courriel « [Relecture] ». Rien n'est

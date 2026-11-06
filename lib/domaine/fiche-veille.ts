@@ -1,5 +1,6 @@
-import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER, VEILLES, type Grille, type Veille } from '@/lib/domaine/strategie'
-import { segmentDeFamille } from '@/lib/domaine/strategie-vues'
+import { enSlug } from '@/lib/domaine/slug'
+import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER, normaliserTitre, VEILLES, type Grille, type Veille } from '@/lib/domaine/strategie'
+import { LIBELLÉS_MENDELOW, libelléDePériode, segmentDeFamille, type CranNommé, type PositionDatée } from '@/lib/domaine/strategie-vues'
 
 /**
  * La fiche de veille pour le lecteur (lot 6 de
@@ -24,6 +25,7 @@ export const BORNES_DE_LA_FICHE = {
   niche: 120,
   signal: 120,
   échéance: 80,
+  présentation: 240,
   sources: 80,
   niches: 12,
   échéances: 24,
@@ -40,7 +42,21 @@ export type FicheDeVeille = {
   readonly niches: readonly { readonly énoncé: string; readonly signal: string }[]
   /** Les échéances connues, datées, rattachées à une famille quand elles en relèvent. */
   readonly échéances: readonly { readonly date: string; readonly libellé: string; readonly veille: Veille | null; readonly numéro: number | null }[]
+  /**
+   * La présentation d'une entité ou d'une partie prenante de la grille, écrite
+   * pour le lecteur : qui elle est et pourquoi la veille la suit (6 novembre
+   * 2026, fiches de présentation du référentiel). Facultative : une fiche
+   * d'avant n'en porte pas, et la fiche de l'entité montre alors la grille seule.
+   */
+  readonly présentations?: readonly { readonly nom: string; readonly texte: string }[]
 }
+
+/**
+ * Une borne d'ensemble sous celle de la table (40 000 caractères de
+ * `contenu::text`, qui compte des blancs que `JSON.stringify` n'écrit pas) :
+ * la porte refuse avant que la base ne lève une erreur.
+ */
+export const TAILLE_MAX_DE_LA_FICHE = 36_000
 
 export type RefusDeFiche = { readonly code: string; readonly message: string; readonly cible?: string }
 
@@ -121,6 +137,19 @@ export function contrôlerLaFiche(fiche: FicheDeVeille, grille: Grille): readonl
     famille(é, cible)
     texte(é.libellé, BORNES_DE_LA_FICHE.échéance, `${cible}.libelle`)
   })
+
+  // Une présentation par nom de la grille, entité ou partie prenante, jamais un nom inventé.
+  const nommés = new Set([...grille.entités.map((e) => normaliserTitre(e.nom)), ...grille.partiesPrenantes.map((p) => normaliserTitre(p.nom))])
+  const présentés = new Set<string>()
+  ;(fiche.présentations ?? []).forEach((p, i) => {
+    const cible = `presentations.${i}`
+    const clé = normaliserTitre(p.nom)
+    if (!nommés.has(clé)) refuser('nom-inconnu', `« ${p.nom.slice(0, 40)} » n’est ni une entité ni une partie prenante de la grille`, cible)
+    if (présentés.has(clé)) refuser('présentation-en-double', `« ${p.nom.slice(0, 40)} » a déjà sa présentation`, cible)
+    présentés.add(clé)
+    texte(p.texte, BORNES_DE_LA_FICHE.présentation, `${cible}.texte`)
+  })
+  if (JSON.stringify(fiche).length > TAILLE_MAX_DE_LA_FICHE) refuser('fiche-trop-longue', `la fiche dépasse ${TAILLE_MAX_DE_LA_FICHE} caractères`)
   return refus
 }
 
@@ -142,6 +171,10 @@ export function rendreLaFiche(fiche: FicheDeVeille, grille: Grille, état: strin
   for (const n of fiche.niches) l.push(`- ${n.énoncé} Signal : ${n.signal}`)
   l.push('', 'ÉCHÉANCES')
   for (const é of fiche.échéances) l.push(`- ${é.date} : ${é.libellé}${é.veille && é.numéro !== null ? ` (${é.numéro} ${nomDeFamille(grille, é.veille, é.numéro)})` : ''}`)
+  if ((fiche.présentations ?? []).length > 0) {
+    l.push('', 'PRÉSENTATIONS')
+    for (const p of fiche.présentations ?? []) l.push(`- ${p.nom} : ${p.texte}`)
+  }
   return l.join('\n')
 }
 
@@ -219,4 +252,160 @@ export function vueDuCalendrier(grille: Grille, fiche: FicheDeVeille, aujourdhui
 export function prochaineÉchéance(fiche: FicheDeVeille, aujourdhui: string): { readonly date: string; readonly libellé: string } | null {
   const à = [...fiche.échéances].filter((é) => é.date >= aujourdhui).sort((a, b) => a.date.localeCompare(b.date))[0]
   return à ? { date: à.date, libellé: à.libellé } : null
+}
+
+// ── Les fiches de présentation du référentiel (6 novembre 2026) ─────────────
+
+/** Ce qu'est une entité du corpus pour le lecteur : la grille le dit, jamais le portail. */
+export type SorteDEntité = 'concurrent' | 'acteur' | 'partie-prenante'
+
+export const LIBELLÉS_DES_SORTES: Readonly<Record<SorteDEntité, string>> = {
+  concurrent: 'concurrent suivi',
+  acteur: 'acteur de votre environnement',
+  'partie-prenante': 'partie prenante',
+}
+
+export type PrésentationDEntité = {
+  readonly nom: string
+  readonly segment: string
+  readonly sorte: SorteDEntité
+  /** Aussi partie prenante quand une entité l'est : Mendelow la lit alors en plus. */
+  readonly partiePrenante: boolean
+  readonly siren: string | null
+  /** Le texte de la fiche de veille publiée, ou `null` s'il n'y en a pas encore. */
+  readonly présentation: string | null
+  /** Ses crans sur la carte des groupes, à la dernière période publiée qui la place ; concurrents seulement. */
+  readonly variables: {
+    readonly période: string
+    readonly libellé: string
+    readonly crans: readonly CranNommé[]
+    readonly déclaratif: boolean
+    readonly référence: string | null
+  } | null
+  /** Son pouvoir et son intérêt, à la dernière période publiée qui la place ; parties prenantes seulement. */
+  readonly mendelow: {
+    readonly période: string
+    readonly libellé: string
+    readonly pouvoir: string
+    readonly intérêt: string
+    readonly déclaratif: boolean
+  } | null
+}
+
+/** Le segment d'URL de la fiche d'une entité ou d'une partie prenante : `enSlug` de son nom. */
+export const segmentDEntité = (nom: string) => enSlug(nom)
+
+/**
+ * Les entités du corpus dans l'ordre où « Corpus » les range : concurrents,
+ * acteurs de l'environnement, puis parties prenantes qui ne sont pas déjà une
+ * entité. L'organisation elle-même n'est pas un concurrent qu'on lui présente.
+ */
+export function entitésDuCorpus(grille: Grille, organisation: string): readonly { readonly nom: string; readonly sorte: SorteDEntité }[] {
+  const elle = normaliserTitre(organisation)
+  const entités = grille.entités
+    .filter((e) => normaliserTitre(e.nom) !== elle)
+    .map((e) => ({ nom: e.nom, sorte: (e.veille === 'concurrentiel' ? 'concurrent' : 'acteur') as SorteDEntité }))
+  const vus = new Set(entités.map((e) => normaliserTitre(e.nom)))
+  const ordre: Record<SorteDEntité, number> = { concurrent: 0, acteur: 1, 'partie-prenante': 2 }
+  return [
+    ...entités.sort((a, b) => ordre[a.sorte] - ordre[b.sorte]),
+    ...grille.partiesPrenantes.filter((p) => !vus.has(normaliserTitre(p.nom))).map((p) => ({ nom: p.nom, sorte: 'partie-prenante' as const })),
+  ]
+}
+
+/** Les positions de la dernière période publiée qui place `nom` pour cet outil. */
+function dernièresPositions(positions: readonly PositionDatée[], outil: string, nom: string): readonly PositionDatée[] {
+  const clé = normaliserTitre(nom)
+  const siennes = positions.filter((p) => p.outil === outil && p.cran !== null && normaliserTitre(p.sujet) === clé)
+  const période = siennes.map((p) => p.période).sort().at(-1)
+  return période ? siennes.filter((p) => p.période === période) : []
+}
+
+/**
+ * La fiche de présentation d'une entité ou d'une partie prenante : ce que le
+ * référentiel en dit, sans rien lire des lettres. Le nom est retrouvé par le
+ * segment d'URL **dans la grille seule** ; un segment inconnu rend `null`, et
+ * l'organisation elle-même n'a pas de fiche dans son propre corpus.
+ */
+export function vueDeLaPrésentation(
+  grille: Grille,
+  fiche: FicheDeVeille | null,
+  segment: string,
+  positions: readonly PositionDatée[],
+  organisation: string,
+): PrésentationDEntité | null {
+  const trouvée = entitésDuCorpus(grille, organisation).find((e) => segmentDEntité(e.nom) === segment)
+  if (!trouvée) return null
+  const clé = normaliserTitre(trouvée.nom)
+  const entité = grille.entités.find((e) => normaliserTitre(e.nom) === clé)
+  const partiePrenante = grille.partiesPrenantes.some((p) => normaliserTitre(p.nom) === clé)
+
+  const groupes = trouvée.sorte === 'concurrent' ? dernièresPositions(positions, 'groupes', trouvée.nom) : []
+  const crans = grille.axesGroupes.flatMap((axe) => {
+    const p = groupes.find((x) => x.axe === axe.clé)
+    return p && p.cran !== null ? [{ axe: axe.libellé, cran: p.cran, libellé: axe.crans[p.cran - 1] ?? `cran ${p.cran}` }] : []
+  })
+  const mendelow = partiePrenante ? dernièresPositions(positions, 'mendelow', trouvée.nom) : []
+  const pouvoir = mendelow.find((p) => p.axe === 'pouvoir')?.cran ?? null
+  const intérêt = mendelow.find((p) => p.axe === 'interet')?.cran ?? null
+
+  return {
+    nom: trouvée.nom,
+    segment,
+    sorte: trouvée.sorte,
+    partiePrenante,
+    siren: entité?.siren ?? null,
+    présentation: fiche?.présentations?.find((p) => normaliserTitre(p.nom) === clé)?.texte ?? null,
+    variables:
+      crans.length > 0
+        ? {
+            période: groupes[0]!.période,
+            libellé: libelléDePériode(groupes[0]!.période),
+            crans,
+            déclaratif: groupes.every((p) => p.origine === 'declaratif'),
+            référence: groupes.find((p) => p.référence)?.référence ?? null,
+          }
+        : null,
+    mendelow:
+      pouvoir !== null && intérêt !== null
+        ? {
+            période: mendelow[0]!.période,
+            libellé: libelléDePériode(mendelow[0]!.période),
+            pouvoir: LIBELLÉS_MENDELOW[pouvoir - 1] ?? `cran ${pouvoir}`,
+            intérêt: LIBELLÉS_MENDELOW[intérêt - 1] ?? `cran ${intérêt}`,
+            déclaratif: mendelow.every((p) => p.origine === 'declaratif'),
+          }
+        : null,
+  }
+}
+
+export type PrésentationDAxe = ThèmeVu & {
+  /** Le libellé de la veille qui porte la famille, pour le lecteur. */
+  readonly veilleNommée: string
+  readonly sourcesNommées: readonly { readonly nom: string; readonly site: string | null }[]
+  /** Ses échéances à venir, de la plus proche à la plus lointaine. */
+  readonly échéances: readonly { readonly date: string; readonly libellé: string }[]
+}
+
+const VEILLE_NOMMÉE: Readonly<Record<Veille, string>> = { ecosysteme: 'votre environnement', concurrentiel: 'votre concurrence' }
+
+/**
+ * La fiche de présentation d'un axe : la famille du référentiel qui le définit,
+ * son cadre, sa cadence, ce qu'il suit, ce qui rend un de ses faits fort, ses
+ * sources et ses échéances à venir. Le segment n'est comparé qu'à la grille ;
+ * inconnu, `null`. La fiche de veille non publiée laisse la grille seule.
+ */
+export function vueDeLAxePrésenté(grille: Grille, fiche: FicheDeVeille | null, segment: string, aujourdhui: string): PrésentationDAxe | null {
+  const thème = vueDesThèmes(grille, fiche).find((t) => t.segment === segment)
+  if (!thème) return null
+  const sienne = (x: { readonly veille: Veille | null; readonly numéro: number | null }) => x.veille === thème.veille && x.numéro === thème.numéro
+  return {
+    ...thème,
+    veilleNommée: VEILLE_NOMMÉE[thème.veille],
+    sourcesNommées: (fiche?.sources ?? []).filter(sienne).map((s) => ({ nom: s.nom, site: s.site })),
+    échéances: (fiche?.échéances ?? [])
+      .filter((é) => sienne(é) && é.date >= aujourdhui)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((é) => ({ date: é.date, libellé: é.libellé })),
+  }
 }
