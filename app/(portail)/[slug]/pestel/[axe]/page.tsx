@@ -62,6 +62,9 @@ export default async function FaitsDUnAxe({ params }: { params: Promise<{ slug: 
         état={`${vue.faits.length} fait${vue.faits.length > 1 ? 's' : ''} en treize semaines`}
       />
       {retour}
+      <p className="mt-2">
+        <LienFlèche href={`/${accès.slug}/veille/themes/${segment}`}>Voir la fiche de cet axe</LienFlèche>
+      </p>
 
       <p className="mt-6 max-w-[68ch] text-ardoise">
         Les faits datés que vos lettres ont relevés pour cet axe, du plus récent au plus ancien

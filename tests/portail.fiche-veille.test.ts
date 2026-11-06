@@ -8,7 +8,7 @@ import { baseEnMémoire } from './aide/base-en-memoire'
  * le pilote et la grille avant la porte, la porte avant l'écriture, rien de
  * montré avant la publication, rien d'un autre registre.
  */
-const { ficheDeLEspace, lireLaFicheDuPilote, publierLaFicheDuPilote, recevoirLaFiche } = await import('@/lib/portail/fiche-veille')
+const { ficheDeLEspace, lireLaFicheDuPilote, présentationDeLEntité, publierLaFicheDuPilote, recevoirLaFiche } = await import('@/lib/portail/fiche-veille')
 const { recevoirLaGrille, réglerLEspace } = await import('@/lib/portail/strategie')
 const { réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
@@ -97,5 +97,39 @@ describe('la fiche de veille', () => {
     expect(await ficheDeLEspace({ registre: AUTRE_REGISTRE }, db)).toBeNull()
     vi.stubEnv('SOURCE_ACCES', 'notion')
     expect(await ficheDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+  })
+
+  it('la fiche de présentation d’une entité : la grille d’abord, le texte une fois publié, rien d’un autre registre', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+    vi.stubEnv('SOURCE_ACCES', 'double')
+    await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+    await recevoirLaGrille({ slug: 'infralliance', référentiel: '3d2fe829ce71801eae49fa7fc4a0e76c', grille: GRILLE }, db)
+    // Hors de l'espace réorganisé : rien.
+    expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'cigref' }, db)).toBeNull()
+    await réglerLEspace({ slug: 'infralliance', actif: true }, db)
+
+    expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'inconnue' }, db)).toEqual({ sorte: 'inconnu' })
+    expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'cigref' }, db)).toMatchObject({
+      sorte: 'fiche',
+      fiche: { nom: 'Cigref', sorte: 'concurrent', siren: '310785985', présentation: null, variables: null },
+    })
+    expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'anssi' }, db)).toMatchObject({ sorte: 'fiche', fiche: { sorte: 'partie-prenante', mendelow: null } })
+
+    const présentée = { ...FICHE, présentations: [{ nom: 'Cigref', texte: 'L’association des grands utilisateurs du numérique.' }] }
+    expect(await recevoirLaFiche({ slug: 'infralliance', grilleVersion: 1, fiche: { ...FICHE, présentations: [{ nom: 'Inconnue', texte: 'Un nom inventé.' }] } }, db)).toMatchObject({
+      sorte: 'refusée',
+      refus: [{ code: 'nom-inconnu' }],
+    })
+    await recevoirLaFiche({ slug: 'infralliance', grilleVersion: 1, fiche: présentée }, db)
+    // Proposée seulement : rien n'est montré.
+    expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'cigref' }, db)).toMatchObject({ fiche: { présentation: null } })
+    await publierLaFicheDuPilote({ slug: 'infralliance', état: 'publie' }, db)
+    expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'cigref' }, db)).toMatchObject({
+      fiche: { présentation: 'L’association des grands utilisateurs du numérique.' },
+    })
+
+    expect(await présentationDeLEntité({ registre: AUTRE_REGISTRE, segment: 'cigref' }, db)).toBeNull()
+    vi.stubEnv('SOURCE_ACCES', 'notion')
+    expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'cigref' }, db)).toBeNull()
   })
 })

@@ -18,11 +18,13 @@ import { lireLaFicheDuPilote, publierLaFicheDuPilote, recevoirLaFiche, type Rés
  *       "themes": [{ "veille": "ecosysteme", "numero": 1, "suit": "…", "fort": "…" }],
  *       "sources": [{ "veille", "numero", "nom": "…", "site": "https://…" | null }],
  *       "niches": [{ "enonce": "…", "signal": "…" }],
- *       "echeances": [{ "date": "2026-11-19", "libelle": "…", "veille": null, "numero": null }] } }
+ *       "echeances": [{ "date": "2026-11-19", "libelle": "…", "veille": null, "numero": null }],
+       "presentations": [{ "nom": "<entité ou partie prenante de la grille>", "texte": "…" }] } }
  *
  * Bornes : 120 caractères par thème, par critère, par niche et par signal,
- * 80 par nom de source et par échéance ; une source n'a qu'un nom et l'adresse
- * de son site, jamais une note d'accès. Refusée : 422 avec les refus et le
+ * 80 par nom de source et par échéance, 240 par présentation (facultatives,
+ * 6 novembre 2026 : une par nom de la grille, rien d'autre) ; une source n'a
+ * qu'un nom et l'adresse de son site, jamais une note d'accès. Refusée : 422 avec les refus et le
  * message de reprise. Acceptée : 201, une nouvelle version **proposée**, et
  * `texte`, à recopier dans le courriel « [Relecture] ».
  *
@@ -49,6 +51,7 @@ const demande = z.object({
     sources: z.array(z.object({ veille, numero: numéro, nom: texte(200), site: texte(400).nullish() })).max(200),
     niches: z.array(z.object({ enonce: texte(400), signal: texte(400) })).max(40),
     echeances: z.array(z.object({ date: texte(10), libelle: texte(300), veille: veille.nullish(), numero: numéro.nullish() })).max(60),
+    presentations: z.array(z.object({ nom: texte(200), texte: texte(600) })).max(150).optional(),
   }),
 })
 
@@ -68,6 +71,7 @@ function versLeDomaine(f: z.infer<typeof demande>['fiche']): FicheDeVeille {
     sources: f.sources.map((s) => ({ veille: s.veille as Veille, numéro: s.numero, nom: s.nom, site: s.site || null })),
     niches: f.niches.map((n) => ({ énoncé: n.enonce, signal: n.signal })),
     échéances: f.echeances.map((é) => ({ date: é.date, libellé: é.libelle, veille: (é.veille ?? null) as Veille | null, numéro: é.numero ?? null })),
+    ...(f.presentations ? { présentations: f.presentations.map((p) => ({ nom: p.nom, texte: p.texte })) } : {}),
   }
 }
 

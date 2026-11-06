@@ -11,7 +11,8 @@ import { PasEncorePubliée, VEILLES_AFFICHÉES } from '@/components/votre-veille
  * 30 octobre 2026) : que surveillez-vous pour moi. Une case par famille de la
  * grille, avec sa cadence et son cadre (PESTEL ou Porter) ; ce qu'elle suit et
  * ce qui rend un de ses faits fort viennent de la fiche de veille publiée par
- * l'opératrice. Chaque case mène aux faits de l'axe. Aucune lecture Notion.
+ * l'opératrice. Chaque case mène à la fiche de présentation de l'axe
+ * (`/[slug]/veille/themes/[axe]`, 6 novembre 2026), qui mène à ses faits. Aucune lecture Notion.
  * Seulement pour un espace réorganisé : ailleurs, 404 avant toute lecture.
  */
 export default async function ThèmesSuivis({ params }: { params: Promise<{ slug: string }> }) {
@@ -31,7 +32,7 @@ export default async function ThèmesSuivis({ params }: { params: Promise<{ slug
       ) : (
         <>
           {lue.fiche ? (
-            <p className="mt-6 max-w-[68ch] text-ardoise">Chaque thème de votre veille, ce qu’il suit et ce qui rend un de ses faits fort. Chaque case ouvre les faits que vos lettres ont relevés pour lui.</p>
+            <p className="mt-6 max-w-[68ch] text-ardoise">Chaque thème de votre veille, ce qu’il suit et ce qui rend un de ses faits fort. Chaque case ouvre la fiche du thème : ses sources, ses échéances, puis les faits que vos lettres ont relevés pour lui.</p>
           ) : (
             <PasEncorePubliée quoi="Ce que suit chaque thème" />
           )}
@@ -62,8 +63,8 @@ export default async function ThèmesSuivis({ params }: { params: Promise<{ slug
                       ) : null}
                       {lue.fiche ? <p className="label-mono text-ardoise">{t.sources} source{t.sources > 1 ? 's' : ''}</p> : null}
                       <div className="mt-auto pt-1">
-                        <LienFlèche href={`/${accès.slug}/pestel/${t.segment}`} étendu>
-                          Ses faits
+                        <LienFlèche href={`/${accès.slug}/veille/themes/${t.segment}`} étendu>
+                          Sa fiche
                         </LienFlèche>
                       </div>
                     </Case>

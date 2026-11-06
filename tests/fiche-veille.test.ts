@@ -4,6 +4,9 @@ import {
   messageDeRepriseDeLaFiche,
   prochaineÉchéance,
   rendreLaFiche,
+  entitésDuCorpus,
+  vueDeLAxePrésenté,
+  vueDeLaPrésentation,
   vueDesSources,
   vueDesThèmes,
   vueDuCalendrier,
@@ -120,5 +123,92 @@ describe('les vues des écrans « Votre veille »', () => {
     expect(texte).toContain('proposée : rien n’est montré au client')
     expect(texte).toContain('- 1 Politiques publiques (ecosysteme) : Les dispositifs publics')
     expect(texte).toContain('- 2026-12-15 : Vote du budget 2027 (1 Politiques publiques)')
+  })
+})
+
+describe('les fiches de présentation du référentiel (6 novembre 2026)', () => {
+  const CORPUS: Grille = {
+    ...GRILLE,
+    axesGroupes: [
+      { clé: 'gamme', libellé: 'Gamme', crans: ['accessible', 'intermédiaire', 'premium'] },
+      { clé: 'capacite', libellé: 'Capacité', crans: ['petite', 'moyenne', 'grande'] },
+    ],
+    entités: [
+      { nom: 'L’Hermitage', veille: 'concurrentiel', siren: null },
+      { nom: 'Chartreuse de Neuville', veille: 'concurrentiel', siren: '123456789' },
+      { nom: 'Région Hauts-de-France', veille: 'ecosysteme', siren: null },
+    ],
+    partiesPrenantes: [{ nom: 'Région Hauts-de-France' }, { nom: 'ANCT' }],
+  }
+  const PRÉSENTÉE: FicheDeVeille = {
+    ...FICHE,
+    présentations: [
+      { nom: 'chartreuse de neuville', texte: 'Un monastère reconverti en lieu de séminaires, à une heure de Lille.' },
+      { nom: 'ANCT', texte: 'L’agence qui finance les tiers-lieux.' },
+    ],
+  }
+  const position = (sujet: string, outil: string, axe: string, cran: number, période: string, origine = 'faits') => ({
+    outil,
+    sujet,
+    axe,
+    cran,
+    nonSuivi: false,
+    tendance: null,
+    faits: [],
+    origine,
+    période,
+    référence: origine === 'declaratif' ? '§2, famille A' : null,
+  })
+
+  it('la porte : un nom de la grille, une seule fois, dans sa borne', () => {
+    const c = (fiche: FicheDeVeille) => contrôlerLaFiche(fiche, CORPUS).map((r) => r.code)
+    expect(c(PRÉSENTÉE)).toEqual([])
+    expect(c({ ...FICHE, présentations: [{ nom: 'Inconnue', texte: 'Un nom inventé.' }] })).toEqual(['nom-inconnu'])
+    expect(c({ ...FICHE, présentations: [PRÉSENTÉE.présentations![1]!, PRÉSENTÉE.présentations![1]!] })).toEqual(['présentation-en-double'])
+    expect(c({ ...FICHE, présentations: [{ nom: 'ANCT', texte: 'x'.repeat(241) }] })).toEqual(['texte-hors-bornes'])
+    expect(c({ ...FICHE, présentations: [{ nom: 'ANCT', texte: 'Un poids faible.' }] })).toEqual(['vocabulaire-interdit'])
+    expect(rendreLaFiche(PRÉSENTÉE, CORPUS, 'propose')).toContain('PRÉSENTATIONS\n- chartreuse de neuville : Un monastère')
+  })
+
+  it('le corpus : concurrents, acteurs, puis parties prenantes qui ne sont pas déjà une entité ; jamais l’organisation', () => {
+    expect(entitésDuCorpus(CORPUS, "L'Hermitage")).toEqual([
+      { nom: 'Chartreuse de Neuville', sorte: 'concurrent' },
+      { nom: 'Région Hauts-de-France', sorte: 'acteur' },
+      { nom: 'ANCT', sorte: 'partie-prenante' },
+    ])
+  })
+
+  it('la fiche d’une entité : sa présentation, ses derniers crans publiés, son pouvoir et son intérêt', () => {
+    const positions = [
+      position('Chartreuse de Neuville', 'groupes', 'gamme', 2, '2026-09', 'declaratif'),
+      position('Chartreuse de Neuville', 'groupes', 'gamme', 3, '2026-10'),
+      position('Chartreuse de Neuville', 'groupes', 'capacite', 1, '2026-10'),
+      position('Région Hauts-de-France', 'mendelow', 'pouvoir', 3, '2026-10', 'declaratif'),
+      position('Région Hauts-de-France', 'mendelow', 'interet', 2, '2026-10', 'declaratif'),
+    ]
+    const concurrent = vueDeLaPrésentation(CORPUS, PRÉSENTÉE, 'chartreuse-de-neuville', positions, "L'Hermitage")
+    expect(concurrent).toMatchObject({
+      nom: 'Chartreuse de Neuville',
+      sorte: 'concurrent',
+      siren: '123456789',
+      présentation: 'Un monastère reconverti en lieu de séminaires, à une heure de Lille.',
+      variables: { période: '2026-10', déclaratif: false, crans: [{ axe: 'Gamme', libellé: 'premium' }, { axe: 'Capacité', libellé: 'petite' }] },
+      mendelow: null,
+    })
+    const région = vueDeLaPrésentation(CORPUS, PRÉSENTÉE, 'region-hauts-de-france', positions, "L'Hermitage")
+    expect(région).toMatchObject({ sorte: 'acteur', partiePrenante: true, présentation: null, variables: null, mendelow: { pouvoir: 'élevé', intérêt: 'intermédiaire', déclaratif: true } })
+    expect(vueDeLaPrésentation(CORPUS, null, 'anct', [], "L'Hermitage")).toMatchObject({ sorte: 'partie-prenante', présentation: null, mendelow: null })
+    // Un segment inventé, ou l'organisation elle-même : pas de fiche.
+    expect(vueDeLaPrésentation(CORPUS, PRÉSENTÉE, 'inconnue', positions, "L'Hermitage")).toBeNull()
+    expect(vueDeLaPrésentation(CORPUS, PRÉSENTÉE, 'l-hermitage', positions, "L'Hermitage")).toBeNull()
+  })
+
+  it('la fiche d’un axe : ce qu’il suit, ses sources, ses échéances à venir', () => {
+    const axe = vueDeLAxePrésenté(GRILLE, FICHE, 'politiques-publiques', '2026-11-01')
+    expect(axe).toMatchObject({ numéro: 1, nom: 'Politiques publiques', cadre: 'Politique', veilleNommée: 'votre environnement', suit: FICHE.thèmes[0]!.suit })
+    expect(axe?.sourcesNommées.map((s) => s.nom)).toEqual(['ANCT, Fabriques de territoire', 'Légifrance'])
+    expect(axe?.échéances).toEqual([{ date: '2026-12-15', libellé: 'Vote du budget 2027' }])
+    expect(vueDeLAxePrésenté(GRILLE, null, 'famille-ecosysteme-2', '2026-11-01')).toMatchObject({ suit: null, sourcesNommées: [], échéances: [] })
+    expect(vueDeLAxePrésenté(GRILLE, FICHE, 'inconnu', '2026-11-01')).toBeNull()
   })
 })
