@@ -2,7 +2,7 @@ import { exigerLecture } from '@/lib/auth/appartenance'
 import { ChoixDeFormule, GérerLAbonnement, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau } from '@/components/coquille'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { ADRESSE_D_ABONNEMENT, LECTEURS_ACTIFS_MAX, PRIX_ANNUEL_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { ADRESSE_D_ABONNEMENT, LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
 import { ajouterLecteur, retirerLecteur } from '@/lib/portail/lecteurs'
 import { espacePrescripteurDe } from '@/lib/portail/prescripteur'
@@ -123,9 +123,9 @@ export default async function MonAbonnement({
                   <p className="label-mono text-ardoise">formule</p>
                   <p className="font-titre text-h3 font-semibold text-encre">
                     {situation.abonnement.formule === 'annuelle'
-                      ? `Annuelle · ${PRIX_ANNUEL_HT} € HT par an`
+                      ? 'Annuelle'
                       : situation.abonnement.formule === 'mensuelle'
-                        ? `Mensuelle · ${PRIX_MENSUEL_HT} € HT par mois`
+                        ? 'Mensuelle'
                         : 'Non précisée'}
                   </p>
                 </Case>

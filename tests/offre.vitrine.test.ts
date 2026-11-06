@@ -3,48 +3,43 @@ import {
   enEuros,
   FIN_DU_TARIF_EARLY_ADOPTER,
   finDuTarifEarlyAdopter,
-  PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT,
+  FRAIS_DE_MISE_EN_PLACE_HT,
+  HEURES_DE_PRISE_EN_MAIN,
   PRIX_FONDATEUR_HT,
-  PRIX_ANNUEL_HT,
-  PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT,
   PRIX_MENSUEL_HT,
   prixTTC,
-  équivalentMensuelDeLAnnuel,
 } from '@/lib/domaine/offre'
 
 /**
  * Les montants des pages vitrines viennent de `lib/domaine/offre.ts`. Ce test
- * tient les chiffres de l'offre du 17 octobre 2026 tels que
- * `docs/decision-portail-moteur.md` les écrit : 178,80 € TTC par mois,
- * 1 788 € TTC par an (prix du 23 octobre 2026).
+ * tient les chiffres de l'offre revue le 6 novembre 2026, tels que
+ * `docs/decision-portail-moteur.md` les écrit : 259 € HT par mois (310,80 € TTC),
+ * création du référentiel et deux heures de prise en main comprises ; frais de
+ * mise en place offerts aux early adopters, puis 790 € HT (948 € TTC).
  */
 const sansEspaceFine = (texte: string) => texte.replace(/\s/g, ' ')
 
 describe('les montants de l’offre', () => {
-  it('donne les prix toutes taxes comprises de la décision', () => {
-    expect(prixTTC(PRIX_MENSUEL_HT)).toBe(178.8)
-    expect(prixTTC(PRIX_ANNUEL_HT)).toBe(1788)
+  it('fixe l’abonnement à 259 € HT par mois, référentiel et deux heures de prise en main compris', () => {
+    expect(PRIX_MENSUEL_HT).toBe(259)
+    expect(HEURES_DE_PRISE_EN_MAIN).toBe(2)
+  })
+
+  it('donne les prix toutes taxes comprises', () => {
+    expect(prixTTC(PRIX_MENSUEL_HT)).toBe(310.8)
+    expect(prixTTC(FRAIS_DE_MISE_EN_PLACE_HT)).toBe(948)
   })
 
   it('écrit les euros à la française', () => {
-    expect(enEuros(prixTTC(PRIX_MENSUEL_HT))).toBe('178,80')
-    expect(sansEspaceFine(enEuros(prixTTC(PRIX_ANNUEL_HT)))).toBe('1 788')
-    expect(enEuros(PRIX_MENSUEL_HT)).toBe('149')
+    expect(enEuros(prixTTC(PRIX_MENSUEL_HT))).toBe('310,80')
+    expect(enEuros(PRIX_MENSUEL_HT)).toBe('259')
+    expect(sansEspaceFine(enEuros(1790))).toBe('1 790')
   })
 
-  it('ramène l’annuel au mois, au centime', () => {
-    expect(équivalentMensuelDeLAnnuel()).toBe(124.17)
-    expect(enEuros(équivalentMensuelDeLAnnuel())).toBe('124,17')
-  })
-
-  it('annonce le tarif early adopter jusqu’au 31 décembre 2026, en toutes lettres', () => {
+  it('offre les frais de mise en place jusqu’au 31 décembre 2026, puis 790 € HT', () => {
     expect(FIN_DU_TARIF_EARLY_ADOPTER).toBe('2026-12-31')
     expect(finDuTarifEarlyAdopter()).toBe('31 décembre 2026')
-  })
-
-  it('annonce 290 € HT par mois et 2 900 € HT par an après le tarif early adopter', () => {
-    expect(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT).toBe(290)
-    expect(sansEspaceFine(enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT))).toBe('2 900')
+    expect(FRAIS_DE_MISE_EN_PLACE_HT).toBe(790)
   })
 
   it('garde le tarif fondateur à 29 € HT, distinct des prix publics', () => {

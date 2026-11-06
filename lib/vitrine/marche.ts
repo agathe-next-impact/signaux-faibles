@@ -1,4 +1,4 @@
-import { LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT, équivalentMensuelDeLAnnuel } from '@/lib/domaine/offre'
+import { LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 
 /**
  * Ce que la vitrine dit du marché et de la valeur de la veille (27 octobre
@@ -79,9 +79,9 @@ export const FAMILLES_D_OFFRES: readonly FamilleDOffres[] = [
   },
 ]
 
-/** Notre fourchette : l'annuel ramené au mois, puis le mensuel. */
+/** Notre fourchette : une seule formule depuis le 6 novembre 2026, le mensuel. */
 export function notreFourchette(): { readonly min: number; readonly max: number } {
-  return { min: équivalentMensuelDeLAnnuel(), max: PRIX_MENSUEL_HT }
+  return { min: PRIX_MENSUEL_HT, max: PRIX_MENSUEL_HT }
 }
 
 /** Le prix du mois ramené à un lecteur, quand l'organisation en a le plafond. */

@@ -5,28 +5,77 @@ import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVi
 import {
   ADRESSE_D_ABONNEMENT,
   enEuros,
+  FIN_DU_TARIF_EARLY_ADOPTER,
   finDuTarifEarlyAdopter,
+  FRAIS_DE_MISE_EN_PLACE_HT,
+  HEURES_DE_PRISE_EN_MAIN,
   LECTEURS_ACTIFS_MAX,
-  PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT,
-  PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT,
-  PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
   prixTTC,
   TAUX_DE_TVA,
-  équivalentMensuelDeLAnnuel,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { prixParLecteur } from '@/lib/vitrine/marche'
 
 export const metadata: Metadata = {
   title: 'Tarifs — signauxfaibles',
-  description: `Tarif early adopter jusqu’au ${finDuTarifEarlyAdopter()} : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois au lieu de ${enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} €, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an, par organisation. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
+  description: `${enEuros(PRIX_MENSUEL_HT)} € HT par mois et par organisation, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Frais de mise en place offerts jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
   robots: { index: true, follow: true },
 }
 
 /**
- * « Tarifs » (23 octobre 2026) : les deux formules de l'offre du 17 octobre et
- * le déroulé de l'essai. Les montants viennent tous de `lib/domaine/offre.ts` ;
+ * Les données structurées de l'offre (schema.org, 6 novembre 2026), tirées des
+ * mêmes constantes que la page : l'abonnement mensuel, et les frais de mise en
+ * place, offerts jusqu'à la fin de la période early adopter.
+ */
+function donnéesStructurées() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: 'signauxfaibles, veille hebdomadaire rédigée',
+    serviceType: 'Veille stratégique',
+    areaServed: 'FR',
+    offers: [
+      {
+        '@type': 'Offer',
+        name: `Abonnement mensuel, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
+        priceCurrency: 'EUR',
+        price: PRIX_MENSUEL_HT,
+        priceSpecification: {
+          '@type': 'UnitPriceSpecification',
+          price: PRIX_MENSUEL_HT,
+          priceCurrency: 'EUR',
+          valueAddedTaxIncluded: false,
+          unitCode: 'MON',
+          referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
+        },
+      },
+      {
+        '@type': 'Offer',
+        name: 'Frais de mise en place, early adopter',
+        priceCurrency: 'EUR',
+        price: 0,
+        priceValidUntil: FIN_DU_TARIF_EARLY_ADOPTER,
+      },
+      {
+        '@type': 'Offer',
+        name: 'Frais de mise en place',
+        priceCurrency: 'EUR',
+        price: FRAIS_DE_MISE_EN_PLACE_HT,
+        priceSpecification: {
+          '@type': 'PriceSpecification',
+          price: FRAIS_DE_MISE_EN_PLACE_HT,
+          priceCurrency: 'EUR',
+          valueAddedTaxIncluded: false,
+        },
+      },
+    ],
+  }
+}
+
+/**
+ * « Tarifs » (23 octobre 2026, offre revue le 6 novembre 2026) : l'abonnement
+ * mensuel, les frais de mise en place et le déroulé de l'essai. Les montants viennent tous de `lib/domaine/offre.ts` ;
  * le tarif fondateur n'est pas public, il est réservé par l'opératrice à
  * une organisation nommée.
  */
@@ -37,46 +86,45 @@ export default function Tarifs() {
       <OuvertureVitrine
         surtitre="Tarifs"
         titre="Un prix par organisation, tout compris."
-        chapeau={`Une lettre par semaine, l’espace et toutes ses archives, jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs. Pas d’option, pas de supplément.`}
+        chapeau={`Une lettre par semaine, l’espace et toutes ses archives, jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs, la création de votre référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main. Pas d’option, pas de supplément.`}
+      />
+      <script
+        type="application/ld+json"
+        // Données de l'offre seulement, sérialisées par JSON.stringify ; « < » échappé pour ne jamais fermer la balise.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(donnéesStructurées()).replace(/</g, '\\u003c') }}
       />
 
       <section className="flex flex-col gap-4">
         <Panneau ton="rose">
-          <p className="label-mono text-ardoise">Tarif early adopter</p>
+          <p className="label-mono text-ardoise">Early adopter</p>
           <p className="mt-2 text-encre">
-            Ces prix sont réservés aux organisations qui s’inscrivent avant le{' '}
-            {finDuTarifEarlyAdopter()}. Pour les inscriptions suivantes, l’abonnement sera de{' '}
-            {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois, ou{' '}
-            {enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par an.
-          </p>
-          <p className="mt-2 text-encre">
-            <strong className="font-medium">Prix garanti</strong> : une organisation inscrite avant le{' '}
-            {finDuTarifEarlyAdopter()} garde son prix tant que son abonnement n’est pas interrompu.
+            <strong className="font-medium">Frais de mise en place offerts</strong> aux organisations
+            qui s’inscrivent jusqu’au {finDuTarifEarlyAdopter()}. Pour les inscriptions suivantes, ils
+            sont de {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une seule fois.
           </p>
         </Panneau>
-        <Grille colonnes={2} étiquette="Les deux formules">
-          <Case>
-            <p className="label-mono text-ardoise">Mensuel · early adopter</p>
+        <Grille colonnes={2} étiquette="L’abonnement et la mise en place">
+          <Case accent>
+            <p className="label-mono text-ardoise">Abonnement mensuel</p>
             <p className="font-titre text-h1 font-bold text-encre">
               {enEuros(PRIX_MENSUEL_HT)} € <span className="text-h3 font-semibold">HT par mois</span>
             </p>
             <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_MENSUEL_HT))} € TTC</p>
-            <p className="text-ardoise">Sans engagement, résiliable à tout moment.</p>
-            <p className="label-mono mt-auto pt-1 text-ardoise">
-              Après le {finDuTarifEarlyAdopter()} : {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois
+            <p className="text-ardoise">
+              Création du référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Sans
+              engagement, résiliable à tout moment.
             </p>
           </Case>
-          <Case accent>
-            <p className="label-mono text-ardoise">Annuel · early adopter · deux mois offerts</p>
+          <Case>
+            <p className="label-mono text-ardoise">Frais de mise en place · une seule fois</p>
             <p className="font-titre text-h1 font-bold text-encre">
-              {enEuros(PRIX_ANNUEL_HT)} € <span className="text-h3 font-semibold">HT par an</span>
+              Offerts <span className="text-h3 font-semibold">jusqu’au {finDuTarifEarlyAdopter()}</span>
             </p>
-            <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_ANNUEL_HT))} € TTC</p>
+            <p className="label-mono text-ardoise">
+              puis {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, soit {enEuros(prixTTC(FRAIS_DE_MISE_EN_PLACE_HT))} € TTC
+            </p>
             <p className="text-ardoise">
-              Soit {enEuros(équivalentMensuelDeLAnnuel())} € HT par mois.
-            </p>
-            <p className="label-mono mt-auto pt-1 text-ardoise">
-              Après le {finDuTarifEarlyAdopter()} : {enEuros(PRIX_ANNUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par an
+              Offerts aux early adopters, pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}.
             </p>
           </Case>
         </Grille>
@@ -93,7 +141,7 @@ export default function Tarifs() {
       <SectionVitrine
         surtitre="Où se place ce prix"
         titre="Le prix d’un outil, le travail d’un analyste"
-        chapeau={`Au prix des outils d’alerte haut de gamme, et loin sous les plateformes de veille. Avec ${LECTEURS_ACTIFS_MAX} lecteurs, il revient à ${enEuros(prixParLecteur())} € HT par lecteur et par mois, moins qu’une lettre professionnelle vendue par utilisateur.`}
+        chapeau={`Au prix des outils d’alerte haut de gamme, et loin sous les plateformes de veille. Avec ${LECTEURS_ACTIFS_MAX} lecteurs, il revient à ${enEuros(prixParLecteur())} € HT par lecteur et par mois, référentiel et prise en main compris.`}
       >
         <GraphiqueRepèresDeMarché />
         <p className="max-w-3xl text-encre">
@@ -107,7 +155,8 @@ export default function Tarifs() {
         <ListeCarrée
           éléments={[
             'Une organisation, une lettre par semaine, le jour convenu.',
-            'Un référentiel construit pour vous : vos axes, vos sources, vos acteurs.',
+            'La création de votre référentiel : vos axes, vos sources, vos acteurs.',
+            `${HEURES_DE_PRISE_EN_MAIN} h de prise en main, pour vos lecteurs et votre espace.`,
             'L’espace en ligne, toutes les lettres et toutes les archives.',
             `Jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs actifs, chacun avec son lien personnel. Pour en ajouter un quatrième, on en retire un depuis l’espace.`,
           ]}
@@ -159,12 +208,11 @@ export default function Tarifs() {
             Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en
             saisissant son adresse sur la page de connexion.
           </Question>
-          <Question titre={`Mon prix augmentera-t-il après le ${finDuTarifEarlyAdopter()} ?`}>
-            Non, si vous vous abonnez avant cette date : le tarif early adopter vous est garanti tant
-            que votre abonnement n’est pas interrompu, en formule mensuelle comme annuelle. Une
-            nouvelle souscription après une résiliation se fait au prix en vigueur, soit{' '}
-            {enEuros(PRIX_MENSUEL_APRÈS_EARLY_ADOPTER_HT)} € HT par mois pour une souscription faite après le{' '}
-            {finDuTarifEarlyAdopter()}.
+          <Question titre="Que couvrent les frais de mise en place ?">
+            Ils sont facturés une seule fois, à l’inscription, et offerts aux
+            early adopters, pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}, puis de{' '}
+            {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. La création du référentiel et les{' '}
+            {HEURES_DE_PRISE_EN_MAIN} h de prise en main sont comprises dans l’abonnement.
           </Question>
           <Question titre="Que se passe-t-il si je résilie ?">
             La résiliation se fait depuis « Mon abonnement ». Vos lettres restent lisibles jusqu’à

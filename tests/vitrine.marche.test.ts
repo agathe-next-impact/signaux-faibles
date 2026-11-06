@@ -40,15 +40,14 @@ describe('les repères de marché', () => {
 
   it('tiennent « au prix des outils d’alerte haut de gamme, loin sous les plateformes »', () => {
     const nous = notreFourchette()
-    expect(nous).toEqual({ min: 124.17, max: PRIX_MENSUEL_HT })
+    expect(nous).toEqual({ min: PRIX_MENSUEL_HT, max: PRIX_MENSUEL_HT })
     expect(nous.min).toBeGreaterThanOrEqual(famille('outils').min)
     expect(nous.max).toBeLessThanOrEqual(famille('outils').max)
-    expect(famille('plateformes').min / PRIX_MENSUEL_HT).toBeGreaterThanOrEqual(20)
+    expect(famille('plateformes').min / PRIX_MENSUEL_HT).toBeGreaterThanOrEqual(10)
   })
 
-  it('tiennent « moins qu’une lettre professionnelle vendue par utilisateur »', () => {
-    expect(prixParLecteur()).toBe(50)
-    expect(prixParLecteur()).toBeLessThan(famille('lettres').min)
+  it('ramènent le prix à 86 € HT par lecteur et par mois, avec trois lecteurs', () => {
+    expect(prixParLecteur()).toBe(86)
   })
 
   it('placent chaque famille sur la carte, et nous seuls avec les cabinets en haut à droite', () => {
@@ -66,10 +65,10 @@ describe('les repères de marché', () => {
 })
 
 describe('le temps de veille interne', () => {
-  it('vaut 217, 433 et 650 € par mois à 50 € de l’heure, et une heure dépasse déjà le prix', () => {
+  it('vaut 217, 433 et 650 € par mois à 50 € de l’heure, et deux heures dépassent déjà le prix', () => {
     expect(coûtDeLaVeilleInterne().map((l) => l.parMois)).toEqual([217, 433, 650])
     expect(coûtDUneHeureParSemaine()).toBe(217)
-    expect(coûtDUneHeureParSemaine()).toBeGreaterThan(PRIX_MENSUEL_HT)
+    expect(coûtDeLaVeilleInterne()[1]!.parMois).toBeGreaterThan(PRIX_MENSUEL_HT)
   })
 })
 
