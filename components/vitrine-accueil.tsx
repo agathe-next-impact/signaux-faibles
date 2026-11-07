@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { AperçuAxes, AperçuEspace, AperçuEssentiel, AperçuSources, ExtraitDeLettre } from '@/components/apercu-vitrine'
 import { BadgeImpact } from '@/components/badge-impact'
 import { BandeauLogos } from '@/components/bandeau-logos'
@@ -7,6 +8,7 @@ import { Onglets } from '@/components/onglets'
 import {
   AppelFinal,
   BoutonDémo,
+  ChiffresClés,
   CoquilleVitrine,
   OuvertureVitrine,
   Question,
@@ -42,23 +44,29 @@ export function AccueilVitrine() {
       <OuvertureVitrine
         surtitre="Veille hebdomadaire rédigée"
         titre="La veille stratégique écrite pour votre seule organisation"
-        chapeau={
-          <>
-            Vous n’avez pas le temps de surveiller la réglementation, les financements, les
-            marchés et vos concurrents. Chaque semaine, nous le faisons pour vous et vous
-            écrivons une lettre : {LETTRE_UNIQUE.axesMin} à {LETTRE_UNIQUE.axesMax} axes propres
-            à votre organisation, chaque fait daté, sourcé, et son impact pour vous qualifié.
-          </>
-        }
+        chapeau="Réglementation, financements, marchés, concurrents : chaque semaine, nous les surveillons pour vous et vous écrivons l’essentiel."
         aperçu={<ExtraitDeLettre />}
+        ton="encre"
       >
         <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <BoutonDémo />
-          <LienFlèche href="/exemple">Voir des exemples</LienFlèche>
+          <BoutonDémo négatif />
+          <Link href="/exemple" className="group inline-flex items-center gap-1 text-blanc">
+            Voir des exemples
+            <span aria-hidden="true" className="text-rose transition-transform group-hover:translate-x-0.5">
+              →
+            </span>
+          </Link>
         </div>
-        <p className="text-label text-ardoise">
-          Essai de {PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire ni engagement. Frais
-          de mise en place offerts pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}.
+        <ChiffresClés
+          négatif
+          chiffres={[
+            { valeur: '1', libellé: 'lettre par semaine' },
+            { valeur: `${LETTRE_UNIQUE.axesMin}–${LETTRE_UNIQUE.axesMax}`, libellé: 'axes pour vous' },
+            { valeur: `${PARUTIONS_D_ESSAI}`, libellé: 'parutions d’essai' },
+          ]}
+        />
+        <p className="text-label text-gris-ligne">
+          Essai sans carte bancaire. Mise en place offerte jusqu’au {finDuTarifEarlyAdopter()}.
         </p>
       </OuvertureVitrine>
 
@@ -69,8 +77,7 @@ export function AccueilVitrine() {
           <TêteDeSection
             surtitre="Ce que vous recevez"
             titre="Une lettre, trois niveaux de lecture, un espace"
-            chapeau="La même lettre se lit en trente secondes, en cinq minutes, ou en suivant ses sources. Elle arrive par courriel et reste dans votre espace."
-            disposition="côte"
+            disposition="pile"
             id="ce-que-vous-recevez"
           />
         </div>
@@ -81,25 +88,25 @@ export function AccueilVitrine() {
             {
               clé: 'essentiel',
               libellé: 'L’essentiel',
-              description: `${ESSENTIEL_LIGNES_MAX} lignes au plus, en tête de lettre. Trente secondes.`,
+              description: `${ESSENTIEL_LIGNES_MAX} lignes · 30 secondes`,
               contenu: <AperçuEssentiel />,
             },
             {
               clé: 'axes',
               libellé: 'Les axes',
-              description: `${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes, ${LETTRE_UNIQUE.faitsParAxeMax} faits au plus par axe. Cinq minutes.`,
+              description: `${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes · 5 minutes`,
               contenu: <AperçuAxes />,
             },
             {
               clé: 'espace',
               libellé: 'Votre espace',
-              description: 'Les chiffres de la semaine, les archives, les acteurs suivis.',
+              description: 'Archives, axes, acteurs',
               contenu: <AperçuEspace />,
             },
             {
               clé: 'sources',
               libellé: 'Les sources',
-              description: 'Chaque fait porte sa date et le lien de la page d’où il vient.',
+              description: 'Chaque fait daté et lié',
               contenu: <AperçuSources />,
             },
           ]}
@@ -110,21 +117,21 @@ export function AccueilVitrine() {
         surtitre="Ce que vous gagnez"
         titre="Moins cher que le temps que vous y passeriez"
         disposition="côte"
-        chapeau={`Une veille faite en interne prend des heures chaque semaine. Comptée à ${COÛT_HORAIRE_ILLUSTRATIF} € de l’heure, une seule heure par semaine vaut déjà ${enEuros(coûtDUneHeureParSemaine())} € par mois, et deux heures ${enEuros(coûtDeLaVeilleInterne()[1]!.parMois)} €, plus que l’abonnement.`}
+        chapeau={`Une heure de veille interne par semaine vaut ${enEuros(coûtDUneHeureParSemaine())} € par mois, à ${COÛT_HORAIRE_ILLUSTRATIF} € de l’heure.`}
       >
+        <ChiffresClés
+          chiffres={[
+            { valeur: `${enEuros(coûtDUneHeureParSemaine())} €`, libellé: '1 h par semaine, en interne' },
+            { valeur: `${enEuros(coûtDeLaVeilleInterne()[1]!.parMois)} €`, libellé: '2 h par semaine, en interne' },
+            { valeur: `${enEuros(PRIX_MENSUEL_HT)} €`, libellé: 'signauxfaibles, HT par mois' },
+          ]}
+        />
         <GraphiqueTempsDeVeille />
-        <p className="max-w-3xl text-encre">
-          Le temps n’est que le plancher de la valeur. Ce qui compte, c’est le fait qui appelait
-          une décision et que vous auriez manqué : un appel d’offres à viser, un concurrent qui
-          s’installe, une aide qui ferme dans trois semaines.
-        </p>
       </SectionVitrine>
 
       <SectionVitrine
         surtitre="L’impact"
         titre="Trois niveaux, pas plus"
-        chapeau="Chaque axe reçoit un niveau. Pas d’échelle à dix crans : ce qui compte, ce qui est à surveiller, et ce qui n’a pas bougé."
-        disposition="côte"
         ton="neutre"
       >
         <Grille colonnes={3} étiquette="Les trois niveaux d’impact">
@@ -132,59 +139,27 @@ export function AccueilVitrine() {
             <p className="self-start">
               <BadgeImpact niveau="FORT" />
             </p>
-            <p className="text-encre">Un fait qui appelle une décision ou une action de votre part.</p>
+            <p className="text-h3 text-encre">Une décision à prendre.</p>
           </Case>
           <Case>
             <p className="self-start">
               <BadgeImpact niveau="MOYEN" />
             </p>
-            <p className="text-encre">Un mouvement qui vous concerne, à suivre dans les semaines qui viennent.</p>
+            <p className="text-h3 text-encre">Un mouvement à suivre.</p>
           </Case>
           <Case>
             <p className="self-start">
               <BadgeImpact niveau="RAS" />
             </p>
-            <p className="text-encre">
-              Rien de nouveau. La lettre le dit et nomme ce qui a été vérifié : le silence est un
-              constat, pas un oubli.
-            </p>
+            <p className="text-h3 text-encre">Vérifié, rien de neuf.</p>
           </Case>
         </Grille>
-      </SectionVitrine>
-
-      <SectionVitrine
-        surtitre="Votre espace"
-        titre="Une veille qui se consulte, pas un courriel qui se perd"
-        chapeau="La lettre arrive par courriel et reste dans un espace réservé à votre organisation."
-        disposition="côte"
-      >
-        <Grille colonnes={4} étiquette="Ce que l’espace donne à lire">
-          <Case>
-            <p className="label-mono text-ardoise">Archives</p>
-            <p className="text-encre">Toutes les lettres archivées, semaine par semaine.</p>
-          </Case>
-          <Case>
-            <p className="label-mono text-ardoise">Axes</p>
-            <p className="text-encre">Chaque axe suivi sur les quatre dernières lettres : ce qui monte et ce qui retombe.</p>
-          </Case>
-          <Case>
-            <p className="label-mono text-ardoise">Acteurs</p>
-            <p className="text-encre">Les acteurs et dossiers suivis d’une édition à l’autre : qui bouge, qui s’enlise.</p>
-          </Case>
-          <Case>
-            <p className="label-mono text-ardoise">Accès</p>
-            <p className="text-encre">
-              Un lien personnel par lecteur, sans mot de passe, {LECTEURS_ACTIFS_MAX} lecteurs par organisation.
-            </p>
-          </Case>
-        </Grille>
-        <LienFlèche href="/exemple">Voir un tableau de bord complet</LienFlèche>
       </SectionVitrine>
 
       <SectionVitrine
         surtitre="Le marché"
         titre="Un outil vous livre des alertes. Nous vous livrons l’analyse."
-        chapeau="La carte des groupes stratégiques est l’un des outils de votre tableau de bord. La voici appliquée au marché de la veille."
+        chapeau="L’un des outils de votre tableau de bord, appliqué à notre propre marché."
         disposition="côte"
       >
         <CarteDuMarché />
@@ -192,8 +167,8 @@ export function AccueilVitrine() {
 
       <SectionVitrine
         surtitre="Tarifs"
-        titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, référentiel et prise en main compris`}
-        chapeau={`Une lettre par semaine, l’espace et ses archives, ${LECTEURS_ACTIFS_MAX} lecteurs, la création de votre référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main : soit ${enEuros(prixParLecteur())} € HT par lecteur et par mois.`}
+        titre="Un prix par organisation, tout compris"
+        chapeau={`${LECTEURS_ACTIFS_MAX} lecteurs, référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main compris : ${enEuros(prixParLecteur())} € HT par lecteur et par mois.`}
         disposition="côte"
         ton="neutre"
       >
@@ -224,7 +199,7 @@ export function AccueilVitrine() {
 
       <AppelFinal
         titre="Voir une lettre écrite pour vous"
-        chapeau="Nous vous montrons une lettre et l’espace qui l’accompagne, puis nous préparons votre référentiel."
+        chapeau="Nous vous montrons une lettre et l’espace, puis nous préparons votre référentiel."
       />
     </CoquilleVitrine>
   )

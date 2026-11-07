@@ -107,9 +107,8 @@ export function ExtraitDeLettre() {
           ))}
         </ul>
       </article>
-      <figcaption>
-        <MentionFictive />
-      </figcaption>
+      {/* Posé sur la bande encre de l'ouverture : la mention passe en gris clair. */}
+      <figcaption className="label-mono text-gris-ligne">Organisation fictive · forme réelle</figcaption>
     </figure>
   )
 }

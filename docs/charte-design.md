@@ -130,6 +130,15 @@ ocre foncé `#d9a650`. Les noms gardent leur rôle (« blanc » est le fond,
 « encre » le texte) : un bouton `bg-encre text-blanc` devient clair sur fond
 sombre, comme la version négative du logo. Les courriels ne changent pas.
 
+**Amendement du 7 novembre 2026 : les bandes encre de la vitrine.** À la
+refonte des pages publiques, l'opératrice juge la vitrine « très austère » : le
+blanc uniforme en est la cause première. Deux bandes par page au plus passent
+en **version négative** (fond encre, texte blanc, labels en gris ligne, bouton
+primaire inversé) : l'ouverture de l'accueil et l'appel de fin de page. C'est
+la version négative que la charte donne déjà au logo, étendue à une bande ;
+le reste du site garde le blanc, l'espace client n'est pas concerné, et les
+couleurs de signal ne changent pas.
+
 Proportions d'usage visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
 **rose 2 %, ocre 1 %, turquoise 1 %** (rose 3 % avant les amendements du 30 octobre 2026).
 

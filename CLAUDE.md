@@ -1075,6 +1075,10 @@ questions et appel final (`AppelFinal`, bouton secondaire quand la page a déjà
 son primaire). Les graphiques de la vitrine s'animent **une fois à l'entrée dans
 l'écran** (`AnimerÀLEntrée`, `anime-etire`, `anime-apparait` ; amendement du
 §05 de la charte du même jour) ; rien d'autre ne bouge.
+Depuis la seconde passe du même jour (« encore très austère, beaucoup de
+texte ») : ouverture et appel final sur **bande encre** (version négative,
+amendement du §02 de la charte), chiffres clés en grand (`ChiffresClés`),
+textes réduits de moitié, section « Votre espace » fondue dans son onglet.
 **Valeur, marché et lecture stratégique dans la vitrine (27 octobre 2026)** :
 trois graphiques en HTML, à la charte (`components/graphiques-vitrine.tsx`) : le
 temps de veille interne valorisé à 50 € de l'heure, **hypothèse affichée comme

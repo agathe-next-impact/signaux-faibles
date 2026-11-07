@@ -220,21 +220,31 @@ export function SectionVitrine({
   )
 }
 
-/** Le bouton primaire des pages vitrines : un seul par page, fond encre. */
-export function BoutonDémo({ libellé = 'Demander une démo' }: { libellé?: string }) {
+/**
+ * Le bouton primaire des pages vitrines : un seul par page, fond encre. Sur une
+ * bande encre, il s'inverse (`négatif`), comme la version négative du logo.
+ */
+export function BoutonDémo({ libellé = 'Demander une démo', négatif = false }: { libellé?: string; négatif?: boolean }) {
   return (
-    <Link href="/demo" className="self-start rounded-douce bg-encre px-6 py-3 font-medium text-blanc hover:bg-encre/90">
+    <Link
+      href="/demo"
+      className={`self-start rounded-douce px-6 py-3 font-medium ${
+        négatif ? 'bg-blanc text-encre hover:bg-fond-ardoise' : 'bg-encre text-blanc hover:bg-encre/90'
+      }`}
+    >
       {libellé}
     </Link>
   )
 }
 
 /** Le bouton secondaire : filet encre, fond de la page. Pour l'appel de fin d'une page qui a déjà son primaire. */
-export function BoutonDémoSecondaire({ libellé = 'Demander une démo' }: { libellé?: string }) {
+export function BoutonDémoSecondaire({ libellé = 'Demander une démo', négatif = false }: { libellé?: string; négatif?: boolean }) {
   return (
     <Link
       href="/demo"
-      className="rounded-douce border border-encre px-6 py-3 font-medium text-encre hover:bg-fond-ardoise"
+      className={`rounded-douce border px-6 py-3 font-medium ${
+        négatif ? 'border-blanc text-blanc hover:bg-blanc/10' : 'border-encre text-encre hover:bg-fond-ardoise'
+      }`}
     >
       {libellé}
     </Link>
@@ -251,27 +261,35 @@ export function OuvertureVitrine({
   titre,
   chapeau,
   aperçu,
+  ton = 'blanc',
   children,
 }: {
   surtitre: string
   titre: string
   chapeau: React.ReactNode
   aperçu?: React.ReactNode
+  /** `encre` : la bande passe en version négative, texte clair sur fond encre (décision du 7 novembre 2026). */
+  ton?: 'blanc' | 'encre'
   children?: React.ReactNode
 }) {
+  const encre = ton === 'encre'
   const texte = (
     <div className="flex max-w-3xl flex-col gap-6 px-6 py-12 lg:px-12">
-      <p className="label-mono text-ardoise">{surtitre}</p>
-      <h1 className="font-titre text-h1 font-bold text-encre">{titre}</h1>
-      <p className="text-h3 leading-relaxed text-ardoise">{chapeau}</p>
+      <p className={`label-mono ${encre ? 'text-gris-ligne' : 'text-ardoise'}`}>{surtitre}</p>
+      <h1 className={`font-titre text-h1 font-bold ${encre ? 'text-blanc' : 'text-encre'}`}>{titre}</h1>
+      <p className={`text-h3 leading-relaxed ${encre ? 'text-gris-ligne' : 'text-ardoise'}`}>{chapeau}</p>
       {children}
     </div>
   )
-  if (!aperçu) return <section className="border-b border-gris-ligne">{texte}</section>
+  if (!aperçu) return <section className={`border-b border-gris-ligne ${encre ? 'bg-encre' : ''}`}>{texte}</section>
   return (
-    <section className="grid grid-cols-1 border-b border-gris-ligne lg:grid-cols-2">
+    <section className={`grid grid-cols-1 border-b border-gris-ligne lg:grid-cols-2 ${encre ? 'bg-encre' : ''}`}>
       <div className="flex items-center">{texte}</div>
-      <div className="flex min-w-0 items-center border-t border-gris-ligne bg-fond-neutre p-6 lg:border-t-0 lg:border-l lg:p-12">
+      <div
+        className={`flex min-w-0 items-center p-6 lg:p-12 ${
+          encre ? '' : 'border-t border-gris-ligne bg-fond-neutre lg:border-t-0 lg:border-l'
+        }`}
+      >
         {aperçu}
       </div>
     </section>
@@ -279,8 +297,9 @@ export function OuvertureVitrine({
 }
 
 /**
- * L'appel de fin de page : une bande centrée, sur fond neutre. `primaire`
- * seulement si la page n'a pas déjà son bouton primaire.
+ * L'appel de fin de page : une bande centrée sur fond encre, en version
+ * négative (décision du 7 novembre 2026). `primaire` seulement si la page n'a
+ * pas déjà son bouton primaire.
  */
 export function AppelFinal({
   titre,
@@ -292,10 +311,10 @@ export function AppelFinal({
   primaire?: boolean
 }) {
   return (
-    <section className="flex flex-col items-center gap-6 border-b border-gris-ligne bg-fond-neutre px-6 py-12 text-center lg:px-12">
-      <h2 className="max-w-3xl font-titre text-h2 font-bold text-encre">{titre}</h2>
-      <p className="max-w-2xl text-ardoise">{chapeau}</p>
-      {primaire ? <BoutonDémo /> : <BoutonDémoSecondaire />}
+    <section className="flex flex-col items-center gap-6 border-b border-gris-ligne bg-encre px-6 py-12 text-center lg:px-12 lg:py-12">
+      <h2 className="max-w-3xl font-titre text-h1 font-bold text-blanc">{titre}</h2>
+      <p className="max-w-2xl text-h3 text-gris-ligne">{chapeau}</p>
+      {primaire ? <BoutonDémo négatif /> : <BoutonDémoSecondaire négatif />}
     </section>
   )
 }
@@ -326,5 +345,29 @@ export function Question({ titre, children }: { titre: string; children: React.R
       </summary>
       <p className="mt-3 text-ardoise">{children}</p>
     </details>
+  )
+}
+
+/**
+ * Des chiffres clés en rangée : le chiffre en grand (Lora), son libellé en mono.
+ * Pour dire en trois chiffres ce qu'un paragraphe disait. Les chiffres sont lus
+ * dans le code de l'offre ou du contrat de la lettre, jamais écrits en dur.
+ */
+export function ChiffresClés({
+  chiffres,
+  négatif = false,
+}: {
+  chiffres: readonly { readonly valeur: string; readonly libellé: string }[]
+  négatif?: boolean
+}) {
+  return (
+    <dl className="grid grid-cols-3 gap-4">
+      {chiffres.map((c) => (
+        <div key={c.libellé} className={`flex flex-col gap-1 border-t pt-3 ${négatif ? 'border-ardoise' : 'border-gris-ligne'}`}>
+          <dt className={`order-2 label-mono ${négatif ? 'text-gris-ligne' : 'text-ardoise'}`}>{c.libellé}</dt>
+          <dd className={`order-1 font-titre text-h2 font-bold ${négatif ? 'text-blanc' : 'text-encre'}`}>{c.valeur}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }
