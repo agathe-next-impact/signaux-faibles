@@ -16,33 +16,33 @@ import {
 /**
  * Les montants des pages vitrines viennent de `lib/domaine/offre.ts`. Ce test
  * tient les chiffres de l'offre revue le 6 novembre 2026, tels que
- * `docs/decision-portail-moteur.md` les écrit : 259 € HT par mois (310,80 € TTC),
+ * `docs/decision-portail-moteur.md` les écrit : 149 € HT par mois (178,80 € TTC) ou 1 490 € HT par an,
  * création du référentiel et deux heures de prise en main comprises ; frais de
  * mise en place offerts aux early adopters, puis 790 € HT (948 € TTC).
  */
 const sansEspaceFine = (texte: string) => texte.replace(/\s/g, ' ')
 
 describe('les montants de l’offre', () => {
-  it('fixe l’abonnement à 259 € HT par mois, référentiel et deux heures de prise en main compris', () => {
-    expect(PRIX_MENSUEL_HT).toBe(259)
+  it('fixe l’abonnement à 149 € HT par mois, référentiel et deux heures de prise en main compris', () => {
+    expect(PRIX_MENSUEL_HT).toBe(149)
     expect(HEURES_DE_PRISE_EN_MAIN).toBe(2)
   })
 
-  it('fixe l’annuel à dix mois payés, 2 590 € HT, soit 215,83 € HT par mois', () => {
-    expect(PRIX_ANNUEL_HT).toBe(2590)
-    expect(sansEspaceFine(enEuros(PRIX_ANNUEL_HT))).toBe('2 590')
-    expect(enEuros(équivalentMensuelDeLAnnuel())).toBe('215,83')
-    expect(prixTTC(PRIX_ANNUEL_HT)).toBe(3108)
+  it('fixe l’annuel à dix mois payés, 1 490 € HT, soit 124,17 € HT par mois', () => {
+    expect(PRIX_ANNUEL_HT).toBe(1490)
+    expect(sansEspaceFine(enEuros(PRIX_ANNUEL_HT))).toBe('1 490')
+    expect(enEuros(équivalentMensuelDeLAnnuel())).toBe('124,17')
+    expect(prixTTC(PRIX_ANNUEL_HT)).toBe(1788)
   })
 
   it('donne les prix toutes taxes comprises', () => {
-    expect(prixTTC(PRIX_MENSUEL_HT)).toBe(310.8)
+    expect(prixTTC(PRIX_MENSUEL_HT)).toBe(178.8)
     expect(prixTTC(FRAIS_DE_MISE_EN_PLACE_HT)).toBe(948)
   })
 
   it('écrit les euros à la française', () => {
-    expect(enEuros(prixTTC(PRIX_MENSUEL_HT))).toBe('310,80')
-    expect(enEuros(PRIX_MENSUEL_HT)).toBe('259')
+    expect(enEuros(prixTTC(PRIX_MENSUEL_HT))).toBe('178,80')
+    expect(enEuros(PRIX_MENSUEL_HT)).toBe('149')
     expect(sansEspaceFine(enEuros(1790))).toBe('1 790')
   })
 

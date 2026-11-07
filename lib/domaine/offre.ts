@@ -4,12 +4,13 @@
  * seul endroit où ses chiffres sont écrits dans le code : un écran qui les
  * recopierait finirait par afficher un ancien prix.
  *
- * Depuis le 6 novembre 2026 : **259 € HT par mois**, par organisation, qui
+ * Depuis le 7 novembre 2026 : **149 € HT par mois** (259 € le seul 6 novembre,
+ * ramené à 149 € le 7 à la demande de l'opératrice), par organisation, qui
  * comprend la création du référentiel et deux heures de prise en main. La
  * formule annuelle, retirée le 6 novembre, revient le 7 novembre 2026 (demande
  * de l'opératrice) : dix mois payés, deux mois offerts.
  */
-export const PRIX_MENSUEL_HT = 259
+export const PRIX_MENSUEL_HT = 149
 /** Dix mois payés : « deux mois offerts », la règle tenue depuis l'offre du 17 octobre. */
 export const PRIX_ANNUEL_HT = PRIX_MENSUEL_HT * 10
 /** La prise en main comprise dans l'abonnement, en heures. */
@@ -82,7 +83,7 @@ export const LECTEURS_ACTIFS_MAX = 3
 /** TVA applicable (offre du 17 octobre 2026). */
 export const TAUX_DE_TVA = 0.2
 
-/** Un montant en euros, à la française : « 310,80 », « 1 790 », « 86,33 ». */
+/** Un montant en euros, à la française : « 178,80 », « 1 790 », « 124,17 ». */
 export function enEuros(montant: number): string {
   const arrondi = Math.round(montant * 100) / 100
   return arrondi.toLocaleString('fr-FR', {

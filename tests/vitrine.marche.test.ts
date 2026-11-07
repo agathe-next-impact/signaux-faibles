@@ -41,14 +41,14 @@ describe('les repères de marché', () => {
   it('tiennent « au prix des outils d’alerte haut de gamme, loin sous les plateformes »', () => {
     const nous = notreFourchette()
     // L'annuel ramené au mois (dix mois payés), puis le mensuel.
-    expect(nous).toEqual({ min: 215.83, max: PRIX_MENSUEL_HT })
+    expect(nous).toEqual({ min: 124.17, max: PRIX_MENSUEL_HT })
     expect(nous.min).toBeGreaterThanOrEqual(famille('outils').min)
     expect(nous.max).toBeLessThanOrEqual(famille('outils').max)
     expect(famille('plateformes').min / PRIX_MENSUEL_HT).toBeGreaterThanOrEqual(10)
   })
 
-  it('ramènent le prix à 86 € HT par lecteur et par mois, avec trois lecteurs', () => {
-    expect(prixParLecteur()).toBe(86)
+  it('ramènent le prix à 50 € HT par lecteur et par mois, avec trois lecteurs', () => {
+    expect(prixParLecteur()).toBe(50)
   })
 
   it('placent chaque famille sur la carte, et nous seuls avec les cabinets en haut à droite', () => {
