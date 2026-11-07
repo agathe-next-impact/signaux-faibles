@@ -3,6 +3,7 @@ import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { faitsÉtiquetés, grilles, organisations, positions, élémentsSynthèse } from '@/lib/base/schema'
 import type { FaitÉtiqueté, Position, ÉlémentDeSynthèse } from '@/lib/base/schema'
+import type { SujetsDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { empreinteDeLaGrille, type FaitConnu, type Grille, type ÉtiquetteValidée } from '@/lib/domaine/strategie'
 
 /**
@@ -31,6 +32,8 @@ export type OrganisationDesOutils = {
   readonly outilsStratégiques: boolean
   /** L'espace réorganisé (lots 2 à 6 de la proposition du 30 octobre 2026). */
   readonly espaceRéorganisé: boolean
+  /** Ce que l'écran « Concurrents » montre (`lib/domaine/sujets-du-marche.ts`). */
+  readonly sujetsDuMarché: string
 }
 
 /**
@@ -53,6 +56,7 @@ export async function organisationPourLesOutils(
         registreNotion: organisations.registreNotion,
         outilsStratégiques: organisations.outilsStratégiques,
         espaceRéorganisé: organisations.espaceRéorganisé,
+        sujetsDuMarché: organisations.sujetsDuMarché,
       })
       .from(organisations)
       .where(and(critère, isNull(organisations.archivéeLe)))
@@ -97,6 +101,26 @@ export async function réglerLEspaceRéorganisé(
     if (entrée.actif && !ligne.outils) return 'hors-pilote'
     await db.update(organisations).set({ espaceRéorganisé: entrée.actif, modifiéeLe: maintenant }).where(eq(organisations.id, ligne.id))
     return 'réglé'
+  })
+}
+
+/**
+ * Ce que l'écran « Concurrents » d'une organisation montre (7 novembre 2026) :
+ * ses concurrents, ou les entreprises de son territoire quand sa veille
+ * concurrentielle a été adaptée à leurs mouvements. Seuls les mots changent.
+ */
+export async function réglerLesSujetsDuMarché(
+  entrée: { readonly slug: string; readonly sujets: SujetsDuMarché },
+  db: Base = base(),
+  maintenant: Date = new Date(),
+): Promise<'réglé' | 'organisation-inconnue'> {
+  return protéger('réglage des sujets du marché', async () => {
+    const lignes = await db
+      .update(organisations)
+      .set({ sujetsDuMarché: entrée.sujets, modifiéeLe: maintenant })
+      .where(and(eq(organisations.slug, entrée.slug), isNull(organisations.archivéeLe)))
+      .returning({ id: organisations.id })
+    return lignes.length > 0 ? 'réglé' : 'organisation-inconnue'
   })
 }
 

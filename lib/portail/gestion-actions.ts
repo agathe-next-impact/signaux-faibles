@@ -13,7 +13,7 @@ import { publierEtEnvoyer } from '@/lib/portail/lettres-a-publier'
 import { lancerLOuverture, moteurDesOnboardings, vueDeLOnboarding } from '@/lib/portail/onboarding'
 import { envoyerUnLienDAccès, type IssueDuLien } from '@/lib/portail/ouverture'
 import { lecteursModifiables } from '@/lib/portail/situation'
-import { réglerLEspace, réglerLePilote, validerLaVersion } from '@/lib/portail/strategie'
+import { réglerLEspace, réglerLeMarché, réglerLePilote, validerLaVersion } from '@/lib/portail/strategie'
 
 /**
  * Les gestes de la page de gestion d'une organisation (31 octobre 2026,
@@ -81,6 +81,27 @@ export async function basculerLEspace(données: FormData): Promise<void> {
     code = 'échec'
   }
   console.info(`[gestion] ${accès.nom} : ${slug}, espace ${actif ? 'ouvert' : 'refermé'}, ${code}.`)
+  retour(slug, code, 'pilote')
+}
+
+/**
+ * Ce que l'écran « Concurrents » de l'organisation montre (7 novembre 2026) :
+ * ses concurrents, ou les entreprises de son territoire (« Entreprises
+ * suivies »). Le privilège d'abord ; seuls les mots de l'espace changent.
+ */
+export async function réglerLesSujetsDuMarchéDepuisLaFiche(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const sujets = données.get('sujets')
+  if (sujets !== 'concurrents' && sujets !== 'entreprises') notFound()
+  const accès = await exigerOpérateur()
+  let code: string
+  try {
+    code = (await réglerLeMarché({ slug, sujets })) === 'réglé' ? `marché-${sujets}` : 'inconnue'
+  } catch (erreur) {
+    console.error(`[gestion] ${slug} : sujets du marché impossibles (${messageDe(erreur)}).`)
+    code = 'échec'
+  }
+  console.info(`[gestion] ${accès.nom} : ${slug}, sujets du marché ${sujets}, ${code}.`)
   retour(slug, code, 'pilote')
 }
 

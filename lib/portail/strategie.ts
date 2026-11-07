@@ -19,6 +19,7 @@ import {
   remplacerLesÉtiquettes,
   réglerLEspaceRéorganisé,
   réglerLesOutilsStratégiques,
+  réglerLesSujetsDuMarché,
   synthèsePrécédente,
   validerLaGrille,
   étatDeLÉtiquetage,
@@ -27,6 +28,7 @@ import {
   type ÉlémentÀEnregistrer,
 } from '@/lib/base/strategie'
 import { construireDocument, type Document } from '@/lib/domaine/document'
+import { vocabulaireDuMarché, type SujetsDuMarché, type VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
   activitéParRubrique,
@@ -974,13 +976,26 @@ export async function réglerLEspace(
   return réglerLEspaceRéorganisé(entrée, db)
 }
 
+/**
+ * Ce que l'écran « Concurrents » d'une organisation montre, et sous quel nom
+ * (`PATCH /api/veille/organisations`, action `marche`, 7 novembre 2026).
+ */
+export async function réglerLeMarché(
+  entrée: { readonly slug: string; readonly sujets: SujetsDuMarché },
+  db?: Base,
+): Promise<'réglé' | 'organisation-inconnue'> {
+  return réglerLesSujetsDuMarché(entrée, db)
+}
+
 export type EspaceDeLOrganisation = {
   readonly réorganisé: boolean
   /** Les concurrents de la grille, l'organisation exclue : ce qu'« Acteurs » laisse à « Concurrents ». */
   readonly concurrents: readonly string[]
+  /** Les mots de l'écran « Concurrents » : ses concurrents, ou les entreprises de son territoire. */
+  readonly marché: VocabulaireDuMarché
 }
 
-const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, concurrents: [] }
+const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, concurrents: [], marché: vocabulaireDuMarché(null) }
 
 /**
  * L'espace de l'organisation de la session est-il réorganisé ? Le rail le
@@ -1003,7 +1018,11 @@ const espaceMémoïsé = cache(async (registre: string, db?: Base): Promise<Espa
       const organisation = await organisationPourLesOutils({ registreNotion: registre }, db)
       if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return NON_RÉORGANISÉ
       const grille = await lireLaGrille(organisation.id, db)
-      return { réorganisé: true, concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [] }
+      return {
+        réorganisé: true,
+        concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [],
+        marché: vocabulaireDuMarché(organisation.sujetsDuMarché),
+      }
     },
     DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS,
   ),

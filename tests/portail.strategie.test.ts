@@ -644,14 +644,14 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
       vi.stubEnv('SOURCE_ACCES', 'double')
       try {
-        expect(await espaceDeLOrganisation(REGISTRE, db)).toEqual({ réorganisé: false, concurrents: [] })
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toMatchObject({ réorganisé: false, concurrents: [], marché: { écran: 'Concurrents' } })
         expect(await concurrentsDeLEspace({ registre: REGISTRE }, db)).toBeNull()
         await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: false }, db)
         expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('hors-pilote')
         await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
         expect(await réglerLEspace({ slug: 'inconnue', actif: true }, db)).toBe('organisation-inconnue')
         expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
-        expect(await espaceDeLOrganisation(avecTirets(REGISTRE), db)).toEqual({ réorganisé: true, concurrents: ['CISPE', 'Cigref'] })
+        expect(await espaceDeLOrganisation(avecTirets(REGISTRE), db)).toMatchObject({ réorganisé: true, concurrents: ['CISPE', 'Cigref'], marché: { écran: 'Concurrents' } })
 
         // Avant toute synthèse publiée : la liste, sans carte ni position.
         const avant = await concurrentsDeLEspace({ registre: REGISTRE }, db)

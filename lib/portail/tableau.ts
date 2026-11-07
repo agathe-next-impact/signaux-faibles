@@ -6,6 +6,7 @@ import type { SemaineDÉditions } from '@/lib/portail/semaine'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
 import { faitsRécentsDeLEspace, synthèseDeLEspace } from '@/lib/portail/strategie'
 import { prochaineÉchéance } from '@/lib/domaine/fiche-veille'
+import type { VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 
 /**
  * Les cases des écrans de l'espace réorganisé, pour la vue d'ensemble (une
@@ -23,6 +24,7 @@ export async function tableauDeLEspace(entrée: {
   readonly registre: string
   readonly semaines: readonly SemaineDÉditions[]
   readonly concurrents: readonly string[]
+  readonly marché?: VocabulaireDuMarché
   readonly axes: { readonly total: number; readonly forts: number } | null
 }): Promise<{
   readonly cases: readonly CaseDÉcran[]
@@ -49,6 +51,7 @@ export async function tableauDeLEspace(entrée: {
     axesForts: entrée.axes?.forts ?? 0,
     dossiersHorsConcurrents: suivreLesDossiers(semaines).filter((d) => !concurrents.has(normaliserTitre(d.nom))).length,
     concurrents: entrée.concurrents.length,
+    marché: entrée.marché,
     synthèse,
     pestel: récents?.pestel ?? null,
     veille: veille

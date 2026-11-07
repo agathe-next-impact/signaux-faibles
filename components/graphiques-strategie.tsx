@@ -434,9 +434,20 @@ export function ÉchéancesParMois({ mois }: { mois: readonly { readonly libell�
 }
 
 /** Le corpus en anneau : concurrents, acteurs de l'environnement, parties prenantes. */
-export function AnneauDuCorpus({ concurrents, écosystème, partiesPrenantes }: { concurrents: number; écosystème: number; partiesPrenantes: number }) {
+export function AnneauDuCorpus({
+  concurrents,
+  écosystème,
+  partiesPrenantes,
+  libelléDesConcurrents = 'Concurrents',
+}: {
+  concurrents: number
+  écosystème: number
+  partiesPrenantes: number
+  /** « Entreprises suivies » quand la veille concurrentielle suit les mouvements du territoire. */
+  libelléDesConcurrents?: string
+}) {
   const parts: Barre[] = [
-    { libellé: 'Concurrents', valeur: concurrents, teinte: 'encre' },
+    { libellé: libelléDesConcurrents, valeur: concurrents, teinte: 'encre' },
     { libellé: 'Environnement', valeur: écosystème, teinte: 'ardoise' },
     { libellé: 'Parties prenantes', valeur: partiesPrenantes, teinte: 'turquoise' },
   ].filter((p) => p.valeur > 0) as Barre[]

@@ -11,7 +11,8 @@ import {
 } from '@/lib/base/organisations'
 import { codeDePrescripteurValide } from '@/lib/domaine/prescripteurs'
 import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
-import { réglerLEspace, réglerLePilote } from '@/lib/portail/strategie'
+import { SUJETS_DU_MARCHÉ } from '@/lib/domaine/sujets-du-marche'
+import { réglerLEspace, réglerLeMarché, réglerLePilote } from '@/lib/portail/strategie'
 
 /**
  * Ouvre une nouvelle organisation en essai (18 octobre 2026).
@@ -57,6 +58,7 @@ import { réglerLEspace, réglerLePilote } from '@/lib/portail/strategie'
  *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
  *   { "slug": "acme", "action": "outils", "actif": true | false }
  *   { "slug": "acme", "action": "espace", "actif": true | false }
+ *   { "slug": "acme", "action": "marche", "sujets": "concurrents" | "entreprises" }
  *   { "slug": "acme", "action": "decision", "decision": "suspendre" | "ecarter" | "reactiver" }
  *
  * `outils` (26 octobre 2026, `docs/plan-outils-strategiques.md`, lot 4) fait
@@ -69,6 +71,12 @@ import { réglerLEspace, réglerLePilote } from '@/lib/portail/strategie'
  * ouvre l'espace réorganisé (écrans par outil, « Concurrents » et sa fiche), ou
  * le referme : `espace-réglé` (200), `hors-pilote` (409, l'organisation n'est pas
  * dans le pilote des outils) ou `inconnue` (404).
+ *
+ * `marche` (7 novembre 2026, `lib/domaine/sujets-du-marche.ts`) dit ce que
+ * l'écran « Concurrents » montre : `concurrents` (par défaut), ou `entreprises`
+ * quand la veille concurrentielle suit les mouvements des entreprises du
+ * territoire (la CCI du Cantal) ; l'écran s'appelle alors « Entreprises
+ * suivies ». Seuls les mots changent : `marché-réglé` (200) ou `inconnue` (404).
  *
  * `apercu` (1er novembre 2026) règle l'aperçu avant envoi : vrai (par défaut),
  * le lien d'accès ne part plus par `/api/acces/ouvrir` et une lettre acceptée
@@ -90,6 +98,7 @@ const demande = z.object({
 
 const pilote = z.object({ slug: z.string().trim().min(1), action: z.literal('outils'), actif: z.boolean() })
 const espace = z.object({ slug: z.string().trim().min(1), action: z.literal('espace'), actif: z.boolean() })
+const marché = z.object({ slug: z.string().trim().min(1), action: z.literal('marche'), sujets: z.enum(SUJETS_DU_MARCHÉ) })
 
 const réglage = z.discriminatedUnion('action', [
   z.object({
@@ -191,6 +200,21 @@ export async function PATCH(requête: NextRequest): Promise<NextResponse> {
       console.info(`[veille/organisations] ${slug} : outils stratégiques ${actif ? 'ouverts' : 'fermés'}, ${résultat}.`)
       return résultat === 'réglé'
         ? NextResponse.json({ état: 'pilote-réglé', actif })
+        : NextResponse.json({ état: 'inconnue' }, { status: 404 })
+    } catch (erreur) {
+      console.error(`[veille/organisations] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return NextResponse.json({ état: 'échec' }, { status: 502 })
+    }
+  }
+
+  const sujets = marché.safeParse(corps)
+  if (sujets.success) {
+    const { slug, sujets: valeur } = sujets.data
+    try {
+      const résultat = await réglerLeMarché({ slug, sujets: valeur })
+      console.info(`[veille/organisations] ${slug} : sujets du marché ${valeur}, ${résultat}.`)
+      return résultat === 'réglé'
+        ? NextResponse.json({ état: 'marché-réglé', sujets: valeur })
         : NextResponse.json({ état: 'inconnue' }, { status: 404 })
     } catch (erreur) {
       console.error(`[veille/organisations] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

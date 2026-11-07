@@ -630,6 +630,17 @@ la carte et les concurrents de la grille) et la fiche de chacun
 les dossiers qui ne nomment pas un concurrent. Refermé, il retrouve ses sept
 écrans ; rien n'est supprimé.
 
+**Nommer l'écran du marché** (7 novembre 2026, `lib/domaine/sujets-du-marche.ts`,
+migration 0024) : `PATCH /api/veille/organisations`
+`{ "slug": "cci-cantal", "action": "marche", "sujets": "entreprises" }`. 200
+`marché-réglé` avec `sujets`, 404 `inconnue`. `concurrents` (par défaut) garde
+« Concurrents » ; `entreprises` l'appelle « Entreprises suivies », pour une
+organisation dont la veille concurrentielle suit les mouvements des entreprises
+de son territoire plutôt que des concurrents (une chambre consulaire). Seuls les
+mots de l'espace changent : ni la grille, ni les étiquettes, ni l'adresse
+`/[slug]/concurrents`. Aussi sur la fiche de l'organisation, section « Pilote et
+espace ».
+
 **Décision de l'opératrice** (31 octobre 2026) : `PATCH /api/veille/organisations`
 `{ "slug": "acme", "action": "decision", "decision": "suspendre" | "ecarter" | "reactiver" }`.
 200 `décision-appliquée` (avec `état` et `travauxAbandonnés`), 409

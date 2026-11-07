@@ -206,3 +206,14 @@ describe('ordre de lecture de la SWOT (31 octobre 2026)', () => {
     expect(lus.map((é) => é.code)).toEqual(['O3', 'O5', 'O2', 'O1', 'O4'])
   })
 })
+
+describe('casesDuTableauDeBord, entreprises suivies (7 novembre 2026)', () => {
+  it('nomme la case et accorde son compte quand l’écran montre les entreprises du territoire', async () => {
+    const { VOCABULAIRES_DU_MARCHÉ } = await import('@/lib/domaine/sujets-du-marche')
+    const cases = casesDuTableauDeBord({ ...DONNÉES, marché: VOCABULAIRES_DU_MARCHÉ.entreprises })
+    const caseDuMarché = cases.find((c) => c.href.endsWith('/concurrents'))
+    expect(caseDuMarché?.écran).toBe('Entreprises suivies')
+    expect(caseDuMarché?.valeur).toMatch(/suivies?$/)
+    expect(cases.some((c) => /concurren/i.test(`${c.écran} ${c.mention}`))).toBe(false)
+  })
+})

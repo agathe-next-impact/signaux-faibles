@@ -3,6 +3,7 @@ import { exigerLectureComplète } from '@/lib/auth/appartenance'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { LIBELLÉS_DES_SORTES } from '@/lib/domaine/fiche-veille'
 import { présentationDeLEntité } from '@/lib/portail/fiche-veille'
+import { vocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
 /** Une rubrique de la fiche : un surtitre mono, puis son contenu. */
@@ -49,11 +50,12 @@ export default async function PrésentationDUneEntité({ params }: { params: Pro
     )
   }
   const { fiche } = lue
+  const marché = espace?.marché ?? vocabulaireDuMarché(null)
 
   return (
     <>
       <EntêteÉcran
-        surtitre={LIBELLÉS_DES_SORTES[fiche.sorte]}
+        surtitre={fiche.sorte === 'concurrent' ? marché.fiche : LIBELLÉS_DES_SORTES[fiche.sorte]}
         titre={fiche.nom}
         état={fiche.partiePrenante && fiche.sorte !== 'partie-prenante' ? 'aussi partie prenante' : undefined}
       />
@@ -77,7 +79,7 @@ export default async function PrésentationDUneEntité({ params }: { params: Pro
             <Rubrique titre="Sa place dans votre veille">
               <p className="text-encre">
                 {fiche.sorte === 'concurrent'
-                  ? 'Un concurrent : votre veille concurrentielle le suit nommément.'
+                  ? marché.définition
                   : fiche.sorte === 'acteur'
                     ? 'Un acteur de votre environnement : votre veille écosystème le suit nommément.'
                     : 'Une partie prenante : votre veille lit son pouvoir et son intérêt.'}
