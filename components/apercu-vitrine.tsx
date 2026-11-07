@@ -90,11 +90,10 @@ export function AperçuEssentiel() {
  * PESTEL (l'environnement, et non la concurrence), les quatre premiers par
  * impact, en cases. Même sélection que l'écran « PESTEL » de l'espace.
  */
-export function AperçuÉcosystème() {
-  const d = démonstration()
+export function AperçuÉcosystème({ d = démonstration(), combien = 4 }: { d?: Démonstration; combien?: number } = {}) {
   const axes = trierParImpact(fusionnerLesAxes([documentDe(d)], 2))
     .filter((axe) => axe.numéro !== null && 'pestel' in (d.grille.axes[axe.numéro] ?? {}))
-    .slice(0, 4)
+    .slice(0, combien)
   return (
     <div className="flex flex-col gap-3">
       <Grille colonnes={2} étiquette="Axes de l’environnement, organisation fictive">
@@ -113,8 +112,7 @@ export function AperçuÉcosystème() {
  * financeurs), chacune avec le dossier ouvert qui la suit et, sinon, la phrase
  * de la lettre qui la nomme. Même lecture que « Concurrents » dans l'espace.
  */
-export function AperçuConcurrents() {
-  const d = démonstration()
+export function AperçuConcurrents({ d = démonstration() }: { d?: Démonstration } = {}) {
   const document = documentDe(d)
   const dossiers = synthétiser([document], [d.dossiers]).dossiers
   const concurrents = d.grille.entités
@@ -196,8 +194,7 @@ function BarreDeCompte({
  * dimension PESTEL et par force de Porter, en barres, et les ruptures. Des
  * comptes, jamais une analyse rédigée par la page.
  */
-export function AperçuLectureStratégique() {
-  const d = démonstration()
+export function AperçuLectureStratégique({ d = démonstration() }: { d?: Démonstration } = {}) {
   const lecture = lectureDeDémonstration(d, documentDe(d))
   const plafondPestel = Math.max(1, ...lecture.pestel.map((p) => p.faits))
   const plafondForces = Math.max(1, ...lecture.forces.map((f) => f.faits))

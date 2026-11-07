@@ -1053,13 +1053,15 @@ financement), et dans chacun deux vues, le tableau de bord et la lettre
 (`components/onglets.tsx`, motif ARIA, ancre `#conseil`, `#pme`, `#ess`). Les
 trois organisations, leurs concurrents et leurs faits sont **fictifs**
 (`lib/vitrine/demonstrations.ts`), sources sur le domaine réservé `.example` ;
-jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord est
-calculé comme la vue d'ensemble actuelle (refonte du 7 novembre 2026, à la demande de
-l'opératrice : action de la semaine, « Points forts de la semaine » par `axesÀRetenir`,
-« À la une » par `acteursEnVue`, et les quatre cartes de rubrique de « Votre espace »
-recalculées sur la seule lettre fictive et sa grille, `cartesDeDémonstration`, rien
-d'inventé pour ce que treize semaines ou une synthèse publiée donneraient) et la lettre
-rendue par `RenduDocument`, sur `markdownVersBlocs` (`components/demonstration.tsx`) ;
+jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord (refonte du 7 novembre 2026, à la demande de
+l'opératrice) porte les cartouches de la vue d'ensemble (chiffres de la semaine,
+action de la semaine, « Points forts de la semaine » par `axesÀRetenir`), sans
+« À la une », puis trois **accordéons** (`details` natif, `Accordéon` dans
+`components/demonstration.tsx`, le premier ouvert) : « L'écosystème », « Les
+concurrents » et « L'analyse », rendus par les aperçus de l'accueil sur la même
+organisation (`AperçuÉcosystème`, `AperçuConcurrents`, `AperçuLectureStratégique`,
+qui prennent la démonstration en paramètre) ; la lettre est rendue par
+`RenduDocument`, sur `markdownVersBlocs` ;
 les cases ne mènent nulle part. Le test passe
 chaque lettre au lint de la lettre unique. **Logos clients** (7 novembre 2026, à la
 demande de l'opératrice) : sous l'ouverture de l'accueil, L'Hermitage, Infralliance
