@@ -100,13 +100,13 @@ export function AccueilVitrine() {
 
       <SectionVitrine
         surtitre="Deux supports"
-        titre="La lettre dans votre boîte, l’espace sur votre téléphone"
+        titre="Lettre hebdo + appli web"
         ton="neutre"
       >
         <Grille colonnes={2} étiquette="La lettre et l’espace">
           <Case>
-            <p className="label-mono text-ardoise">Lettre hebdomadaire · courriel</p>
-            <p className="font-titre text-h3 font-semibold text-encre">Le même jour chaque semaine, à chacun de vos lecteurs.</p>
+            <p className="font-titre text-h3 font-semibold text-encre">Lettre hebdomadaire, par courriel</p>
+            <p className="text-ardoise">Le même jour chaque semaine, à chacun de vos lecteurs.</p>
             <ListeCarrée
               éléments={[
                 `L’essentiel en ${ESSENTIEL_LIGNES_MAX} lignes, puis ${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes classés par impact.`,
@@ -116,8 +116,8 @@ export function AccueilVitrine() {
             />
           </Case>
           <Case>
-            <p className="label-mono text-ardoise">Espace · web et mobile</p>
-            <p className="font-titre text-h3 font-semibold text-encre">Toutes vos lettres, et ce qu’elles disent de votre marché.</p>
+            <p className="font-titre text-h3 font-semibold text-encre">Appli web et mobile</p>
+            <p className="text-ardoise">Toutes vos lettres, et ce qu’elles disent de votre marché.</p>
             <ListeCarrée
               éléments={[
                 'Les archives, semaine par semaine, et chaque axe suivi d’une lettre à l’autre.',
