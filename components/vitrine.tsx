@@ -26,10 +26,9 @@ import { ADRESSE_DE_CONTACT } from '@/lib/email/gabarit'
  * réservées aux labels mono ; fond blanc, le fond neutre seulement pour
  * rythmer une bande.
  */
-export type PageVitrine = 'accueil' | 'offre' | 'exemple' | 'tarifs'
+export type PageVitrine = 'accueil' | 'exemple' | 'tarifs'
 
 const LIENS: ReadonlyArray<{ href: string; libellé: string; page: PageVitrine }> = [
-  { href: '/offre', libellé: 'L’offre', page: 'offre' },
   { href: '/exemple', libellé: 'Exemples', page: 'exemple' },
   { href: '/tarifs', libellé: 'Tarifs', page: 'tarifs' },
 ]
@@ -118,7 +117,6 @@ export function PiedVitrine() {
           className="flex flex-col gap-2 border-b border-gris-ligne p-6 text-corps sm:border-b-0 sm:border-l lg:p-12"
         >
           <p className="label-mono text-ardoise">Découvrir</p>
-          <Link href="/offre" className="text-encre hover:text-ardoise">L’offre</Link>
           <Link href="/exemple" className="text-encre hover:text-ardoise">Exemples</Link>
           <Link href="/tarifs" className="text-encre hover:text-ardoise">Tarifs</Link>
           <Link href="/demo" className="text-encre hover:text-ardoise">Demander une démo</Link>

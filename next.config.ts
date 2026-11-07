@@ -116,6 +116,13 @@ const nextConfig: NextConfig = {
         destination: '/:slug/perimetre',
         permanent: true,
       },
+      {
+        // « L'offre » a été retirée de la vitrine le 7 novembre 2026 (demande de
+        // l'opératrice) : l'accueil porte ce qu'elle disait. Le slug reste réservé.
+        source: '/offre',
+        destination: '/',
+        permanent: true,
+      },
       // Les écrans de rubrique (« Vue de la rubrique ») ont été retirés le
       // 31 octobre 2026 : leur ancienne adresse ramène à la vue d'ensemble, qui
       // porte les cartes des rubriques. Adresses exactes : `/:slug/veille/...`

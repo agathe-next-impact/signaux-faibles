@@ -835,7 +835,8 @@ comptes ont leurs écrans dans l'espace réorganisé, « PESTEL » et « Forces 
 marché », et la vitrine garde sa démonstration. Agrégation pure dans
 `lectureDesÉtiquettes` (`lib/domaine/strategie.ts`), rendu dans
 `components/lecture-strategique.tsx`, que seule la démonstration de la vitrine
-rend encore (`components/demonstration.tsx`).
+rendait encore ; composant supprimé le 7 novembre 2026, l'accueil rendant la lecture
+d'une organisation fictive par `AperçuLectureStratégique`.
 
 **Deux écrans d'abonnement, hors des sept (19 octobre 2026).** `/[slug]/abonnement`
 (« Mon abonnement ») n'est pas un écran de veille : il ne lit aucune édition,
@@ -1012,7 +1013,7 @@ une demande partie. Le proxy l'ouvre à l'adresse **exacte** (`PUBLICS_EXACTS`),
 jamais en préfixe : `/demo` en préfixe ouvrirait l'espace d'un slug
 commençant par « demo ».
 
-**Quatre pages vitrines, hors des sept (23 octobre 2026).** La racine `/` montre
+**Quatre pages vitrines, hors des sept (23 octobre 2026 ; trois depuis le 7 novembre 2026 : « L'offre » retirée à la demande de l'opératrice, `/offre` redirigée en 308 vers `/`, slug toujours réservé, l'accueil portant ce qu'elle disait).** La racine `/` montre
 la vitrine à un visiteur sans session (`components/vitrine-accueil.tsx`) ; une
 session valide y est toujours redirigée vers son espace, et l'application
 installée (`start_url: '/?app=1'`, identité `id: '/'` inchangée) mène au
@@ -1053,9 +1054,13 @@ financement), et dans chacun deux vues, le tableau de bord et la lettre
 trois organisations, leurs concurrents et leurs faits sont **fictifs**
 (`lib/vitrine/demonstrations.ts`), sources sur le domaine réservé `.example` ;
 jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord est
-calculé comme la vue d'ensemble (`synthétiser`, `fusionnerLesAxes`,
-`acteursEnVue`) et la lettre rendue par `RenduDocument`, sur `markdownVersBlocs`
-(`components/demonstration.tsx`) ; les cases ne mènent nulle part. Le test passe
+calculé comme la vue d'ensemble actuelle (refonte du 7 novembre 2026, à la demande de
+l'opératrice : action de la semaine, « Points forts de la semaine » par `axesÀRetenir`,
+« À la une » par `acteursEnVue`, et les quatre cartes de rubrique de « Votre espace »
+recalculées sur la seule lettre fictive et sa grille, `cartesDeDémonstration`, rien
+d'inventé pour ce que treize semaines ou une synthèse publiée donneraient) et la lettre
+rendue par `RenduDocument`, sur `markdownVersBlocs` (`components/demonstration.tsx`) ;
+les cases ne mènent nulle part. Le test passe
 chaque lettre au lint de la lettre unique. **Logos clients** (7 novembre 2026, à la
 demande de l'opératrice) : sous l'ouverture de l'accueil, L'Hermitage, Infralliance
 et Konica Minolta en une rangée immobile, en niveaux de gris, couleurs au survol,
