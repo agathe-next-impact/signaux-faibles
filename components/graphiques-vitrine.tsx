@@ -1,3 +1,4 @@
+import { AnimerÀLEntrée } from '@/components/anime-a-l-entree'
 import { enEuros, HEURES_DE_PRISE_EN_MAIN, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import {
   AXES_DE_LA_CARTE,
@@ -20,6 +21,12 @@ import {
  * marques sont en ardoise ; filets en gris de ligne ; angles droits, sauf les
  * extrémités de barre, arrondies à 4 px. Chaque graphique a son tableau de
  * chiffres, dépliable : la couleur ne porte jamais seule l'information.
+ *
+ * Mouvement (charte §05, amendement du 7 novembre 2026) : chaque graphique
+ * s'anime une fois, quand il entre dans l'écran (`AnimerÀLEntrée`). Les barres
+ * s'étirent de gauche à droite en cascade (`anime-etire`, rang dans `--i`), les
+ * cases de la carte se découvrent ligne après ligne (`anime-apparait`) ; les
+ * chiffres sont posés à leur valeur dès le départ.
  */
 
 const DATE_DU_RELEVÉ = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(
@@ -61,12 +68,14 @@ function LigneDeMarché({
   min,
   max,
   nous = false,
+  rang,
 }: {
   libellé: string
   livre: string
   min: number
   max: number
   nous?: boolean
+  rang: number
 }) {
   const gauche = max === 0 ? 0 : positionSurLÉchelle(min)
   const droite = max === 0 ? 0 : positionSurLÉchelle(max)
@@ -79,12 +88,16 @@ function LigneDeMarché({
       <div className="relative h-8" title={`${libellé} : ${fourchette(min, max)} HT par mois`}>
         <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px bg-gris-ligne" />
         {max === 0 ? (
-          <span aria-hidden="true" className="absolute top-1/2 left-0 size-2.5 -translate-y-1/2 border-2 border-ardoise bg-blanc" />
+          <span
+            aria-hidden="true"
+            className="anime-apparait absolute top-[calc(50%-5px)] left-0 size-2.5 border-2 border-ardoise bg-blanc"
+            style={{ '--i': rang } as React.CSSProperties}
+          />
         ) : (
           <span
             aria-hidden="true"
-            className={`absolute top-1/2 h-2.5 min-w-2.5 -translate-y-1/2 rounded-[4px] ${nous ? 'bg-rose' : 'bg-ardoise'}`}
-            style={{ left: `${gauche}%`, width: `${Math.max(droite - gauche, 0.8)}%` }}
+            className={`anime-etire absolute top-[calc(50%-5px)] h-2.5 min-w-2.5 rounded-[4px] ${nous ? 'bg-rose' : 'bg-ardoise'}`}
+            style={{ left: `${gauche}%`, width: `${Math.max(droite - gauche, 0.8)}%`, '--i': rang } as React.CSSProperties}
           />
         )}
         <span
@@ -107,13 +120,14 @@ function LigneDeMarché({
 export function GraphiqueRepèresDeMarché() {
   const nous = notreFourchette()
   return (
+    <AnimerÀLEntrée className="flex flex-col gap-4">
     <figure className="flex flex-col gap-4">
       <figcaption className="flex flex-col gap-1">
         <span className="label-mono text-ardoise">Prix publics, € HT par mois, échelle logarithmique</span>
       </figcaption>
       <ul aria-label="Fourchettes de prix des offres de veille" className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-        {FAMILLES_D_OFFRES.map((f) => (
-          <LigneDeMarché key={f.clé} libellé={f.libellé} livre={f.livre} min={f.min} max={f.max} />
+        {FAMILLES_D_OFFRES.map((f, i) => (
+          <LigneDeMarché key={f.clé} libellé={f.libellé} livre={f.livre} min={f.min} max={f.max} rang={i} />
         ))}
         <LigneDeMarché
           libellé="signauxfaibles"
@@ -121,6 +135,7 @@ export function GraphiqueRepèresDeMarché() {
           min={nous.min}
           max={nous.max}
           nous
+          rang={FAMILLES_D_OFFRES.length}
         />
       </ul>
       <div aria-hidden="true" className="relative ml-0 h-5 sm:ml-[15.5rem]">
@@ -173,6 +188,7 @@ export function GraphiqueRepèresDeMarché() {
         </p>
       </Chiffres>
     </figure>
+    </AnimerÀLEntrée>
   )
 }
 
@@ -189,18 +205,23 @@ export function GraphiqueTempsDeVeille() {
   const plafond = Math.max(...lignes.map((l) => l.parMois), PRIX_MENSUEL_HT) * 1.2
   const largeur = (montant: number) => `${(montant / plafond) * 100}%`
   return (
+    <AnimerÀLEntrée>
     <figure className="flex flex-col gap-4">
       <figcaption className="label-mono text-ardoise">
         € par mois, à {COÛT_HORAIRE_ILLUSTRATIF} € de l’heure (hypothèse)
       </figcaption>
       <ul aria-label="Coût mensuel d’une veille faite en interne, comparé au prix de signauxfaibles" className="flex flex-col gap-3">
-        {lignes.map((l) => (
+        {lignes.map((l, i) => (
           <li key={l.heures} className="grid grid-cols-[9rem_minmax(0,1fr)] items-center gap-4">
             <span className="text-encre">
               {l.heures} h par semaine
             </span>
             <span className="flex items-center gap-3" title={`${l.heures} h par semaine : ${enEuros(l.parMois)} € par mois`}>
-              <span aria-hidden="true" className="h-2.5 rounded-r-[4px] bg-ardoise" style={{ width: largeur(l.parMois) }} />
+              <span
+                aria-hidden="true"
+                className="anime-etire h-2.5 rounded-r-[4px] bg-ardoise"
+                style={{ width: largeur(l.parMois), '--i': i } as React.CSSProperties}
+              />
               <span className="label-mono whitespace-nowrap text-encre">{enEuros(l.parMois)} €</span>
             </span>
           </li>
@@ -208,7 +229,11 @@ export function GraphiqueTempsDeVeille() {
         <li className="grid grid-cols-[9rem_minmax(0,1fr)] items-center gap-4 border-t border-gris-ligne pt-3">
           <span className="font-medium text-encre">signauxfaibles</span>
           <span className="flex items-center gap-3" title={`signauxfaibles : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois`}>
-            <span aria-hidden="true" className="h-2.5 rounded-r-[4px] bg-rose" style={{ width: largeur(PRIX_MENSUEL_HT) }} />
+            <span
+              aria-hidden="true"
+              className="anime-etire h-2.5 rounded-r-[4px] bg-rose"
+              style={{ width: largeur(PRIX_MENSUEL_HT), '--i': lignes.length } as React.CSSProperties}
+            />
             <span className="label-mono whitespace-nowrap text-encre">{enEuros(PRIX_MENSUEL_HT)} € HT</span>
           </span>
         </li>
@@ -221,6 +246,7 @@ export function GraphiqueTempsDeVeille() {
         </p>
       </Chiffres>
     </figure>
+    </AnimerÀLEntrée>
   )
 }
 
@@ -238,6 +264,7 @@ export function CarteDuMarché() {
   // L'analyse la plus poussée en haut : on lit la carte comme une montée.
   const lignes = analyse.crans.map((cran, i) => ({ cran, rang: i + 1 })).reverse()
   return (
+    <AnimerÀLEntrée>
     <figure className="flex flex-col gap-4">
       <div className="overflow-x-auto border-t border-l border-gris-ligne">
         <div
@@ -257,7 +284,7 @@ export function CarteDuMarché() {
               </div>
             ))}
           </div>
-          {lignes.map((ligne) => (
+          {lignes.map((ligne, rangDeLigne) => (
             <div key={ligne.rang} role="row" className="contents">
               <div role="rowheader" className="flex flex-col gap-1 border-r border-b border-gris-ligne p-3">
                 <p className="label-mono text-encre">{ligne.cran.libellé}</p>
@@ -274,11 +301,13 @@ export function CarteDuMarché() {
                     role="cell"
                     className={`flex min-h-24 flex-col gap-2 border-r border-b border-gris-ligne p-3 ${nous ? 'bg-fond-rose' : 'bg-blanc'}`}
                   >
+                    {/* La case se découvre, pas son texte : le fond et les carrés montent, le nom reste lisible. */}
                     {ici.map((pos) => (
                       <p key={pos.clé} className="flex gap-2 leading-snug">
                         <span
                           aria-hidden="true"
-                          className={`mt-[0.45em] size-1.5 shrink-0 ${pos.clé === 'nous' ? 'bg-encre' : 'bg-ardoise'}`}
+                          className={`anime-apparait mt-[0.45em] size-1.5 shrink-0 ${pos.clé === 'nous' ? 'bg-encre' : 'bg-ardoise'}`}
+                          style={{ '--i': rangDeLigne * 3 + colonne.rang } as React.CSSProperties}
                         />
                         <span className={pos.clé === 'nous' ? 'font-medium text-encre' : 'text-encre'}>{pos.libellé}</span>
                       </p>
@@ -295,5 +324,6 @@ export function CarteDuMarché() {
         signauxfaibles la livre chaque semaine, à un prix publié.
       </figcaption>
     </figure>
+    </AnimerÀLEntrée>
   )
 }

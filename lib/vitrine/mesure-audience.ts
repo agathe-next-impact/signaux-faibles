@@ -33,7 +33,7 @@ export const ORIGINES_GTM = {
  * que le proxy ouvre sans session (`PUBLICS_EXACTS`). Leur politique de contenu
  * admet les origines de Google, et celle-là seulement.
  */
-export const PAGES_MESURÉES = ['/', '/offre', '/tarifs', '/exemple', '/demo'] as const
+export const PAGES_MESURÉES = ['/', '/tarifs', '/exemple', '/demo'] as const
 
 export function mesureActive(environnement: string | undefined = process.env.VERCEL_ENV): boolean {
   return environnement === 'production'

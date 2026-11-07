@@ -835,7 +835,8 @@ comptes ont leurs écrans dans l'espace réorganisé, « PESTEL » et « Forces 
 marché », et la vitrine garde sa démonstration. Agrégation pure dans
 `lectureDesÉtiquettes` (`lib/domaine/strategie.ts`), rendu dans
 `components/lecture-strategique.tsx`, que seule la démonstration de la vitrine
-rend encore (`components/demonstration.tsx`).
+rendait encore ; composant supprimé le 7 novembre 2026, l'accueil rendant la lecture
+d'une organisation fictive par `AperçuLectureStratégique`.
 
 **Deux écrans d'abonnement, hors des sept (19 octobre 2026).** `/[slug]/abonnement`
 (« Mon abonnement ») n'est pas un écran de veille : il ne lit aucune édition,
@@ -1012,7 +1013,7 @@ une demande partie. Le proxy l'ouvre à l'adresse **exacte** (`PUBLICS_EXACTS`),
 jamais en préfixe : `/demo` en préfixe ouvrirait l'espace d'un slug
 commençant par « demo ».
 
-**Quatre pages vitrines, hors des sept (23 octobre 2026).** La racine `/` montre
+**Quatre pages vitrines, hors des sept (23 octobre 2026 ; trois depuis le 7 novembre 2026 : « L'offre » retirée à la demande de l'opératrice, `/offre` redirigée en 308 vers `/`, slug toujours réservé, l'accueil portant ce qu'elle disait).** La racine `/` montre
 la vitrine à un visiteur sans session (`components/vitrine-accueil.tsx`) ; une
 session valide y est toujours redirigée vers son espace, et l'application
 installée (`start_url: '/?app=1'`, identité `id: '/'` inchangée) mène au
@@ -1052,23 +1053,70 @@ financement), et dans chacun deux vues, le tableau de bord et la lettre
 (`components/onglets.tsx`, motif ARIA, ancre `#conseil`, `#pme`, `#ess`). Les
 trois organisations, leurs concurrents et leurs faits sont **fictifs**
 (`lib/vitrine/demonstrations.ts`), sources sur le domaine réservé `.example` ;
-jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord est
-calculé comme la vue d'ensemble (`synthétiser`, `fusionnerLesAxes`,
-`acteursEnVue`) et la lettre rendue par `RenduDocument`, sur `markdownVersBlocs`
-(`components/demonstration.tsx`) ; les cases ne mènent nulle part. Le test passe
+jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord (refonte du 7 novembre 2026, à la demande de
+l'opératrice) porte les cartouches de la vue d'ensemble (chiffres de la semaine,
+action de la semaine, « Points forts de la semaine » par `axesÀRetenir`), sans
+« À la une », puis trois **accordéons** (`details` natif, `Accordéon` dans
+`components/demonstration.tsx`, le premier ouvert) : « L'écosystème », « Les
+concurrents » et « L'analyse », rendus par les aperçus de l'accueil sur la même
+organisation (`AperçuÉcosystème`, `AperçuConcurrents`, `AperçuLectureStratégique`,
+qui prennent la démonstration en paramètre) ; la lettre est rendue par
+`RenduDocument`, sur `markdownVersBlocs` ;
+les cases ne mènent nulle part. Le test passe
 chaque lettre au lint de la lettre unique. **Logos clients** (7 novembre 2026, à la
 demande de l'opératrice) : sous l'ouverture de l'accueil, L'Hermitage, Infralliance
 et Konica Minolta en une rangée immobile, en niveaux de gris, couleurs au survol,
 inversés en mode sombre (`components/bandeau-logos.tsx`, fichiers dans
 `public/logos/`, ouverts par le proxy en préfixe `/logos/` ; le slug `logos` est
-réservé). Afficher un logo suppose l'accord de l'organisation.
+réservé ; depuis le 8 novembre 2026, à sa demande, la rangée est **dans l'ouverture**, sous les
+boutons, inversée sur la bande encre, pour être vue sans défiler). Afficher un logo suppose l'accord de l'organisation.
+**Refonte visuelle de la vitrine** (7 novembre 2026, à la demande de l'opératrice,
+structure et animations inspirées d'un modèle de page produit, charte conservée) :
+les pages vitrines tiennent dans un **cadre** (colonne bordée de deux filets,
+chaque section une bande fermée par un filet, `components/vitrine.tsx`), en-tête
+collant avec menu natif sur mobile ; l'accueil s'ouvre en deux colonnes, le texte
+et un aperçu du produit (`components/apercu-vitrine.tsx`, lettre du cabinet de
+conseil de « Exemples », calculée par le code de l'espace, puis la vidéo depuis le
+soir du même jour), puis « Ce
+que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"` ; depuis le
+soir du 7 novembre, à la demande de l'opératrice : L'essentiel, **L'écosystème** (les axes
+de la grille sous une dimension PESTEL, `AperçuÉcosystème`), **Les concurrents** (les
+concurrents de la grille, `concurrent: true`, vingt au moins par démonstration depuis le 8 novembre 2026,
+avec leur dossier, la phrase qui les nomme ou leur présentation ; six montrés, ceux qui ont bougé d'abord,
+et le compte des suivis calculé sur la grille, `AperçuConcurrents`), **L'analyse** (la lecture stratégique de l'organisation fictive,
+`AperçuLectureStratégique`, qui était une section à part au-dessus des tarifs, retirée
+le même soir à sa demande) ; « Les axes », « Votre espace » et « Les sources » retirés ; la section « L'impact » remplacée le même soir, à sa
+demande, par « Deux supports » : la lettre hebdomadaire par courriel et l'espace web et mobile,
+en deux cases),
+tarifs en cartes partagées avec « Tarifs » (`components/vitrine-tarifs.tsx`),
+questions et appel final (`AppelFinal`, bouton secondaire quand la page a déjà
+son primaire) ; les boutons de la vitrine sont **à angle droit et serrés** (8 novembre 2026, demande de
+l'opératrice), le rayon doux restant aux boutons de l'espace. Les graphiques de la vitrine s'animent **une fois à l'entrée dans
+l'écran** (`AnimerÀLEntrée`, `anime-etire`, `anime-apparait` ; amendement du
+§05 de la charte du même jour) ; rien d'autre ne bouge.
+Depuis la seconde passe du même jour (« encore très austère, beaucoup de
+texte ») : ouverture et appel final sur **bande encre** (version négative,
+amendement du §02 de la charte), chiffres clés en grand (`ChiffresClés`),
+textes réduits de moitié, section « Votre espace » fondue dans son onglet.
+**Ouverture retenue** (même jour, après quatre candidates jugées sur une page de
+travail, retirée) : la **vidéo de l'espace** (`HéroVidéo`,
+`components/vitrine-heros.tsx`) : un surtitre, le titre, le bouton, le lien
+« Voir des exemples », et le montage LinkedIn de l'opératrice (57 s, carré) à
+droite, servi muet, en boucle et sans commande par `components/video-espace.tsx`
+(`public/vitrine/espace.mp4`, 720 px, moins de 1 Mo, image d'attente
+`espace.jpg` ; préfixe `/vitrine/` ouvert par le proxy, slug réservé), immobile
+sous `prefers-reduced-motion`. Ni chapeau ni chiffres dans l'ouverture ; l'extrait
+de lettre de l'ouverture précédente (`ExtraitDeLettre`) a été retiré.
 **Valeur, marché et lecture stratégique dans la vitrine (27 octobre 2026)** :
 trois graphiques en HTML, à la charte (`components/graphiques-vitrine.tsx`) : le
 temps de veille interne valorisé à 50 € de l'heure, **hypothèse affichée comme
 telle**, face au prix (accueil) ; les fourchettes de prix publics par **famille
 d'offres, jamais par concurrent nommé**, sources et date du relevé dépliables
 (tarifs) ; la carte des groupes stratégiques du marché de la veille, l'outil de
-l'écran « Acteurs » appliqué à nous-mêmes (accueil). Données dans
+l'écran « Acteurs » appliqué à nous-mêmes (`CarteDuMarché`, retirée de l'accueil le
+7 novembre 2026 à la demande de l'opératrice, remplacée par « L'analyse » : la lecture
+stratégique de l'organisation fictive de « Exemples », `AperçuLectureStratégique`, devenue
+le soir même un onglet de « Ce que vous recevez »). Données dans
 `lib/vitrine/marche.ts` seulement, nos prix toujours lus dans `lib/domaine/offre.ts` ;
 rien de nos coûts ni de nos marges sur une page publique. « L'offre » présente la
 lecture stratégique « en test » et ce qui nous distingue ; « Exemples » rend la

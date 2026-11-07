@@ -1,26 +1,32 @@
-import { BadgeImpact } from '@/components/badge-impact'
-import { BandeauLogos } from '@/components/bandeau-logos'
-import { Case, Grille, LienFlèche } from '@/components/coquille'
-import { CarteDuMarché, GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
-import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
-import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
 import {
-  enEuros,
-  finDuTarifEarlyAdopter,
-  FRAIS_DE_MISE_EN_PLACE_HT,
-  HEURES_DE_PRISE_EN_MAIN,
-  LECTEURS_ACTIFS_MAX,
-  PRIX_ANNUEL_HT,
-  PRIX_MENSUEL_HT,
-} from '@/lib/domaine/offre'
+  AperçuConcurrents,
+  AperçuEssentiel,
+  AperçuÉcosystème,
+  AperçuLectureStratégique,
+} from '@/components/apercu-vitrine'
+import { Case, Grille, LienFlèche } from '@/components/coquille'
+import { GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
+import { Onglets } from '@/components/onglets'
+import { AppelFinal, ChiffresClés, CoquilleVitrine, ListeCarrée, Question, SectionVitrine, TêteDeSection } from '@/components/vitrine'
+import { HéroVidéo } from '@/components/vitrine-heros'
+import { CartesDeTarifs } from '@/components/vitrine-tarifs'
+import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
+import { enEuros, HEURES_DE_PRISE_EN_MAIN, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
 import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
 
 /**
- * L'accueil des visiteurs sans session (23 octobre 2026). La racine le rend au
- * lieu de rediriger vers « recevoir mon lien » ; une session valide mène
- * toujours à son espace, sans voir cette page.
+ * L'accueil des visiteurs sans session (23 octobre 2026, refondu le
+ * 7 novembre 2026). La racine le rend au lieu de rediriger vers « recevoir mon
+ * lien » ; une session valide mène toujours à son espace, sans voir cette page.
+ *
+ * Déroulé de la refonte : l'ouverture montre le produit (la vidéo de l'espace,
+ * `HéroVidéo`, retenue le 7 novembre 2026 parmi quatre candidates, les logos clients dedans depuis le 8) ; « Ce que vous recevez » en quatre onglets, chacun avec
+ * son aperçu (l'analyse en est un depuis le soir du 7 novembre) ; la valeur,
+ * chiffrée ; les deux supports (la lettre, l'espace) ; les tarifs en cartes ; les questions ; l'appel final. Les aperçus
+ * sont calculés sur une lettre fictive par le code de l'espace client
+ * (`components/apercu-vitrine.tsx`), jamais sur la lettre d'un client.
  *
  * La lettre décrite est la lettre unique du programme du 22 octobre 2026
  * (`docs/programme-lettre-unique.md`) : ses seuils viennent du validateur
@@ -29,145 +35,132 @@ import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSem
 export function AccueilVitrine() {
   return (
     <CoquilleVitrine courante="accueil">
-      <OuvertureVitrine
-        surtitre="Veille hebdomadaire rédigée"
-        titre="La veille stratégique écrite pour votre seule organisation"
-        chapeau={
-          <>
-            Vous n’avez pas le temps de surveiller la réglementation, les financements, les
-            marchés et vos concurrents. Chaque semaine, nous le faisons pour vous et vous
-            écrivons une lettre : {LETTRE_UNIQUE.axesMin} à {LETTRE_UNIQUE.axesMax} axes propres
-            à votre organisation, chaque fait daté, sourcé, et son impact pour vous qualifié.
-          </>
-        }
-      >
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <BoutonDémo />
-          <LienFlèche href="/offre">Découvrir l’offre</LienFlèche>
+      <HéroVidéo titre="La veille stratégique écrite pour votre seule organisation" />
+
+      <section aria-labelledby="ce-que-vous-recevez" className="border-b border-gris-ligne">
+        <div className="px-6 py-12 lg:px-12">
+          <TêteDeSection
+            surtitre="Ce que vous recevez"
+            titre="Une lettre par semaine, quatre façons de la lire"
+            disposition="pile"
+            id="ce-que-vous-recevez"
+          />
         </div>
-        <p className="text-label text-ardoise">
-          Essai de {PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire ni engagement. Frais
-          de mise en place offerts pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}.
-        </p>
-      </OuvertureVitrine>
-
-      <BandeauLogos />
-
-      <SectionVitrine
-        surtitre="Ce que vous recevez"
-        titre="Une lettre, trois niveaux de lecture"
-        chapeau="La même lettre se lit en trente secondes, en cinq minutes, ou en suivant ses sources."
-      >
-        <Grille colonnes={3} étiquette="Les trois niveaux de lecture de la lettre">
-          <Case>
-            <p className="label-mono text-ardoise">30 secondes</p>
-            <h3 className="font-titre text-h3 font-semibold text-encre">L’essentiel</h3>
-            <p className="text-ardoise">
-              {ESSENTIEL_LIGNES_MAX} lignes au plus, en tête de lettre. Chacune se lit seule :
-              qui, quoi, quand.
-            </p>
-          </Case>
-          <Case>
-            <p className="label-mono text-ardoise">5 minutes</p>
-            <h3 className="font-titre text-h3 font-semibold text-encre">Les actualités par axe</h3>
-            <p className="text-ardoise">
-              {LETTRE_UNIQUE.axesMin} à {LETTRE_UNIQUE.axesMax} axes propres à votre organisation,
-              {' '}{LETTRE_UNIQUE.faitsParAxeMax} faits au plus par axe, deux phrases par fait.
-            </p>
-          </Case>
-          <Case>
-            <p className="label-mono text-ardoise">Pour aller plus loin</p>
-            <h3 className="font-titre text-h3 font-semibold text-encre">Les sources</h3>
-            <p className="text-ardoise">
-              Chaque fait porte sa date et le lien de la page d’où il vient, ouverte au moment
-              de la collecte.
-            </p>
-          </Case>
-        </Grille>
-      </SectionVitrine>
+        <Onglets
+          étiquette="Ce que vous recevez"
+          forme="cases"
+          panneaux={[
+            {
+              clé: 'essentiel',
+              libellé: 'L’essentiel',
+              description: `${ESSENTIEL_LIGNES_MAX} lignes · 30 secondes`,
+              contenu: <AperçuEssentiel />,
+            },
+            {
+              clé: 'ecosysteme',
+              libellé: 'L’écosystème',
+              description: 'Votre environnement, axe par axe',
+              contenu: <AperçuÉcosystème />,
+            },
+            {
+              clé: 'concurrents',
+              libellé: 'Les concurrents',
+              description: 'Chacun suivi, semaine après semaine',
+              contenu: <AperçuConcurrents />,
+            },
+            {
+              clé: 'analyse',
+              libellé: 'L’analyse',
+              description: 'Chaque fait classé, votre position lue',
+              contenu: <AperçuLectureStratégique />,
+            },
+          ]}
+        />
+      </section>
 
       <SectionVitrine
         surtitre="Ce que vous gagnez"
         titre="Moins cher que le temps que vous y passeriez"
-        chapeau={`Une veille faite en interne prend des heures chaque semaine. Comptée à ${COÛT_HORAIRE_ILLUSTRATIF} € de l’heure, une seule heure par semaine vaut déjà ${enEuros(coûtDUneHeureParSemaine())} € par mois, et deux heures ${enEuros(coûtDeLaVeilleInterne()[1]!.parMois)} €, plus que l’abonnement.`}
+        disposition="côte"
+        chapeau={`Une heure de veille interne par semaine vaut ${enEuros(coûtDUneHeureParSemaine())} € par mois, à ${COÛT_HORAIRE_ILLUSTRATIF} € de l’heure.`}
       >
+        <ChiffresClés
+          chiffres={[
+            { valeur: `${enEuros(coûtDUneHeureParSemaine())} €`, libellé: '1 h par semaine, en interne' },
+            { valeur: `${enEuros(coûtDeLaVeilleInterne()[1]!.parMois)} €`, libellé: '2 h par semaine, en interne' },
+            { valeur: `${enEuros(PRIX_MENSUEL_HT)} €`, libellé: 'signauxfaibles, HT par mois' },
+          ]}
+        />
         <GraphiqueTempsDeVeille />
-        <p className="max-w-3xl text-encre">
-          Le temps n’est que le plancher de la valeur. Ce qui compte, c’est le fait qui appelait
-          une décision et que vous auriez manqué : un appel d’offres à viser, un concurrent qui
-          s’installe, une aide qui ferme dans trois semaines.
-        </p>
       </SectionVitrine>
 
       <SectionVitrine
-        surtitre="L’impact"
-        titre="Trois niveaux, pas plus"
-        chapeau="Chaque axe reçoit un niveau. Pas d’échelle à dix crans : ce qui compte, ce qui est à surveiller, et ce qui n’a pas bougé."
+        surtitre="Deux supports"
+        titre="Lettre hebdo + appli web"
+        ton="neutre"
       >
-        <Grille colonnes={3} étiquette="Les trois niveaux d’impact">
+        <Grille colonnes={2} étiquette="La lettre et l’espace">
           <Case>
-            <p className="self-start">
-              <BadgeImpact niveau="FORT" />
-            </p>
-            <p className="text-encre">Un fait qui appelle une décision ou une action de votre part.</p>
+            <p className="font-titre text-h3 font-semibold text-encre">Lettre hebdomadaire, par courriel</p>
+            <p className="text-ardoise">Le même jour chaque semaine, à chacun de vos lecteurs.</p>
+            <ListeCarrée
+              éléments={[
+                `L’essentiel en ${ESSENTIEL_LIGNES_MAX} lignes, puis ${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes classés par impact.`,
+                'Chaque fait daté, lié à sa source.',
+                `Jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs par organisation.`,
+              ]}
+            />
           </Case>
           <Case>
-            <p className="self-start">
-              <BadgeImpact niveau="MOYEN" />
-            </p>
-            <p className="text-encre">Un mouvement qui vous concerne, à suivre dans les semaines qui viennent.</p>
-          </Case>
-          <Case>
-            <p className="self-start">
-              <BadgeImpact niveau="RAS" />
-            </p>
-            <p className="text-encre">
-              Rien de nouveau. La lettre le dit et nomme ce qui a été vérifié : le silence est un
-              constat, pas un oubli.
-            </p>
+            <p className="font-titre text-h3 font-semibold text-encre">Appli web et mobile</p>
+            <p className="text-ardoise">Toutes vos lettres, et ce qu’elles disent de votre marché.</p>
+            <ListeCarrée
+              éléments={[
+                'Les archives, semaine par semaine, et chaque axe suivi d’une lettre à l’autre.',
+                'Vos concurrents, votre environnement, votre stratégie : un écran par lecture.',
+                'Un lien personnel, sans mot de passe ; installable sur votre téléphone, lisible hors ligne.',
+              ]}
+            />
           </Case>
         </Grille>
       </SectionVitrine>
 
       <SectionVitrine
-        surtitre="Votre espace"
-        titre="Une veille qui se consulte, pas un courriel qui se perd"
-        chapeau="La lettre arrive par courriel et reste dans un espace réservé à votre organisation."
+        surtitre="Tarifs"
+        titre="Un prix par organisation, tout compris"
+        chapeau={`${LECTEURS_ACTIFS_MAX} lecteurs, référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main compris : ${enEuros(prixParLecteur())} € HT par lecteur et par mois.`}
+        disposition="côte"
+        ton="neutre"
       >
-        <ListeCarrée
-          éléments={[
-            'Toutes les lettres archivées, semaine par semaine.',
-            'Chaque axe suivi sur les quatre dernières lettres, pour voir ce qui monte et ce qui retombe.',
-            'Les acteurs et dossiers suivis d’une édition à l’autre : qui bouge, qui s’enlise.',
-            `Un lien personnel par lecteur, sans mot de passe, ${LECTEURS_ACTIFS_MAX} lecteurs par organisation.`,
-          ]}
-        />
-        <LienFlèche href="/offre">Voir comment cela fonctionne</LienFlèche>
+        <CartesDeTarifs />
+        <LienFlèche href="/tarifs">Tout sur les tarifs et l’essai</LienFlèche>
       </SectionVitrine>
 
-      <SectionVitrine
-        surtitre="Le marché"
-        titre="Un outil vous livre des alertes. Nous vous livrons l’analyse."
-        chapeau="La carte des groupes stratégiques est l’un des outils de votre tableau de bord. La voici appliquée au marché de la veille."
-      >
-        <CarteDuMarché />
+      <SectionVitrine surtitre="Questions fréquentes" titre="Avant de demander une démo" disposition="côte">
+        <div className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
+          <Question titre="Quand arrive la lettre ?">
+            Le même jour chaque semaine, par courriel, à chacun de vos lecteurs. Elle reste ensuite
+            dans votre espace, avec toutes les précédentes.
+          </Question>
+          <Question titre="Comment se déroule l’essai ?">
+            Il commence à votre première lettre publiée et dure {PARUTIONS_D_ESSAI} parutions
+            complètes. Aucun moyen de paiement n’est demandé pour le commencer.
+          </Question>
+          <Question titre="Faut-il un mot de passe ?">
+            Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en
+            saisissant son adresse sur la page de connexion.
+          </Question>
+          <Question titre="Puis-je résilier à tout moment ?">
+            Oui, en formule mensuelle, depuis « Mon abonnement » dans votre espace. Vos lettres
+            restent lisibles jusqu’à la fin de la période déjà payée.
+          </Question>
+        </div>
       </SectionVitrine>
 
-      <SectionVitrine
-        surtitre="Tarif"
-        titre={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois, référentiel et prise en main compris`}
-      >
-        <p className="max-w-3xl text-ardoise">
-          Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs, la
-          création de votre référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main : soit{' '}
-          {enEuros(prixParLecteur())} € HT par lecteur et par mois. Sans engagement en formule
-          mensuelle, deux mois offerts en formule annuelle ({enEuros(PRIX_ANNUEL_HT)} € HT par an). Frais de mise en
-          place offerts aux early adopters, pour toute inscription jusqu’au{' '}
-          {finDuTarifEarlyAdopter()} ; ensuite, {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, une seule
-          fois.
-        </p>
-        <LienFlèche href="/tarifs">Voir les tarifs</LienFlèche>
-      </SectionVitrine>
+      <AppelFinal
+        titre="Voir une lettre écrite pour vous"
+        chapeau="Nous vous montrons une lettre et l’espace, puis nous préparons votre référentiel."
+      />
     </CoquilleVitrine>
   )
 }

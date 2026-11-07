@@ -130,6 +130,15 @@ ocre foncé `#d9a650`. Les noms gardent leur rôle (« blanc » est le fond,
 « encre » le texte) : un bouton `bg-encre text-blanc` devient clair sur fond
 sombre, comme la version négative du logo. Les courriels ne changent pas.
 
+**Amendement du 7 novembre 2026 : les bandes encre de la vitrine.** À la
+refonte des pages publiques, l'opératrice juge la vitrine « très austère » : le
+blanc uniforme en est la cause première. Deux bandes par page au plus passent
+en **version négative** (fond encre, texte blanc, labels en gris ligne, bouton
+primaire inversé) : l'ouverture de l'accueil et l'appel de fin de page. C'est
+la version négative que la charte donne déjà au logo, étendue à une bande ;
+le reste du site garde le blanc, l'espace client n'est pas concerné, et les
+couleurs de signal ne changent pas.
+
 Proportions d'usage visées : blanc 62 %, encre 22 %, gris 9 %, ardoise 4 %,
 **rose 2 %, ocre 1 %, turquoise 1 %** (rose 3 % avant les amendements du 30 octobre 2026).
 
@@ -250,6 +259,20 @@ en dessous : il ne le remplace jamais.
 Un chiffre ne s'anime jamais : il s'affiche à sa valeur, seule la marque bouge.
 Seule boucle admise : la lueur du squelette de chargement, qui ne porte aucune
 donnée et s'arrête aussi quand le système demande moins de mouvement.
+
+**Amendement du 7 novembre 2026 : les graphiques de la vitrine.** Demande de
+l'opératrice, à la refonte des pages publiques (« anime les graphiques »). Sur
+la vitrine, la plupart des graphiques sont sous la ligne de flottaison : animés
+au chargement, personne ne les verrait partir. Ils s'animent donc **une fois,
+quand ils entrent dans l'écran** (`AnimerÀLEntrée`,
+`components/anime-a-l-entree.tsx`), et c'est la seule exception à l'interdit de
+l'animation au défilement. Le reste ne change pas : 500 à 600 ms, même courbe,
+cascade de 60 à 120 ms par marque, départ depuis une marque visible (6 % de sa
+longueur, 25 % d'opacité), aucun chiffre animé, rien en mouvement réduit ni
+sans JavaScript (le graphique est alors rendu à sa valeur). Classes
+`anime-etire` (une barre s'étire de gauche à droite) et `anime-apparait` (une
+marque se découvre), `app/globals.css`. Ni les sections, ni les textes, ni les
+logos ne bougent : le mouvement reste réservé à la donnée.
 
 ## Ce que la transcription oblige à corriger dans le portail
 

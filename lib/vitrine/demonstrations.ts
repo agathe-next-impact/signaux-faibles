@@ -47,10 +47,23 @@ export type Démonstration = {
 
 export type CadreDAxe = { readonly pestel: Pestel } | { readonly porter: ForcePorter }
 
+export type EntitéDeDémonstration = {
+  readonly nom: string
+  readonly concurrent?: true
+  readonly ansoff?: Ansoff
+  readonly présentation?: string
+}
+
 export type GrilleDeDémonstration = {
   readonly axes: Readonly<Record<number, CadreDAxe>>
-  /** Les entités que la lecture nomme sous une force, avec leur mouvement d'Ansoff. */
-  readonly entités: readonly { readonly nom: string; readonly ansoff?: Ansoff }[]
+  /**
+   * Les entités de la grille : les concurrents suivis (`concurrent`, vingt au
+   * moins par démonstration, comme dans un référentiel réel), avec leur
+   * mouvement d'Ansoff quand la lettre de la semaine en relève un, et les
+   * clients, financeurs et partenaires que la lecture nomme sous une force.
+   * La `présentation` dit qui est l'entité quand aucune lettre n'en parle.
+   */
+  readonly entités: readonly EntitéDeDémonstration[]
   /** Les ruptures : l'axe, et un mot de la phrase-titre du fait. */
   readonly ruptures: readonly { readonly axe: number; readonly contient: string }[]
 }
@@ -72,9 +85,28 @@ const CONSEIL: Démonstration = {
       12: { porter: 'pouvoir_fournisseurs' },
     },
     entités: [
-      { nom: 'Cap Territoires', ansoff: 'developpement_marche' },
-      { nom: 'Orbis Public', ansoff: 'penetration' },
-      { nom: 'Préfigure', ansoff: 'developpement_marche' },
+      { nom: 'Cap Territoires', concurrent: true, ansoff: 'developpement_marche' },
+      { nom: 'Orbis Public', concurrent: true, ansoff: 'penetration' },
+      { nom: 'Préfigure', concurrent: true, ansoff: 'developpement_marche' },
+      { nom: 'Altéa Conseil', concurrent: true, présentation: 'Cabinet lyonnais de trente consultants, conduite du changement et organisation des services.' },
+      { nom: 'Cité et Méthodes', concurrent: true, présentation: 'Cabinet parisien, stratégie territoriale des villes moyennes, antenne à Grenoble.' },
+      { nom: 'Latitude Publique', concurrent: true, présentation: 'Cabinet de huit consultants, évaluation des politiques publiques, basé à Clermont-Ferrand.' },
+      { nom: 'Tessère', concurrent: true, présentation: 'Conseil en finances locales, référencé par trois centrales d’achat.' },
+      { nom: 'Mairial', concurrent: true, présentation: 'Cabinet national, accompagnement des mutualisations intercommunales.' },
+      { nom: 'Agora Partenaires', concurrent: true, présentation: 'Concertation et participation citoyenne, Lyon et Saint-Étienne.' },
+      { nom: 'Civitas Études', concurrent: true, présentation: 'Études et diagnostics territoriaux, filiale d’un groupe d’ingénierie.' },
+      { nom: 'Oriane Conseil', concurrent: true, présentation: 'Cabinet de cinq consultants, ressources humaines des collectivités.' },
+      { nom: 'Rhône Stratégie', concurrent: true, présentation: 'Conseil en stratégie pour les intercommunalités de la vallée du Rhône.' },
+      { nom: 'Terrain Commun', concurrent: true, présentation: 'Coopérative de consultants, projets de territoire et transition écologique.' },
+      { nom: 'Nexalis Public', concurrent: true, présentation: 'Branche secteur public d’un cabinet de conseil en organisation, Paris et Lyon.' },
+      { nom: 'Sillon Conseil', concurrent: true, présentation: 'Cabinet rural, schémas de services et accompagnement des petites communes.' },
+      { nom: 'Vérane et Associés', concurrent: true, présentation: 'Conseil juridique et organisationnel, commande publique et contrats.' },
+      { nom: 'Kairos Territoires', concurrent: true, présentation: 'Programmation et pilotage de projets d’équipements publics.' },
+      { nom: 'Boréal Public', concurrent: true, présentation: 'Cabinet lillois, en expansion vers le sud-est depuis 2025.' },
+      { nom: 'Compas Urbain', concurrent: true, présentation: 'Urbanisme et stratégie foncière, conseil aux métropoles.' },
+      { nom: 'Alinéa Secteur public', concurrent: true, présentation: 'Conseil en transformation numérique des services publics locaux.' },
+      { nom: 'Pôle Nord Études', concurrent: true, présentation: 'Études socio-économiques pour les départements et les régions.' },
+      { nom: 'Méridienne Conseil', concurrent: true, présentation: 'Cabinet toulousain, accompagnement des projets de territoire du Massif central.' },
       { nom: 'Valrive' },
       { nom: 'Saint-Aubert' },
       { nom: 'Ardaine' },
@@ -226,9 +258,28 @@ const PME: Démonstration = {
       12: { pestel: 'economique' },
     },
     entités: [
-      { nom: 'Précimeca', ansoff: 'developpement_marche' },
-      { nom: 'Usinage Delmas', ansoff: 'penetration' },
-      { nom: 'Usimat', ansoff: 'penetration' },
+      { nom: 'Précimeca', concurrent: true, ansoff: 'developpement_marche' },
+      { nom: 'Usinage Delmas', concurrent: true, ansoff: 'penetration' },
+      { nom: 'Usimat', concurrent: true, ansoff: 'penetration' },
+      { nom: 'Mécatech Rhône', concurrent: true, présentation: 'Usineur de 60 salariés, pièces aéronautiques de grande dimension, Vénissieux.' },
+      { nom: 'Ateliers Bessonne', concurrent: true, présentation: 'Mécanique de précision, 35 salariés, clientèle ferroviaire et énergie.' },
+      { nom: 'Fraisalp', concurrent: true, présentation: 'Fraisage cinq axes en Haute-Savoie, certifié EN 9100 depuis 2024.' },
+      { nom: 'Tournage Vignal', concurrent: true, présentation: 'Tournage de petites séries, 20 salariés, sous-traitant de rang 2.' },
+      { nom: 'Précitour', concurrent: true, présentation: 'Décolletage et tournage de précision, vallée de l’Arve.' },
+      { nom: 'Mécanique Ardèche', concurrent: true, présentation: 'Atelier familial de 25 salariés, usinage et montage d’ensembles.' },
+      { nom: 'Usinage Combe', concurrent: true, présentation: 'Usineur isérois, 45 salariés, repris par un fonds en 2025.' },
+      { nom: 'SMP Décolletage', concurrent: true, présentation: 'Décolletage de grande série, pièces hydrauliques et pneumatiques.' },
+      { nom: 'Alpes Précision', concurrent: true, présentation: 'Rectification et usinage de haute précision, clientèle médicale et aéronautique.' },
+      { nom: 'Métalform Industrie', concurrent: true, présentation: 'Groupe de 180 salariés, usinage, chaudronnerie et traitement de surface.' },
+      { nom: 'Ateliers du Forez', concurrent: true, présentation: 'Usinage et mécano-soudure, 40 salariés, près de Montbrison.' },
+      { nom: 'Mécavia', concurrent: true, présentation: 'Pièces mécaniques pour le ferroviaire, fournisseur référencé de deux constructeurs.' },
+      { nom: 'Rectimeca', concurrent: true, présentation: 'Rectification plane et cylindrique, 15 salariés, Saint-Étienne.' },
+      { nom: 'Ferrand Usinage', concurrent: true, présentation: 'Usineur drômois, pièces de grande dimension, nouvelle unité ouverte en 2026.' },
+      { nom: 'Tôlerie Guérin', concurrent: true, présentation: 'Tôlerie fine et usinage, concurrent sur les ensembles assemblés.' },
+      { nom: 'Usinex', concurrent: true, présentation: 'Usinage de série automatisé, 70 salariés, investit dans la robotisation.' },
+      { nom: 'Mécaloire', concurrent: true, présentation: 'Atelier ligérien de 30 salariés, mécanique générale et maintenance.' },
+      { nom: 'Précindus', concurrent: true, présentation: 'Usinage de précision pour la défense et le spatial, habilitation en cours.' },
+      { nom: 'Ateliers Savoyards', concurrent: true, présentation: 'Usinage et assemblage, 50 salariés, clientèle de l’énergie hydraulique.' },
       { nom: 'Aérolys' },
       { nom: 'Hélivale' },
       { nom: 'Ferrovia Systèmes' },
@@ -383,7 +434,27 @@ const ESS: Démonstration = {
       12: { pestel: 'politique' },
     },
     entités: [
-      { nom: 'Le Fil vert', ansoff: 'penetration' },
+      { nom: 'Le Fil vert', concurrent: true, ansoff: 'penetration' },
+      { nom: 'Retissage', concurrent: true, présentation: 'Entreprise d’insertion textile de 60 salariés, collecte en Isère et dans la Drôme.' },
+      { nom: 'Recyclo Textile', concurrent: true, présentation: 'Structure de tri et de recyclage, filiale d’un groupe de propreté.' },
+      { nom: 'Boucle Textile', concurrent: true, présentation: 'Atelier chantier d’insertion, réparation et revente, Saint-Étienne.' },
+      { nom: 'Friperie Solidaire du Nord', concurrent: true, présentation: 'Réseau de six boutiques solidaires, candidat aux mêmes marchés réservés.' },
+      { nom: 'Tissons Ensemble', concurrent: true, présentation: 'Association d’insertion par le textile, 25 salariés, Villeurbanne.' },
+      { nom: 'Seconde Trame', concurrent: true, présentation: 'Entreprise sociale de revente en ligne de vêtements de seconde main.' },
+      { nom: 'Vestiaire Partagé', concurrent: true, présentation: 'Boutiques de réemploi en centre-ville, trois points de vente.' },
+      { nom: 'Relance Textile', concurrent: true, présentation: 'Centre de tri industriel, 120 salariés, conventionné avec l’éco-organisme.' },
+      { nom: 'Fibre et Sens', concurrent: true, présentation: 'Atelier d’upcycling et de création, dix salariés en insertion.' },
+      { nom: 'Refil', concurrent: true, présentation: 'Plateforme de collecte textile pour les entreprises et les collectivités.' },
+      { nom: 'Trame Solidaire', concurrent: true, présentation: 'Entreprise d’insertion de 35 salariés, tri et revente en gros.' },
+      { nom: 'Étoffes Nouvelles', concurrent: true, présentation: 'Coopérative de couture et de retouche, Grenoble.' },
+      { nom: 'La Ressourcerie du Val', concurrent: true, présentation: 'Ressourcerie généraliste dont le rayon textile grandit depuis 2025.' },
+      { nom: 'Textile Retour', concurrent: true, présentation: 'Opérateur de reprise en magasin pour les enseignes d’habillement.' },
+      { nom: 'Renouvo', concurrent: true, présentation: 'Start-up de la seconde main, lève des fonds, ouvre des ateliers de tri.' },
+      { nom: 'Maille et Lien', concurrent: true, présentation: 'Chantier d’insertion de tricot et de réparation, Ardèche.' },
+      { nom: 'Atelier Repasse', concurrent: true, présentation: 'Blanchisserie et retouche d’insertion, diversifiée dans le réemploi.' },
+      { nom: 'Couture Avenir', concurrent: true, présentation: 'Atelier d’insertion de confection, sous-traitant de marques locales.' },
+      { nom: 'Le Vestibule', concurrent: true, présentation: 'Friperie associative de quartier, deux boutiques à Lyon.' },
+      { nom: 'Filigrane Insertion', concurrent: true, présentation: 'Entreprise d’insertion de 50 salariés, logistique et textile, Rhône.' },
       { nom: 'Valrive' },
     ],
     ruptures: [{ axe: 6, contient: 'Fil vert' }],

@@ -29,7 +29,7 @@ export default function Exemples() {
         <BoutonDémo libellé="Demander la vôtre" />
       </OuvertureVitrine>
 
-      <section className="flex flex-col gap-6">
+      <section className="flex flex-col gap-6 border-b border-gris-ligne px-6 py-12 lg:px-12">
         <Onglets
           étiquette="Profils de client"
           ancre

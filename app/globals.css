@@ -155,6 +155,41 @@ body {
   }
 }
 
+/* Les graphiques de la vitrine (7 novembre 2026, charte §05, amendement du même
+   jour) : mêmes durées et même courbe que l'espace, mais l'animation part quand
+   le graphique entre dans l'écran, une seule fois (`AnimerÀLEntrée`,
+   components/anime-a-l-entree.tsx, qui pose `data-anime`). Sans JavaScript,
+   ou en mouvement réduit, rien n'est posé et la marque est déjà à sa valeur.
+   Une barre s'étire de gauche à droite depuis 6 % de sa longueur ; une case
+   se découvre depuis 25 % d'opacité. Le chiffre ne bouge jamais : `scale` ne
+   déplace pas son voisin. */
+.anime-etire {
+  transform-origin: left center;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-anime='attente'] .anime-etire {
+    transform: scaleX(0.06);
+    opacity: 0.25;
+  }
+  [data-anime='attente'] .anime-apparait {
+    opacity: 0.25;
+  }
+  [data-anime='joue'] .anime-etire {
+    animation: sf-etire 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(min(var(--i, 0), 6) * 120ms);
+  }
+  [data-anime='joue'] .anime-apparait {
+    animation: sf-decouvre 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(min(var(--i, 0), 10) * 60ms);
+  }
+}
+@keyframes sf-etire {
+  from {
+    transform: scaleX(0.06);
+    opacity: 0.25;
+  }
+}
+
 /* Le squelette d'un écran qui attend (components/squelette.tsx) : des blocs au
    fond neutre ; la lueur qui les parcourt est la seule boucle admise, parce
    qu'elle ne porte aucune donnée. */

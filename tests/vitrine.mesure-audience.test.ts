@@ -25,7 +25,7 @@ describe('mesure d’audience des pages vitrines', () => {
   })
 
   it('n’est chargé que par les pages vitrines, jamais par un écran de l’espace', () => {
-    expect(PAGES_MESURÉES).toEqual(['/', '/offre', '/tarifs', '/exemple', '/demo'])
+    expect(PAGES_MESURÉES).toEqual(['/', '/tarifs', '/exemple', '/demo'])
     const appelants = [
       'components/vitrine.tsx',
       'app/(portail)/demo/page.tsx',

@@ -1,9 +1,10 @@
 import Image from 'next/image'
 
 /**
- * Les logos des organisations qui reçoivent leur veille, sous l'ouverture de
+ * Les logos des organisations qui reçoivent leur veille, dans l'ouverture de
  * l'accueil (7 novembre 2026, à la demande de l'opératrice : L'Hermitage,
- * Infralliance et Konica Minolta).
+ * Infralliance et Konica Minolta ; sous l'ouverture jusqu'au 8 novembre, dans
+ * l'ouverture depuis, pour être vus sans défiler).
  *
  * Une rangée immobile, centrée, qui passe à la ligne sur mobile : à trois
  * logos, un défilement laisserait un vide sur grand écran. Les logos sont en
@@ -25,13 +26,29 @@ export const LOGOS: readonly Logo[] = [
   { nom: 'Konica Minolta', fichier: 'konica-minolta', largeur: 77, hauteur: 44 },
 ]
 
-export function BandeauLogos() {
+/**
+ * La rangée de logos. `négatif` la pose sur la bande encre de l'ouverture
+ * (8 novembre 2026, à la demande de l'opératrice : les logos visibles sans
+ * défiler) : les logos y sont inversés en mode clair, où la bande est sombre,
+ * et tels quels en mode sombre, où elle est claire ; pas de couleurs au
+ * survol, un logo inversé ne les rendrait pas. Alignée à gauche, sous les
+ * boutons, et non centrée.
+ */
+export function BandeauLogos({ négatif = false }: { négatif?: boolean } = {}) {
+  const titre = négatif ? 'logos-ouverture-titre' : 'bandeau-logos-titre'
   return (
-    <section aria-labelledby="bandeau-logos-titre" className="flex flex-col gap-4">
-      <p id="bandeau-logos-titre" className="label-mono text-center text-ardoise">
+    <section
+      aria-labelledby={titre}
+      className={
+        négatif
+          ? 'flex flex-col gap-4'
+          : 'flex flex-col gap-6 border-b border-gris-ligne px-6 py-8 lg:px-12'
+      }
+    >
+      <p id={titre} className={négatif ? 'label-mono text-gris-ligne' : 'label-mono text-center text-ardoise'}>
         Ils reçoivent leur veille chaque semaine
       </p>
-      <ul className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+      <ul className={négatif ? 'flex flex-wrap items-center gap-x-8 gap-y-4' : 'flex flex-wrap items-center justify-center gap-x-12 gap-y-6'}>
         {LOGOS.map((logo) => (
           <li key={logo.fichier} className="flex h-12 items-center">
             <Image
@@ -40,7 +57,7 @@ export function BandeauLogos() {
               width={logo.largeur}
               height={logo.hauteur}
               unoptimized
-              className="grayscale transition hover:grayscale-0 dark:invert dark:hover:invert-0"
+              className={négatif ? 'grayscale invert dark:invert-0' : 'grayscale transition hover:grayscale-0 dark:invert dark:hover:invert-0'}
             />
           </li>
         ))}
