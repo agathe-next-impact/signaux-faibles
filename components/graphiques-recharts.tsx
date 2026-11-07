@@ -234,7 +234,7 @@ export function Bulles({ bulles, axeX, axeY }: { bulles: readonly Bulle[]; axeX:
         </YAxis>
         {/* L'aire de la bulle est proportionnelle au nombre de sujets : deux sujets, deux fois l'aire d'un seul. */}
         <ZAxis type="number" dataKey="n" domain={[0, max]} range={[0, Math.min(400, 1600 / max) * max]} />
-        <ChartTooltip cursor={false} isAnimationActive={false} content={<ChartTooltipContent hideIndicator labelKey="libellé" formatter={(_v, _n, item) => (item.payload as Bulle).libellé} />} />
+        <ChartTooltip cursor={false} isAnimationActive={false} content={<InfobulleDeBulle axeX={axeX} axeY={axeY} />} />
         <Scatter data={bulles.map((b) => ({ ...b }))} {...animation}>
           {bulles.map((b) => (
             <Cell key={`${b.x}:${b.y}`} fill={TEINTES[b.teinte]} fillOpacity={0.85} stroke="var(--color-blanc)" strokeWidth={2} />
@@ -242,6 +242,36 @@ export function Bulles({ bulles, axeX, axeY }: { bulles: readonly Bulle[]; axeX:
         </Scatter>
       </ScatterChart>
     </ChartContainer>
+  )
+}
+
+/**
+ * L'infobulle d'une bulle (7 novembre 2026). Un nuage de points porte trois
+ * valeurs par point (x, y et la taille), et l'infobulle générique en faisait
+ * trois lignes portant chacune le même libellé : les sujets s'y lisaient trois
+ * fois. Celle-ci ne lit que le point survolé, une fois : ses sujets, puis la
+ * case qu'il occupe sur les deux axes.
+ */
+export function InfobulleDeBulle({
+  active,
+  payload,
+  axeX,
+  axeY,
+}: {
+  active?: boolean
+  payload?: ReadonlyArray<{ readonly payload?: unknown }>
+  axeX: { libellé: string; crans: readonly string[] }
+  axeY: { libellé: string; crans: readonly string[] }
+}) {
+  const bulle = payload?.[0]?.payload as Bulle | undefined
+  if (!active || !bulle) return null
+  return (
+    <div className="grid min-w-[8rem] max-w-xs items-start gap-1 rounded-douce border border-gris-ligne bg-blanc px-3 py-2 font-mono text-label text-encre">
+      <span className="font-medium">{bulle.libellé}</span>
+      <span className="text-ardoise">
+        {axeX.libellé} {axeX.crans[bulle.x - 1] ?? ''} · {axeY.libellé} {axeY.crans[bulle.y - 1] ?? ''}
+      </span>
+    </div>
   )
 }
 
