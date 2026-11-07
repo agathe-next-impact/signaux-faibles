@@ -1145,8 +1145,11 @@ opérateur ni aperçu ; le proxy ouvre les trois slugs à l'adresse exacte et en
 organisation fictive » et un pied de rail sans abonnement, resynchronisation ni déconnexion ;
 « Mon abonnement » et « Vos recommandations » répondent 404, les actions de lecteurs et
 d'abonnement refusent le geste comme une visite opérateur. `tests/architecture.test.ts` tient
-le seul endroit qui accorde cet accès. « Exemples » donne, par onglet, le lien vers l'espace et
-la liste de ses lettres, chacune vers sa page dans l'espace.
+le seul endroit qui accorde cet accès. « Exemples » est, depuis le même jour à la demande de
+l'opératrice, **trois cartouches en lignes**, une par organisation, chacune sur deux colonnes :
+l'accès à l'espace de démonstration et l'accès à sa dernière lettre, lue dans cet espace ; les
+onglets tableau de bord et lettre de la page sont retirés, et `components/demonstration.tsx`
+(tableau de bord en accordéons, lettre) supprimé avec eux.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi

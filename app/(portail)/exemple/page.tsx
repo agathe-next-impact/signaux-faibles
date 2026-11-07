@@ -1,66 +1,74 @@
 import type { Metadata } from 'next'
-import { LettreDeDémonstration, TableauDeBordDeDémonstration } from '@/components/demonstration'
-import { Onglets } from '@/components/onglets'
-import { BoutonDémo, CoquilleVitrine, OuvertureVitrine } from '@/components/vitrine'
 import Link from 'next/link'
-import { LienFlèche } from '@/components/coquille'
+import { BoutonDémo, CoquilleVitrine, OuvertureVitrine } from '@/components/vitrine'
 import { cléDeCloisonnementDeDémonstration, SLUGS_DE_DÉMONSTRATION } from '@/lib/domaine/demonstration'
-import { DÉMONSTRATIONS } from '@/lib/vitrine/demonstrations'
+import { DÉMONSTRATIONS, type Démonstration } from '@/lib/vitrine/demonstrations'
 import { éditionsDeDémonstration } from '@/lib/vitrine/espace-demonstration'
 
 export const metadata: Metadata = {
   title: 'Exemples — signauxfaibles',
   description:
-    'Le tableau de bord et la lettre de la semaine pour trois organisations fictives : un cabinet de conseil, une PME industrielle et une entreprise de l’ESS.',
+    'Trois organisations fictives, un cabinet de conseil, une PME industrielle et une entreprise de l’ESS : leur espace client ouvert en lecture seule et leur dernière lettre.',
   robots: { index: true, follow: true },
 }
 
 /**
- * « Exemples » (24 octobre 2026) : une seule page, un onglet par profil de
- * client (cabinet de conseil, PME, entreprise de l'ESS), et dans chacun deux
- * vues, le tableau de bord et la lettre. Les trois organisations sont fictives
- * (`lib/vitrine/demonstrations.ts`) ; la page ne lit ni Notion ni Postgres.
- * Ouverte par le proxy à l'adresse exacte (`PUBLICS_EXACTS`).
- *
- * Depuis le 7 novembre 2026, chaque onglet mène à l'**espace de démonstration**
- * de son organisation (`/lisiere-conseil`, `/tolmen-mecanique`,
- * `/atelier-passerelle`) : le vrai espace client, ouvert sans identifiant, en
- * lecture seule, sur les lettres fictives de `lib/vitrine/lettres-demonstration.ts`,
- * dont la liste est donnée ici, chacune vers sa page dans l'espace.
+ * « Exemples » (24 octobre 2026 ; refonte du 7 novembre 2026, à la demande de
+ * l'opératrice) : trois cartouches en lignes, une par organisation fictive
+ * (`lib/vitrine/demonstrations.ts`), chacune sur deux colonnes : l'accès à
+ * l'**espace de démonstration** (`/lisiere-conseil`, `/tolmen-mecanique`,
+ * `/atelier-passerelle`, le vrai espace client ouvert sans identifiant, en
+ * lecture seule) et l'accès à la **dernière lettre**, lue dans ce même espace.
+ * Les éditions viennent de la source que l'espace sert (`éditionsDeDémonstration`).
+ * La page ne lit ni Notion ni Postgres ; ouverte par le proxy à l'adresse
+ * exacte (`PUBLICS_EXACTS`). Les onglets tableau de bord et lettre d'avant
+ * sont retirés : l'espace montre les deux.
  */
 const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
 
-/**
- * Le lien vers l'espace de démonstration et la liste de ses lettres. Les
- * éditions viennent de la même source que l'espace (`éditionsDeDémonstration`) :
- * une lettre listée ici est une lettre que l'espace sert.
- */
-function EspaceDeDémonstration({ démonstration }: { démonstration: (typeof DÉMONSTRATIONS)[number] }) {
+/** Un bouton d'accès de cartouche : filet encre, angles droits comme les boutons de la vitrine ; le primaire de la page reste dans l'ouverture. */
+function BoutonDAccès({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="self-start border border-encre px-4 py-2 font-medium text-encre hover:bg-fond-ardoise">
+      {children}
+    </Link>
+  )
+}
+
+function Cartouche({ démonstration }: { démonstration: Démonstration }) {
   const slug = SLUGS_DE_DÉMONSTRATION[démonstration.clé]
   const éditions = éditionsDeDémonstration(cléDeCloisonnementDeDémonstration(démonstration.clé))
+  const dernière = éditions[0]
   return (
-    <div className="flex flex-col gap-4 border border-gris-ligne bg-blanc p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <div className="flex flex-col gap-1">
-          <h3 className="font-titre text-h3 font-semibold text-encre">L’espace de {démonstration.organisation}</h3>
-          <p className="text-ardoise">
+    <article id={démonstration.clé} className="flex scroll-mt-24 flex-col border border-gris-ligne bg-blanc">
+      <div className="flex flex-col gap-1 border-b border-gris-ligne p-6">
+        <p className="label-mono text-ardoise">{démonstration.onglet} · organisation fictive</p>
+        <h2 className="font-titre text-h2 font-bold text-encre">{démonstration.organisation}</h2>
+        <p className="max-w-3xl text-ardoise">{démonstration.portrait}</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2">
+        <div className="flex flex-col gap-3 border-b border-gris-ligne p-6 lg:border-r lg:border-b-0">
+          <p className="label-mono text-ardoise">L’espace client</p>
+          <p className="text-encre">
             Le même espace que celui de nos clients, ouvert sans identifiant, en lecture seule : vue d’ensemble, axes, acteurs,
             archives, sur {éditions.length} lettres.
           </p>
+          <BoutonDAccès href={`/${slug}`}>Ouvrir l’espace de démonstration</BoutonDAccès>
         </div>
-        <LienFlèche href={`/${slug}`}>Ouvrir l’espace de démonstration</LienFlèche>
+        <div className="flex flex-col gap-3 p-6">
+          <p className="label-mono text-ardoise">La dernière lettre</p>
+          {dernière ? (
+            <>
+              <p className="label-mono text-encre">{DATE.format(new Date(dernière.dateÉdition))}</p>
+              <p className="text-encre">
+                {dernière.titre}, {dernière.périodeCouverte}.
+              </p>
+              <BoutonDAccès href={`/${slug}/lettres/${dernière.pageId}`}>Lire la dernière lettre</BoutonDAccès>
+            </>
+          ) : null}
+        </div>
       </div>
-      <ul className="flex flex-col gap-1 border-t border-gris-ligne pt-4">
-        {éditions.map((édition) => (
-          <li key={édition.pageId} className="flex flex-wrap items-baseline gap-x-3">
-            <span className="label-mono text-ardoise">{DATE.format(new Date(édition.dateÉdition))}</span>
-            <Link href={`/${slug}/lettres/${édition.pageId}`} className="text-encre underline decoration-gris-ligne underline-offset-2">
-              {édition.titre}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+    </article>
   )
 }
 
@@ -70,46 +78,15 @@ export default function Exemples() {
       <OuvertureVitrine
         surtitre="Exemples"
         titre="Ce que vous recevez chaque semaine."
-        chapeau="Le tableau de bord et la lettre de trois organisations, une par profil de client. Elles sont fictives, comme leurs concurrents et les faits relevés ; la forme est exactement celle que reçoivent nos clients."
+        chapeau="Trois organisations, une par profil de client, avec leur espace et leur dernière lettre. Elles sont fictives, comme leurs concurrents et les faits relevés ; la forme est exactement celle que reçoivent nos clients."
       >
         <BoutonDémo libellé="Demander la vôtre" />
       </OuvertureVitrine>
 
-      <section className="flex flex-col gap-6 border-b border-gris-ligne px-6 py-12 lg:px-12">
-        <Onglets
-          étiquette="Profils de client"
-          ancre
-          panneaux={DÉMONSTRATIONS.map((démonstration) => ({
-            clé: démonstration.clé,
-            libellé: démonstration.onglet,
-            contenu: (
-              <div className="flex flex-col gap-6">
-                <div className="flex max-w-3xl flex-col gap-1">
-                  <h2 className="font-titre text-h2 font-bold text-encre">{démonstration.organisation}</h2>
-                  <p className="text-ardoise">{démonstration.portrait}</p>
-                  <p className="label-mono text-ardoise">organisation fictive</p>
-                </div>
-                <EspaceDeDémonstration démonstration={démonstration} />
-                <Onglets
-                  étiquette={`Vues de ${démonstration.organisation}`}
-                  taille="petite"
-                  panneaux={[
-                    {
-                      clé: 'tableau',
-                      libellé: 'Tableau de bord',
-                      contenu: <TableauDeBordDeDémonstration démonstration={démonstration} />,
-                    },
-                    {
-                      clé: 'lettre',
-                      libellé: 'Lettre de la semaine',
-                      contenu: <LettreDeDémonstration démonstration={démonstration} />,
-                    },
-                  ]}
-                />
-              </div>
-            ),
-          }))}
-        />
+      <section aria-label="Organisations d’exemple" className="flex flex-col gap-6 border-b border-gris-ligne px-6 py-12 lg:px-12">
+        {DÉMONSTRATIONS.map((démonstration) => (
+          <Cartouche key={démonstration.clé} démonstration={démonstration} />
+        ))}
       </section>
     </CoquilleVitrine>
   )
