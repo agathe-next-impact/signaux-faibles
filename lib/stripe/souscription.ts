@@ -27,6 +27,12 @@ export type ConfigurationStripe = {
   readonly cléSecrète: string
   /** `fondateur` est nul tant que `STRIPE_PRIX_FONDATEUR` n'est pas posée : la formule est alors indisponible, le reste non. */
   readonly prix: { readonly mensuelle: string; readonly annuelle: string; readonly fondateur: string | null }
+  /**
+   * Le prix unique des frais de mise en place (`STRIPE_PRIX_MISE_EN_PLACE`,
+   * 7 novembre 2026), nul tant qu'il n'est pas posé : une souscription qui les
+   * doit est alors refusée, jamais ouverte sans eux.
+   */
+  readonly miseEnPlace: string | null
   /** Taux de TVA fixe (`txr_…`), appliqué à l'abonnement. Absent : aucune taxe ajoutée par le portail. */
   readonly tauxDeTva: string | null
   readonly portailUrl: string
@@ -49,6 +55,7 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   const annuel = vide(source['STRIPE_PRIX_ANNUEL'])
   // L'ancien nom reste lu tant que la variable n'est pas renommée chez l'hébergeur.
   const fondateur = vide(source['STRIPE_PRIX_FONDATEUR']) ?? vide(source['STRIPE_PRIX_EARLY_ADOPTER'])
+  const miseEnPlace = vide(source['STRIPE_PRIX_MISE_EN_PLACE'])
   const taux = vide(source['STRIPE_TAUX_TVA'])
   const portailUrl = vide(source['PORTAIL_URL'])
 
@@ -58,6 +65,7 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   if (!mensuel || !mensuel.startsWith('price_')) manques.push('STRIPE_PRIX_MENSUEL')
   if (!annuel || !annuel.startsWith('price_')) manques.push('STRIPE_PRIX_ANNUEL')
   if (fondateur && !fondateur.startsWith('price_')) manques.push('STRIPE_PRIX_FONDATEUR')
+  if (miseEnPlace && !miseEnPlace.startsWith('price_')) manques.push('STRIPE_PRIX_MISE_EN_PLACE')
   if (taux && !taux.startsWith('txr_')) manques.push('STRIPE_TAUX_TVA')
   if (!portailUrl) manques.push('PORTAIL_URL')
   if (manques.length > 0) {
@@ -68,6 +76,7 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   return {
     cléSecrète: cléSecrète!,
     prix: { mensuelle: mensuel!, annuelle: annuel!, fondateur },
+    miseEnPlace,
     tauxDeTva: taux,
     portailUrl: portailUrl!.replace(/\/+$/, ''),
   }
@@ -113,6 +122,11 @@ export function clientStripe(configuration: ConfigurationStripe): Stripe {
  * lecteur pré-remplit le formulaire, qu'il peut changer pour celle de sa
  * comptabilité.
  *
+ * Les frais de mise en place, quand ils sont dus (`fraisDeMiseEnPlaceDus`),
+ * sont une seconde ligne, au prix unique : Stripe les porte sur la première
+ * facture de l'abonnement, et sur elle seule. Le taux de TVA y est posé
+ * ligne à ligne, comme sur l'abonnement.
+ *
  * Le numéro de TVA intracommunautaire et l'adresse de facturation sont
  * demandés : ce sont des mentions obligatoires d'une facture entre
  * professionnels.
@@ -124,9 +138,22 @@ export function paramètresDePaiement(entrée: {
   readonly slug: string
   readonly clientStripe: string | null
   readonly email: string | null
+  /** Vrai : la ligne des frais de mise en place s'ajoute ; lève si leur prix n'est pas posé. */
+  readonly fraisDeMiseEnPlace: boolean
 }): Stripe.Checkout.SessionCreateParams {
   const { configuration, formule, organisationId, slug } = entrée
   const métadonnées = { organisation_id: organisationId, slug }
+  if (entrée.fraisDeMiseEnPlace && !configuration.miseEnPlace) {
+    throw new Error('frais de mise en place dus sans prix Stripe configuré')
+  }
+  const lignes: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: prixDe(configuration, formule), quantity: 1 }]
+  if (entrée.fraisDeMiseEnPlace && configuration.miseEnPlace) {
+    lignes.push({
+      price: configuration.miseEnPlace,
+      quantity: 1,
+      ...(configuration.tauxDeTva ? { tax_rates: [configuration.tauxDeTva] } : {}),
+    })
+  }
   const retour = `${configuration.portailUrl}/${slug}`
 
   return {
@@ -138,12 +165,12 @@ export function paramètresDePaiement(entrée: {
     // à chaque session, rend le paiement indépendant de ce réglage du compte.
     managed_payments: { enabled: false },
     locale: 'fr',
-    line_items: [{ price: prixDe(configuration, formule), quantity: 1 }],
+    line_items: lignes,
     subscription_data: {
       metadata: métadonnées,
       ...(configuration.tauxDeTva ? { default_tax_rates: [configuration.tauxDeTva] } : {}),
     },
-    metadata: métadonnées,
+    metadata: { ...métadonnées, frais_de_mise_en_place: entrée.fraisDeMiseEnPlace ? 'oui' : 'non' },
     client_reference_id: organisationId,
     ...(entrée.clientStripe
       ? {

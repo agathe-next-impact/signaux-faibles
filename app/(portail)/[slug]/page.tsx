@@ -46,7 +46,7 @@ export default async function VueDEnsemble({
   searchParams: Promise<{ abonnement?: string | string[] }>
 }) {
   const { slug } = await params
-  const { accès, lecture, étape, offre } = await exigerLecture(slug)
+  const { accès, lecture, étape, offre, fraisDeMiseEnPlace } = await exigerLecture(slug)
   const brut = (await searchParams).abonnement
   const retour = typeof brut === 'string' ? brut : undefined
   const essai = étape?.étape === 'essai' ? étape : null
@@ -61,6 +61,7 @@ export default async function VueDEnsemble({
         suspenduAlaMain={étape?.étape === 'suspendue' && étape.manuelle}
         retour={retour}
         offre={offre ?? 'standard'}
+        fraisDeMiseEnPlace={fraisDeMiseEnPlace}
       />
     )
   }
@@ -373,7 +374,13 @@ export default async function VueDEnsemble({
       )}
 
       {essai ? (
-        <OffreDEssai slug={accès.slug} parution={essai.parution} parutions={essai.parutions} offre={offre ?? 'standard'} />
+        <OffreDEssai
+          slug={accès.slug}
+          parution={essai.parution}
+          parutions={essai.parutions}
+          offre={offre ?? 'standard'}
+          fraisDeMiseEnPlace={fraisDeMiseEnPlace}
+        />
       ) : null}
     </>
   )

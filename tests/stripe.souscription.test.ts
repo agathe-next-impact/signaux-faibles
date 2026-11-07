@@ -26,6 +26,7 @@ describe('configurationStripe', () => {
     expect(configurationStripe(ENV)).toEqual({
       cléSecrète: 'sk_test_abc',
       prix: { mensuelle: 'price_mensuel', annuelle: 'price_annuel', fondateur: null },
+      miseEnPlace: null,
       tauxDeTva: 'txr_20',
       portailUrl: 'https://www.signauxfaibles.io',
     })
@@ -44,6 +45,12 @@ describe('configurationStripe', () => {
     const journal = avertir.mock.calls.flat().join(' ')
     expect(journal).toContain('STRIPE_CLE_SECRETE')
     expect(journal).not.toContain('pk_test_publique')
+  })
+
+  it('lit le prix des frais de mise en place, facultatif mais bien formé', () => {
+    expect(configurationStripe({ ...ENV, STRIPE_PRIX_MISE_EN_PLACE: 'price_mep' })?.miseEnPlace).toBe('price_mep')
+    expect(configurationStripe({ ...ENV, STRIPE_PRIX_MISE_EN_PLACE: '' })?.miseEnPlace).toBeNull()
+    expect(configurationStripe({ ...ENV, STRIPE_PRIX_MISE_EN_PLACE: 'prod_mep' })).toBeNull()
   })
 
   it('accepte une clé restreinte', () => {
@@ -65,7 +72,7 @@ describe('paramètresDePaiement', () => {
   const ORG = '0b8f3c1e-1111-4222-8333-944445555666'
 
   it('pose l’organisation dans les métadonnées de l’abonnement, celles que lit le webhook', () => {
-    const p = paramètresDePaiement({ configuration, formule: 'annuelle', organisationId: ORG, slug: 'konica', clientStripe: null, email: 'a@b.fr' })
+    const p = paramètresDePaiement({ configuration, formule: 'annuelle', organisationId: ORG, slug: 'konica', clientStripe: null, email: 'a@b.fr', fraisDeMiseEnPlace: false })
     expect(p.mode).toBe('subscription')
     expect(p.managed_payments).toEqual({ enabled: false })
     expect(p.subscription_data?.metadata).toEqual({ organisation_id: ORG, slug: 'konica' })
@@ -78,10 +85,49 @@ describe('paramètresDePaiement', () => {
     expect(p.billing_address_collection).toBe('required')
     expect(p.success_url).toBe('https://www.signauxfaibles.io/konica?abonnement=merci')
     expect(p.cancel_url).toBe('https://www.signauxfaibles.io/konica')
+    expect(p.metadata).toEqual({ organisation_id: ORG, slug: 'konica', frais_de_mise_en_place: 'non' })
+  })
+
+  it('ajoute les frais de mise en place en seconde ligne, avec la TVA, quand ils sont dus', () => {
+    const p = paramètresDePaiement({
+      configuration: { ...configuration, miseEnPlace: 'price_mep' },
+      formule: 'mensuelle',
+      organisationId: ORG,
+      slug: 'k',
+      clientStripe: null,
+      email: null,
+      fraisDeMiseEnPlace: true,
+    })
+    expect(p.line_items).toEqual([
+      { price: 'price_mensuel', quantity: 1 },
+      { price: 'price_mep', quantity: 1, tax_rates: ['txr_20'] },
+    ])
+    expect(p.metadata).toEqual({ organisation_id: ORG, slug: 'k', frais_de_mise_en_place: 'oui' })
+    // Le webhook ne lit que les métadonnées de l'abonnement : elles ne changent pas.
+    expect(p.subscription_data?.metadata).toEqual({ organisation_id: ORG, slug: 'k' })
+  })
+
+  it('n’ajoute pas les frais quand ils ne sont pas dus, même avec un prix posé', () => {
+    const p = paramètresDePaiement({
+      configuration: { ...configuration, miseEnPlace: 'price_mep' },
+      formule: 'mensuelle',
+      organisationId: ORG,
+      slug: 'k',
+      clientStripe: null,
+      email: null,
+      fraisDeMiseEnPlace: false,
+    })
+    expect(p.line_items).toEqual([{ price: 'price_mensuel', quantity: 1 }])
+  })
+
+  it('refuse des frais dus sans prix posé, plutôt que de les oublier', () => {
+    expect(() =>
+      paramètresDePaiement({ configuration, formule: 'mensuelle', organisationId: ORG, slug: 'k', clientStripe: null, email: null, fraisDeMiseEnPlace: true }),
+    ).toThrow(/mise en place/)
   })
 
   it('réutilise le client Stripe connu, avec la mise à jour exigée pour le numéro de TVA', () => {
-    const p = paramètresDePaiement({ configuration, formule: 'mensuelle', organisationId: ORG, slug: 'k', clientStripe: 'cus_1', email: 'a@b.fr' })
+    const p = paramètresDePaiement({ configuration, formule: 'mensuelle', organisationId: ORG, slug: 'k', clientStripe: 'cus_1', email: 'a@b.fr', fraisDeMiseEnPlace: false })
     expect(p.customer).toBe('cus_1')
     expect(p.customer_email).toBeUndefined()
     expect(p.customer_update).toEqual({ address: 'auto', name: 'auto' })
@@ -89,7 +135,7 @@ describe('paramètresDePaiement', () => {
   })
 
   it('sans taux de TVA, n’en ajoute aucun', () => {
-    const p = paramètresDePaiement({ configuration: { ...configuration, tauxDeTva: null }, formule: 'mensuelle', organisationId: ORG, slug: 'k', clientStripe: null, email: null })
+    const p = paramètresDePaiement({ configuration: { ...configuration, tauxDeTva: null }, formule: 'mensuelle', organisationId: ORG, slug: 'k', clientStripe: null, email: null, fraisDeMiseEnPlace: false })
     expect(p.subscription_data).toEqual({ metadata: { organisation_id: ORG, slug: 'k' } })
     expect(p.customer_email).toBeUndefined()
   })

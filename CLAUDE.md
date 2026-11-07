@@ -1031,7 +1031,14 @@ puis de 790 € HT une fois (`FRAIS_DE_MISE_EN_PLACE_HT`), montants et date écr
 dans `lib/domaine/offre.ts` seulement ; `/tarifs` porte les données structurées de
 l'offre (schema.org). Le prix facturé reste celui des prix Stripe : un prix
 mensuel à 259 € HT est à créer et à poser dans `STRIPE_PRIX_MENSUEL`, et les frais
-de mise en place ne sont pas encore facturés. Ce sont les seules
+de mise en place sont facturés depuis le 7 novembre 2026 par la page de
+paiement Stripe, en seconde ligne sur le prix unique `STRIPE_PRIX_MISE_EN_PLACE`
+(790 € HT, à créer), portée par la première facture, quand `fraisDeMiseEnPlaceDus`
+(`lib/domaine/offre.ts`) le dit : offre `standard`, organisation créée en base
+après `FIN_DU_TARIF_EARLY_ADOPTER` (jour de Paris), jamais abonnée auparavant ;
+dus sans prix posé, la souscription est refusée (« indisponible ») plutôt que de
+les oublier, et la formule les annonce (`ChoixDeFormule`, `fraisDeMiseEnPlace`
+de `lectureDeLEspace`). Ce sont les seules
 pages indexables (`robots: index`). Le proxy les ouvre à l'adresse exacte, et
 elles masquent un slug identique, qu'aucune organisation ne doit porter. Un seul
 bouton primaire par page, « Demander une démo », vers `/demo` ; « Se connecter »,

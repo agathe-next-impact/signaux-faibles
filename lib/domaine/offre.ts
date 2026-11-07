@@ -15,7 +15,8 @@ export const HEURES_DE_PRISE_EN_MAIN = 2
  * Les frais de mise en place (6 novembre 2026) : **offerts aux early
  * adopters**, c'est-à-dire à toute inscription jusqu'à
  * `FIN_DU_TARIF_EARLY_ADOPTER` incluse, puis facturés une fois à ce montant.
- * Annoncés seulement : rien n'est encore facturé par Stripe à ce titre.
+ * Facturés depuis le 7 novembre 2026 par la page de paiement Stripe, sur le
+ * prix unique `STRIPE_PRIX_MISE_EN_PLACE`, quand `fraisDeMiseEnPlaceDus` le dit.
  */
 export const FRAIS_DE_MISE_EN_PLACE_HT = 790
 /**
@@ -27,6 +28,31 @@ export const FRAIS_DE_MISE_EN_PLACE_HT = 790
  * l'opératrice à une organisation nommée et jamais affiché.
  */
 export const FIN_DU_TARIF_EARLY_ADOPTER = '2026-12-31'
+
+/** Une date, en heure de Paris, au format `AAAA-MM-JJ`. */
+function jourÀParis(date: Date): string {
+  return new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+}
+
+/**
+ * Les frais de mise en place sont-ils dus à la souscription (7 novembre 2026) ?
+ *
+ * Seulement pour l'offre `standard` : un accès offert ne paie rien, un tarif
+ * fondateur ne paie que son tarif. Seulement pour une organisation inscrite
+ * **après** `FIN_DU_TARIF_EARLY_ADOPTER`, jour compté en heure de Paris : la
+ * date d'inscription est celle de son entrée dans le portail (`créée_le`), qui
+ * précède l'essai et ne bouge plus. Et jamais pour une organisation qui a déjà
+ * eu un abonnement Stripe, même résilié : la mise en place a eu lieu, une
+ * reprise ne la refacture pas.
+ */
+export function fraisDeMiseEnPlaceDus(entrée: {
+  readonly offre: 'standard' | 'fondateur' | 'gratuite'
+  readonly inscriteLe: Date
+  readonly déjàAbonnée: boolean
+}): boolean {
+  if (entrée.offre !== 'standard' || entrée.déjàAbonnée) return false
+  return jourÀParis(entrée.inscriteLe) > FIN_DU_TARIF_EARLY_ADOPTER
+}
 
 /** La date de fin de la période early adopter, à la française : « 31 décembre 2026 ». */
 export function finDuTarifEarlyAdopter(): string {

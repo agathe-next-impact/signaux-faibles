@@ -4,6 +4,7 @@ import {
   FIN_DU_TARIF_EARLY_ADOPTER,
   finDuTarifEarlyAdopter,
   FRAIS_DE_MISE_EN_PLACE_HT,
+  fraisDeMiseEnPlaceDus,
   HEURES_DE_PRISE_EN_MAIN,
   PRIX_FONDATEUR_HT,
   PRIX_MENSUEL_HT,
@@ -44,5 +45,24 @@ describe('les montants de l’offre', () => {
 
   it('garde le tarif fondateur à 29 € HT, distinct des prix publics', () => {
     expect(PRIX_FONDATEUR_HT).toBe(29)
+  })
+})
+
+describe('fraisDeMiseEnPlaceDus', () => {
+  const après = new Date('2027-01-02T09:00:00Z')
+  it('les doit à une organisation standard inscrite après le 31 décembre 2026, jamais abonnée', () => {
+    expect(fraisDeMiseEnPlaceDus({ offre: 'standard', inscriteLe: après, déjàAbonnée: false })).toBe(true)
+  })
+  it('les offre à toute inscription jusqu’au 31 décembre inclus, en heure de Paris', () => {
+    expect(fraisDeMiseEnPlaceDus({ offre: 'standard', inscriteLe: new Date('2026-11-07T09:00:00Z'), déjàAbonnée: false })).toBe(false)
+    // 22 h 59 UTC le 31 décembre : 23 h 59 à Paris, encore offerts.
+    expect(fraisDeMiseEnPlaceDus({ offre: 'standard', inscriteLe: new Date('2026-12-31T22:59:00Z'), déjàAbonnée: false })).toBe(false)
+    // 23 h 30 UTC le 31 décembre : le 1er janvier à Paris, dus.
+    expect(fraisDeMiseEnPlaceDus({ offre: 'standard', inscriteLe: new Date('2026-12-31T23:30:00Z'), déjàAbonnée: false })).toBe(true)
+  })
+  it('ne les doit ni à un tarif fondateur, ni à un accès offert, ni à une reprise d’abonnement', () => {
+    expect(fraisDeMiseEnPlaceDus({ offre: 'fondateur', inscriteLe: après, déjàAbonnée: false })).toBe(false)
+    expect(fraisDeMiseEnPlaceDus({ offre: 'gratuite', inscriteLe: après, déjàAbonnée: false })).toBe(false)
+    expect(fraisDeMiseEnPlaceDus({ offre: 'standard', inscriteLe: après, déjàAbonnée: true })).toBe(false)
   })
 })

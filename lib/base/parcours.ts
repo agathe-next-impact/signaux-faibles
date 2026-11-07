@@ -23,7 +23,7 @@ import type { EntréeDuParcours } from '@/lib/domaine/parcours'
 export async function lireEntréeDuParcours(
   registreNotion: string,
   db: Base = base(),
-): Promise<Omit<EntréeDuParcours, 'aujourdHui'> | null> {
+): Promise<(Omit<EntréeDuParcours, 'aujourdHui'> & { readonly inscriteLe: Date }) | null> {
   if (!/^[0-9a-f]{32}$/.test(registreNotion)) return null
 
   return protéger('lecture du parcours', async () => {
@@ -34,6 +34,7 @@ export async function lireEntréeDuParcours(
         activéeLe: organisations.activéeLe,
         offre: organisations.offre,
         parutionsDEssai: organisations.parutionsDEssai,
+        crééeLe: organisations.crééeLe,
       })
       .from(organisations)
       .where(eq(organisations.registreNotion, registreNotion))
@@ -55,6 +56,8 @@ export async function lireEntréeDuParcours(
         parutionsDEssai: organisation.parutionsDEssai,
       },
       abonnement,
+      // L'entrée dans le portail, pour les frais de mise en place ; hors du parcours lui-même.
+      inscriteLe: organisation.crééeLe,
     }
   })
 }

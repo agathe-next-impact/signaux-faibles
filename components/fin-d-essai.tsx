@@ -22,11 +22,14 @@ export function FinDEssai({
   suspenduAlaMain,
   retour,
   offre = 'standard',
+  fraisDeMiseEnPlace = false,
 }: {
   slug: string
   lecture: 'essentiel' | 'aucune'
   suspenduAlaMain: boolean
   offre?: Offre
+  /** Les frais de mise en place sont dus à la souscription : la formule les annonce. */
+  fraisDeMiseEnPlace?: boolean
   /** `?abonnement=` : retour de la page de paiement, ou refus. */
   retour?: string | undefined
 }) {
@@ -78,7 +81,7 @@ export function FinDEssai({
           <p className="text-ardoise">
             L’abonnement couvre votre organisation, ses deux veilles et trois lecteurs.
           </p>
-          <ChoixDeFormule slug={slug} offre={offre} />
+          <ChoixDeFormule slug={slug} offre={offre} fraisDeMiseEnPlace={fraisDeMiseEnPlace} />
           <p className="text-ardoise">
             Paiement sécurisé par Stripe, facture à chaque échéance. Pour un bon de commande ou
             un virement, écrivez à{' '}
