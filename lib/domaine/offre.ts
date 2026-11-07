@@ -5,10 +5,13 @@
  * recopierait finirait par afficher un ancien prix.
  *
  * Depuis le 6 novembre 2026 : **259 € HT par mois**, par organisation, qui
- * comprend la création du référentiel et deux heures de prise en main. Une
- * seule formule publique, mensuelle : l'annuelle n'est plus proposée.
+ * comprend la création du référentiel et deux heures de prise en main. La
+ * formule annuelle, retirée le 6 novembre, revient le 7 novembre 2026 (demande
+ * de l'opératrice) : dix mois payés, deux mois offerts.
  */
 export const PRIX_MENSUEL_HT = 259
+/** Dix mois payés : « deux mois offerts », la règle tenue depuis l'offre du 17 octobre. */
+export const PRIX_ANNUEL_HT = PRIX_MENSUEL_HT * 10
 /** La prise en main comprise dans l'abonnement, en heures. */
 export const HEURES_DE_PRISE_EN_MAIN = 2
 /**
@@ -86,6 +89,11 @@ export function enEuros(montant: number): string {
     minimumFractionDigits: Number.isInteger(arrondi) ? 0 : 2,
     maximumFractionDigits: 2,
   })
+}
+
+/** L'annuel ramené au mois : la seule comparaison que le lecteur fait de tête. */
+export function équivalentMensuelDeLAnnuel(): number {
+  return Math.round((PRIX_ANNUEL_HT / 12) * 100) / 100
 }
 
 /** Le montant toutes taxes comprises d'un prix hors taxes. */

@@ -10,6 +10,7 @@ import {
   FRAIS_DE_MISE_EN_PLACE_HT,
   HEURES_DE_PRISE_EN_MAIN,
   LECTEURS_ACTIFS_MAX,
+  PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
@@ -159,7 +160,8 @@ export function AccueilVitrine() {
         <p className="max-w-3xl text-ardoise">
           Une lettre par semaine, l’espace et ses archives, {LECTEURS_ACTIFS_MAX} lecteurs, la
           création de votre référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main : soit{' '}
-          {enEuros(prixParLecteur())} € HT par lecteur et par mois. Sans engagement. Frais de mise en
+          {enEuros(prixParLecteur())} € HT par lecteur et par mois. Sans engagement en formule
+          mensuelle, deux mois offerts en formule annuelle ({enEuros(PRIX_ANNUEL_HT)} € HT par an). Frais de mise en
           place offerts aux early adopters, pour toute inscription jusqu’au{' '}
           {finDuTarifEarlyAdopter()} ; ensuite, {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, une seule
           fois.

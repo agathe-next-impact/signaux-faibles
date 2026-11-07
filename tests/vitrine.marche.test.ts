@@ -40,7 +40,8 @@ describe('les repères de marché', () => {
 
   it('tiennent « au prix des outils d’alerte haut de gamme, loin sous les plateformes »', () => {
     const nous = notreFourchette()
-    expect(nous).toEqual({ min: PRIX_MENSUEL_HT, max: PRIX_MENSUEL_HT })
+    // L'annuel ramené au mois (dix mois payés), puis le mensuel.
+    expect(nous).toEqual({ min: 215.83, max: PRIX_MENSUEL_HT })
     expect(nous.min).toBeGreaterThanOrEqual(famille('outils').min)
     expect(nous.max).toBeLessThanOrEqual(famille('outils').max)
     expect(famille('plateformes').min / PRIX_MENSUEL_HT).toBeGreaterThanOrEqual(10)

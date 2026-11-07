@@ -7,8 +7,10 @@ import {
   fraisDeMiseEnPlaceDus,
   HEURES_DE_PRISE_EN_MAIN,
   PRIX_FONDATEUR_HT,
+  PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
   prixTTC,
+  équivalentMensuelDeLAnnuel,
 } from '@/lib/domaine/offre'
 
 /**
@@ -24,6 +26,13 @@ describe('les montants de l’offre', () => {
   it('fixe l’abonnement à 259 € HT par mois, référentiel et deux heures de prise en main compris', () => {
     expect(PRIX_MENSUEL_HT).toBe(259)
     expect(HEURES_DE_PRISE_EN_MAIN).toBe(2)
+  })
+
+  it('fixe l’annuel à dix mois payés, 2 590 € HT, soit 215,83 € HT par mois', () => {
+    expect(PRIX_ANNUEL_HT).toBe(2590)
+    expect(sansEspaceFine(enEuros(PRIX_ANNUEL_HT))).toBe('2 590')
+    expect(enEuros(équivalentMensuelDeLAnnuel())).toBe('215,83')
+    expect(prixTTC(PRIX_ANNUEL_HT)).toBe(3108)
   })
 
   it('donne les prix toutes taxes comprises', () => {

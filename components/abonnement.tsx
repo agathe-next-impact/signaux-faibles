@@ -1,6 +1,14 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
-import { enEuros, FRAIS_DE_MISE_EN_PLACE_HT, HEURES_DE_PRISE_EN_MAIN, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import {
+  enEuros,
+  FRAIS_DE_MISE_EN_PLACE_HT,
+  HEURES_DE_PRISE_EN_MAIN,
+  PRIX_ANNUEL_HT,
+  PRIX_FONDATEUR_HT,
+  PRIX_MENSUEL_HT,
+  équivalentMensuelDeLAnnuel,
+} from '@/lib/domaine/offre'
 import type { Offre } from '@/lib/domaine/parcours'
 
 /**
@@ -26,9 +34,10 @@ export function LienMonAbonnement({ slug }: { slug: string }) {
  * slug voyage en champ caché et y est vérifié, et les boutons fonctionnent sans
  * JavaScript.
  *
- * Une seule formule depuis le 6 novembre 2026, la mensuelle, sur une grille à
- * angle droit comme le reste de l'espace. L'annuelle n'est plus proposée ; un
- * abonnement annuel en cours se gère dans l'espace de facturation.
+ * Deux formules côte à côte, sur une grille à angle droit comme le reste de
+ * l'espace (l'annuelle, retirée le 6 novembre 2026, revient le 7). L'annuelle
+ * porte son équivalent mensuel : c'est la seule comparaison que le lecteur
+ * fait de tête, autant la faire pour lui.
  *
  * Quand les frais de mise en place sont dus (`fraisDeMiseEnPlaceDus`, une
  * inscription après la période early adopter), la formule les annonce : la page
@@ -59,6 +68,9 @@ export function ChoixDeFormule({
       </div>
     )
   }
+  const frais = fraisDeMiseEnPlace
+    ? ` Frais de mise en place de ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une fois avec la première échéance.`
+    : ''
   return (
     <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
       <Formule
@@ -66,11 +78,14 @@ export function ChoixDeFormule({
         formule="mensuelle"
         intitulé="Mensuel"
         prix={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois`}
-        détail={`Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.${
-          fraisDeMiseEnPlace
-            ? ` Frais de mise en place de ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une fois avec la première échéance.`
-            : ''
-        } Sans engagement, résiliable à tout moment.`}
+        détail={`Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.${frais} Sans engagement, résiliable à tout moment.`}
+      />
+      <Formule
+        slug={slug}
+        formule="annuelle"
+        intitulé="Annuel"
+        prix={`${enEuros(PRIX_ANNUEL_HT)} € HT par an`}
+        détail={`Soit ${enEuros(équivalentMensuelDeLAnnuel())} € HT par mois, deux mois offerts. Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.${frais}`}
       />
     </div>
   )

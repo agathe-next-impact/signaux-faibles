@@ -1025,7 +1025,8 @@ lettre de `LETTRE_UNIQUE` et `ESSENTIEL_LIGNES_MAX`, l'essai de
 `PARUTIONS_D_ESSAI` ; le tarif fondateur à 29 € n'y figure pas. Depuis le 6 novembre 2026, l'offre
 publique est **259 € HT par mois** (`PRIX_MENSUEL_HT`), création du référentiel et
 deux heures de prise en main comprises (`HEURES_DE_PRISE_EN_MAIN`), en formule
-mensuelle seule ; les **frais de mise en place** sont offerts aux early adopters,
+mensuelle ou annuelle (**2 590 € HT par an**, dix mois payés, `PRIX_ANNUEL_HT`,
+revenue le 7 novembre 2026 à la demande de l'opératrice, sur `STRIPE_PRIX_ANNUEL`) ; les **frais de mise en place** sont offerts aux early adopters,
 pour toute inscription jusqu'au `FIN_DU_TARIF_EARLY_ADOPTER` (31 décembre 2026),
 puis de 790 € HT une fois (`FRAIS_DE_MISE_EN_PLACE_HT`), montants et date écrits
 dans `lib/domaine/offre.ts` seulement ; `/tarifs` porte les données structurées de

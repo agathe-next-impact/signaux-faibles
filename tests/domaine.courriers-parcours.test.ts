@@ -42,7 +42,7 @@ describe('composerCourrierDeParcours', () => {
       expect(texte).toContain('https://www.signauxfaibles.io/acme')
       expect(texte).toContain('https://www.signauxfaibles.io/recevoir-mon-lien')
       expect(texte).toContain('259 € HT par mois')
-      expect(texte).not.toContain('par an')
+      expect(texte).toMatch(/2\s590 € HT par an/)
       expect(texte.startsWith('Bonjour Léa,')).toBe(true)
       expect(`${sujet}${texte}`).not.toContain('—')
       expect(sujet).toMatch(/^[A-ZÉ]/u)

@@ -1,4 +1,4 @@
-import { ADRESSE_D_ABONNEMENT, enEuros, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { ADRESSE_D_ABONNEMENT, enEuros, PRIX_ANNUEL_HT, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { dateLongueDeParis, type Offre, type Étape } from '@/lib/domaine/parcours'
 import { composerCourriel, corpsDeParagraphes, dateDuJour, racineDuPortail, type Courriel } from '@/lib/email/gabarit'
 
@@ -76,7 +76,7 @@ export function parutionsEnLettres(parutions: number): string {
 export function prixDeLOffre(offre: Offre): string {
   return offre === 'fondateur'
     ? `${enEuros(PRIX_FONDATEUR_HT)} € HT par mois, tarif fondateur`
-    : `${enEuros(PRIX_MENSUEL_HT)} € HT par mois`
+    : `${enEuros(PRIX_MENSUEL_HT)} € HT par mois, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an`
 }
 
 export function composerCourrierDeParcours(entrée: {

@@ -10,16 +10,18 @@ import {
   FRAIS_DE_MISE_EN_PLACE_HT,
   HEURES_DE_PRISE_EN_MAIN,
   LECTEURS_ACTIFS_MAX,
+  PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
   prixTTC,
   TAUX_DE_TVA,
+  équivalentMensuelDeLAnnuel,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { prixParLecteur } from '@/lib/vitrine/marche'
 
 export const metadata: Metadata = {
   title: 'Tarifs — signauxfaibles',
-  description: `${enEuros(PRIX_MENSUEL_HT)} € HT par mois et par organisation, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Frais de mise en place offerts jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
+  description: `${enEuros(PRIX_MENSUEL_HT)} € HT par mois ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an et par organisation, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Frais de mise en place offerts jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
   robots: { index: true, follow: true },
 }
 
@@ -52,6 +54,20 @@ function donnéesStructurées() {
       },
       {
         '@type': 'Offer',
+        name: `Abonnement annuel, deux mois offerts, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
+        priceCurrency: 'EUR',
+        price: PRIX_ANNUEL_HT,
+        priceSpecification: {
+          '@type': 'UnitPriceSpecification',
+          price: PRIX_ANNUEL_HT,
+          priceCurrency: 'EUR',
+          valueAddedTaxIncluded: false,
+          unitCode: 'ANN',
+          referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'ANN' },
+        },
+      },
+      {
+        '@type': 'Offer',
         name: 'Frais de mise en place, early adopter',
         priceCurrency: 'EUR',
         price: 0,
@@ -74,8 +90,8 @@ function donnéesStructurées() {
 }
 
 /**
- * « Tarifs » (23 octobre 2026, offre revue le 6 novembre 2026) : l'abonnement
- * mensuel, les frais de mise en place et le déroulé de l'essai. Les montants viennent tous de `lib/domaine/offre.ts` ;
+ * « Tarifs » (23 octobre 2026, offre revue le 6 novembre 2026, annuelle
+ * revenue le 7) : les abonnements mensuel et annuel, les frais de mise en place et le déroulé de l'essai. Les montants viennent tous de `lib/domaine/offre.ts` ;
  * le tarif fondateur n'est pas public, il est réservé par l'opératrice à
  * une organisation nommée.
  */
@@ -103,7 +119,7 @@ export default function Tarifs() {
             sont de {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une seule fois.
           </p>
         </Panneau>
-        <Grille colonnes={2} étiquette="L’abonnement et la mise en place">
+        <Grille colonnes={3} étiquette="Les deux formules et la mise en place">
           <Case accent>
             <p className="label-mono text-ardoise">Abonnement mensuel</p>
             <p className="font-titre text-h1 font-bold text-encre">
@@ -113,6 +129,17 @@ export default function Tarifs() {
             <p className="text-ardoise">
               Création du référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Sans
               engagement, résiliable à tout moment.
+            </p>
+          </Case>
+          <Case>
+            <p className="label-mono text-ardoise">Abonnement annuel · deux mois offerts</p>
+            <p className="font-titre text-h1 font-bold text-encre">
+              {enEuros(PRIX_ANNUEL_HT)} € <span className="text-h3 font-semibold">HT par an</span>
+            </p>
+            <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_ANNUEL_HT))} € TTC</p>
+            <p className="text-ardoise">
+              Soit {enEuros(équivalentMensuelDeLAnnuel())} € HT par mois. Création du référentiel et{' '}
+              {HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.
             </p>
           </Case>
           <Case>
