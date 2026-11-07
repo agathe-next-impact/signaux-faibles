@@ -1047,7 +1047,12 @@ jamais la lettre d'un client ni celle de Next Impact. Le tableau de bord est
 calculé comme la vue d'ensemble (`synthétiser`, `fusionnerLesAxes`,
 `acteursEnVue`) et la lettre rendue par `RenduDocument`, sur `markdownVersBlocs`
 (`components/demonstration.tsx`) ; les cases ne mènent nulle part. Le test passe
-chaque lettre au lint de la lettre unique.
+chaque lettre au lint de la lettre unique. **Logos clients** (7 novembre 2026, à la
+demande de l'opératrice) : sous l'ouverture de l'accueil, L'Hermitage, Infralliance
+et Konica Minolta en une rangée immobile, en niveaux de gris, couleurs au survol,
+inversés en mode sombre (`components/bandeau-logos.tsx`, fichiers dans
+`public/logos/`, ouverts par le proxy en préfixe `/logos/` ; le slug `logos` est
+réservé). Afficher un logo suppose l'accord de l'organisation.
 **Valeur, marché et lecture stratégique dans la vitrine (27 octobre 2026)** :
 trois graphiques en HTML, à la charte (`components/graphiques-vitrine.tsx`) : le
 temps de veille interne valorisé à 50 € de l'heure, **hypothèse affichée comme

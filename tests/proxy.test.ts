@@ -24,6 +24,7 @@ describe('proxy', () => {
     expect(proxy(requête('/offre')).status).toBe(200)
     expect(proxy(requête('/exemple')).status).toBe(200)
     expect(proxy(requête('/tarifs')).status).toBe(200)
+    expect(proxy(requête('/logos/hermitage.webp')).status).toBe(200)
   })
 
   it('n’ouvre les pages vitrines qu’à l’adresse exacte, pas en préfixe', () => {
