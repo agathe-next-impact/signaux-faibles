@@ -19,6 +19,8 @@ import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from 
 import type { SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 import type { ÉtatDeLaFile } from '@/lib/base/travaux'
 import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
+import { démonstrationDuSlug } from '@/lib/domaine/demonstration'
+import { accèsDeDémonstration } from '@/lib/vitrine/espace-demonstration'
 
 /**
  * Le contrôle d'appartenance, en un seul endroit.
@@ -42,6 +44,13 @@ export type AccèsAccordé = Accès & {
    * seul à le lire.
    */
   readonly aperçu: boolean
+  /**
+   * Vrai pour le visiteur de l'espace de démonstration (7 novembre 2026) :
+   * Lisière Conseil, organisation fictive, ouverte sans identification. Les
+   * actions le refusent, le rail se réduit, et un bandeau le dit sur chaque
+   * écran. Jamais vrai pour une session.
+   */
+  readonly démonstration: boolean
 }
 
 /**
@@ -64,6 +73,13 @@ export type AccèsAccordé = Accès & {
  *   capture d'écran de l'espace d'un client serait indiscernable d'une fuite.
  */
 export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé> {
+  // Les espaces de démonstration (7 novembre 2026) : trois slugs réservés,
+  // qu'aucune ligne « Accès » ne porte, ouverts à tout visiteur. Décidé
+  // **avant** la session, pour que l'espace se visite sans cookie ; la clé
+  // rendue n'existe dans aucune base, et les lectures de l'espace la reconnaissent.
+  const démonstration = démonstrationDuSlug(slugDemandé)
+  if (démonstration) return accèsDeDémonstration(démonstration)
+
   const identifiant = await identifiantDeLaSession()
 
   // Pas de cookie, ou signature qui ne tient pas : la personne n'est pas
@@ -78,7 +94,7 @@ export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé
   if (!accès || !accès.actif) redirect('/recevoir-mon-lien?revoque=1')
 
   // Le cas ordinaire, et de loin le plus fréquent : la personne est chez elle.
-  if (accès.slug === slugDemandé) return { ...accès, enOpérateur: false, aperçu: accès.tousLesEspaces }
+  if (accès.slug === slugDemandé) return { ...accès, enOpérateur: false, aperçu: accès.tousLesEspaces, démonstration: false }
 
   // La personne demande le portail d'un autre client sans y être autorisée.
   // `notFound` plutôt qu'une redirection : ne pas confirmer que ce slug existe.
@@ -99,6 +115,7 @@ export async function exigerAccès(slugDemandé: string): Promise<AccèsAccordé
     slug: slugDemandé,
     enOpérateur: true,
     aperçu: true,
+    démonstration: false,
   }
 }
 

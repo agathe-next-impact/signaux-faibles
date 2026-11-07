@@ -1,5 +1,6 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
+import { estLaDémonstration } from '@/lib/domaine/demonstration'
 import { lireLEspacePrescripteur, type EspacePrescripteur } from '@/lib/base/prescripteurs'
 
 /**
@@ -12,7 +13,7 @@ import { lireLEspacePrescripteur, type EspacePrescripteur } from '@/lib/base/pre
  * déjà vérifiée par `exigerLecture` : jamais un slug venu du navigateur.
  */
 export async function espacePrescripteurDe(organisationId: string): Promise<EspacePrescripteur | null> {
-  if (!baseConfigurée() || sourceAccès() === 'notion') return null
+  if (estLaDémonstration(organisationId) || !baseConfigurée() || sourceAccès() === 'notion') return null
   try {
     return await lireLEspacePrescripteur(organisationId)
   } catch (erreur) {

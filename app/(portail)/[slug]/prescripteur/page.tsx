@@ -27,6 +27,7 @@ import { espacePrescripteurDe } from '@/lib/portail/prescripteur'
 export default async function VosRecommandations({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const { accès } = await exigerLecture(slug)
+  if (accès.démonstration) notFound()
   const espace = await espacePrescripteurDe(accès.organisationId)
   if (!espace) notFound()
 

@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation'
 import { exigerLecture } from '@/lib/auth/appartenance'
 import { ChoixDeFormule, GérerLAbonnement, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau } from '@/components/coquille'
@@ -52,6 +53,8 @@ export default async function MonAbonnement({
 }) {
   const { slug } = await params
   const { accès, étape: étapeLue } = await exigerLecture(slug)
+  // Un espace de démonstration n'a ni abonnement ni lecteur : l'écran n'existe pas.
+  if (accès.démonstration) notFound()
   const paramètres = await searchParams
   const retour = typeof paramètres.abonnement === 'string' ? paramètres.abonnement : undefined
   const issueLecteurs = typeof paramètres.lecteurs === 'string' ? MESSAGES_LECTEURS[paramètres.lecteurs] : undefined

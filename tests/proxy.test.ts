@@ -26,6 +26,16 @@ describe('proxy', () => {
     expect(proxy(requête('/logos/hermitage.webp')).status).toBe(200)
   })
 
+  it('ouvre les trois espaces de démonstration, à l’adresse exacte et sous leur préfixe', () => {
+    for (const slug of ['lisiere-conseil', 'tolmen-mecanique', 'atelier-passerelle']) {
+      expect(proxy(requête(`/${slug}`)).status).toBe(200)
+      expect(proxy(requête(`/${slug}/lettres`)).status).toBe(200)
+      expect(proxy(requête(`/${slug}/lettres/demo-conseil-14`)).status).toBe(200)
+    }
+    expect(proxy(requête('/lisiere-conseil-2')).status).toBe(307)
+    expect(proxy(requête('/lisiere')).status).toBe(307)
+  })
+
   it('n’ouvre les pages vitrines qu’à l’adresse exacte, pas en préfixe', () => {
     expect(proxy(requête('/offre')).status).toBe(307)
     expect(proxy(requête('/tarifs-client')).status).toBe(307)

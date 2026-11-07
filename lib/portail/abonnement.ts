@@ -48,7 +48,7 @@ export async function souscrire(données: FormData): Promise<void> {
   if (typeof formule !== 'string' || !FORMULES.has(formule as Formule)) notFound()
 
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
+  if (accès.enOpérateur || accès.démonstration) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
 
   const destination = await pageDePaiement(accès, formule as Formule)
   // `redirect` lève une exception de contrôle : appelé hors de tout `try`.
@@ -58,7 +58,7 @@ export async function souscrire(données: FormData): Promise<void> {
 export async function gérerLAbonnement(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
+  if (accès.enOpérateur || accès.démonstration) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
 
   const destination = await espaceDeFacturation(accès)
   redirect(destination)

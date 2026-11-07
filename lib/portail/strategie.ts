@@ -12,6 +12,7 @@ import {
   lireLaSynthèse,
   modifierUnÉnoncé,
   organisationPourLesOutils,
+  type OrganisationDesOutils,
   positionsPubliées,
   posterLaGrille,
   périodesDesSynthèses,
@@ -86,6 +87,7 @@ import {
   type SynthèseProposée,
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
+import { estLaDémonstration } from '@/lib/domaine/demonstration'
 import { sansAccent } from '@/lib/domaine/texte'
 import { lireBlocsDePage, listerÉditionsPubliées } from '@/lib/notion/editions'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
@@ -827,6 +829,17 @@ export async function modifierLÉnoncéDuPilote(
 }
 
 /** Une lecture bornée dans le temps : `null` au-delà du délai, ou sur toute erreur, sans faire tomber l'écran. */
+/**
+ * L'organisation du pilote que désigne la clé de cloisonnement d'une session,
+ * pour les écrans de l'espace. `null` pour la démonstration (7 novembre 2026),
+ * sans ouvrir Postgres : sa clé n'y existe pas, et les écrans par outil le
+ * disent comme pour une organisation hors du pilote.
+ */
+export async function organisationDuRegistre(registre: string, db?: Base): Promise<OrganisationDesOutils | null> {
+  if (estLaDémonstration(registre)) return null
+  return organisationPourLesOutils({ registreNotion: normaliserIdentifiant(registre) }, db)
+}
+
 export async function bornée<T>(nom: string, lecture: () => Promise<T | null>, ms: number = DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS): Promise<T | null> {
   if (!baseConfigurée() || sourceAccès() === 'notion') return null
   let minuterie: ReturnType<typeof setTimeout> | undefined
@@ -866,7 +879,7 @@ export async function synthèseDeLEspace(
   db?: Base,
 ): Promise<SynthèseDeLEspace | null> {
   return bornée('lecture de la synthèse publiée', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques) return null
     const [mois, trimestre, grille] = await Promise.all([
       dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois' }, db),
@@ -922,7 +935,7 @@ export async function pestelDeLEspace(
   db?: Base,
 ): Promise<VueDuPestel | null> {
   return bornée('lecture de l’onglet PESTEL', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques) return null
     const fin = entrée.fin
     const d = new Date(`${fin}T00:00:00Z`)
@@ -1000,7 +1013,7 @@ const espaceMémoïsé = cache(async (registre: string, db?: Base): Promise<Espa
   bornée(
     'lecture de l’espace réorganisé',
     async () => {
-      const organisation = await organisationPourLesOutils({ registreNotion: registre }, db)
+      const organisation = await organisationDuRegistre(registre, db)
       if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return NON_RÉORGANISÉ
       const grille = await lireLaGrille(organisation.id, db)
       return { réorganisé: true, concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [] }
@@ -1027,7 +1040,7 @@ export async function concurrentsDeLEspace(
   db?: Base,
 ): Promise<ConcurrentsDeLEspace | null> {
   return bornée('lecture des concurrents', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const [mois, grille, comptes] = await Promise.all([
       dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois' }, db),
@@ -1062,7 +1075,7 @@ export async function ficheDuConcurrent(
   db?: Base,
 ): Promise<FicheLue | null> {
   return bornée('lecture d’une fiche concurrent', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const grille = await lireLaGrille(organisation.id, db)
     if (!grille) return null
@@ -1111,7 +1124,7 @@ export async function faitsRécentsDeLEspace(
   db?: Base,
 ): Promise<FaitsRécentsDeLEspace | null> {
   return bornée('lecture des faits récents', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const d = new Date(`${entrée.fin}T00:00:00Z`)
     d.setUTCDate(d.getUTCDate() - 7 * SEMAINES_D_ACTIVITÉ)
@@ -1139,7 +1152,7 @@ export async function faitsRécentsDeLEspace(
  */
 export async function indicateursDeLEspace(entrée: { readonly registre: string }, db?: Base): Promise<VueDesIndicateurs | null> {
   return bornée('lecture des indicateurs', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
     return trimestre ? vueDesIndicateurs(trimestre.période, trimestre.éléments) : null
@@ -1160,7 +1173,7 @@ export async function faitsDeLAxeDeLEspace(
   db?: Base,
 ): Promise<AxeLu | null> {
   return bornée('lecture des faits d’un axe', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const grille = await lireLaGrille(organisation.id, db)
     if (!grille) return null

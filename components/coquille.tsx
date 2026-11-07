@@ -46,6 +46,7 @@ export function Coquille({
   onglets,
   enOpérateur = false,
   peutResynchroniser = false,
+  démonstration = false,
   railReplié = false,
   children,
 }: {
@@ -59,6 +60,13 @@ export function Coquille({
    * l'opératrice n'est pas `enOpérateur` et doit pourtant garder le bouton.
    */
   peutResynchroniser?: boolean
+  /**
+   * L'espace de démonstration (7 novembre 2026) : un visiteur sans session lit
+   * l'espace d'une organisation fictive. Le bandeau le dit, et le pied du rail
+   * ne porte ni abonnement, ni resynchronisation, ni déconnexion, qui n'ont
+   * pas de sens sans session ; il mène aux exemples et à la demande de démo.
+   */
+  démonstration?: boolean
   /** Le rail replié à l'arrivée, selon le cookie de préférence lu par le layout. */
   railReplié?: boolean
   children: React.ReactNode
@@ -76,7 +84,7 @@ export function Coquille({
       className="flex min-h-dvh flex-col"
       // Toujours définie, à zéro hors mode opérateur : une valeur de repli
       // dans le `var()` ferait échouer la génération de la classe Tailwind.
-      style={{ '--bandeau': enOpérateur ? '2.25rem' : '0px' } as React.CSSProperties}
+      style={{ '--bandeau': enOpérateur || démonstration ? '2.25rem' : '0px' } as React.CSSProperties}
     >
       {/* Un opérateur voit l'espace d'un client. Sans marque, une capture
           d'écran serait indiscernable d'une fuite de données, et l'opérateur
@@ -92,6 +100,21 @@ export function Coquille({
           </p>
           <Link href="/espaces" className="label-mono text-rose-texte underline underline-offset-2">
             changer d’espace
+          </Link>
+        </div>
+      ) : démonstration ? (
+        // Un visiteur lit un espace de démonstration : tout est fictif, rien
+        // n'est à lui, et le bandeau le rappelle sur chaque écran. En ardoise
+        // et non en rose : ce n'est ni un impact ni une nouveauté.
+        <div
+          role="status"
+          className="sticky top-0 z-40 flex h-[var(--bandeau)] shrink-0 flex-wrap items-center justify-between gap-x-4 overflow-hidden border-b border-gris-ligne bg-fond-ardoise px-6"
+        >
+          <p className="label-mono text-ardoise">
+            espace de démonstration · <span className="hidden sm:inline">{organisation}, </span>organisation fictive
+          </p>
+          <Link href="/demo" className="label-mono text-encre underline underline-offset-2">
+            demander une démo
           </Link>
         </div>
       ) : null}
@@ -116,10 +139,16 @@ export function Coquille({
             </div>
 
             <div className="mt-auto hidden flex-col gap-2 lg:flex">
-              <p className="label-mono text-ardoise">Accès personnel, à ne pas transférer</p>
-              <LienMonAbonnement slug={slug} />
-              {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
-              <Quitter />
+              {démonstration ? (
+                <PiedDeDémonstration />
+              ) : (
+                <>
+                  <p className="label-mono text-ardoise">Accès personnel, à ne pas transférer</p>
+                  <LienMonAbonnement slug={slug} />
+                  {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
+                  <Quitter />
+                </>
+              )}
             </div>
           </div>
         </RailRétractable>
@@ -127,9 +156,15 @@ export function Coquille({
         <div className="flex min-w-0 flex-1 flex-col">
           <main className="min-w-0 flex-1 px-6 py-8 lg:px-12">{children}</main>
           <div className="flex flex-col gap-2 px-6 pb-6 lg:hidden">
-            <LienMonAbonnement slug={slug} />
-            {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
-            <Quitter />
+            {démonstration ? (
+              <PiedDeDémonstration />
+            ) : (
+              <>
+                <LienMonAbonnement slug={slug} />
+                {peutResynchroniser ? <Resynchroniser slug={slug} /> : null}
+                <Quitter />
+              </>
+            )}
           </div>
           <MenuBas onglets={onglets} />
         </div>
@@ -296,6 +331,21 @@ export function Panneau({
  * qu'un lien enveloppant ferait lire. Un seul lien étendu par case, et rien
  * d'autre de cliquable dedans — deux se recouvriraient.
  */
+/** Le pied du rail d'un espace de démonstration : pas de session, donc ni abonnement ni déconnexion. */
+function PiedDeDémonstration() {
+  return (
+    <>
+      <p className="label-mono text-ardoise">Démonstration, lecture seule</p>
+      <Link href="/exemple" className="self-start text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
+        Les autres exemples
+      </Link>
+      <Link href="/demo" className="self-start text-label text-ardoise underline decoration-gris-ligne underline-offset-2">
+        Demander une démo
+      </Link>
+    </>
+  )
+}
+
 export function LienFlèche({
   href,
   étendu = false,
