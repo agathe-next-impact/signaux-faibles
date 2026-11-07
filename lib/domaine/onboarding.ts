@@ -380,7 +380,6 @@ export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
   'demo',
   'espaces',
   'exemple',
-  'heros',
   'hors-ligne',
   'logos',
   'offre',

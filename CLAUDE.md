@@ -1067,8 +1067,9 @@ structure et animations inspirées d'un modèle de page produit, charte conserv�
 les pages vitrines tiennent dans un **cadre** (colonne bordée de deux filets,
 chaque section une bande fermée par un filet, `components/vitrine.tsx`), en-tête
 collant avec menu natif sur mobile ; l'accueil s'ouvre en deux colonnes, le texte
-et le haut d'une lettre **fictive** (`components/apercu-vitrine.tsx`, lettre du
-cabinet de conseil de « Exemples », calculée par le code de l'espace), puis « Ce
+et un aperçu du produit (`components/apercu-vitrine.tsx`, lettre du cabinet de
+conseil de « Exemples », calculée par le code de l'espace, puis la vidéo depuis le
+soir du même jour), puis « Ce
 que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"`),
 tarifs en cartes partagées avec « Tarifs » (`components/vitrine-tarifs.tsx`),
 questions et appel final (`AppelFinal`, bouton secondaire quand la page a déjà
@@ -1079,15 +1080,15 @@ Depuis la seconde passe du même jour (« encore très austère, beaucoup de
 texte ») : ouverture et appel final sur **bande encre** (version négative,
 amendement du §02 de la charte), chiffres clés en grand (`ChiffresClés`),
 textes réduits de moitié, section « Votre espace » fondue dans son onglet.
-**Ouvertures candidates** (même jour, « moins chargées, plus explicites ») : quatre
-heros en composants (`components/vitrine-heros.tsx` : la vidéo, trois chiffres,
-avant et après, trois niveaux), rendus à la suite sur la page de travail `/heros`
-(non indexée, `PUBLICS_EXACTS`, slug réservé), à retirer une fois l'ouverture
-retenue posée sur l'accueil. La **vidéo de l'espace** (montage LinkedIn de
-l'opératrice, 57 s, carrée) est servie muette, en boucle et sans commande par
-`components/video-espace.tsx` (`public/vitrine/espace.mp4`, 720 px, moins de 1 Mo,
-image d'attente `espace.jpg` ; préfixe `/vitrine/` ouvert par le proxy, slug
-réservé) ; immobile sous `prefers-reduced-motion`.
+**Ouverture retenue** (même jour, après quatre candidates jugées sur une page de
+travail, retirée) : la **vidéo de l'espace** (`HéroVidéo`,
+`components/vitrine-heros.tsx`) : un surtitre, le titre, le bouton, le lien
+« Voir des exemples », et le montage LinkedIn de l'opératrice (57 s, carré) à
+droite, servi muet, en boucle et sans commande par `components/video-espace.tsx`
+(`public/vitrine/espace.mp4`, 720 px, moins de 1 Mo, image d'attente
+`espace.jpg` ; préfixe `/vitrine/` ouvert par le proxy, slug réservé), immobile
+sous `prefers-reduced-motion`. Ni chapeau ni chiffres dans l'ouverture ; l'extrait
+de lettre de l'ouverture précédente (`ExtraitDeLettre`) a été retiré.
 **Valeur, marché et lecture stratégique dans la vitrine (27 octobre 2026)** :
 trois graphiques en HTML, à la charte (`components/graphiques-vitrine.tsx`) : le
 temps de veille interne valorisé à 50 € de l'heure, **hypothèse affichée comme

@@ -1,30 +1,20 @@
-import Link from 'next/link'
 import {
   AperçuAxes,
   AperçuEspace,
   AperçuEssentiel,
   AperçuLectureStratégique,
   AperçuSources,
-  ExtraitDeLettre,
 } from '@/components/apercu-vitrine'
 import { BadgeImpact } from '@/components/badge-impact'
 import { BandeauLogos } from '@/components/bandeau-logos'
 import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { Onglets } from '@/components/onglets'
-import {
-  AppelFinal,
-  BoutonDémo,
-  ChiffresClés,
-  CoquilleVitrine,
-  OuvertureVitrine,
-  Question,
-  SectionVitrine,
-  TêteDeSection,
-} from '@/components/vitrine'
+import { AppelFinal, ChiffresClés, CoquilleVitrine, Question, SectionVitrine, TêteDeSection } from '@/components/vitrine'
+import { HéroVidéo } from '@/components/vitrine-heros'
 import { CartesDeTarifs } from '@/components/vitrine-tarifs'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
-import { enEuros, finDuTarifEarlyAdopter, HEURES_DE_PRISE_EN_MAIN, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { enEuros, HEURES_DE_PRISE_EN_MAIN, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
 import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
@@ -34,8 +24,8 @@ import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSem
  * 7 novembre 2026). La racine le rend au lieu de rediriger vers « recevoir mon
  * lien » ; une session valide mène toujours à son espace, sans voir cette page.
  *
- * Déroulé de la refonte : l'ouverture montre le produit (le haut d'une lettre
- * fictive) ; les logos ; « Ce que vous recevez » en quatre onglets, chacun avec
+ * Déroulé de la refonte : l'ouverture montre le produit (la vidéo de l'espace,
+ * `HéroVidéo`, retenue le 7 novembre 2026 parmi quatre candidates) ; les logos ; « Ce que vous recevez » en quatre onglets, chacun avec
  * son aperçu ; la valeur, chiffrée ; les trois niveaux d'impact ; l'espace ; le
  * marché ; les tarifs en cartes ; les questions ; l'appel final. Les aperçus
  * sont calculés sur une lettre fictive par le code de l'espace client
@@ -48,34 +38,7 @@ import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSem
 export function AccueilVitrine() {
   return (
     <CoquilleVitrine courante="accueil">
-      <OuvertureVitrine
-        surtitre="Veille hebdomadaire rédigée"
-        titre="La veille stratégique écrite pour votre seule organisation"
-        chapeau="Réglementation, financements, marchés, concurrents : chaque semaine, nous les surveillons pour vous et vous écrivons l’essentiel."
-        aperçu={<ExtraitDeLettre />}
-        ton="encre"
-      >
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <BoutonDémo négatif />
-          <Link href="/exemple" className="group inline-flex items-center gap-1 text-blanc">
-            Voir des exemples
-            <span aria-hidden="true" className="text-rose transition-transform group-hover:translate-x-0.5">
-              →
-            </span>
-          </Link>
-        </div>
-        <ChiffresClés
-          négatif
-          chiffres={[
-            { valeur: '1', libellé: 'lettre par semaine' },
-            { valeur: `${LETTRE_UNIQUE.axesMin}–${LETTRE_UNIQUE.axesMax}`, libellé: 'axes pour vous' },
-            { valeur: `${PARUTIONS_D_ESSAI}`, libellé: 'parutions d’essai' },
-          ]}
-        />
-        <p className="text-label text-gris-ligne">
-          Essai sans carte bancaire. Mise en place offerte jusqu’au {finDuTarifEarlyAdopter()}.
-        </p>
-      </OuvertureVitrine>
+      <HéroVidéo titre="La veille stratégique écrite pour votre seule organisation" />
 
       <BandeauLogos />
 

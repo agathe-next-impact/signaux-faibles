@@ -60,60 +60,6 @@ function EnTêteDeLettre({ d }: { d: Démonstration }) {
   )
 }
 
-/**
- * L'aperçu de l'ouverture : le haut d'une lettre, son essentiel écourté et
- * ses trois premiers axes par impact, chacun avec son badge et son premier fait.
- */
-export function ExtraitDeLettre() {
-  const d = démonstration()
-  const document = documentDe(d)
-  const essentiel = lignesDeLEssentiel(document).slice(0, 3)
-  const axes = trierParImpact(fusionnerLesAxes([document], 1)).slice(0, 3)
-  return (
-    <figure className="flex w-full flex-col gap-3">
-      <article
-        aria-label={`Extrait de la lettre de ${d.organisation}, organisation fictive`}
-        className="flex flex-col border border-gris-ligne bg-blanc"
-      >
-        <div className="border-b border-gris-ligne px-6 py-4">
-          <EnTêteDeLettre d={d} />
-        </div>
-        {/* Sur mobile, l'essentiel est laissé à son onglet, juste en dessous : l'ouverture garde ses axes. */}
-        <div className="hidden flex-col gap-3 border-b border-gris-ligne px-6 py-4 sm:flex">
-          <h2 className="font-titre text-h3 font-semibold text-encre">L’essentiel</h2>
-          <ul className="flex flex-col gap-2">
-            {essentiel.map((ligne, i) => (
-              <li key={i} className="flex gap-3 text-encre">
-                <span aria-hidden="true" className="mt-[0.6em] size-1.5 shrink-0 bg-encre" />
-                <span>
-                  <Texte segments={ligne} />
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <ul aria-label="Premiers axes de la lettre" className="flex flex-col divide-y divide-gris-ligne">
-          {axes.map((axe) => (
-            <li key={axe.titre} className="flex flex-col gap-2 px-6 py-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <SurtitreAxe axe={axe} />
-                <BadgeImpact niveau={axe.niveau} />
-              </div>
-              {axe.points[0] ? (
-                <p className="text-ardoise">
-                  <Texte segments={axe.points[0].segments} />
-                </p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </article>
-      {/* Posé sur la bande encre de l'ouverture : la mention passe en gris clair. */}
-      <figcaption className="label-mono text-gris-ligne">Organisation fictive · forme réelle</figcaption>
-    </figure>
-  )
-}
-
 /** Onglet « L'essentiel » : la rubrique entière, telle qu'elle ouvre la lettre. */
 export function AperçuEssentiel() {
   const d = démonstration()
