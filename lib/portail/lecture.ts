@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { estLaDémonstration } from '@/lib/domaine/demonstration'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
 import { lireEntréeDuParcours } from '@/lib/base/parcours'
@@ -58,6 +59,9 @@ export async function lectureDeLEspace(espace: {
   readonly enOpérateur: boolean
 }): Promise<Lecture> {
   if (espace.enOpérateur) return COMPLÈTE
+  // La démonstration (7 novembre 2026) : lecture complète, sans ouvrir Postgres,
+  // où sa clé n'existe pas.
+  if (estLaDémonstration(espace.organisationId)) return COMPLÈTE
   return lectureMémoïsée(espace.organisationId)
 }
 

@@ -69,7 +69,7 @@ function retour(slug: string, issue: Issue): never {
 export async function ajouterLecteur(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) retour(accès.slug, 'operateur')
+  if (accès.enOpérateur || accès.démonstration) retour(accès.slug, 'operateur')
   if (!lecteursModifiables()) retour(accès.slug, 'indisponible')
 
   const lue = nomEtAdresse.safeParse({ nom: données.get('nom'), email: données.get('email') })
@@ -112,7 +112,7 @@ export async function ajouterLecteur(données: FormData): Promise<void> {
 export async function retirerLecteur(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const accès = await exigerAccès(slug)
-  if (accès.enOpérateur) retour(accès.slug, 'operateur')
+  if (accès.enOpérateur || accès.démonstration) retour(accès.slug, 'operateur')
   if (!lecteursModifiables()) retour(accès.slug, 'indisponible')
 
   const lecteurId = données.get('lecteur')

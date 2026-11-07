@@ -1,5 +1,6 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
+import { estLaDémonstration } from '@/lib/domaine/demonstration'
 import { lireSituationDAbonnement, type SituationDAbonnement } from '@/lib/base/situation'
 
 /**
@@ -11,7 +12,7 @@ import { lireSituationDAbonnement, type SituationDAbonnement } from '@/lib/base/
  * il ne décide rien, c'est `exigerLecture` qui a déjà décidé du droit de lire.
  */
 export async function situationDeLEspace(organisationId: string): Promise<SituationDAbonnement | null> {
-  if (!baseConfigurée() || sourceAccès() === 'notion') return null
+  if (estLaDémonstration(organisationId) || !baseConfigurée() || sourceAccès() === 'notion') return null
   try {
     return await lireSituationDAbonnement(organisationId)
   } catch (erreur) {

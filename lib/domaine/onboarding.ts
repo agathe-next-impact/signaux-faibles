@@ -381,6 +381,10 @@ export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
   'espaces',
   'exemple',
   'hors-ligne',
+  // Les organisations fictives des espaces de démonstration (7 novembre 2026).
+  'atelier-passerelle',
+  'lisiere-conseil',
+  'tolmen-mecanique',
   'logos',
   'offre',
   'payload-api',

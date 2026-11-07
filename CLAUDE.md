@@ -1124,6 +1124,30 @@ lecture stratégique « en test » et ce qui nous distingue ; « Exemples » ren
 sur la grille de la démonstration et les faits relevés par `faitsDeLaLettre`).
 `tests/vitrine.marche.test.ts` tient chaque phrase chiffrée contre ses données.
 
+**Trois espaces de démonstration, ouverts sans identifiant (7 novembre 2026, demande de
+l'opératrice).** `/lisiere-conseil`, `/tolmen-mecanique` et `/atelier-passerelle` sont les
+**vrais écrans de l'espace client** sur les trois organisations **fictives** de « Exemples »,
+avec une série de lettres par organisation (`lib/vitrine/lettres-demonstration.ts`,
+`lettresDeDémonstration(clé)` : huit pour Lisière Conseil, cinq pour les deux autres, la
+dernière étant celle de « Exemples » ; chacune passe le lint de la lettre unique,
+`tests/vitrine.espace-demonstration.test.ts`). Rien ne vient de Notion, de Payload ni de
+Postgres : la façade des documents (`lib/documents/index.ts`) sert ces éditions quand la clé
+de cloisonnement est `demonstration:<clé>` (`lib/domaine/demonstration.ts`, constantes et
+prédicats seuls ; `lib/vitrine/espace-demonstration.ts`, les éditions, les corps et l'accès),
+une clé que la contrainte `organisations_registre_notion_forme` interdit à Postgres, et les
+lectures Postgres de l'espace (`organisationDuRegistre`, `lectureDeLEspace`,
+`situationDeLEspace`, `espacePrescripteurDe`) la reconnaissent avant d'ouvrir une base : lecture
+complète, espace classique à sept écrans, aucune entrée de cache partagée avec un client.
+L'accès est accordé par `exigerAccès` au slug réservé, **avant la lecture de la session**
+(`accèsDeDémonstration` : lecteur « Visiteur » sans courriel, `démonstration: true`, jamais
+opérateur ni aperçu ; le proxy ouvre les trois slugs à l'adresse exacte et en préfixe ;
+`SLUGS_RÉSERVÉS` les tient). La coquille porte un bandeau ardoise « espace de démonstration ·
+organisation fictive » et un pied de rail sans abonnement, resynchronisation ni déconnexion ;
+« Mon abonnement » et « Vos recommandations » répondent 404, les actions de lecteurs et
+d'abonnement refusent le geste comme une visite opérateur. `tests/architecture.test.ts` tient
+le seul endroit qui accorde cet accès. « Exemples » donne, par onglet, le lien vers l'espace et
+la liste de ses lettres, chacune vers sa page dans l'espace.
+
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi
 parle la veille » et « qui bouge » —, et surtout leur coût n'a rien à voir :
@@ -1401,3 +1425,4 @@ affiche la légende : un code couleur qu'on n'explique pas est une décoration.
 - Si une règle de la charte semble en tension avec une contrainte technique
   (ex. police non disponible en next/font), s'arrêter et demander plutôt
   que d'improviser une équivalence.
+

@@ -11,8 +11,7 @@ import {
   type RefusDeFiche,
 } from '@/lib/domaine/fiche-veille'
 import type { Grille } from '@/lib/domaine/strategie'
-import { normaliserIdentifiant } from '@/lib/notion/proprietes'
-import { bornée } from '@/lib/portail/strategie'
+import { bornée, organisationDuRegistre } from '@/lib/portail/strategie'
 
 /**
  * La fiche de veille pour le lecteur (lot 6, 30 octobre 2026) : la revue
@@ -93,7 +92,7 @@ export type FicheDeLEspace = {
  */
 export async function ficheDeLEspace(entrée: { readonly registre: string }, db?: Base): Promise<FicheDeLEspace | null> {
   return bornée('lecture de la fiche de veille', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const [grille, fiche] = await Promise.all([lireLaGrille(organisation.id, db), fichePubliée(organisation.id, db)])
     if (!grille) return null
@@ -117,7 +116,7 @@ export async function présentationDeLEntité(
   db?: Base,
 ): Promise<PrésentationLue | null> {
   return bornée('lecture d’une fiche de présentation', async () => {
-    const organisation = await organisationPourLesOutils({ registreNotion: normaliserIdentifiant(entrée.registre) }, db)
+    const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const grille = await lireLaGrille(organisation.id, db)
     if (!grille) return null

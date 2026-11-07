@@ -2,7 +2,11 @@ import type { Metadata } from 'next'
 import { LettreDeDémonstration, TableauDeBordDeDémonstration } from '@/components/demonstration'
 import { Onglets } from '@/components/onglets'
 import { BoutonDémo, CoquilleVitrine, OuvertureVitrine } from '@/components/vitrine'
+import Link from 'next/link'
+import { LienFlèche } from '@/components/coquille'
+import { cléDeCloisonnementDeDémonstration, SLUGS_DE_DÉMONSTRATION } from '@/lib/domaine/demonstration'
 import { DÉMONSTRATIONS } from '@/lib/vitrine/demonstrations'
+import { éditionsDeDémonstration } from '@/lib/vitrine/espace-demonstration'
 
 export const metadata: Metadata = {
   title: 'Exemples — signauxfaibles',
@@ -17,7 +21,49 @@ export const metadata: Metadata = {
  * vues, le tableau de bord et la lettre. Les trois organisations sont fictives
  * (`lib/vitrine/demonstrations.ts`) ; la page ne lit ni Notion ni Postgres.
  * Ouverte par le proxy à l'adresse exacte (`PUBLICS_EXACTS`).
+ *
+ * Depuis le 7 novembre 2026, chaque onglet mène à l'**espace de démonstration**
+ * de son organisation (`/lisiere-conseil`, `/tolmen-mecanique`,
+ * `/atelier-passerelle`) : le vrai espace client, ouvert sans identifiant, en
+ * lecture seule, sur les lettres fictives de `lib/vitrine/lettres-demonstration.ts`,
+ * dont la liste est donnée ici, chacune vers sa page dans l'espace.
  */
+const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
+
+/**
+ * Le lien vers l'espace de démonstration et la liste de ses lettres. Les
+ * éditions viennent de la même source que l'espace (`éditionsDeDémonstration`) :
+ * une lettre listée ici est une lettre que l'espace sert.
+ */
+function EspaceDeDémonstration({ démonstration }: { démonstration: (typeof DÉMONSTRATIONS)[number] }) {
+  const slug = SLUGS_DE_DÉMONSTRATION[démonstration.clé]
+  const éditions = éditionsDeDémonstration(cléDeCloisonnementDeDémonstration(démonstration.clé))
+  return (
+    <div className="flex flex-col gap-4 border border-gris-ligne bg-blanc p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-titre text-h3 font-semibold text-encre">L’espace de {démonstration.organisation}</h3>
+          <p className="text-ardoise">
+            Le même espace que celui de nos clients, ouvert sans identifiant, en lecture seule : vue d’ensemble, axes, acteurs,
+            archives, sur {éditions.length} lettres.
+          </p>
+        </div>
+        <LienFlèche href={`/${slug}`}>Ouvrir l’espace de démonstration</LienFlèche>
+      </div>
+      <ul className="flex flex-col gap-1 border-t border-gris-ligne pt-4">
+        {éditions.map((édition) => (
+          <li key={édition.pageId} className="flex flex-wrap items-baseline gap-x-3">
+            <span className="label-mono text-ardoise">{DATE.format(new Date(édition.dateÉdition))}</span>
+            <Link href={`/${slug}/lettres/${édition.pageId}`} className="text-encre underline decoration-gris-ligne underline-offset-2">
+              {édition.titre}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function Exemples() {
   return (
     <CoquilleVitrine courante="exemple">
@@ -43,6 +89,7 @@ export default function Exemples() {
                   <p className="text-ardoise">{démonstration.portrait}</p>
                   <p className="label-mono text-ardoise">organisation fictive</p>
                 </div>
+                <EspaceDeDémonstration démonstration={démonstration} />
                 <Onglets
                   étiquette={`Vues de ${démonstration.organisation}`}
                   taille="petite"
