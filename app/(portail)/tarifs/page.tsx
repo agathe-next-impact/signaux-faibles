@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import { Case, Grille, Panneau } from '@/components/coquille'
+import { CartesDeTarifs } from '@/components/vitrine-tarifs'
 import { GraphiqueRepèresDeMarché } from '@/components/graphiques-vitrine'
-import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
+import { AppelFinal, CoquilleVitrine, ListeCarrée, OuvertureVitrine, Question, SectionVitrine } from '@/components/vitrine'
 import {
-  ADRESSE_D_ABONNEMENT,
   enEuros,
   FIN_DU_TARIF_EARLY_ADOPTER,
   finDuTarifEarlyAdopter,
@@ -12,9 +12,6 @@ import {
   LECTEURS_ACTIFS_MAX,
   PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
-  prixTTC,
-  TAUX_DE_TVA,
-  équivalentMensuelDeLAnnuel,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { prixParLecteur } from '@/lib/vitrine/marche'
@@ -96,7 +93,6 @@ function donnéesStructurées() {
  * une organisation nommée.
  */
 export default function Tarifs() {
-  const tva = Math.round(TAUX_DE_TVA * 100)
   return (
     <CoquilleVitrine courante="tarifs">
       <OuvertureVitrine
@@ -110,7 +106,7 @@ export default function Tarifs() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(donnéesStructurées()).replace(/</g, '\\u003c') }}
       />
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-4 border-b border-gris-ligne px-6 py-12 lg:px-12">
         <Panneau ton="rose">
           <p className="label-mono text-ardoise">Early adopter</p>
           <p className="mt-2 text-encre">
@@ -119,50 +115,7 @@ export default function Tarifs() {
             sont de {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une seule fois.
           </p>
         </Panneau>
-        <Grille colonnes={3} étiquette="Les deux formules et la mise en place">
-          <Case accent>
-            <p className="label-mono text-ardoise">Abonnement mensuel</p>
-            <p className="font-titre text-h1 font-bold text-encre">
-              {enEuros(PRIX_MENSUEL_HT)} € <span className="text-h3 font-semibold">HT par mois</span>
-            </p>
-            <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_MENSUEL_HT))} € TTC</p>
-            <p className="text-ardoise">
-              Création du référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Sans
-              engagement, résiliable à tout moment.
-            </p>
-          </Case>
-          <Case>
-            <p className="label-mono text-ardoise">Abonnement annuel · deux mois offerts</p>
-            <p className="font-titre text-h1 font-bold text-encre">
-              {enEuros(PRIX_ANNUEL_HT)} € <span className="text-h3 font-semibold">HT par an</span>
-            </p>
-            <p className="label-mono text-ardoise">soit {enEuros(prixTTC(PRIX_ANNUEL_HT))} € TTC</p>
-            <p className="text-ardoise">
-              Soit {enEuros(équivalentMensuelDeLAnnuel())} € HT par mois. Création du référentiel et{' '}
-              {HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.
-            </p>
-          </Case>
-          <Case>
-            <p className="label-mono text-ardoise">Frais de mise en place · une seule fois</p>
-            <p className="font-titre text-h1 font-bold text-encre">
-              Offerts <span className="text-h3 font-semibold">jusqu’au {finDuTarifEarlyAdopter()}</span>
-            </p>
-            <p className="label-mono text-ardoise">
-              puis {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, soit {enEuros(prixTTC(FRAIS_DE_MISE_EN_PLACE_HT))} € TTC
-            </p>
-            <p className="text-ardoise">
-              Offerts aux early adopters, pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}.
-            </p>
-          </Case>
-        </Grille>
-        <p className="text-label text-ardoise">
-          Prix par organisation, TVA de {tva} % en sus. Paiement par carte en ligne, depuis votre
-          espace. Pour un bon de commande ou un virement, écrivez à{' '}
-          <a href={`mailto:${ADRESSE_D_ABONNEMENT}`} className="underline underline-offset-2">
-            {ADRESSE_D_ABONNEMENT}
-          </a>
-          .
-        </p>
+        <CartesDeTarifs />
       </section>
 
       <SectionVitrine
@@ -248,31 +201,11 @@ export default function Tarifs() {
         </div>
       </SectionVitrine>
 
-      <Panneau ton="neutre">
-        <div className="flex flex-col gap-4">
-          <h2 className="font-titre text-h2 font-bold text-encre">Voir une lettre avant de décider</h2>
-          <p className="max-w-3xl text-ardoise">
-            Nous vous montrons une lettre et l’espace qui l’accompagne, puis nous préparons votre
-            référentiel.
-          </p>
-          <BoutonDémo />
-        </div>
-      </Panneau>
+      <AppelFinal
+        titre="Voir une lettre avant de décider"
+        chapeau="Nous vous montrons une lettre et l’espace qui l’accompagne, puis nous préparons votre référentiel."
+        primaire
+      />
     </CoquilleVitrine>
-  )
-}
-
-/** Une question dépliable, sans JavaScript. */
-function Question({ titre, children }: { titre: string; children: React.ReactNode }) {
-  return (
-    <details className="group py-4">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-encre">
-        <span className="font-medium">{titre}</span>
-        <span aria-hidden="true" className="text-rose transition-transform group-open:rotate-90">
-          →
-        </span>
-      </summary>
-      <p className="mt-3 text-ardoise">{children}</p>
-    </details>
   )
 }

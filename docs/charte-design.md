@@ -251,6 +251,20 @@ Un chiffre ne s'anime jamais : il s'affiche à sa valeur, seule la marque bouge.
 Seule boucle admise : la lueur du squelette de chargement, qui ne porte aucune
 donnée et s'arrête aussi quand le système demande moins de mouvement.
 
+**Amendement du 7 novembre 2026 : les graphiques de la vitrine.** Demande de
+l'opératrice, à la refonte des pages publiques (« anime les graphiques »). Sur
+la vitrine, la plupart des graphiques sont sous la ligne de flottaison : animés
+au chargement, personne ne les verrait partir. Ils s'animent donc **une fois,
+quand ils entrent dans l'écran** (`AnimerÀLEntrée`,
+`components/anime-a-l-entree.tsx`), et c'est la seule exception à l'interdit de
+l'animation au défilement. Le reste ne change pas : 500 à 600 ms, même courbe,
+cascade de 60 à 120 ms par marque, départ depuis une marque visible (6 % de sa
+longueur, 25 % d'opacité), aucun chiffre animé, rien en mouvement réduit ni
+sans JavaScript (le graphique est alors rendu à sa valeur). Classes
+`anime-etire` (une barre s'étire de gauche à droite) et `anime-apparait` (une
+marque se découvre), `app/globals.css`. Ni les sections, ni les textes, ni les
+logos ne bougent : le mouvement reste réservé à la donnée.
+
 ## Ce que la transcription oblige à corriger dans le portail
 
 1. **Les libellés des badges ne sont pas ceux des niveaux.** Notion écrit le

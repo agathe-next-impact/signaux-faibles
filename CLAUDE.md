@@ -1062,6 +1062,19 @@ et Konica Minolta en une rangée immobile, en niveaux de gris, couleurs au survo
 inversés en mode sombre (`components/bandeau-logos.tsx`, fichiers dans
 `public/logos/`, ouverts par le proxy en préfixe `/logos/` ; le slug `logos` est
 réservé). Afficher un logo suppose l'accord de l'organisation.
+**Refonte visuelle de la vitrine** (7 novembre 2026, à la demande de l'opératrice,
+structure et animations inspirées d'un modèle de page produit, charte conservée) :
+les pages vitrines tiennent dans un **cadre** (colonne bordée de deux filets,
+chaque section une bande fermée par un filet, `components/vitrine.tsx`), en-tête
+collant avec menu natif sur mobile ; l'accueil s'ouvre en deux colonnes, le texte
+et le haut d'une lettre **fictive** (`components/apercu-vitrine.tsx`, lettre du
+cabinet de conseil de « Exemples », calculée par le code de l'espace), puis « Ce
+que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"`),
+tarifs en cartes partagées avec « Tarifs » (`components/vitrine-tarifs.tsx`),
+questions et appel final (`AppelFinal`, bouton secondaire quand la page a déjà
+son primaire). Les graphiques de la vitrine s'animent **une fois à l'entrée dans
+l'écran** (`AnimerÀLEntrée`, `anime-etire`, `anime-apparait` ; amendement du
+§05 de la charte du même jour) ; rien d'autre ne bouge.
 **Valeur, marché et lecture stratégique dans la vitrine (27 octobre 2026)** :
 trois graphiques en HTML, à la charte (`components/graphiques-vitrine.tsx`) : le
 temps de veille interne valorisé à 50 € de l'heure, **hypothèse affichée comme

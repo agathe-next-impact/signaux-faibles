@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Case, Grille, LienFlèche, Panneau } from '@/components/coquille'
-import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
+import { AppelFinal, BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
@@ -256,6 +256,11 @@ export default function Offre() {
           </div>
         </Panneau>
       </SectionVitrine>
+
+      <AppelFinal
+        titre="Voir une lettre écrite pour vous"
+        chapeau="Nous vous montrons une lettre et l’espace qui l’accompagne, puis nous préparons votre référentiel."
+      />
     </CoquilleVitrine>
   )
 }

@@ -27,7 +27,7 @@ export const LOGOS: readonly Logo[] = [
 
 export function BandeauLogos() {
   return (
-    <section aria-labelledby="bandeau-logos-titre" className="flex flex-col gap-4">
+    <section aria-labelledby="bandeau-logos-titre" className="flex flex-col gap-6 border-b border-gris-ligne px-6 py-8 lg:px-12">
       <p id="bandeau-logos-titre" className="label-mono text-center text-ardoise">
         Ils reçoivent leur veille chaque semaine
       </p>
