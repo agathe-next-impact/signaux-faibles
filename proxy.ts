@@ -34,6 +34,8 @@ const PUBLICS = [
   '/sw.js',
   '/icone-',
   '/icon.svg',
+  // Les logos clients de la vitrine, servis à un visiteur sans session.
+  '/logos/',
 ]
 
 /**

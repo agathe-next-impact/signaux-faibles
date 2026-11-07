@@ -370,7 +370,8 @@ export function alertesDUnOnboarding(
  * Les premiers segments d'adresse que le portail sert lui-même : un slug
  * identique serait masqué par la page (vitrines, `/demo`, `/espaces`…) ou par
  * Payload (`/admin`). `tests/domaine.onboarding.test.ts` vérifie que chaque
- * dossier de premier niveau de `app/` y figure.
+ * dossier de premier niveau de `app/` y figure ; `logos` est le dossier des
+ * logos de la vitrine, sous `public/`, ouvert en préfixe par le proxy.
  */
 export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
   'acces',
@@ -380,6 +381,7 @@ export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
   'espaces',
   'exemple',
   'hors-ligne',
+  'logos',
   'offre',
   'payload-api',
   'quitter',

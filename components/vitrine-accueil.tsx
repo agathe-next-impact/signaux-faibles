@@ -1,4 +1,5 @@
 import { BadgeImpact } from '@/components/badge-impact'
+import { BandeauLogos } from '@/components/bandeau-logos'
 import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { CarteDuMarché, GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { BoutonDémo, CoquilleVitrine, ListeCarrée, OuvertureVitrine, SectionVitrine } from '@/components/vitrine'
@@ -48,6 +49,8 @@ export function AccueilVitrine() {
           de mise en place offerts pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}.
         </p>
       </OuvertureVitrine>
+
+      <BandeauLogos />
 
       <SectionVitrine
         surtitre="Ce que vous recevez"
