@@ -3,7 +3,6 @@ import {
   AperçuEssentiel,
   AperçuÉcosystème,
   AperçuLectureStratégique,
-  AperçuSources,
 } from '@/components/apercu-vitrine'
 import { BandeauLogos } from '@/components/bandeau-logos'
 import { Case, Grille, LienFlèche } from '@/components/coquille'
@@ -25,8 +24,8 @@ import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSem
  *
  * Déroulé de la refonte : l'ouverture montre le produit (la vidéo de l'espace,
  * `HéroVidéo`, retenue le 7 novembre 2026 parmi quatre candidates) ; les logos ; « Ce que vous recevez » en quatre onglets, chacun avec
- * son aperçu ; la valeur, chiffrée ; les deux supports (la lettre, l'espace) ;
- * l'analyse ; les tarifs en cartes ; les questions ; l'appel final. Les aperçus
+ * son aperçu (l'analyse en est un depuis le soir du 7 novembre) ; la valeur,
+ * chiffrée ; les deux supports (la lettre, l'espace) ; les tarifs en cartes ; les questions ; l'appel final. Les aperçus
  * sont calculés sur une lettre fictive par le code de l'espace client
  * (`components/apercu-vitrine.tsx`), jamais sur la lettre d'un client.
  *
@@ -73,10 +72,10 @@ export function AccueilVitrine() {
               contenu: <AperçuConcurrents />,
             },
             {
-              clé: 'sources',
-              libellé: 'Les sources',
-              description: 'Chaque fait daté et lié',
-              contenu: <AperçuSources />,
+              clé: 'analyse',
+              libellé: 'L’analyse',
+              description: 'Chaque fait classé, votre position lue',
+              contenu: <AperçuLectureStratégique />,
             },
           ]}
         />
@@ -127,15 +126,6 @@ export function AccueilVitrine() {
             />
           </Case>
         </Grille>
-      </SectionVitrine>
-
-      <SectionVitrine
-        surtitre="L’analyse"
-        titre="Un outil vous livre des alertes. Nous vous livrons l’analyse."
-        chapeau="Chaque fait de la lettre est classé : ce qui bouge dans votre environnement, qui bouge dans votre concurrence, ce qui peut changer votre position."
-        disposition="côte"
-      >
-        <AperçuLectureStratégique />
       </SectionVitrine>
 
       <SectionVitrine

@@ -1074,7 +1074,9 @@ que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"` ; dep
 soir du 7 novembre, à la demande de l'opératrice : L'essentiel, **L'écosystème** (les axes
 de la grille sous une dimension PESTEL, `AperçuÉcosystème`), **Les concurrents** (les
 entités de la grille qui portent un mouvement d'Ansoff, avec leur dossier ou la phrase qui
-les nomme, `AperçuConcurrents`), Les sources ; « Les axes » et « Votre espace » retirés ; la section « L'impact » remplacée le même soir, à sa
+les nomme, `AperçuConcurrents`), **L'analyse** (la lecture stratégique de l'organisation fictive,
+`AperçuLectureStratégique`, qui était une section à part au-dessus des tarifs, retirée
+le même soir à sa demande) ; « Les axes », « Votre espace » et « Les sources » retirés ; la section « L'impact » remplacée le même soir, à sa
 demande, par « Deux supports » : la lettre hebdomadaire par courriel et l'espace web et mobile,
 en deux cases),
 tarifs en cartes partagées avec « Tarifs » (`components/vitrine-tarifs.tsx`),
@@ -1103,7 +1105,8 @@ d'offres, jamais par concurrent nommé**, sources et date du relevé dépliables
 (tarifs) ; la carte des groupes stratégiques du marché de la veille, l'outil de
 l'écran « Acteurs » appliqué à nous-mêmes (`CarteDuMarché`, retirée de l'accueil le
 7 novembre 2026 à la demande de l'opératrice, remplacée par « L'analyse » : la lecture
-stratégique de l'organisation fictive de « Exemples », `AperçuLectureStratégique`). Données dans
+stratégique de l'organisation fictive de « Exemples », `AperçuLectureStratégique`, devenue
+le soir même un onglet de « Ce que vous recevez »). Données dans
 `lib/vitrine/marche.ts` seulement, nos prix toujours lus dans `lib/domaine/offre.ts` ;
 rien de nos coûts ni de nos marges sur une page publique. « L'offre » présente la
 lecture stratégique « en test » et ce qui nous distingue ; « Exemples » rend la
