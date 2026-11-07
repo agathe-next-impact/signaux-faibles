@@ -22,6 +22,8 @@ export type OrganisationÀGérer = {
   readonly suspendueLe: Date | null
   readonly outilsStratégiques: boolean
   readonly espaceRéorganisé: boolean
+  /** Ce que l'écran « Concurrents » montre (`lib/domaine/sujets-du-marche.ts`). */
+  readonly sujetsDuMarché: string
   /** L'aperçu avant envoi (1er novembre 2026) : vrai, rien ne part au client sans le geste de l'opératrice. */
   readonly aperçuAvantEnvoi: boolean
   /** Vrai si l'organisation porte sa clé de cloisonnement : sans elle, aucun lecteur ne peut entrer (règle 2). */
@@ -40,6 +42,7 @@ export async function organisationÀGérer(slug: string, db: Base = base()): Pro
         suspendueLe: organisations.suspendueLe,
         outilsStratégiques: organisations.outilsStratégiques,
         espaceRéorganisé: organisations.espaceRéorganisé,
+        sujetsDuMarché: organisations.sujetsDuMarché,
         aperçuAvantEnvoi: organisations.aperçuAvantEnvoi,
         registreNotion: organisations.registreNotion,
       })

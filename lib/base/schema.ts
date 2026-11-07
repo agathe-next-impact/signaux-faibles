@@ -152,6 +152,14 @@ export const organisations = pgTable(
    */
   espaceRéorganisé: boolean('espace_reorganise').notNull().default(false),
   /**
+   * Ce que l'écran « Concurrents » de l'espace réorganisé montre (7 novembre
+   * 2026, `lib/domaine/sujets-du-marche.ts`) : `concurrents` par défaut,
+   * `entreprises` quand l'onboarding a adapté la veille concurrentielle aux
+   * mouvements des entreprises du territoire (la CCI du Cantal). Ne change que
+   * les mots de l'espace ; posé par l'opératrice.
+   */
+  sujetsDuMarché: text('sujets_du_marche').notNull().default('concurrents'),
+  /**
    * L'aperçu avant envoi (1er novembre 2026, décision de l'opératrice) : tant
    * que vrai, rien ne part au client sans son geste. `POST /api/acces/ouvrir`
    * refuse (`apercu-avant-envoi`) : le lien part de la fiche de l'organisation ;
@@ -177,6 +185,7 @@ export const organisations = pgTable(
       sql`${table.registreNotion} is null or ${table.registreNotion} ~ '^[0-9a-f]{32}$'`,
     ),
     check('organisations_parutions_d_essai', sql`${table.parutionsDEssai} between 1 and 8`),
+    check('organisations_sujets_du_marche', sql`${table.sujetsDuMarché} in ('concurrents', 'entreprises')`),
     check(
       'organisations_recommandée_hors_prospection',
       sql`not (${table.entréeParProspection} and ${table.recommandéePar} is not null)`,

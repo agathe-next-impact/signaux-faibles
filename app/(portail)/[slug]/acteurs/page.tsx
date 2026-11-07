@@ -63,7 +63,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
 
       <p className="mt-6 text-ardoise">
         {réorganisé
-          ? 'Les administrations, financeurs, réseaux et organisations du secteur que la veille rouvre d’une lettre à l’autre. Les concurrents ont leur écran.'
+          ? `Les administrations, financeurs, réseaux et organisations du secteur que la veille rouvre d’une lettre à l’autre. ${espace?.marché.leurÉcran ?? 'Les concurrents ont leur écran.'}`
           : 'Les concurrents, administrations et organisations du secteur que la veille rouvre d’une lettre à l’autre.'}{' '}
         {suivis.length > 0
           ? enMouvement > 0
@@ -112,7 +112,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
       <div className="mt-8 flex flex-col gap-2">
         {réorganisé ? (
           <p>
-            <LienFlèche href={`/${accès.slug}/concurrents`}>Voir les concurrents et leur carte</LienFlèche>
+            <LienFlèche href={`/${accès.slug}/concurrents`}>{espace?.marché.voir ?? 'Voir les concurrents et leur carte'}</LienFlèche>
           </p>
         ) : null}
         <p>

@@ -5,6 +5,7 @@ import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { AnneauDuCorpus } from '@/components/graphiques-strategie'
 import { segmentDEntité } from '@/lib/domaine/fiche-veille'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
+import { vocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
 /** Une liste de noms en colonnes ; chaque nom mène à sa fiche de présentation (6 novembre 2026). */
@@ -42,6 +43,7 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
   const concurrents = grille ? (espace?.concurrents ?? []) : []
   const écosystème = grille ? grille.entités.filter((e) => e.veille === 'ecosysteme') : []
   const partiesPrenantes = grille ? grille.partiesPrenantes.map((p) => p.nom) : []
+  const marché = espace?.marché ?? vocabulaireDuMarché(null)
 
   return (
     <>
@@ -52,11 +54,11 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
         <>
           <p className="mt-6 max-w-[68ch] text-ardoise">Les entités que votre veille suit nommément, et les parties prenantes dont elle lit le pouvoir et l’intérêt. Chaque nom ouvre sa fiche de présentation.</p>
           <div className="mt-6">
-            <AnneauDuCorpus concurrents={concurrents.length} écosystème={écosystème.length} partiesPrenantes={grille.partiesPrenantes.length} />
+            <AnneauDuCorpus concurrents={concurrents.length} écosystème={écosystème.length} partiesPrenantes={grille.partiesPrenantes.length} libelléDesConcurrents={marché.écran} />
           </div>
           <section className="mt-8 flex flex-col gap-4">
-            <h2 className="font-titre text-h2 font-bold text-encre">Concurrents suivis</h2>
-            {concurrents.length > 0 ? <Liste noms={concurrents} slug={accès.slug} /> : <p className="text-ardoise">Aucun concurrent nommé dans votre veille.</p>}
+            <h2 className="font-titre text-h2 font-bold text-encre">{marché.corpus}</h2>
+            {concurrents.length > 0 ? <Liste noms={concurrents} slug={accès.slug} /> : <p className="text-ardoise">{marché.aucun}</p>}
           </section>
           {grille.axesGroupes.length > 0 ? (
             <section className="mt-8 flex flex-col gap-4">
@@ -89,7 +91,7 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
         </>
       )}
       <p className="mt-12">
-        <LienFlèche href={`/${accès.slug}/concurrents`}>Voir la carte des concurrents</LienFlèche>
+        <LienFlèche href={`/${accès.slug}/concurrents`}>{marché.voir}</LienFlèche>
       </p>
     </>
   )

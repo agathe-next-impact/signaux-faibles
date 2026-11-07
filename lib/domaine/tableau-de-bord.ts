@@ -1,3 +1,4 @@
+import { vocabulaireDuMarché, type VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { libelléDePériode, mouvementsDeLaCarte, TYPES_DE_TOWS, type ActivitéDeRubrique, type SynthèseVue } from '@/lib/domaine/strategie-vues'
 
 /**
@@ -27,6 +28,8 @@ export type DonnéesDuTableau = {
   /** Les dossiers ouverts qui ne nomment pas un concurrent de la grille. */
   readonly dossiersHorsConcurrents: number
   readonly concurrents: number
+  /** Les mots de l'écran « Concurrents » (7 novembre 2026) ; les concurrents par défaut. */
+  readonly marché?: VocabulaireDuMarché
   readonly synthèse: SynthèseVue | null
   /** Les faits étiquetés des treize dernières semaines par dimension PESTEL, comme l'écran « PESTEL » les compte. */
   readonly pestel: readonly { readonly libellé: string; readonly faits: number }[] | null
@@ -54,21 +57,22 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
   const intenses = trimestre ? trimestre.forces.filter((f) => f.cran === 3).length : 0
   const indice = trimestre?.indicateurs?.indice?.valeurs ?? null
   const href = (segment: string) => `/${d.slug}${segment}`
+  const marché = d.marché ?? vocabulaireDuMarché(null)
   return [
     { rubrique: 'Cette semaine', écran: 'Lettres', href: href('/lettres'), valeur: String(d.lettres), mention: d.dernièreSemaine ? `la dernière, ${d.dernièreSemaine}` : 'aucune lettre' },
     {
       rubrique: 'Le marché',
-      écran: 'Concurrents',
+      écran: marché.écran,
       href: href('/concurrents'),
-      valeur: pluriel(d.concurrents, 'suivi'),
-      mention: mois ? (mouvements > 0 ? `${pluriel(mouvements, 'a changé', 'ont changé')} de case` : 'aucun n’a changé de case') : pasEncore,
+      valeur: pluriel(d.concurrents, marché.suivi),
+      mention: mois ? (mouvements > 0 ? `${pluriel(mouvements, 'a changé', 'ont changé')} de case` : `${marché.aucunNAChangé.toLowerCase()}`) : pasEncore,
     },
     {
       rubrique: 'Le marché',
       écran: 'Acteurs',
       href: href('/acteurs'),
       valeur: pluriel(d.dossiersHorsConcurrents, 'dossier'),
-      mention: mois ? `${pluriel(mois.mendelow.placés, 'partie prenante', 'parties prenantes')} sur Mendelow` : 'hors concurrents',
+      mention: mois ? `${pluriel(mois.mendelow.placés, 'partie prenante', 'parties prenantes')} sur Mendelow` : marché.horsDeLÉcran,
     },
     {
       rubrique: 'Le marché',
@@ -139,7 +143,7 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
       href: href('/veille/corpus'),
       valeur: d.veille ? pluriel(d.veille.entités, 'entité') : 'n.d.',
       mention: d.veille
-        ? `${pluriel(d.veille.concurrents, 'concurrent')}, ${pluriel(d.veille.partiesPrenantes, 'partie prenante', 'parties prenantes')}`
+        ? `${pluriel(d.veille.concurrents, marché.un, marché.des)}, ${pluriel(d.veille.partiesPrenantes, 'partie prenante', 'parties prenantes')}`
         : 'les acteurs suivis',
     },
     {

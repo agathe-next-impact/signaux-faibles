@@ -5,6 +5,7 @@ import { Texte } from '@/components/document'
 import { FaitsParMois } from '@/components/graphiques-strategie'
 import { mentionsDe } from '@/lib/domaine/mentions'
 import { dernièresNotes, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/portail/semaine'
+import { vocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { espaceDeLOrganisation, ficheDuConcurrent } from '@/lib/portail/strategie'
 
 /**
@@ -28,16 +29,17 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
   if (espace && !espace.réorganisé) notFound()
   const lue = espace ? await ficheDuConcurrent({ registre: accès.organisationId, segment }) : null
   if (lue?.sorte === 'inconnu') notFound()
+  const marché = espace?.marché ?? vocabulaireDuMarché(null)
 
   const retour = (
     <p className="mt-6">
-      <LienFlèche href={`/${accès.slug}/concurrents`}>Retour aux concurrents</LienFlèche>
+      <LienFlèche href={`/${accès.slug}/concurrents`}>{marché.retour}</LienFlèche>
     </p>
   )
   if (!lue) {
     return (
       <>
-        <EntêteÉcran surtitre="concurrent suivi" titre="Fiche indisponible" />
+        <EntêteÉcran surtitre={marché.fiche} titre="Fiche indisponible" />
         <p className="mt-6 text-ardoise">Cette fiche ne peut pas être affichée pour l’instant. Réessayez dans quelques minutes.</p>
         {retour}
       </>
@@ -54,7 +56,7 @@ export default async function UnConcurrent({ params }: { params: Promise<{ slug:
   return (
     <>
       <EntêteÉcran
-        surtitre="concurrent suivi"
+        surtitre={marché.fiche}
         titre={fiche.nom}
         état={`${fiche.faits.length} fait${fiche.faits.length > 1 ? 's' : ''} daté${fiche.faits.length > 1 ? 's' : ''}`}
       />
