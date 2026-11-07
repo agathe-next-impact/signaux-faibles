@@ -1074,7 +1074,9 @@ que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"` ; dep
 soir du 7 novembre, à la demande de l'opératrice : L'essentiel, **L'écosystème** (les axes
 de la grille sous une dimension PESTEL, `AperçuÉcosystème`), **Les concurrents** (les
 entités de la grille qui portent un mouvement d'Ansoff, avec leur dossier ou la phrase qui
-les nomme, `AperçuConcurrents`), Les sources ; « Les axes » et « Votre espace » retirés),
+les nomme, `AperçuConcurrents`), Les sources ; « Les axes » et « Votre espace » retirés ; la section « L'impact » remplacée le même soir, à sa
+demande, par « Deux supports » : la lettre hebdomadaire par courriel et l'espace web et mobile,
+en deux cases),
 tarifs en cartes partagées avec « Tarifs » (`components/vitrine-tarifs.tsx`),
 questions et appel final (`AppelFinal`, bouton secondaire quand la page a déjà
 son primaire). Les graphiques de la vitrine s'animent **une fois à l'entrée dans

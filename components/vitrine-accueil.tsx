@@ -5,12 +5,11 @@ import {
   AperçuLectureStratégique,
   AperçuSources,
 } from '@/components/apercu-vitrine'
-import { BadgeImpact } from '@/components/badge-impact'
 import { BandeauLogos } from '@/components/bandeau-logos'
 import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { Onglets } from '@/components/onglets'
-import { AppelFinal, ChiffresClés, CoquilleVitrine, Question, SectionVitrine, TêteDeSection } from '@/components/vitrine'
+import { AppelFinal, ChiffresClés, CoquilleVitrine, ListeCarrée, Question, SectionVitrine, TêteDeSection } from '@/components/vitrine'
 import { HéroVidéo } from '@/components/vitrine-heros'
 import { CartesDeTarifs } from '@/components/vitrine-tarifs'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
@@ -26,8 +25,8 @@ import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSem
  *
  * Déroulé de la refonte : l'ouverture montre le produit (la vidéo de l'espace,
  * `HéroVidéo`, retenue le 7 novembre 2026 parmi quatre candidates) ; les logos ; « Ce que vous recevez » en quatre onglets, chacun avec
- * son aperçu ; la valeur, chiffrée ; les trois niveaux d'impact ; l'espace ; le
- * marché ; les tarifs en cartes ; les questions ; l'appel final. Les aperçus
+ * son aperçu ; la valeur, chiffrée ; les deux supports (la lettre, l'espace) ;
+ * l'analyse ; les tarifs en cartes ; les questions ; l'appel final. Les aperçus
  * sont calculés sur une lettre fictive par le code de l'espace client
  * (`components/apercu-vitrine.tsx`), jamais sur la lettre d'un client.
  *
@@ -100,28 +99,32 @@ export function AccueilVitrine() {
       </SectionVitrine>
 
       <SectionVitrine
-        surtitre="L’impact"
-        titre="Trois niveaux, pas plus"
+        surtitre="Deux supports"
+        titre="La lettre dans votre boîte, l’espace sur votre téléphone"
         ton="neutre"
       >
-        <Grille colonnes={3} étiquette="Les trois niveaux d’impact">
+        <Grille colonnes={2} étiquette="La lettre et l’espace">
           <Case>
-            <p className="self-start">
-              <BadgeImpact niveau="FORT" />
-            </p>
-            <p className="text-h3 text-encre">Une décision à prendre.</p>
+            <p className="label-mono text-ardoise">Lettre hebdomadaire · courriel</p>
+            <p className="font-titre text-h3 font-semibold text-encre">Le même jour chaque semaine, à chacun de vos lecteurs.</p>
+            <ListeCarrée
+              éléments={[
+                `L’essentiel en ${ESSENTIEL_LIGNES_MAX} lignes, puis ${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes classés par impact.`,
+                'Chaque fait daté, lié à sa source.',
+                `Jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs par organisation.`,
+              ]}
+            />
           </Case>
           <Case>
-            <p className="self-start">
-              <BadgeImpact niveau="MOYEN" />
-            </p>
-            <p className="text-h3 text-encre">Un mouvement à suivre.</p>
-          </Case>
-          <Case>
-            <p className="self-start">
-              <BadgeImpact niveau="RAS" />
-            </p>
-            <p className="text-h3 text-encre">Vérifié, rien de neuf.</p>
+            <p className="label-mono text-ardoise">Espace · web et mobile</p>
+            <p className="font-titre text-h3 font-semibold text-encre">Toutes vos lettres, et ce qu’elles disent de votre marché.</p>
+            <ListeCarrée
+              éléments={[
+                'Les archives, semaine par semaine, et chaque axe suivi d’une lettre à l’autre.',
+                'Vos concurrents, votre environnement, votre stratégie : un écran par lecture.',
+                'Un lien personnel, sans mot de passe ; installable sur votre téléphone, lisible hors ligne.',
+              ]}
+            />
           </Case>
         </Grille>
       </SectionVitrine>
