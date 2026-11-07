@@ -30,13 +30,13 @@ import { lectureDeDémonstration } from '@/lib/vitrine/lecture-demonstration'
 
 const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
 
-function démonstration(): Démonstration {
+export function démonstration(): Démonstration {
   const conseil = DÉMONSTRATIONS.find((d) => d.clé === 'conseil')
   if (!conseil) throw new Error('démonstration « conseil » absente')
   return conseil
 }
 
-function documentDe(d: Démonstration): Document {
+export function documentDe(d: Démonstration): Document {
   return construireDocument(markdownVersBlocs(d.markdown))
 }
 

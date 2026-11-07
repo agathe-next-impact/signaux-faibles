@@ -36,6 +36,8 @@ const PUBLICS = [
   '/icon.svg',
   // Les logos clients de la vitrine, servis à un visiteur sans session.
   '/logos/',
+  // Les médias de la vitrine (vidéo de l'espace), servis de même.
+  '/vitrine/',
 ]
 
 /**
@@ -61,7 +63,7 @@ export function estUneAdressePayload(pathname: string): boolean {
  * (23 octobre 2026) ; comme `/demo` et `/espaces`, elles masquent un slug
  * identique, qu'aucune organisation ne doit donc porter.
  */
-const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/offre', '/tarifs'])
+const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/heros', '/offre', '/tarifs'])
 
 export function proxy(requête: NextRequest): NextResponse {
   const { pathname } = requête.nextUrl

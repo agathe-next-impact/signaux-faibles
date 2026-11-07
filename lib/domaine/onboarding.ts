@@ -380,6 +380,7 @@ export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
   'demo',
   'espaces',
   'exemple',
+  'heros',
   'hors-ligne',
   'logos',
   'offre',
@@ -387,6 +388,7 @@ export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
   'quitter',
   'recevoir-mon-lien',
   'tarifs',
+  'vitrine',
 ])
 
 /** Deux cowork par semaine au plus (décision du 25 octobre 2026, `docs/taches-api.md`). */
