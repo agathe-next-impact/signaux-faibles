@@ -51,7 +51,8 @@ export const étatOrganisation = pgEnum('état_organisation', [
 
 /**
  * L'offre d'une organisation (19 octobre 2026) : ce qu'elle paie, ou non.
- *   · `standard` : la formule de l'offre, 259 € HT par mois depuis le 6 novembre 2026
+ *   · `standard` : la formule de l'offre, 149 € HT par mois ou 1 490 € HT par an
+ *     depuis le 7 novembre 2026 (259 € HT par mois le 6 novembre)
  *     (149 € ou 1 490 € HT du 23 octobre au 5 novembre, 89 € ou 890 € avant) ;
  *   · `fondateur` : le tarif fondateur, la seule formule à 29 € HT par mois,
  *     réservée par l'opératrice à une organisation nommée (`early_adopter`

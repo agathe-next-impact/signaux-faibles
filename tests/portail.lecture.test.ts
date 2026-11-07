@@ -24,13 +24,30 @@ beforeEach(() => {
 })
 afterEach(() => vi.restoreAllMocks())
 
+const INSCRITE = new Date('2026-10-20T09:00:00Z')
+
 describe('lectureDeLEspace', () => {
+  it('annonce les frais de mise en place à une organisation inscrite après la période early adopter', async () => {
+    base.lireEntréeDuParcours.mockResolvedValue({
+      organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(1), offre: 'standard', parutionsDEssai: 3 },
+      abonnement: null,
+      inscriteLe: new Date('2027-01-05T09:00:00Z'),
+    })
+    expect((await lectureDeLEspace(ESPACE)).fraisDeMiseEnPlace).toBe(true)
+    base.lireEntréeDuParcours.mockResolvedValue({
+      organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(1), offre: 'standard', parutionsDEssai: 3 },
+      abonnement: null,
+      inscriteLe: INSCRITE,
+    })
+    expect((await lectureDeLEspace(ESPACE)).fraisDeMiseEnPlace).toBe(false)
+  })
+
   it('complète pendant l’essai, l’essentiel la semaine suivante, rien au-delà', async () => {
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(1), offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(1), offre: 'standard', parutionsDEssai: 3 }, abonnement: null, inscriteLe: INSCRITE })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('complète')
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(3), offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(3), offre: 'standard', parutionsDEssai: 3 }, abonnement: null, inscriteLe: INSCRITE })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('essentiel')
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(6), offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(6), offre: 'standard', parutionsDEssai: 3 }, abonnement: null, inscriteLe: INSCRITE })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('aucune')
   })
 
@@ -38,18 +55,19 @@ describe('lectureDeLEspace', () => {
     base.lireEntréeDuParcours.mockResolvedValue({
       organisation: { état: 'essai', activéeLe: ACTIVÉE_IL_Y_A(6), offre: 'standard', parutionsDEssai: 3 },
       abonnement: { état: 'active' },
+      inscriteLe: INSCRITE,
     })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('complète')
   })
 
   it('un client historique garde la lecture complète', async () => {
-    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'abonnee', activéeLe: null, offre: 'standard', parutionsDEssai: 3 }, abonnement: null })
+    base.lireEntréeDuParcours.mockResolvedValue({ organisation: { état: 'abonnee', activéeLe: null, offre: 'standard', parutionsDEssai: 3 }, abonnement: null, inscriteLe: INSCRITE })
     expect((await lectureDeLEspace(ESPACE)).lecture).toBe('complète')
   })
 
   it('dans le doute, la lecture reste complète : base absente, injoignable, organisation inconnue', async () => {
     base.baseConfigurée.mockReturnValue(false)
-    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null, offre: null })
+    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null, offre: null, fraisDeMiseEnPlace: false })
     expect(base.lireEntréeDuParcours).not.toHaveBeenCalled()
 
     base.baseConfigurée.mockReturnValue(true)
@@ -62,7 +80,7 @@ describe('lectureDeLEspace', () => {
 
   it('en mode notion, Postgres n’est jamais ouvert', async () => {
     base.sourceAccès.mockReturnValue('notion')
-    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null, offre: null })
+    expect(await lectureDeLEspace(ESPACE)).toEqual({ lecture: 'complète', étape: null, offre: null, fraisDeMiseEnPlace: false })
     expect(base.lireEntréeDuParcours).not.toHaveBeenCalled()
   })
 
@@ -71,12 +89,12 @@ describe('lectureDeLEspace', () => {
     base.lireEntréeDuParcours.mockReturnValue(new Promise(() => {}))
     const promesse = lectureDeLEspace(ESPACE)
     await vi.advanceTimersByTimeAsync(450)
-    expect(await promesse).toEqual({ lecture: 'complète', étape: null, offre: null })
+    expect(await promesse).toEqual({ lecture: 'complète', étape: null, offre: null, fraisDeMiseEnPlace: false })
     vi.useRealTimers()
   })
 
   it('l’opérateur lit toujours tout, sans même interroger la base', async () => {
-    expect(await lectureDeLEspace({ ...ESPACE, enOpérateur: true })).toEqual({ lecture: 'complète', étape: null, offre: null })
+    expect(await lectureDeLEspace({ ...ESPACE, enOpérateur: true })).toEqual({ lecture: 'complète', étape: null, offre: null, fraisDeMiseEnPlace: false })
     expect(base.lireEntréeDuParcours).not.toHaveBeenCalled()
   })
 })

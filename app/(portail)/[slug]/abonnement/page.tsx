@@ -2,7 +2,7 @@ import { exigerLecture } from '@/lib/auth/appartenance'
 import { ChoixDeFormule, GérerLAbonnement, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau } from '@/components/coquille'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { ADRESSE_D_ABONNEMENT, LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
+import { ADRESSE_D_ABONNEMENT, fraisDeMiseEnPlaceDus, LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
 import { ajouterLecteur, retirerLecteur } from '@/lib/portail/lecteurs'
 import { espacePrescripteurDe } from '@/lib/portail/prescripteur'
@@ -76,6 +76,9 @@ export default async function MonAbonnement({
 
   const offre = situation?.organisation.offre ?? 'standard'
   const historique = situation?.organisation.historique ?? false
+  const fraisDeMiseEnPlace =
+    situation !== null &&
+    fraisDeMiseEnPlaceDus({ offre, inscriteLe: situation.organisation.inscriteLe, déjàAbonnée: situation.abonnement !== null })
   const abonnéStripe = étape?.étape === 'abonnee' && étape.source === 'stripe'
   const offert = étape?.étape === 'abonnee' && étape.source === 'offerte'
   const suspenduÀLaMain = étape?.étape === 'suspendue' && étape.manuelle
@@ -171,7 +174,7 @@ export default async function MonAbonnement({
                 L’abonnement couvre votre organisation, ses deux veilles et {LECTEURS_ACTIFS_MAX}{' '}
                 lecteurs.
               </p>
-              <ChoixDeFormule slug={accès.slug} offre={offre} />
+              <ChoixDeFormule slug={accès.slug} offre={offre} fraisDeMiseEnPlace={fraisDeMiseEnPlace} />
               <p className="text-ardoise">
                 Paiement sécurisé par Stripe, facture à chaque échéance. Pour un bon de commande ou un
                 virement, écrivez à{' '}

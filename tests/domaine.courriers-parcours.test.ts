@@ -41,8 +41,8 @@ describe('composerCourrierDeParcours', () => {
       const { sujet, texte } = composerCourrierDeParcours({ ...base, sorte })
       expect(texte).toContain('https://www.signauxfaibles.io/acme')
       expect(texte).toContain('https://www.signauxfaibles.io/recevoir-mon-lien')
-      expect(texte).toContain('259 € HT par mois')
-      expect(texte).not.toContain('par an')
+      expect(texte).toContain('149 € HT par mois')
+      expect(texte).toMatch(/1\s490 € HT par an/)
       expect(texte.startsWith('Bonjour Léa,')).toBe(true)
       expect(`${sujet}${texte}`).not.toContain('—')
       expect(sujet).toMatch(/^[A-ZÉ]/u)
@@ -55,7 +55,7 @@ describe('composerCourrierDeParcours', () => {
       expect(html).toContain(sorte === 'essai_rappel_j7' ? 'Ouvrir mon espace' : 'M’abonner')
       expect(html.match(/class="btn-primary/g)).toHaveLength(1)
       expect(html).toContain('href="https://www.signauxfaibles.io/recevoir-mon-lien"')
-      expect(html).toContain('259 € HT par mois')
+      expect(html).toContain('149 € HT par mois')
       expect(html).toContain('lea@acme.test')
       expect(html).toContain('Gérer mon abonnement')
       expect(html).toContain('1 place Exemple')
@@ -68,7 +68,7 @@ describe('composerCourrierDeParcours', () => {
     expect(quatre).toContain('quatre parutions complètes')
     const early = composerCourrierDeParcours({ ...base, sorte: 'essai_tronquee', offre: 'fondateur' }).texte
     expect(early).toContain('29 € HT par mois')
-    expect(early).not.toContain('259 € HT par mois')
+    expect(early).not.toContain('149 € HT par mois')
   })
 
   it('salue sans nom quand il manque', () => {

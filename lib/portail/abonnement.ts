@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { baseConfigurée } from '@/lib/base/client'
 import { lireFacturation } from '@/lib/base/abonnements'
+import { fraisDeMiseEnPlaceDus } from '@/lib/domaine/offre'
 import { empreinte } from '@/lib/portail/debit'
 import {
   cléAccordéeAuMode,
@@ -97,6 +98,19 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
       return indisponible
     }
 
+    // Les frais de mise en place : après la période early adopter, une fois par
+    // organisation. Dus sans prix posé, la souscription est refusée plutôt que
+    // de les oublier.
+    const fraisDeMiseEnPlace = fraisDeMiseEnPlaceDus({
+      offre: facturation.offre,
+      inscriteLe: facturation.inscriteLe,
+      déjàAbonnée: facturation.abonnement !== null,
+    })
+    if (fraisDeMiseEnPlace && !configuration.miseEnPlace) {
+      console.error('[abonnement] STRIPE_PRIX_MISE_EN_PLACE absente : frais de mise en place dus, souscription refusée.')
+      return indisponible
+    }
+
     const session = await clientStripe(configuration).checkout.sessions.create(
       paramètresDePaiement({
         configuration,
@@ -105,11 +119,12 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
         slug: accès.slug,
         clientStripe: facturation.abonnement?.clientStripe ?? null,
         email: accès.email,
+        fraisDeMiseEnPlace,
       }),
     )
     if (!session.url) throw new Error('session de paiement sans URL')
     console.info(
-      `[abonnement] ${accès.slug} : page de paiement ouverte (${formule})` +
+      `[abonnement] ${accès.slug} : page de paiement ouverte (${formule}${fraisDeMiseEnPlace ? ', frais de mise en place' : ''})` +
         `${accès.email ? ` pour ${empreinte(accès.email)}` : ''}.`,
     )
     return session.url

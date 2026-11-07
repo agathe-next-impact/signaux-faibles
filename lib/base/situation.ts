@@ -37,6 +37,8 @@ export type SituationDAbonnement = {
     readonly parutionsDEssai: number
     /** Importée avant la mise en service de l'essai : un client d'avant l'offre. */
     readonly historique: boolean
+    /** L'entrée dans le portail : décide des frais de mise en place. */
+    readonly inscriteLe: Date
   }
   readonly abonnement: AbonnementLu | null
   /**
@@ -102,6 +104,7 @@ export async function lireSituationDAbonnement(
         offre: organisation.offre,
         parutionsDEssai: organisation.parutionsDEssai,
         historique: organisation.crééeLe < MISE_EN_SERVICE_DE_L_ESSAI,
+        inscriteLe: organisation.crééeLe,
       },
       abonnement: abonnement ? { ...abonnement, formule: formuleLue(abonnement.formule) } : null,
       lecteurs: actifs,

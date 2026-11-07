@@ -60,6 +60,7 @@ const schema = z.object({
   STRIPE_CLE_SECRETE: facultative(z.string().min(1)),
   STRIPE_PRIX_MENSUEL: facultative(z.string().min(1)),
   STRIPE_PRIX_ANNUEL: facultative(z.string().min(1)),
+  STRIPE_PRIX_MISE_EN_PLACE: facultative(z.string().min(1)),
   STRIPE_TAUX_TVA: facultative(z.string().min(1)),
   // Prospection par lemlist (19 octobre 2026) : lues directement dans
   // `process.env` par `lib/lemlist/client.ts` et par le webhook lemlist, comme

@@ -29,6 +29,7 @@ describe('lireEntréeDuParcours', () => {
     expect(await lireEntréeDuParcours(REGISTRE, db)).toEqual({
       organisation: { état: 'essai', activéeLe: activée, offre: 'standard', parutionsDEssai: 2 },
       abonnement: null,
+      inscriteLe: expect.any(Date),
     })
     // Le défaut de la colonne (migration 0011) est l'essai qu'annonce la
     // vitrine : l'un ne bouge pas sans l'autre.
@@ -66,7 +67,7 @@ describe('lireFacturation', () => {
       .insert(organisations)
       .values({ slug: 'f', nom: 'F', état: 'essai', registreNotion: REGISTRE })
       .returning({ id: organisations.id })
-    expect(await lireFacturation(REGISTRE, db)).toEqual({ organisationId: o!.id, offre: 'standard', abonnement: null })
+    expect(await lireFacturation(REGISTRE, db)).toEqual({ organisationId: o!.id, offre: 'standard', inscriteLe: expect.any(Date), abonnement: null })
 
     const commun = { organisationId: o!.id, clientStripe: 'cus_9', formule: 'mensuelle' as const, périodeFin: null, type: 'customer.subscription.updated' }
     await enregistrerÉvénementDAbonnement({ ...commun, abonnementStripe: 'sub_9', état: 'canceled', événementId: 'e1', événementLe: new Date('2026-10-20T00:00:00Z') }, db)

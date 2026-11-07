@@ -1,6 +1,14 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
-import { enEuros, HEURES_DE_PRISE_EN_MAIN, PRIX_FONDATEUR_HT, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import {
+  enEuros,
+  FRAIS_DE_MISE_EN_PLACE_HT,
+  HEURES_DE_PRISE_EN_MAIN,
+  PRIX_ANNUEL_HT,
+  PRIX_FONDATEUR_HT,
+  PRIX_MENSUEL_HT,
+  équivalentMensuelDeLAnnuel,
+} from '@/lib/domaine/offre'
 import type { Offre } from '@/lib/domaine/parcours'
 
 /**
@@ -26,11 +34,25 @@ export function LienMonAbonnement({ slug }: { slug: string }) {
  * slug voyage en champ caché et y est vérifié, et les boutons fonctionnent sans
  * JavaScript.
  *
- * Une seule formule depuis le 6 novembre 2026, la mensuelle, sur une grille à
- * angle droit comme le reste de l'espace. L'annuelle n'est plus proposée ; un
- * abonnement annuel en cours se gère dans l'espace de facturation.
+ * Deux formules côte à côte, sur une grille à angle droit comme le reste de
+ * l'espace (l'annuelle, retirée le 6 novembre 2026, revient le 7). L'annuelle
+ * porte son équivalent mensuel : c'est la seule comparaison que le lecteur
+ * fait de tête, autant la faire pour lui.
+ *
+ * Quand les frais de mise en place sont dus (`fraisDeMiseEnPlaceDus`, une
+ * inscription après la période early adopter), la formule les annonce : la page
+ * de paiement Stripe les ajoute à la première facture, et le lecteur ne doit pas
+ * les y découvrir.
  */
-export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; offre?: Offre }) {
+export function ChoixDeFormule({
+  slug,
+  offre = 'standard',
+  fraisDeMiseEnPlace = false,
+}: {
+  slug: string
+  offre?: Offre
+  fraisDeMiseEnPlace?: boolean
+}) {
   // Le tarif fondateur (19 octobre 2026) ne voit que sa formule : afficher le prix standard
   // à qui paiera 29 € serait faux. L'action serveur revérifie l'offre.
   if (offre === 'fondateur') {
@@ -46,6 +68,9 @@ export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; off
       </div>
     )
   }
+  const frais = fraisDeMiseEnPlace
+    ? ` Frais de mise en place de ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une fois avec la première échéance.`
+    : ''
   return (
     <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
       <Formule
@@ -53,7 +78,14 @@ export function ChoixDeFormule({ slug, offre = 'standard' }: { slug: string; off
         formule="mensuelle"
         intitulé="Mensuel"
         prix={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois`}
-        détail={`Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Sans engagement, résiliable à tout moment.`}
+        détail={`Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.${frais} Sans engagement, résiliable à tout moment.`}
+      />
+      <Formule
+        slug={slug}
+        formule="annuelle"
+        intitulé="Annuel"
+        prix={`${enEuros(PRIX_ANNUEL_HT)} € HT par an`}
+        détail={`Soit ${enEuros(équivalentMensuelDeLAnnuel())} € HT par mois, deux mois offerts. Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.${frais}`}
       />
     </div>
   )
@@ -157,6 +189,7 @@ export function OffreDEssai({
   parutions,
   offre = 'standard',
   historique = false,
+  fraisDeMiseEnPlace = false,
 }: {
   slug: string
   parution: number
@@ -164,6 +197,7 @@ export function OffreDEssai({
   offre?: Offre
   /** Un client d'avant l'offre, entré dans le parcours par l'opératrice : son accès était complet jusqu'ici. */
   historique?: boolean
+  fraisDeMiseEnPlace?: boolean
 }) {
   const restantes = parutions - parution
   return (
@@ -181,7 +215,7 @@ export function OffreDEssai({
         « L’essentiel ». L’abonnement couvre votre organisation, ses deux veilles et trois
         lecteurs.
       </p>
-      <ChoixDeFormule slug={slug} offre={offre} />
+      <ChoixDeFormule slug={slug} offre={offre} fraisDeMiseEnPlace={fraisDeMiseEnPlace} />
     </section>
   )
 }
