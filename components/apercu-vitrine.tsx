@@ -16,6 +16,7 @@ import { trierParImpact } from '@/lib/domaine/impact'
 import { markdownVersBlocs } from '@/lib/domaine/markdown'
 import { synthétiser } from '@/lib/domaine/synthese'
 import { DÉMONSTRATIONS, type Démonstration } from '@/lib/vitrine/demonstrations'
+import { lectureDeDémonstration } from '@/lib/vitrine/lecture-demonstration'
 
 /**
  * Les aperçus du produit sur l'accueil de la vitrine (7 novembre 2026).
@@ -267,6 +268,122 @@ export function AperçuSources() {
           })}
         </ul>
       </div>
+      <MentionFictive />
+    </div>
+  )
+}
+
+/** Une barre de comptage, qui s'étire à l'entrée dans l'écran ; la plus haute du bloc en turquoise, la série mise en avant. */
+function BarreDeCompte({
+  libellé,
+  faits,
+  plafond,
+  rang,
+  enAvant,
+  détail,
+}: {
+  libellé: string
+  faits: number
+  plafond: number
+  rang: number
+  enAvant: boolean
+  détail?: string
+}) {
+  return (
+    <li className="flex flex-col gap-1">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-3">
+        <span className="text-encre">{libellé}</span>
+        <span className="flex items-center gap-2">
+          {faits > 0 ? (
+            <span
+              aria-hidden="true"
+              className={`anime-etire h-2.5 rounded-r-[4px] ${enAvant ? 'bg-turquoise' : 'bg-ardoise'}`}
+              style={{ width: `${(faits / plafond) * 75}%`, '--i': rang } as React.CSSProperties}
+            />
+          ) : null}
+          <span className="label-mono text-encre">{faits}</span>
+        </span>
+      </div>
+      {détail ? <p className="text-label text-ardoise">{détail}</p> : null}
+    </li>
+  )
+}
+
+/**
+ * Section « Le marché » de l'accueil (7 novembre 2026, à la demande de
+ * l'opératrice) : un exemple d'analyse plutôt que la carte du marché. C'est la
+ * lecture stratégique de la lettre fictive du cabinet de conseil, calculée par
+ * `lectureDeDémonstration` comme sur « Exemples » : les faits classés par
+ * dimension PESTEL et par force de Porter, en barres, et les ruptures. Des
+ * comptes, jamais une analyse rédigée par la page.
+ */
+export function AperçuLectureStratégique() {
+  const d = démonstration()
+  const lecture = lectureDeDémonstration(d, documentDe(d))
+  const plafondPestel = Math.max(1, ...lecture.pestel.map((p) => p.faits))
+  const plafondForces = Math.max(1, ...lecture.forces.map((f) => f.faits))
+  return (
+    <div className="flex flex-col gap-3">
+      <AnimerÀLEntrée>
+        <div className="border border-gris-ligne bg-blanc">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-gris-ligne px-6 py-4">
+            <p className="label-mono text-encre">Lecture stratégique · {d.organisation}</p>
+            <p className="label-mono text-ardoise">{lecture.total} faits classés</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3">
+            <figure className="flex flex-col gap-4 border-b border-gris-ligne p-6 lg:border-r lg:border-b-0">
+              <figcaption className="label-mono text-ardoise">Environnement · PESTEL</figcaption>
+              <ul className="flex flex-col gap-2">
+                {lecture.pestel.map((p, i) => (
+                  <BarreDeCompte
+                    key={p.clé}
+                    libellé={p.libellé}
+                    faits={p.faits}
+                    plafond={plafondPestel}
+                    rang={i}
+                    enAvant={p.faits === plafondPestel}
+                  />
+                ))}
+              </ul>
+            </figure>
+            <figure className="flex flex-col gap-4 border-b border-gris-ligne p-6 lg:border-r lg:border-b-0">
+              <figcaption className="label-mono text-ardoise">Concurrence · cinq forces</figcaption>
+              <ul className="flex flex-col gap-2">
+                {lecture.forces.map((f, i) => (
+                  <BarreDeCompte
+                    key={f.clé}
+                    libellé={f.libellé}
+                    faits={f.faits}
+                    plafond={plafondForces}
+                    rang={i}
+                    enAvant={f.faits === plafondForces}
+                    détail={f.entités.length > 0 ? f.entités.join(', ') : undefined}
+                  />
+                ))}
+              </ul>
+            </figure>
+            <div className="flex flex-col gap-4 p-6">
+              <p className="label-mono text-ardoise">Ruptures</p>
+              {lecture.ruptures.length > 0 ? (
+                <ul className="flex flex-col gap-3">
+                  {lecture.ruptures.map((r, i) => (
+                    <li key={`${r.date}:${r.titre}`} className="flex gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="anime-apparait mt-[0.5em] size-2 shrink-0 bg-encre"
+                        style={{ '--i': i } as React.CSSProperties}
+                      />
+                      <span className="text-encre">{r.titre}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-ardoise">Aucun fait ne change la position surveillée.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </AnimerÀLEntrée>
       <MentionFictive />
     </div>
   )

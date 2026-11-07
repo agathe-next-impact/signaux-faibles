@@ -1,9 +1,16 @@
 import Link from 'next/link'
-import { AperçuAxes, AperçuEspace, AperçuEssentiel, AperçuSources, ExtraitDeLettre } from '@/components/apercu-vitrine'
+import {
+  AperçuAxes,
+  AperçuEspace,
+  AperçuEssentiel,
+  AperçuLectureStratégique,
+  AperçuSources,
+  ExtraitDeLettre,
+} from '@/components/apercu-vitrine'
 import { BadgeImpact } from '@/components/badge-impact'
 import { BandeauLogos } from '@/components/bandeau-logos'
 import { Case, Grille, LienFlèche } from '@/components/coquille'
-import { CarteDuMarché, GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
+import { GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { Onglets } from '@/components/onglets'
 import {
   AppelFinal,
@@ -157,12 +164,12 @@ export function AccueilVitrine() {
       </SectionVitrine>
 
       <SectionVitrine
-        surtitre="Le marché"
+        surtitre="L’analyse"
         titre="Un outil vous livre des alertes. Nous vous livrons l’analyse."
-        chapeau="L’un des outils de votre tableau de bord, appliqué à notre propre marché."
+        chapeau="Chaque fait de la lettre est classé : ce qui bouge dans votre environnement, qui bouge dans votre concurrence, ce qui peut changer votre position."
         disposition="côte"
       >
-        <CarteDuMarché />
+        <AperçuLectureStratégique />
       </SectionVitrine>
 
       <SectionVitrine

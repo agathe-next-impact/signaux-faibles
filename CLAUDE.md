@@ -1085,7 +1085,9 @@ temps de veille interne valorisé à 50 € de l'heure, **hypothèse affichée c
 telle**, face au prix (accueil) ; les fourchettes de prix publics par **famille
 d'offres, jamais par concurrent nommé**, sources et date du relevé dépliables
 (tarifs) ; la carte des groupes stratégiques du marché de la veille, l'outil de
-l'écran « Acteurs » appliqué à nous-mêmes (accueil). Données dans
+l'écran « Acteurs » appliqué à nous-mêmes (`CarteDuMarché`, retirée de l'accueil le
+7 novembre 2026 à la demande de l'opératrice, remplacée par « L'analyse » : la lecture
+stratégique de l'organisation fictive de « Exemples », `AperçuLectureStratégique`). Données dans
 `lib/vitrine/marche.ts` seulement, nos prix toujours lus dans `lib/domaine/offre.ts` ;
 rien de nos coûts ni de nos marges sur une page publique. « L'offre » présente la
 lecture stratégique « en test » et ce qui nous distingue ; « Exemples » rend la
