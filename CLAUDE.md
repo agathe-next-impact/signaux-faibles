@@ -1070,7 +1070,11 @@ collant avec menu natif sur mobile ; l'accueil s'ouvre en deux colonnes, le text
 et un aperçu du produit (`components/apercu-vitrine.tsx`, lettre du cabinet de
 conseil de « Exemples », calculée par le code de l'espace, puis la vidéo depuis le
 soir du même jour), puis « Ce
-que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"`),
+que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"` ; depuis le
+soir du 7 novembre, à la demande de l'opératrice : L'essentiel, **L'écosystème** (les axes
+de la grille sous une dimension PESTEL, `AperçuÉcosystème`), **Les concurrents** (les
+entités de la grille qui portent un mouvement d'Ansoff, avec leur dossier ou la phrase qui
+les nomme, `AperçuConcurrents`), Les sources ; « Les axes » et « Votre espace » retirés),
 tarifs en cartes partagées avec « Tarifs » (`components/vitrine-tarifs.tsx`),
 questions et appel final (`AppelFinal`, bouton secondaire quand la page a déjà
 son primaire). Les graphiques de la vitrine s'animent **une fois à l'entrée dans

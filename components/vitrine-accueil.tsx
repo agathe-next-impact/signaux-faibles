@@ -1,7 +1,7 @@
 import {
-  AperçuAxes,
-  AperçuEspace,
+  AperçuConcurrents,
   AperçuEssentiel,
+  AperçuÉcosystème,
   AperçuLectureStratégique,
   AperçuSources,
 } from '@/components/apercu-vitrine'
@@ -46,7 +46,7 @@ export function AccueilVitrine() {
         <div className="px-6 py-12 lg:px-12">
           <TêteDeSection
             surtitre="Ce que vous recevez"
-            titre="Une lettre, trois niveaux de lecture, un espace"
+            titre="Une lettre par semaine, quatre façons de la lire"
             disposition="pile"
             id="ce-que-vous-recevez"
           />
@@ -62,16 +62,16 @@ export function AccueilVitrine() {
               contenu: <AperçuEssentiel />,
             },
             {
-              clé: 'axes',
-              libellé: 'Les axes',
-              description: `${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes · 5 minutes`,
-              contenu: <AperçuAxes />,
+              clé: 'ecosysteme',
+              libellé: 'L’écosystème',
+              description: 'Votre environnement, axe par axe',
+              contenu: <AperçuÉcosystème />,
             },
             {
-              clé: 'espace',
-              libellé: 'Votre espace',
-              description: 'Archives, axes, acteurs',
-              contenu: <AperçuEspace />,
+              clé: 'concurrents',
+              libellé: 'Les concurrents',
+              description: 'Chacun suivi, semaine après semaine',
+              contenu: <AperçuConcurrents />,
             },
             {
               clé: 'sources',

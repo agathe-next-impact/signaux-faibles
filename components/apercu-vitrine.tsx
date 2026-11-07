@@ -1,7 +1,7 @@
 import { AnimerÀLEntrée } from '@/components/anime-a-l-entree'
 import { BadgeImpact } from '@/components/badge-impact'
 import { CaseAxe } from '@/components/case-axe'
-import { Grille, Tuile } from '@/components/coquille'
+import { Case, Grille } from '@/components/coquille'
 import { Texte } from '@/components/document'
 import { SurtitreAxe } from '@/components/titre-axe'
 import {
@@ -11,9 +11,11 @@ import {
   fusionnerLesAxes,
   type Segment,
   segmenterLesFaits,
+  écourter,
 } from '@/lib/domaine/document'
 import { trierParImpact } from '@/lib/domaine/impact'
 import { markdownVersBlocs } from '@/lib/domaine/markdown'
+import { mentionsDe } from '@/lib/domaine/mentions'
 import { synthétiser } from '@/lib/domaine/synthese'
 import { DÉMONSTRATIONS, type Démonstration } from '@/lib/vitrine/demonstrations'
 import { lectureDeDémonstration } from '@/lib/vitrine/lecture-demonstration'
@@ -83,12 +85,19 @@ export function AperçuEssentiel() {
   )
 }
 
-/** Onglet « Les axes » : les quatre premiers axes par impact, en cases. */
-export function AperçuAxes() {
-  const axes = trierParImpact(fusionnerLesAxes([documentDe(démonstration())], 2)).slice(0, 4)
+/**
+ * Onglet « L'écosystème » : les axes de la grille qui suivent une dimension
+ * PESTEL (l'environnement, et non la concurrence), les quatre premiers par
+ * impact, en cases. Même sélection que l'écran « PESTEL » de l'espace.
+ */
+export function AperçuÉcosystème() {
+  const d = démonstration()
+  const axes = trierParImpact(fusionnerLesAxes([documentDe(d)], 2))
+    .filter((axe) => axe.numéro !== null && 'pestel' in (d.grille.axes[axe.numéro] ?? {}))
+    .slice(0, 4)
   return (
     <div className="flex flex-col gap-3">
-      <Grille colonnes={2} étiquette="Axes de la semaine, organisation fictive">
+      <Grille colonnes={2} étiquette="Axes de l’environnement, organisation fictive">
         {axes.map((axe) => (
           <CaseAxe key={axe.titre} axe={axe} points={axe.points} />
         ))}
@@ -99,60 +108,49 @@ export function AperçuAxes() {
 }
 
 /**
- * Onglet « Votre espace » : les chiffres de la semaine, et le nombre de faits
- * de chaque axe, en barres. La barre d'un axe FORT est rose : le rose ne porte
- * que le signal fort (charte §02) ; les autres sont ardoise. La barre s'étire à
- * l'entrée dans l'écran ; le nombre est posé à sa valeur.
+ * Onglet « Les concurrents » : les entités de la grille qui portent un
+ * mouvement d'Ansoff (les concurrents, par opposition aux clients et aux
+ * financeurs), chacune avec le dossier ouvert qui la suit et, sinon, la phrase
+ * de la lettre qui la nomme. Même lecture que « Concurrents » dans l'espace.
  */
-export function AperçuEspace() {
+export function AperçuConcurrents() {
   const d = démonstration()
   const document = documentDe(d)
-  const synthèse = synthétiser([document], [d.dossiers])
-  const axes = axesDuDocument(document).map((axe) => ({
-    axe,
-    faits: axe.niveau === 'RAS' ? 0 : segmenterLesFaits(axe.blocs).length,
-  }))
-  const plafond = Math.max(1, ...axes.map((a) => a.faits))
+  const dossiers = synthétiser([document], [d.dossiers]).dossiers
+  const concurrents = d.grille.entités
+    .filter((e) => e.ansoff !== undefined)
+    .map((e) => {
+      const dossier = dossiers.find((dossier) => contientLeMot(dossier.nom, e.nom)) ?? null
+      const mention = mentionsDe(e.nom, document).flatMap((m) => m.passages).at(0) ?? null
+      return { nom: e.nom, dossier, extrait: dossier?.précision ?? (mention ? écourter(mention.texte, 130) : null) }
+    })
   return (
-    <div className="flex flex-col gap-6">
-      <Grille colonnes={4} étiquette="Chiffres de la semaine, organisation fictive">
-        <Tuile intitulé="axes suivis" valeur={synthèse.axesTotal} />
-        <Tuile intitulé="signal fort" valeur={synthèse.parNiveau.FORT} accent={synthèse.parNiveau.FORT > 0} />
-        <Tuile intitulé="acteurs suivis" valeur={synthèse.dossiers.length} />
-        <Tuile intitulé="sans mouvement" valeur={synthèse.dossiersEnAttente} mention={`sur ${synthèse.dossiers.length} acteurs`} />
+    <div className="flex flex-col gap-3">
+      <Grille colonnes={3} étiquette="Concurrents suivis, organisation fictive">
+        {concurrents.map((c) => (
+          <Case key={c.nom} accent={c.dossier?.compteur === 0}>
+            <h4 className="font-titre text-h3 font-semibold text-encre">{c.nom}</h4>
+            {c.extrait ? <p className="text-ardoise">{c.extrait}</p> : null}
+            <p className="label-mono mt-auto pt-1 text-ardoise">
+              {c.dossier === null
+                ? 'cité cette semaine'
+                : c.dossier.compteur === 0
+                  ? 'a bougé cette semaine'
+                  : c.dossier.compteur === null
+                    ? 'suivi'
+                    : `${c.dossier.compteur} semaine${c.dossier.compteur > 1 ? 's' : ''} sans mouvement`}
+            </p>
+          </Case>
+        ))}
       </Grille>
-      <AnimerÀLEntrée>
-        <figure className="flex flex-col gap-4 border border-gris-ligne bg-blanc p-6">
-          <figcaption className="label-mono text-ardoise">Faits relevés par axe cette semaine</figcaption>
-          <ul aria-label="Faits relevés par axe" className="flex flex-col gap-2">
-            {axes.map(({ axe, faits }, i) => (
-              <li key={axe.titre} className="grid grid-cols-1 gap-1 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-center sm:gap-4">
-                <span className="truncate text-encre" title={axe.titre}>
-                  {axe.titre}
-                </span>
-                <span className="flex items-center gap-3">
-                  {faits > 0 ? (
-                    <span
-                      aria-hidden="true"
-                      className={`anime-etire h-2.5 rounded-r-[4px] ${axe.niveau === 'FORT' ? 'bg-rose' : 'bg-ardoise'}`}
-                      style={{ width: `${(faits / plafond) * 80}%`, '--i': i } as React.CSSProperties}
-                    />
-                  ) : null}
-                  <span className="label-mono whitespace-nowrap text-encre">
-                    {faits} {faits > 1 ? 'faits' : 'fait'}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="flex items-center gap-2 label-mono text-ardoise">
-            <span aria-hidden="true" className="size-2.5 bg-rose" /> axe en signal fort
-          </p>
-        </figure>
-      </AnimerÀLEntrée>
       <MentionFictive />
     </div>
   )
+}
+
+/** « Cap Territoires » est dans « Cap Territoires (0, …) », mots entiers, casse ignorée. */
+function contientLeMot(texte: string, mot: string): boolean {
+  return new RegExp(`(^|[^\\p{L}])${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'iu').test(texte)
 }
 
 /** Le domaine d'une adresse, pour la mention mono de la source. */
