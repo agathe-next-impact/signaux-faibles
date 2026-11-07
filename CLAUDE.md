@@ -1068,7 +1068,8 @@ demande de l'opératrice) : sous l'ouverture de l'accueil, L'Hermitage, Infralli
 et Konica Minolta en une rangée immobile, en niveaux de gris, couleurs au survol,
 inversés en mode sombre (`components/bandeau-logos.tsx`, fichiers dans
 `public/logos/`, ouverts par le proxy en préfixe `/logos/` ; le slug `logos` est
-réservé). Afficher un logo suppose l'accord de l'organisation.
+réservé ; depuis le 8 novembre 2026, à sa demande, la rangée est **dans l'ouverture**, sous les
+boutons, inversée sur la bande encre, pour être vue sans défiler). Afficher un logo suppose l'accord de l'organisation.
 **Refonte visuelle de la vitrine** (7 novembre 2026, à la demande de l'opératrice,
 structure et animations inspirées d'un modèle de page produit, charte conservée) :
 les pages vitrines tiennent dans un **cadre** (colonne bordée de deux filets,
@@ -1080,15 +1081,17 @@ soir du même jour), puis « Ce
 que vous recevez » en quatre onglets en cases (`Onglets`, `forme="cases"` ; depuis le
 soir du 7 novembre, à la demande de l'opératrice : L'essentiel, **L'écosystème** (les axes
 de la grille sous une dimension PESTEL, `AperçuÉcosystème`), **Les concurrents** (les
-entités de la grille qui portent un mouvement d'Ansoff, avec leur dossier ou la phrase qui
-les nomme, `AperçuConcurrents`), **L'analyse** (la lecture stratégique de l'organisation fictive,
+concurrents de la grille, `concurrent: true`, vingt au moins par démonstration depuis le 8 novembre 2026,
+avec leur dossier, la phrase qui les nomme ou leur présentation ; six montrés, ceux qui ont bougé d'abord,
+et le compte des suivis calculé sur la grille, `AperçuConcurrents`), **L'analyse** (la lecture stratégique de l'organisation fictive,
 `AperçuLectureStratégique`, qui était une section à part au-dessus des tarifs, retirée
 le même soir à sa demande) ; « Les axes », « Votre espace » et « Les sources » retirés ; la section « L'impact » remplacée le même soir, à sa
 demande, par « Deux supports » : la lettre hebdomadaire par courriel et l'espace web et mobile,
 en deux cases),
 tarifs en cartes partagées avec « Tarifs » (`components/vitrine-tarifs.tsx`),
 questions et appel final (`AppelFinal`, bouton secondaire quand la page a déjà
-son primaire). Les graphiques de la vitrine s'animent **une fois à l'entrée dans
+son primaire) ; les boutons de la vitrine sont **à angle droit et serrés** (8 novembre 2026, demande de
+l'opératrice), le rayon doux restant aux boutons de l'espace. Les graphiques de la vitrine s'animent **une fois à l'entrée dans
 l'écran** (`AnimerÀLEntrée`, `anime-etire`, `anime-apparait` ; amendement du
 §05 de la charte du même jour) ; rien d'autre ne bouge.
 Depuis la seconde passe du même jour (« encore très austère, beaucoup de

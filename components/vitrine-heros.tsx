@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BandeauLogos } from '@/components/bandeau-logos'
 import { VidéoDeLEspace } from '@/components/video-espace'
 import { BoutonDémo } from '@/components/vitrine'
 
@@ -8,7 +9,9 @@ import { BoutonDémo } from '@/components/vitrine'
  * parlante »). Un surtitre, un titre, un bouton, un lien, et l'espace qui
  * défile à droite, muet et en boucle : le produit se montre lui-même. Ni
  * chapeau ni chiffres : ils sont plus bas dans la page. Bande encre
- * (amendement du §02 de la charte du même jour).
+ * (amendement du §02 de la charte du même jour). Les logos clients sont sous
+ * les boutons depuis le 8 novembre 2026 (demande de l'opératrice : visibles
+ * sans défiler), et non plus dans une bande sous l'ouverture.
  */
 export function HéroVidéo({ titre }: { titre: string }) {
   return (
@@ -26,6 +29,7 @@ export function HéroVidéo({ titre }: { titre: string }) {
               </span>
             </Link>
           </div>
+          <BandeauLogos négatif />
         </div>
       </div>
       <figure className="flex flex-col gap-3 p-6 lg:p-12">

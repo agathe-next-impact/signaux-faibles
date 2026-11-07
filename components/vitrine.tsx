@@ -41,7 +41,7 @@ function LienSeConnecter() {
   return (
     <Link
       href="/recevoir-mon-lien"
-      className="rounded-douce bg-encre px-4 py-2 text-corps font-medium whitespace-nowrap text-blanc hover:bg-encre/90"
+      className="bg-encre px-3 py-1 text-corps font-medium whitespace-nowrap text-blanc hover:bg-encre/90"
     >
       Se connecter
     </Link>
@@ -74,7 +74,7 @@ export function EnTêteVitrine({ courante }: { courante: PageVitrine }) {
         </nav>
         {/* Mobile : un menu natif, sans JavaScript, qui se ferme en changeant de page. */}
         <details className="group sm:hidden">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-douce border border-gris-ligne px-3 py-2 text-corps text-encre">
+          <summary className="flex cursor-pointer list-none items-center gap-2 border border-gris-ligne px-3 py-1 text-corps text-encre">
             Menu
             <span aria-hidden="true" className="text-rose transition-transform group-open:rotate-90">
               →
@@ -222,11 +222,16 @@ export function SectionVitrine({
  * Le bouton primaire des pages vitrines : un seul par page, fond encre. Sur une
  * bande encre, il s'inverse (`négatif`), comme la version négative du logo.
  */
+/**
+ * Les boutons de la vitrine sont à angle droit et serrés (8 novembre 2026,
+ * demande de l'opératrice : « pas d'arrondis de coins et moins de padding »),
+ * comme les grilles et les cases ; le rayon doux reste aux boutons de l'espace.
+ */
 export function BoutonDémo({ libellé = 'Demander une démo', négatif = false }: { libellé?: string; négatif?: boolean }) {
   return (
     <Link
       href="/demo"
-      className={`self-start rounded-douce px-6 py-3 font-medium ${
+      className={`self-start px-4 py-2 font-medium ${
         négatif ? 'bg-blanc text-encre hover:bg-fond-ardoise' : 'bg-encre text-blanc hover:bg-encre/90'
       }`}
     >
@@ -240,7 +245,7 @@ export function BoutonDémoSecondaire({ libellé = 'Demander une démo', négati
   return (
     <Link
       href="/demo"
-      className={`rounded-douce border px-6 py-3 font-medium ${
+      className={`border px-4 py-2 font-medium ${
         négatif ? 'border-blanc text-blanc hover:bg-blanc/10' : 'border-encre text-encre hover:bg-fond-ardoise'
       }`}
     >

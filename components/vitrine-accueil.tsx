@@ -4,7 +4,6 @@ import {
   AperçuÉcosystème,
   AperçuLectureStratégique,
 } from '@/components/apercu-vitrine'
-import { BandeauLogos } from '@/components/bandeau-logos'
 import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { Onglets } from '@/components/onglets'
@@ -23,7 +22,7 @@ import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSem
  * lien » ; une session valide mène toujours à son espace, sans voir cette page.
  *
  * Déroulé de la refonte : l'ouverture montre le produit (la vidéo de l'espace,
- * `HéroVidéo`, retenue le 7 novembre 2026 parmi quatre candidates) ; les logos ; « Ce que vous recevez » en quatre onglets, chacun avec
+ * `HéroVidéo`, retenue le 7 novembre 2026 parmi quatre candidates, les logos clients dedans depuis le 8) ; « Ce que vous recevez » en quatre onglets, chacun avec
  * son aperçu (l'analyse en est un depuis le soir du 7 novembre) ; la valeur,
  * chiffrée ; les deux supports (la lettre, l'espace) ; les tarifs en cartes ; les questions ; l'appel final. Les aperçus
  * sont calculés sur une lettre fictive par le code de l'espace client
@@ -37,8 +36,6 @@ export function AccueilVitrine() {
   return (
     <CoquilleVitrine courante="accueil">
       <HéroVidéo titre="La veille stratégique écrite pour votre seule organisation" />
-
-      <BandeauLogos />
 
       <section aria-labelledby="ce-que-vous-recevez" className="border-b border-gris-ligne">
         <div className="px-6 py-12 lg:px-12">

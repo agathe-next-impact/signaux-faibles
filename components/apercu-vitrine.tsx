@@ -106,32 +106,48 @@ export function AperçuÉcosystème({ d = démonstration(), combien = 4 }: { d?:
   )
 }
 
+/** Les concurrents montrés dans l'onglet : deux rangées de trois (8 novembre 2026, demande de l'opératrice). */
+const CONCURRENTS_MONTRÉS = 6
+
 /**
- * Onglet « Les concurrents » : les entités de la grille qui portent un
- * mouvement d'Ansoff (les concurrents, par opposition aux clients et aux
- * financeurs), chacune avec le dossier ouvert qui la suit et, sinon, la phrase
- * de la lettre qui la nomme. Même lecture que « Concurrents » dans l'espace.
+ * Onglet « Les concurrents » : les concurrents de la grille (vingt au moins
+ * par démonstration), chacun avec le dossier ouvert qui le suit, sinon la
+ * phrase de la lettre qui le nomme, sinon sa présentation du référentiel.
+ * Six sont montrés, ceux qui ont bougé d'abord, puis ceux que la lettre cite,
+ * et le compte des concurrents suivis est dit sous la grille, calculé sur la
+ * grille et jamais écrit en dur. Même lecture que « Concurrents » dans l'espace.
  */
 export function AperçuConcurrents({ d = démonstration() }: { d?: Démonstration } = {}) {
   const document = documentDe(d)
   const dossiers = synthétiser([document], [d.dossiers]).dossiers
-  const concurrents = d.grille.entités
-    .filter((e) => e.ansoff !== undefined)
+  const suivis = d.grille.entités.filter((e) => e.concurrent)
+  const rang = (c: { dossier: { compteur: number | null } | null; mention: boolean }) =>
+    c.dossier?.compteur === 0 ? 0 : c.dossier ? 1 : c.mention ? 2 : 3
+  const concurrents = suivis
     .map((e) => {
       const dossier = dossiers.find((dossier) => contientLeMot(dossier.nom, e.nom)) ?? null
       const mention = mentionsDe(e.nom, document).flatMap((m) => m.passages).at(0) ?? null
-      return { nom: e.nom, dossier, extrait: dossier?.précision ?? (mention ? écourter(mention.texte, 130) : null) }
+      return {
+        nom: e.nom,
+        dossier,
+        mention: mention !== null,
+        extrait: dossier?.précision ?? (mention ? écourter(mention.texte, 130) : (e.présentation ?? null)),
+      }
     })
+    .sort((a, b) => rang(a) - rang(b))
+    .slice(0, CONCURRENTS_MONTRÉS)
   return (
     <div className="flex flex-col gap-3">
-      <Grille colonnes={3} étiquette="Concurrents suivis, organisation fictive">
+      <Grille colonnes={3} étiquette={`${concurrents.length} des ${suivis.length} concurrents suivis, organisation fictive`}>
         {concurrents.map((c) => (
           <Case key={c.nom} accent={c.dossier?.compteur === 0}>
             <h4 className="font-titre text-h3 font-semibold text-encre">{c.nom}</h4>
             {c.extrait ? <p className="text-ardoise">{c.extrait}</p> : null}
             <p className="label-mono mt-auto pt-1 text-ardoise">
               {c.dossier === null
-                ? 'cité cette semaine'
+                ? c.mention
+                  ? 'cité cette semaine'
+                  : 'suivi'
                 : c.dossier.compteur === 0
                   ? 'a bougé cette semaine'
                   : c.dossier.compteur === null
@@ -141,7 +157,12 @@ export function AperçuConcurrents({ d = démonstration() }: { d?: Démonstratio
           </Case>
         ))}
       </Grille>
-      <MentionFictive />
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <p className="label-mono text-encre">
+          {suivis.length} concurrents suivis · {concurrents.length} montrés
+        </p>
+        <MentionFictive />
+      </div>
     </div>
   )
 }
