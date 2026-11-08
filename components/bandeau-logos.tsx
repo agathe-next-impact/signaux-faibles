@@ -3,10 +3,11 @@ import Image from 'next/image'
 /**
  * Les logos des organisations qui reçoivent leur veille, dans l'ouverture de
  * l'accueil (7 novembre 2026, à la demande de l'opératrice : L'Hermitage,
- * Infralliance et Konica Minolta ; sous l'ouverture jusqu'au 8 novembre, dans
+ * Infralliance et Konica Minolta, rejointes le 8 novembre par Heritech et
+ * Suneido ; sous l'ouverture jusqu'au 8 novembre, dans
  * l'ouverture depuis, pour être vus sans défiler).
  *
- * Une rangée immobile, centrée, qui passe à la ligne sur mobile : à trois
+ * Une rangée immobile, centrée, qui passe à la ligne sur mobile : à cinq
  * logos, un défilement laisserait un vide sur grand écran. Les logos sont en
  * niveaux de gris, pour ne pas faire entrer dans la page des couleurs que la
  * charte n'a pas, et reprennent leurs couleurs au survol ; en mode sombre, ils
@@ -24,6 +25,8 @@ export const LOGOS: readonly Logo[] = [
   { nom: 'L’Hermitage', fichier: 'hermitage', largeur: 128, hauteur: 33 },
   { nom: 'Infralliance', fichier: 'infralliance', largeur: 108, hauteur: 39 },
   { nom: 'Konica Minolta', fichier: 'konica-minolta', largeur: 77, hauteur: 44 },
+  { nom: 'Heritech', fichier: 'heritech', largeur: 72, hauteur: 44 },
+  { nom: 'Suneido', fichier: 'suneido', largeur: 49, hauteur: 44 },
 ]
 
 /**
