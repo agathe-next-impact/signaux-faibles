@@ -43,6 +43,10 @@ const PUBLICS = [
   // trois organisations fictives de « Exemples », ouverts sans session. Les
   // slugs sont réservés ; le contrôle d'appartenance les accorde sans cookie.
   ...Object.values(SLUGS_DE_DÉMONSTRATION).map((slug) => `/${slug}/`),
+  // La dernière lettre de chaque démonstration, telle que reçue par courriel
+  // (8 novembre 2026) : la page et le document qu'elle encadre. Le préfixe est
+  // étroit (`/exemple/lettre/`) : `/exemple` reste adressé exactement.
+  '/exemple/lettre/',
 ]
 
 /**

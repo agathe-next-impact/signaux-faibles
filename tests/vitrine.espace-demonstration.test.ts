@@ -13,6 +13,7 @@ import { SLUGS_RÉSERVÉS } from '@/lib/domaine/onboarding'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 import { DÉMONSTRATIONS } from '@/lib/vitrine/demonstrations'
 import { lettresDeDémonstration } from '@/lib/vitrine/lettres-demonstration'
+import { courrielDeDémonstration, paramètresDesLettresDeDémonstration } from '@/lib/vitrine/courriel-demonstration'
 
 const CLÉS: readonly CléDeDémonstration[] = ['conseil', 'pme', 'ess']
 
@@ -95,5 +96,46 @@ describe('les lettres des espaces de démonstration', () => {
       aperçu: false,
       démonstration: true,
     })
+  })
+})
+
+describe('la dernière lettre telle que reçue par courriel', () => {
+  for (const clé of CLÉS) {
+    const slug = SLUGS_DE_DÉMONSTRATION[clé]
+    const d = DÉMONSTRATIONS.find((d) => d.clé === clé)!
+
+    it(`${slug} : le courriel est composé par le gabarit de production, sur la dernière lettre, vers l'espace de démonstration`, () => {
+      const courriel = courrielDeDémonstration(slug)
+      expect(courriel).not.toBeNull()
+      expect(courriel!.organisation).toBe(d.organisation)
+      expect(courriel!.objet).toBe(`${d.veille}, édition n° ${d.numéro}`)
+      expect(courriel!.html.startsWith('<!DOCTYPE html>') || courriel!.html.startsWith('<!doctype html>')).toBe(true)
+      expect(courriel!.html).toContain('Lettre de veille')
+      expect(courriel!.html).toContain(`/${slug}`)
+      expect(courriel!.html).toContain(`/${slug}/lettres`)
+      expect(courriel!.html).toContain(`n° ${d.numéro}`)
+      expect(courriel!.html).not.toMatch(/notion\.(so|site|com)/)
+    })
+  }
+
+  it('une lettre de la série se demande par son numéro, et la page va de semaine en semaine', () => {
+    const dernière = courrielDeDémonstration('lisiere-conseil')!
+    expect(dernière.suivante).toBeNull()
+    expect(dernière.précédente).toBe(dernière.numéro - 1)
+    const précédente = courrielDeDémonstration('lisiere-conseil', String(dernière.précédente))!
+    expect(précédente.numéro).toBe(dernière.numéro - 1)
+    expect(précédente.suivante).toBe(dernière.numéro)
+    expect(précédente.html).toContain(`n° ${précédente.numéro}`)
+    expect(précédente.html).not.toBe(dernière.html)
+    const plusAncienne = lettresDeDémonstration('conseil').at(-1)!.numéro
+    expect(courrielDeDémonstration('lisiere-conseil', plusAncienne)!.précédente).toBeNull()
+    expect(courrielDeDémonstration('lisiere-conseil', 999)).toBeNull()
+    expect(courrielDeDémonstration('lisiere-conseil', 'courriel')).toBeNull()
+    expect(paramètresDesLettresDeDémonstration().length).toBe(CLÉS.reduce((n, clé) => n + lettresDeDémonstration(clé).length, 0))
+  })
+
+  it('un slug qui n’est pas une démonstration n’a pas de courriel', () => {
+    expect(courrielDeDémonstration('hermitage')).toBeNull()
+    expect(courrielDeDémonstration('lisiere-conseil-2')).toBeNull()
   })
 })

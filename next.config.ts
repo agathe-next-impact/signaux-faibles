@@ -20,7 +20,9 @@ import { ORIGINES_GTM, PAGES_MESURÉES } from './lib/vitrine/mesure-audience'
  */
 const EN_DÉVELOPPEMENT = process.env.NODE_ENV !== 'production'
 
-function politiqueDeContenu(ajouts: { script?: readonly string[]; image?: readonly string[]; connexion?: readonly string[]; cadre?: readonly string[] } = {}) {
+function politiqueDeContenu(
+  ajouts: { script?: readonly string[]; image?: readonly string[]; connexion?: readonly string[]; cadre?: readonly string[]; ancêtres?: "'self'" } = {},
+) {
   const avec = (base: string, origines: readonly string[] = []) => [base, ...origines].join(' ')
   return [
     "default-src 'self'",
@@ -34,7 +36,7 @@ function politiqueDeContenu(ajouts: { script?: readonly string[]; image?: readon
     ...(ajouts.cadre ? [avec("frame-src 'self'", ajouts.cadre)] : []),
     "worker-src 'self'",
     "manifest-src 'self'",
-    "frame-ancestors 'none'",
+    `frame-ancestors ${ajouts.ancêtres ?? "'none'"}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -49,6 +51,16 @@ const POLITIQUE_DE_CONTENU = politiqueDeContenu()
  * client garde la politique bornée à l'origine.
  */
 const POLITIQUE_DES_PAGES_MESURÉES = politiqueDeContenu(ORIGINES_GTM)
+
+/**
+ * Le courriel d'une lettre de démonstration (8 novembre 2026 ; la dernière, ou
+ * une lettre de la série par son numéro) est la seule page du portail qu'une
+ * autre page de la même origine encadre : la page « La dernière lettre » de
+ * « Exemples » le montre tel qu'il est reçu. Il n'admet que cette origine ;
+ * tout le reste du portail reste inencadrable.
+ */
+const COURRIELS_DE_DÉMONSTRATION = ['/exemple/lettre/:organisation/courriel', '/exemple/lettre/:organisation/:numero/courriel']
+const POLITIQUE_DU_COURRIEL_ENCADRÉ = politiqueDeContenu({ ancêtres: "'self'" })
 
 const nextConfig: NextConfig = {
   // Les migrations SQL sont lues à l'exécution par `POST /api/veille/migrer` :
@@ -173,6 +185,13 @@ const nextConfig: NextConfig = {
       ...PAGES_MESURÉES.map((page) => ({
         source: page,
         headers: [{ key: 'Content-Security-Policy', value: POLITIQUE_DES_PAGES_MESURÉES }],
+      })),
+      ...COURRIELS_DE_DÉMONSTRATION.map((source) => ({
+        source,
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: POLITIQUE_DU_COURRIEL_ENCADRÉ },
+        ],
       })),
     ]
   },
