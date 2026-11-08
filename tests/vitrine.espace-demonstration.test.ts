@@ -13,6 +13,7 @@ import { SLUGS_RÉSERVÉS } from '@/lib/domaine/onboarding'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 import { DÉMONSTRATIONS } from '@/lib/vitrine/demonstrations'
 import { lettresDeDémonstration } from '@/lib/vitrine/lettres-demonstration'
+import { courrielDeDémonstration } from '@/lib/vitrine/courriel-demonstration'
 
 const CLÉS: readonly CléDeDémonstration[] = ['conseil', 'pme', 'ess']
 
@@ -95,5 +96,30 @@ describe('les lettres des espaces de démonstration', () => {
       aperçu: false,
       démonstration: true,
     })
+  })
+})
+
+describe('la dernière lettre telle que reçue par courriel', () => {
+  for (const clé of CLÉS) {
+    const slug = SLUGS_DE_DÉMONSTRATION[clé]
+    const d = DÉMONSTRATIONS.find((d) => d.clé === clé)!
+
+    it(`${slug} : le courriel est composé par le gabarit de production, sur la dernière lettre, vers l'espace de démonstration`, () => {
+      const courriel = courrielDeDémonstration(slug)
+      expect(courriel).not.toBeNull()
+      expect(courriel!.organisation).toBe(d.organisation)
+      expect(courriel!.objet).toBe(`${d.veille}, édition n° ${d.numéro}`)
+      expect(courriel!.html.startsWith('<!DOCTYPE html>') || courriel!.html.startsWith('<!doctype html>')).toBe(true)
+      expect(courriel!.html).toContain('Lettre de veille')
+      expect(courriel!.html).toContain(`/${slug}`)
+      expect(courriel!.html).toContain(`/${slug}/lettres`)
+      expect(courriel!.html).toContain(`n° ${d.numéro}`)
+      expect(courriel!.html).not.toMatch(/notion\.(so|site|com)/)
+    })
+  }
+
+  it('un slug qui n’est pas une démonstration n’a pas de courriel', () => {
+    expect(courrielDeDémonstration('hermitage')).toBeNull()
+    expect(courrielDeDémonstration('lisiere-conseil-2')).toBeNull()
   })
 })

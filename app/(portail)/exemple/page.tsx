@@ -18,7 +18,10 @@ export const metadata: Metadata = {
  * (`lib/vitrine/demonstrations.ts`), chacune sur deux colonnes : l'accès à
  * l'**espace de démonstration** (`/lisiere-conseil`, `/tolmen-mecanique`,
  * `/atelier-passerelle`, le vrai espace client ouvert sans identifiant, en
- * lecture seule) et l'accès à la **dernière lettre**, lue dans ce même espace.
+ * lecture seule) et l'accès à la **dernière lettre**, montrée telle que le
+ * client la reçoit par courriel (`/exemple/lettre/[organisation]`, gabarit des
+ * courriels de production ; 8 novembre 2026), avec un second lien vers sa page
+ * dans l'espace.
  * Les éditions viennent de la source que l'espace sert (`éditionsDeDémonstration`).
  * La page ne lit ni Notion ni Postgres ; ouverte par le proxy à l'adresse
  * exacte (`PUBLICS_EXACTS`). Les onglets tableau de bord et lettre d'avant
@@ -61,9 +64,12 @@ function Cartouche({ démonstration }: { démonstration: Démonstration }) {
             <>
               <p className="label-mono text-encre">{DATE.format(new Date(dernière.dateÉdition))}</p>
               <p className="text-encre">
-                {dernière.titre}, {dernière.périodeCouverte}.
+                {dernière.titre}, {dernière.périodeCouverte}, telle qu’elle arrive dans la boîte du client.
               </p>
-              <BoutonDAccès href={`/${slug}/lettres/${dernière.pageId}`}>Lire la dernière lettre</BoutonDAccès>
+              <BoutonDAccès href={`/exemple/lettre/${slug}`}>Lire la dernière lettre</BoutonDAccès>
+              <Link href={`/${slug}/lettres/${dernière.pageId}`} className="text-ardoise underline hover:text-encre">
+                La lire dans l’espace
+              </Link>
             </>
           ) : null}
         </div>

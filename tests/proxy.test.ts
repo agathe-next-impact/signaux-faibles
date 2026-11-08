@@ -40,6 +40,9 @@ describe('proxy', () => {
     expect(proxy(requête('/offre')).status).toBe(307)
     expect(proxy(requête('/tarifs-client')).status).toBe(307)
     expect(proxy(requête('/exemple/lettres')).status).toBe(307)
+    // La dernière lettre d'une démonstration, telle que reçue par courriel : la page et le document encadré.
+    expect(proxy(requête('/exemple/lettre/lisiere-conseil')).status).toBe(200)
+    expect(proxy(requête('/exemple/lettre/lisiere-conseil/courriel')).status).toBe(200)
   })
 
   it('n’ouvre /demo qu’à l’adresse exacte, pas en préfixe', () => {
