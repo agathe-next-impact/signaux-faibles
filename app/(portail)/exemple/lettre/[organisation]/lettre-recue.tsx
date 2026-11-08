@@ -9,12 +9,11 @@ import type { CourrielDeDémonstration } from '@/lib/vitrine/courriel-demonstrat
  *
  * La page ne rend pas la lettre : elle montre, dans un cadre de la même
  * origine, le document composé par le gabarit des courriels de production
- * (`…/courriel`), avec son objet et sa date comme dans une messagerie, et les
- * lettres voisines de la série pour aller de semaine en semaine. Rien n'est lu :
- * tout vient du code.
+ * (`…/courriel`), avec son objet et sa date comme dans une messagerie, et
+ * l'autre lettre de la même semaine (écosystème ou concurrentielle). Rien n'est
+ * lu : tout vient du code.
  */
 export function LettreReçue({ courriel, source }: { courriel: CourrielDeDémonstration; source: string }) {
-  const base = `/exemple/lettre/${courriel.slug}`
   return (
     <CoquilleVitrine courante="exemple">
       <section aria-label="Le courriel reçu" className="border-b border-gris-ligne">
@@ -35,16 +34,9 @@ export function LettreReçue({ courriel, source }: { courriel: CourrielDeDémons
             <Link href={`/${courriel.slug}`} className="text-ardoise underline hover:text-encre">
               Ouvrir l’espace de démonstration
             </Link>
-            {courriel.précédente !== null ? (
-              <Link href={`${base}/${courriel.précédente}`} className="text-ardoise underline hover:text-encre">
-                Lettre de la semaine précédente (n° {courriel.précédente})
-              </Link>
-            ) : null}
-            {courriel.suivante !== null ? (
-              <Link href={`${base}/${courriel.suivante}`} className="text-ardoise underline hover:text-encre">
-                Lettre de la semaine suivante (n° {courriel.suivante})
-              </Link>
-            ) : null}
+            <Link href={`/exemple/lettre/${courriel.slug}/${courriel.autre.veille}`} className="text-ardoise underline hover:text-encre">
+              Lire la lettre {courriel.autre.qualificatif} de la même semaine
+            </Link>
           </p>
         </div>
         <CadreCourriel src={source} titre={`Courriel : ${courriel.objet}`} />
