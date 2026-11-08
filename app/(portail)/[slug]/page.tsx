@@ -131,6 +131,7 @@ export default async function VueDEnsemble({
         registre: accès.organisationId,
         semaines,
         concurrents: espace.concurrents,
+        marché: espace.marché,
         axes: { total: axes.length, forts: axes.filter((a) => a.niveau === 'FORT').length },
       })
     : null
@@ -240,7 +241,7 @@ export default async function VueDEnsemble({
           <LienFlèche href={`/${accès.slug}/acteurs`}>Voir tout le suivi</LienFlèche>
         </div>
         <p className="text-ardoise">
-          Les concurrents et les organisations du secteur dont les {LETTRES_POUR_ACTUALITÉ}{' '}
+          {espace?.réorganisé ? `Les ${espace.marché.des}` : 'Les concurrents'} et les organisations du secteur dont les {LETTRES_POUR_ACTUALITÉ}{' '}
           dernières lettres ont quelque chose à dire.
         </p>
         {dormants > 0 ? (

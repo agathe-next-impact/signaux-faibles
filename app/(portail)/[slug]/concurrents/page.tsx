@@ -5,6 +5,7 @@ import { Repliable } from '@/components/repliable'
 import { CarteDesGroupes, ListeDesConcurrents } from '@/components/strategie-ecrans'
 import { enSlug } from '@/lib/domaine/slug'
 import { normaliserTitre } from '@/lib/domaine/strategie'
+import { vocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { libelléDePériode } from '@/lib/domaine/strategie-vues'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
 import { semainesDeLEspace } from '@/lib/portail/semaine'
@@ -38,28 +39,30 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
   const segments = new Map((lus?.vue.concurrents ?? []).map((c) => [normaliserTitre(c.nom), c.segment]))
   const dossiers = suivreLesDossiers(semaines).filter((d) => segments.has(normaliserTitre(d.nom)))
   const nombre = lus?.vue.concurrents.length ?? 0
+  // « Entreprises suivies » quand la veille concurrentielle suit les mouvements du territoire (7 novembre 2026).
+  const marché = espace?.marché ?? vocabulaireDuMarché(null)
 
   return (
     <>
       <EntêteÉcran
         surtitre="le marché"
-        titre="Qui vous dispute vos clients"
-        état={lus ? `${nombre} concurrent${nombre > 1 ? 's' : ''} suivi${nombre > 1 ? 's' : ''}` : undefined}
+        titre={marché.titre}
+        état={lus ? marché.suivis(nombre) : undefined}
       />
 
       {!lus ? (
         <p className="mt-6 text-ardoise">
-          Les concurrents ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes ; les
+          Les {marché.des} ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes ; les
           lettres et les autres écrans restent ouverts.
         </p>
       ) : (
         <>
           <p className="mt-6 max-w-[68ch] text-ardoise">
-            Les concurrents que votre veille suit, placés sur les deux axes retenus avec vous
+            {marché.introduction}, placés sur les deux axes retenus avec vous
             {lus.période ? `, synthèse ${libelléDePériode(lus.période)}` : ''}.{' '}
             {lus.vue.mouvements.length > 0
               ? `${lus.vue.mouvements.length} ${lus.vue.mouvements.length > 1 ? 'ont changé de case' : 'a changé de case'} depuis la synthèse précédente.`
-              : 'Aucun n’a changé de case depuis la synthèse précédente.'}
+              : `${marché.aucunNAChangé} depuis la synthèse précédente.`}
             {lus.vue.nonPlacés > 0 ? ` ${lus.vue.nonPlacés} ne sont pas encore placés, faute de capacité ou de récit connus.` : ''}
           </p>
 
@@ -77,21 +80,21 @@ export default async function LesConcurrents({ params }: { params: Promise<{ slu
           ) : null}
 
           <section className="mt-12 flex flex-col gap-4">
-            <h2 className="font-titre text-h2 font-bold text-encre">Les concurrents suivis</h2>
+            <h2 className="font-titre text-h2 font-bold text-encre">{marché.liste}</h2>
             <p className="max-w-[68ch] text-ardoise">
               Ce qui a bougé d’abord, puis ceux dont les lettres parlent le plus. Chaque fiche réunit sa position,
               ses faits datés et ses chiffres publiés.
             </p>
             {/* Lecture rapide (lot 4) : deux rangées, le reste replié. */}
-            <ListeDesConcurrents slug={accès.slug} concurrents={lus.vue.concurrents.slice(0, CONCURRENTS_VISIBLES)} />
-            <Repliable reste={lus.vue.concurrents.length - CONCURRENTS_VISIBLES} nom="concurrents">
-              <ListeDesConcurrents slug={accès.slug} concurrents={lus.vue.concurrents.slice(CONCURRENTS_VISIBLES)} étiquette="Les autres concurrents suivis" />
+            <ListeDesConcurrents slug={accès.slug} concurrents={lus.vue.concurrents.slice(0, CONCURRENTS_VISIBLES)} étiquette={marché.liste} />
+            <Repliable reste={lus.vue.concurrents.length - CONCURRENTS_VISIBLES} nom={marché.des}>
+              <ListeDesConcurrents slug={accès.slug} concurrents={lus.vue.concurrents.slice(CONCURRENTS_VISIBLES)} étiquette={marché.autres} />
             </Repliable>
           </section>
 
           {dossiers.length > 0 ? (
             <section className="mt-12 flex flex-col gap-3">
-              <h2 className="font-titre text-h2 font-bold text-encre">Dossiers ouverts sur un concurrent</h2>
+              <h2 className="font-titre text-h2 font-bold text-encre">{marché.dossiers}</h2>
               <ul className="flex flex-col gap-2">
                 {dossiers.map((d) => (
                   <li key={d.nom} className="flex flex-wrap items-baseline gap-x-3">

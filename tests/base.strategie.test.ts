@@ -28,6 +28,7 @@ import {
   posterLaGrille,
   remplacerLesÉtiquettes,
   réglerLEspaceRéorganisé,
+  réglerLesSujetsDuMarché,
   réglerLesOutilsStratégiques,
   synthèsePrécédente,
   validerLaGrille,
@@ -128,11 +129,21 @@ describe('outils stratégiques en base', () => {
         registreNotion: registre(1),
         outilsStratégiques: false,
         espaceRéorganisé: false,
+        sujetsDuMarché: 'concurrents',
       })
       expect(await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
       expect((await organisationPourLesOutils({ slug: 'infralliance' }, db))!.outilsStratégiques).toBe(true)
       expect(await réglerLesOutilsStratégiques({ slug: 'inconnue', actif: true }, db)).toBe('organisation-inconnue')
       expect(await organisationPourLesOutils({ registreNotion: registre(9) }, db)).toBeNull()
+    })
+
+    it('les sujets du marché : concurrents par défaut, entreprises par slug, rien d’autre', async () => {
+      expect(await réglerLesSujetsDuMarché({ slug: 'infralliance', sujets: 'entreprises' }, db)).toBe('réglé')
+      expect((await organisationPourLesOutils({ slug: 'infralliance' }, db))!.sujetsDuMarché).toBe('entreprises')
+      expect(await réglerLesSujetsDuMarché({ slug: 'inconnue', sujets: 'entreprises' }, db)).toBe('organisation-inconnue')
+      // La contrainte de la migration 0024 refuse une autre valeur, même écrite à la main.
+      await expect(réglerLesSujetsDuMarché({ slug: 'infralliance', sujets: 'clients' as never }, db)).rejects.toThrow()
+      expect(await réglerLesSujetsDuMarché({ slug: 'infralliance', sujets: 'concurrents' }, db)).toBe('réglé')
     })
 
     it('l’espace réorganisé ne s’ouvre que dans le pilote, et se referme sans rien supprimer', async () => {

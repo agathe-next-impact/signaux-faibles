@@ -16,6 +16,7 @@ import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
 import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER } from '@/lib/domaine/strategie'
 import {
   basculerLEspace,
+  réglerLesSujetsDuMarchéDepuisLaFiche,
   basculerLePilote,
   inscrireUnLecteur,
   publierLaFiche,
@@ -66,6 +67,8 @@ const MESSAGES: Record<string, string> = {
   'pilote-fermé': 'Pilote des outils stratégiques fermé : étiquettes et synthèses restent en base.',
   'espace-ouvert': 'Espace réorganisé ouvert.',
   'espace-fermé': 'Espace réorganisé refermé : les sept écrans reviennent.',
+  'marché-entreprises': 'L’écran « Concurrents » s’appelle désormais « Entreprises suivies ».',
+  'marché-concurrents': 'L’écran « Entreprises suivies » s’appelle de nouveau « Concurrents ».',
   'hors-pilote': 'Hors du pilote des outils stratégiques : ouvrir le pilote d’abord.',
   'organisation-inconnue': 'Organisation inconnue.',
   inconnue: 'Organisation inconnue.',
@@ -460,9 +463,21 @@ function Gestion({
       <Section id="pilote" titre="Pilote et espace" statut={statut}>
         <Interrupteur action={basculerLePilote} slug={slug} actif={organisation.outilsStratégiques} libellé="Outils stratégiques" />
         <Interrupteur action={basculerLEspace} slug={slug} actif={organisation.espaceRéorganisé} libellé="Espace réorganisé" />
+        <form action={réglerLesSujetsDuMarchéDepuisLaFiche} className="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="slug" value={slug} />
+          <input type="hidden" name="sujets" value={organisation.sujetsDuMarché === 'entreprises' ? 'concurrents' : 'entreprises'} />
+          <p className="text-encre">
+            Écran du marché :{' '}
+            <span className="label-mono text-ardoise">{organisation.sujetsDuMarché === 'entreprises' ? 'entreprises suivies' : 'concurrents'}</span>
+          </p>
+          <BoutonEnvoi className={lienDeGeste}>
+            {organisation.sujetsDuMarché === 'entreprises' ? 'Revenir à « Concurrents »' : 'Nommer « Entreprises suivies »'}
+          </BoutonEnvoi>
+        </form>
         <p className="text-ardoise">
           L’espace réorganisé lit la grille et les synthèses : il est refusé hors du pilote. Fermer le pilote garde étiquettes et
-          synthèses en base.
+          synthèses en base. « Entreprises suivies » convient quand la veille concurrentielle suit les mouvements des entreprises
+          du territoire plutôt que des concurrents (une chambre consulaire) : seuls les mots de l’espace changent.
         </p>
       </Section>
 

@@ -35,7 +35,7 @@ export default async function ForcesDuMarché({ params }: { params: Promise<{ sl
       )}
       <div className="mt-12 flex flex-col gap-2">
         <p>
-          <LienFlèche href={`/${accès.slug}/concurrents`}>Voir les concurrents et leur carte</LienFlèche>
+          <LienFlèche href={`/${accès.slug}/concurrents`}>{espace?.marché.voir ?? 'Voir les concurrents et leur carte'}</LienFlèche>
         </p>
         <p>
           <LienFlèche href={`/${accès.slug}/acteurs`}>Voir les autres acteurs</LienFlèche>

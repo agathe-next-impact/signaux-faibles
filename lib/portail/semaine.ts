@@ -1,6 +1,7 @@
 import type { Onglet } from '@/components/coquille'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { regrouperParSemaine, type Semaine } from '@/lib/domaine/semaines'
+import type { VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { lireBlocsDeLÉdition, listerÉditionsPubliées, listerÉditionsÀPrévisualiser, type Édition } from '@/lib/documents'
 
 /**
@@ -124,7 +125,7 @@ export function ongletsDe(
   slug: string,
   comptes: { lettres: number; recommandations: number; archives: number },
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
-  espace: { readonly réorganisé: boolean } = { réorganisé: false },
+  espace: { readonly réorganisé: boolean; readonly marché?: Pick<VocabulaireDuMarché, 'écran' | 'écranCourt'> } = { réorganisé: false },
 ): Onglet[] {
   // L'espace réorganisé (lots 2, 3, 5 et 6, 30 octobre 2026, pilote sur L'Hermitage) :
   // un écran par outil, groupés en rubriques ; ailleurs, le rail garde ses sept écrans.
@@ -132,7 +133,8 @@ export function ongletsDe(
     const réorganisé = [
       { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true, rubrique: 'Cette semaine' },
       { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres, rubrique: 'Cette semaine' },
-      { href: `/${slug}/concurrents`, libellé: 'Concurrents', libelléCourt: 'Concurr.', rubrique: 'Le marché' },
+      // « Entreprises suivies » quand la veille concurrentielle suit les mouvements du territoire (7 novembre 2026).
+      { href: `/${slug}/concurrents`, libellé: espace.marché?.écran ?? 'Concurrents', libelléCourt: espace.marché?.écranCourt ?? 'Concurr.', rubrique: 'Le marché' },
       { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs', rubrique: 'Le marché' },
       { href: `/${slug}/forces`, libellé: 'Forces du marché', libelléCourt: 'Forces', rubrique: 'Le marché' },
       { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes', rubrique: 'L’environnement' },
