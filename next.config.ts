@@ -53,12 +53,13 @@ const POLITIQUE_DE_CONTENU = politiqueDeContenu()
 const POLITIQUE_DES_PAGES_MESURÉES = politiqueDeContenu(ORIGINES_GTM)
 
 /**
- * Le courriel de la dernière lettre d'une démonstration (8 novembre 2026) est
- * la seule page du portail qu'une autre page de la même origine encadre : la
- * page « La dernière lettre » de « Exemples » le montre tel qu'il est reçu. Il
- * n'admet que cette origine ; tout le reste du portail reste inencadrable.
+ * Le courriel d'une lettre de démonstration (8 novembre 2026 ; la dernière, ou
+ * une lettre de la série par son numéro) est la seule page du portail qu'une
+ * autre page de la même origine encadre : la page « La dernière lettre » de
+ * « Exemples » le montre tel qu'il est reçu. Il n'admet que cette origine ;
+ * tout le reste du portail reste inencadrable.
  */
-const COURRIEL_DE_DÉMONSTRATION = '/exemple/lettre/:organisation/courriel'
+const COURRIELS_DE_DÉMONSTRATION = ['/exemple/lettre/:organisation/courriel', '/exemple/lettre/:organisation/:numero/courriel']
 const POLITIQUE_DU_COURRIEL_ENCADRÉ = politiqueDeContenu({ ancêtres: "'self'" })
 
 const nextConfig: NextConfig = {
@@ -185,13 +186,13 @@ const nextConfig: NextConfig = {
         source: page,
         headers: [{ key: 'Content-Security-Policy', value: POLITIQUE_DES_PAGES_MESURÉES }],
       })),
-      {
-        source: COURRIEL_DE_DÉMONSTRATION,
+      ...COURRIELS_DE_DÉMONSTRATION.map((source) => ({
+        source,
         headers: [
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Content-Security-Policy', value: POLITIQUE_DU_COURRIEL_ENCADRÉ },
         ],
-      },
+      })),
     ]
   },
 }

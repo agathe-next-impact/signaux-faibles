@@ -1159,8 +1159,12 @@ de la lettre fictive (`courrielDeDémonstration`, `lib/vitrine/courriel-demonstr
 le cadre prend la hauteur du document (`components/cadre-courriel.tsx`). Ce document est la **seule
 adresse du portail encadrable**, par la même origine seulement (`X-Frame-Options: SAMEORIGIN`,
 `frame-ancestors 'self'`, règle dédiée de `next.config.ts`) ; le proxy ouvre le préfixe
-`/exemple/lettre/`. Un second lien, « La lire dans l'espace », garde la page de la lettre dans
-l'espace de démonstration.
+`/exemple/lettre/`. Le second lien de la cartouche mène à la **lettre de la semaine précédente**, au
+même format (`/exemple/lettre/[organisation]/[numero]`, chaque lettre de la série pré-rendue,
+`paramètresDesLettresDeDémonstration`, et son document `…/[numero]/courriel`, encadrable de même) ;
+la page va de semaine en semaine par « Lettre de la semaine précédente » et « suivante »
+(`lettre-recue.tsx`). Le lien « La lire dans l'espace » a été retiré le même jour à la demande de
+l'opératrice.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi

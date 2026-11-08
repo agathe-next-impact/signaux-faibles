@@ -20,8 +20,9 @@ export const metadata: Metadata = {
  * `/atelier-passerelle`, le vrai espace client ouvert sans identifiant, en
  * lecture seule) et l'accès à la **dernière lettre**, montrée telle que le
  * client la reçoit par courriel (`/exemple/lettre/[organisation]`, gabarit des
- * courriels de production ; 8 novembre 2026), avec un second lien vers sa page
- * dans l'espace.
+ * courriels de production ; 8 novembre 2026), avec un second lien vers la
+ * lettre de la semaine précédente, au même format
+ * (`/exemple/lettre/[organisation]/[numero]`).
  * Les éditions viennent de la source que l'espace sert (`éditionsDeDémonstration`).
  * La page ne lit ni Notion ni Postgres ; ouverte par le proxy à l'adresse
  * exacte (`PUBLICS_EXACTS`). Les onglets tableau de bord et lettre d'avant
@@ -42,6 +43,7 @@ function Cartouche({ démonstration }: { démonstration: Démonstration }) {
   const slug = SLUGS_DE_DÉMONSTRATION[démonstration.clé]
   const éditions = éditionsDeDémonstration(cléDeCloisonnementDeDémonstration(démonstration.clé))
   const dernière = éditions[0]
+  const précédente = éditions[1]
   return (
     <article id={démonstration.clé} className="flex scroll-mt-24 flex-col border border-gris-ligne bg-blanc">
       <div className="flex flex-col gap-1 border-b border-gris-ligne p-6">
@@ -67,9 +69,11 @@ function Cartouche({ démonstration }: { démonstration: Démonstration }) {
                 {dernière.titre}, {dernière.périodeCouverte}, telle qu’elle arrive dans la boîte du client.
               </p>
               <BoutonDAccès href={`/exemple/lettre/${slug}`}>Lire la dernière lettre</BoutonDAccès>
-              <Link href={`/${slug}/lettres/${dernière.pageId}`} className="text-ardoise underline hover:text-encre">
-                La lire dans l’espace
-              </Link>
+              {précédente?.numéro !== null && précédente?.numéro !== undefined ? (
+                <Link href={`/exemple/lettre/${slug}/${précédente.numéro}`} className="text-ardoise underline hover:text-encre">
+                  Lire la lettre de la semaine précédente (n° {précédente.numéro}, {DATE.format(new Date(précédente.dateÉdition))})
+                </Link>
+              ) : null}
             </>
           ) : null}
         </div>

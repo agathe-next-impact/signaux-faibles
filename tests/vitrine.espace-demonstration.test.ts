@@ -13,7 +13,7 @@ import { SLUGS_RÉSERVÉS } from '@/lib/domaine/onboarding'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 import { DÉMONSTRATIONS } from '@/lib/vitrine/demonstrations'
 import { lettresDeDémonstration } from '@/lib/vitrine/lettres-demonstration'
-import { courrielDeDémonstration } from '@/lib/vitrine/courriel-demonstration'
+import { courrielDeDémonstration, paramètresDesLettresDeDémonstration } from '@/lib/vitrine/courriel-demonstration'
 
 const CLÉS: readonly CléDeDémonstration[] = ['conseil', 'pme', 'ess']
 
@@ -117,6 +117,22 @@ describe('la dernière lettre telle que reçue par courriel', () => {
       expect(courriel!.html).not.toMatch(/notion\.(so|site|com)/)
     })
   }
+
+  it('une lettre de la série se demande par son numéro, et la page va de semaine en semaine', () => {
+    const dernière = courrielDeDémonstration('lisiere-conseil')!
+    expect(dernière.suivante).toBeNull()
+    expect(dernière.précédente).toBe(dernière.numéro - 1)
+    const précédente = courrielDeDémonstration('lisiere-conseil', String(dernière.précédente))!
+    expect(précédente.numéro).toBe(dernière.numéro - 1)
+    expect(précédente.suivante).toBe(dernière.numéro)
+    expect(précédente.html).toContain(`n° ${précédente.numéro}`)
+    expect(précédente.html).not.toBe(dernière.html)
+    const plusAncienne = lettresDeDémonstration('conseil').at(-1)!.numéro
+    expect(courrielDeDémonstration('lisiere-conseil', plusAncienne)!.précédente).toBeNull()
+    expect(courrielDeDémonstration('lisiere-conseil', 999)).toBeNull()
+    expect(courrielDeDémonstration('lisiere-conseil', 'courriel')).toBeNull()
+    expect(paramètresDesLettresDeDémonstration().length).toBe(CLÉS.reduce((n, clé) => n + lettresDeDémonstration(clé).length, 0))
+  })
 
   it('un slug qui n’est pas une démonstration n’a pas de courriel', () => {
     expect(courrielDeDémonstration('hermitage')).toBeNull()
