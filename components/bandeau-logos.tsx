@@ -34,8 +34,8 @@ export const LOGOS: readonly Logo[] = [
  * (8 novembre 2026, à la demande de l'opératrice : les logos visibles sans
  * défiler) : les logos y sont inversés en mode clair, où la bande est sombre,
  * et tels quels en mode sombre, où elle est claire ; pas de couleurs au
- * survol, un logo inversé ne les rendrait pas. Alignée à gauche, sous les
- * boutons, et non centrée.
+ * survol, un logo inversé ne les rendrait pas. Depuis le même jour, sur toute
+ * la largeur du pied de l'ouverture, les logos répartis d'un bord à l'autre.
  */
 export function BandeauLogos({ négatif = false }: { négatif?: boolean } = {}) {
   const titre = négatif ? 'logos-ouverture-titre' : 'bandeau-logos-titre'
@@ -51,7 +51,7 @@ export function BandeauLogos({ négatif = false }: { négatif?: boolean } = {}) 
       <p id={titre} className={négatif ? 'label-mono text-gris-ligne' : 'label-mono text-center text-ardoise'}>
         Ils reçoivent leur veille chaque semaine
       </p>
-      <ul className={négatif ? 'flex flex-wrap items-center gap-x-8 gap-y-4' : 'flex flex-wrap items-center justify-center gap-x-12 gap-y-6'}>
+      <ul className={négatif ? 'flex flex-wrap items-center justify-between gap-x-8 gap-y-4' : 'flex flex-wrap items-center justify-center gap-x-12 gap-y-6'}>
         {LOGOS.map((logo) => (
           <li key={logo.fichier} className="flex h-12 items-center">
             <Image

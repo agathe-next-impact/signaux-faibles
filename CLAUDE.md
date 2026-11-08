@@ -1069,7 +1069,7 @@ et Konica Minolta, puis Heritech et Suneido le 8 novembre, en une rangée immobi
 inversés en mode sombre (`components/bandeau-logos.tsx`, fichiers dans
 `public/logos/`, ouverts par le proxy en préfixe `/logos/` ; le slug `logos` est
 réservé ; depuis le 8 novembre 2026, à sa demande, la rangée est **dans l'ouverture**, sous les
-boutons, inversée sur la bande encre, pour être vue sans défiler). Afficher un logo suppose l'accord de l'organisation.
+boutons, inversée sur la bande encre, pour être vue sans défiler ; le même jour, sur toute la largeur au pied de l'ouverture, qui occupe le premier écran, vidéo bornée par la hauteur de l'écran, et avant la vidéo sur mobile). Afficher un logo suppose l'accord de l'organisation.
 **Refonte visuelle de la vitrine** (7 novembre 2026, à la demande de l'opératrice,
 structure et animations inspirées d'un modèle de page produit, charte conservée) :
 les pages vitrines tiennent dans un **cadre** (colonne bordée de deux filets,
@@ -1401,3 +1401,13 @@ affiche la légende : un code couleur qu'on n'explique pas est une décoration.
 - Si une règle de la charte semble en tension avec une contrainte technique
   (ex. police non disponible en next/font), s'arrêter et demander plutôt
   que d'improviser une équivalence.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
