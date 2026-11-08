@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { CadreCourriel } from '@/components/cadre-courriel'
 import { CoquilleVitrine } from '@/components/vitrine'
+import { SLUGS_DE_DÉMONSTRATION } from '@/lib/domaine/demonstration'
 import { courrielDeDémonstration } from '@/lib/vitrine/courriel-demonstration'
 
 /**
@@ -15,6 +16,16 @@ import { courrielDeDémonstration } from '@/lib/vitrine/courriel-demonstration'
  * dans une messagerie. Rien n'est lu : tout vient du code. Un slug qui n'est pas
  * une démonstration est introuvable.
  */
+/**
+ * Les trois organisations sont connues au build : la page est pré-rendue pour
+ * chacune (rien n'y est lu) ; tout autre segment rend `notFound`. Sans cette
+ * liste, `cacheComponents` refuse de pré-rendre une page qui lit `params` hors
+ * d'un `Suspense` (`dynamicParams` n'est pas admis avec `cacheComponents`).
+ */
+export function generateStaticParams(): Array<{ organisation: string }> {
+  return Object.values(SLUGS_DE_DÉMONSTRATION).map((organisation) => ({ organisation }))
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ organisation: string }> }): Promise<Metadata> {
   const { organisation } = await params
   const courriel = courrielDeDémonstration(organisation)
