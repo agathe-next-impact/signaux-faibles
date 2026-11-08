@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { vérifierJeton } from '@/lib/auth/jeton'
 import { NOM_DU_COOKIE } from '@/lib/auth/session'
+import { SLUGS_DE_DÉMONSTRATION } from '@/lib/domaine/demonstration'
 
 /**
  * Remplaçant de `middleware.ts` depuis Next.js 16. Runtime Node uniquement.
@@ -38,6 +39,10 @@ const PUBLICS = [
   '/logos/',
   // Les médias de la vitrine (vidéo de l'espace), servis de même.
   '/vitrine/',
+  // Les espaces de démonstration (7 novembre 2026) : les espaces clients des
+  // trois organisations fictives de « Exemples », ouverts sans session. Les
+  // slugs sont réservés ; le contrôle d'appartenance les accorde sans cookie.
+  ...Object.values(SLUGS_DE_DÉMONSTRATION).map((slug) => `/${slug}/`),
 ]
 
 /**
@@ -63,7 +68,7 @@ export function estUneAdressePayload(pathname: string): boolean {
  * (23 octobre 2026 ; `/offre` retirée le 7 novembre 2026, redirigée vers `/`) ; comme `/demo` et `/espaces`, elles masquent un slug
  * identique, qu'aucune organisation ne doit donc porter.
  */
-const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/tarifs'])
+const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/tarifs', ...Object.values(SLUGS_DE_DÉMONSTRATION).map((slug) => `/${slug}`)])
 
 export function proxy(requête: NextRequest): NextResponse {
   const { pathname } = requête.nextUrl

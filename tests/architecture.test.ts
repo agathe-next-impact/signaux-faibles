@@ -903,7 +903,8 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       ['export async function gérerLAbonnement', 'espaceDeFacturation(accès'],
     ] as const) {
       const corps = source.slice(source.indexOf(action))
-      const garde = corps.indexOf('if (accès.enOpérateur) redirect(')
+      // Le visiteur d'un espace de démonstration (7 novembre 2026) est refusé par la même garde.
+      const garde = corps.indexOf('if (accès.enOpérateur || accès.démonstration) redirect(')
       expect(garde, action).toBeGreaterThan(corps.indexOf('exigerAccès(slug)'))
       expect(garde, action).toBeLessThan(corps.indexOf(appel))
     }
@@ -967,7 +968,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     ] as const) {
       const corps = source.slice(source.indexOf(action))
       const contrôle = corps.indexOf('exigerAccès(slug)')
-      const refus = corps.indexOf('if (accès.enOpérateur)')
+      const refus = corps.indexOf('if (accès.enOpérateur || accès.démonstration)')
       const source_ = corps.indexOf('lecteursModifiables()')
       expect(contrôle, action).toBeGreaterThan(0)
       expect(refus, action).toBeGreaterThan(contrôle)
@@ -1538,12 +1539,33 @@ describe('l’aperçu avant envoi reste confiné', () => {
   const tous = sources(['app', 'components', 'lib', 'trigger'])
   const appelants = (motif: string) => tous.filter((f) => f.source.includes(motif)).map((f) => f.chemin).sort()
 
+  it('l’accès de démonstration n’est accordé que par le contrôle d’appartenance, avant toute session', () => {
+    // L'espace de démonstration (7 novembre 2026) : `accèsDeDémonstration` est
+    // construit à un seul endroit et accordé par `exigerAccès` seulement, au slug
+    // réservé, avant la lecture de la session. Une page qui l'appellerait
+    // elle-même se donnerait un accès sans passer par le contrôle.
+    const appelants = (fonction: string) =>
+      sources(['app', 'components', 'lib'])
+        .filter(({ source }) => source.includes(fonction))
+        .map(({ chemin }) => chemin)
+        .sort()
+    expect(appelants('accèsDeDémonstration(')).toEqual(['lib/auth/appartenance.ts', 'lib/vitrine/espace-demonstration.ts'])
+    expect(appelants('démonstration: true')).toEqual(['lib/vitrine/espace-demonstration.ts'])
+    const garde = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    const corps = garde.slice(garde.indexOf('export async function exigerAccès'))
+    expect(corps.indexOf('accèsDeDémonstration(')).toBeLessThan(corps.indexOf('identifiantDeLaSession('))
+    // Les écrans sans sens pour un visiteur se ferment, et les actions refusent son geste.
+    for (const page of ['abonnement', 'prescripteur']) {
+      expect(readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page, 'page.tsx'), 'utf8')).toContain('if (accès.démonstration) notFound()')
+    }
+  })
+
   it('les éditions non publiées ne se lisent que par semainesDeLEspace, et pour l’opératrice seulement', () => {
     expect(appelants('listerÉditionsÀPrévisualiser')).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts', 'lib/notion/editions.ts', 'lib/portail/semaine.ts'])
     expect(appelants('lireBlocsDeLAperçu')).toEqual(['lib/documents/index.ts', 'lib/documents/payload.ts'])
     // `aperçu` n'est vrai que pour une session au privilège « Tous les espaces ».
     const garde = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
-    expect(garde).toContain('enOpérateur: false, aperçu: accès.tousLesEspaces }')
+    expect(garde).toContain('enOpérateur: false, aperçu: accès.tousLesEspaces, démonstration: false }')
     // Et `aperçu: true` seulement dans la branche de la visite opérateur, après la vérification du privilège.
     expect(garde.match(/aperçu: true/g)?.length).toBe(1)
     expect(garde.indexOf('if (!accès.tousLesEspaces) notFound()')).toBeLessThan(garde.indexOf('aperçu: true'))

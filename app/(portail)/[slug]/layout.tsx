@@ -89,6 +89,7 @@ async function Garde({
       slug={accès.slug}
       enOpérateur={accès.enOpérateur}
       peutResynchroniser={accès.tousLesEspaces}
+      démonstration={accès.démonstration}
       railReplié={railReplié}
       organisation={accès.organisationLibellé || 'votre veille'}
       onglets={ongletsDe(accès.slug, {
