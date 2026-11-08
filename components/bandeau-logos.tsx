@@ -3,10 +3,11 @@ import Image from 'next/image'
 /**
  * Les logos des organisations qui reçoivent leur veille, dans l'ouverture de
  * l'accueil (7 novembre 2026, à la demande de l'opératrice : L'Hermitage,
- * Infralliance et Konica Minolta ; sous l'ouverture jusqu'au 8 novembre, dans
+ * Infralliance et Konica Minolta, rejointes le 8 novembre par Heritech et
+ * Suneido ; sous l'ouverture jusqu'au 8 novembre, dans
  * l'ouverture depuis, pour être vus sans défiler).
  *
- * Une rangée immobile, centrée, qui passe à la ligne sur mobile : à trois
+ * Une rangée immobile, centrée, qui passe à la ligne sur mobile : à cinq
  * logos, un défilement laisserait un vide sur grand écran. Les logos sont en
  * niveaux de gris, pour ne pas faire entrer dans la page des couleurs que la
  * charte n'a pas, et reprennent leurs couleurs au survol ; en mode sombre, ils
@@ -24,6 +25,8 @@ export const LOGOS: readonly Logo[] = [
   { nom: 'L’Hermitage', fichier: 'hermitage', largeur: 128, hauteur: 33 },
   { nom: 'Infralliance', fichier: 'infralliance', largeur: 108, hauteur: 39 },
   { nom: 'Konica Minolta', fichier: 'konica-minolta', largeur: 77, hauteur: 44 },
+  { nom: 'Heritech', fichier: 'heritech', largeur: 72, hauteur: 44 },
+  { nom: 'Suneido', fichier: 'suneido', largeur: 49, hauteur: 44 },
 ]
 
 /**
@@ -31,8 +34,8 @@ export const LOGOS: readonly Logo[] = [
  * (8 novembre 2026, à la demande de l'opératrice : les logos visibles sans
  * défiler) : les logos y sont inversés en mode clair, où la bande est sombre,
  * et tels quels en mode sombre, où elle est claire ; pas de couleurs au
- * survol, un logo inversé ne les rendrait pas. Alignée à gauche, sous les
- * boutons, et non centrée.
+ * survol, un logo inversé ne les rendrait pas. Depuis le même jour, sur toute
+ * la largeur du pied de l'ouverture, les logos répartis d'un bord à l'autre.
  */
 export function BandeauLogos({ négatif = false }: { négatif?: boolean } = {}) {
   const titre = négatif ? 'logos-ouverture-titre' : 'bandeau-logos-titre'
@@ -48,7 +51,7 @@ export function BandeauLogos({ négatif = false }: { négatif?: boolean } = {}) 
       <p id={titre} className={négatif ? 'label-mono text-gris-ligne' : 'label-mono text-center text-ardoise'}>
         Ils reçoivent leur veille chaque semaine
       </p>
-      <ul className={négatif ? 'flex flex-wrap items-center gap-x-8 gap-y-4' : 'flex flex-wrap items-center justify-center gap-x-12 gap-y-6'}>
+      <ul className={négatif ? 'flex flex-wrap items-center justify-between gap-x-8 gap-y-4' : 'flex flex-wrap items-center justify-center gap-x-12 gap-y-6'}>
         {LOGOS.map((logo) => (
           <li key={logo.fichier} className="flex h-12 items-center">
             <Image
