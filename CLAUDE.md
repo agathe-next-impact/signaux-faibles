@@ -1151,20 +1151,24 @@ l'accès à l'espace de démonstration et l'accès à sa dernière lettre, lue d
 onglets tableau de bord et lettre de la page sont retirés, et `components/demonstration.tsx`
 (tableau de bord en accordéons, lettre) supprimé avec eux. **La dernière lettre est montrée telle
 que le client la reçoit par courriel** (8 novembre 2026, demande de l'opératrice : « reprendre
-strictement l'apparence et la structure d'un email reçu ») : « Lire la dernière lettre » mène à
-`/exemple/lettre/[organisation]`, page vitrine (expéditeur, objet, date, retour aux exemples et à
-l'espace) qui encadre le document `/exemple/lettre/[organisation]/courriel`, composé par
-`composerLettre` (`lib/email/lettre.ts`, le compositeur de `POST /api/veille/courriel`) sur les blocs
-de la lettre fictive (`courrielDeDémonstration`, `lib/vitrine/courriel-demonstration.ts`, rien lu) ;
-le cadre prend la hauteur du document (`components/cadre-courriel.tsx`). Ce document est la **seule
-adresse du portail encadrable**, par la même origine seulement (`X-Frame-Options: SAMEORIGIN`,
-`frame-ancestors 'self'`, règle dédiée de `next.config.ts`) ; le proxy ouvre le préfixe
-`/exemple/lettre/`. Le second lien de la cartouche mène à la **lettre de la semaine précédente**, au
-même format (`/exemple/lettre/[organisation]/[numero]`, chaque lettre de la série pré-rendue,
-`paramètresDesLettresDeDémonstration`, et son document `…/[numero]/courriel`, encadrable de même) ;
-la page va de semaine en semaine par « Lettre de la semaine précédente » et « suivante »
-(`lettre-recue.tsx`). Le lien « La lire dans l'espace » a été retiré le même jour à la demande de
-l'opératrice.
+strictement l'apparence et la structure d'un email reçu ») : la cartouche propose **les deux lettres
+de la dernière semaine, écosystème et concurrentielle**, celles que le dispositif en service envoie
+(même jour, à sa demande : « uniquement la dernière lettre écosystème et la dernière lettre
+concurrentielle » ; la lettre de la semaine précédente et « La lire dans l'espace » sont retirées).
+Elles sont **réparties** depuis la dernière lettre unique de l'organisation par sa grille
+(`lib/vitrine/lettres-par-veille.ts` : un axe sous une dimension PESTEL va à l'écosystème, un axe
+sous une force de Porter à la concurrentielle, texte repris mot pour mot et renuméroté ; essentiel,
+action et dossiers écrits pour chacune ; lint du dispositif en service, `forme: 'double'`,
+`tests/vitrine.lettres-par-veille.test.ts`) ; l'espace garde sa série de lettres uniques.
+Chacune mène à `/exemple/lettre/[organisation]/[veille]` (`ecosysteme` ou `concurrentielle`,
+404 sinon ; l'ancienne adresse sans veille redirige en 308 vers l'écosystème), page vitrine
+(expéditeur, objet, date, retour aux exemples et à l'espace, l'autre lettre de la même semaine) qui
+encadre le document `…/[veille]/courriel`, composé par `composerLettre` (`lib/email/lettre.ts`, le
+compositeur de `POST /api/veille/courriel`) sur les blocs de la lettre fictive
+(`courrielDeDémonstration`, `lib/vitrine/courriel-demonstration.ts`, rien lu) ; le cadre prend la
+hauteur du document (`components/cadre-courriel.tsx`). Ce document est la **seule adresse du portail
+encadrable**, par la même origine seulement (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`,
+règle dédiée de `next.config.ts`) ; le proxy ouvre le préfixe `/exemple/lettre/`.
 
 **Les axes et les acteurs ont été séparés le 11 septembre 2026**, après avoir
 partagé un écran « Tendances ». Ils répondent à deux questions — « de quoi

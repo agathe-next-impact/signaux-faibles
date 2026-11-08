@@ -59,7 +59,7 @@ const POLITIQUE_DES_PAGES_MESURÉES = politiqueDeContenu(ORIGINES_GTM)
  * « Exemples » le montre tel qu'il est reçu. Il n'admet que cette origine ;
  * tout le reste du portail reste inencadrable.
  */
-const COURRIELS_DE_DÉMONSTRATION = ['/exemple/lettre/:organisation/courriel', '/exemple/lettre/:organisation/:numero/courriel']
+const COURRIELS_DE_DÉMONSTRATION = ['/exemple/lettre/:organisation/:veille/courriel']
 const POLITIQUE_DU_COURRIEL_ENCADRÉ = politiqueDeContenu({ ancêtres: "'self'" })
 
 const nextConfig: NextConfig = {
@@ -133,6 +133,15 @@ const nextConfig: NextConfig = {
         // l'opératrice) : l'accueil porte ce qu'elle disait. Le slug reste réservé.
         source: '/offre',
         destination: '/',
+        permanent: true,
+      },
+      {
+        // « Exemples » a montré une seule dernière lettre par organisation le
+        // 8 novembre 2026, à cette adresse, avant de proposer le même jour ses
+        // deux lettres de la semaine (écosystème et concurrentielle) : un lien
+        // gardé arrive sur la lettre écosystème.
+        source: '/exemple/lettre/:organisation',
+        destination: '/exemple/lettre/:organisation/ecosysteme',
         permanent: true,
       },
       // Les écrans de rubrique (« Vue de la rubrique ») ont été retirés le

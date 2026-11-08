@@ -4,11 +4,12 @@ import { BoutonDémo, CoquilleVitrine, OuvertureVitrine } from '@/components/vit
 import { cléDeCloisonnementDeDémonstration, SLUGS_DE_DÉMONSTRATION } from '@/lib/domaine/demonstration'
 import { DÉMONSTRATIONS, type Démonstration } from '@/lib/vitrine/demonstrations'
 import { éditionsDeDémonstration } from '@/lib/vitrine/espace-demonstration'
+import { lettreDeLaSemaine, QUALIFICATIF_DE_LA_VEILLE, VEILLES_DE_DÉMONSTRATION } from '@/lib/vitrine/lettres-par-veille'
 
 export const metadata: Metadata = {
   title: 'Exemples — signauxfaibles',
   description:
-    'Trois organisations fictives, un cabinet de conseil, une PME industrielle et une entreprise de l’ESS : leur espace client ouvert en lecture seule et leur dernière lettre.',
+    'Trois organisations fictives, un cabinet de conseil, une PME industrielle et une entreprise de l’ESS : leur espace client ouvert en lecture seule et leurs deux lettres de la semaine, écosystème et concurrentielle.',
   robots: { index: true, follow: true },
 }
 
@@ -18,12 +19,13 @@ export const metadata: Metadata = {
  * (`lib/vitrine/demonstrations.ts`), chacune sur deux colonnes : l'accès à
  * l'**espace de démonstration** (`/lisiere-conseil`, `/tolmen-mecanique`,
  * `/atelier-passerelle`, le vrai espace client ouvert sans identifiant, en
- * lecture seule) et l'accès à la **dernière lettre**, montrée telle que le
- * client la reçoit par courriel (`/exemple/lettre/[organisation]`, gabarit des
- * courriels de production ; 8 novembre 2026), avec un second lien vers la
- * lettre de la semaine précédente, au même format
- * (`/exemple/lettre/[organisation]/[numero]`).
- * Les éditions viennent de la source que l'espace sert (`éditionsDeDémonstration`).
+ * lecture seule) et les **deux lettres de la dernière semaine**, écosystème et
+ * concurrentielle, montrées telles que le client les reçoit par courriel
+ * (`/exemple/lettre/[organisation]/[veille]`, gabarit des courriels de
+ * production ; 8 novembre 2026, à la demande de l'opératrice : rien d'autre,
+ * ni lettre de la semaine précédente ni lecture dans l'espace).
+ * Les éditions de l'espace viennent de la source qu'il sert (`éditionsDeDémonstration`),
+ * les deux lettres de `lib/vitrine/lettres-par-veille.ts`.
  * La page ne lit ni Notion ni Postgres ; ouverte par le proxy à l'adresse
  * exacte (`PUBLICS_EXACTS`). Les onglets tableau de bord et lettre d'avant
  * sont retirés : l'espace montre les deux.
@@ -42,8 +44,8 @@ function BoutonDAccès({ href, children }: { href: string; children: React.React
 function Cartouche({ démonstration }: { démonstration: Démonstration }) {
   const slug = SLUGS_DE_DÉMONSTRATION[démonstration.clé]
   const éditions = éditionsDeDémonstration(cléDeCloisonnementDeDémonstration(démonstration.clé))
-  const dernière = éditions[0]
-  const précédente = éditions[1]
+  const lettres = VEILLES_DE_DÉMONSTRATION.map((veille) => lettreDeLaSemaine(démonstration.clé, veille))
+  const dernière = lettres[0]
   return (
     <article id={démonstration.clé} className="flex scroll-mt-24 flex-col border border-gris-ligne bg-blanc">
       <div className="flex flex-col gap-1 border-b border-gris-ligne p-6">
@@ -61,19 +63,21 @@ function Cartouche({ démonstration }: { démonstration: Démonstration }) {
           <BoutonDAccès href={`/${slug}`}>Ouvrir l’espace de démonstration</BoutonDAccès>
         </div>
         <div className="flex flex-col gap-3 p-6">
-          <p className="label-mono text-ardoise">La dernière lettre</p>
+          <p className="label-mono text-ardoise">Les dernières lettres</p>
           {dernière ? (
             <>
               <p className="label-mono text-encre">{DATE.format(new Date(dernière.dateÉdition))}</p>
               <p className="text-encre">
-                {dernière.titre}, {dernière.périodeCouverte}, telle qu’elle arrive dans la boîte du client.
+                Les deux lettres de la semaine {dernière.périodeCouverte}, l’écosystème et la concurrence, telles qu’elles arrivent
+                dans la boîte du client.
               </p>
-              <BoutonDAccès href={`/exemple/lettre/${slug}`}>Lire la dernière lettre</BoutonDAccès>
-              {précédente?.numéro !== null && précédente?.numéro !== undefined ? (
-                <Link href={`/exemple/lettre/${slug}/${précédente.numéro}`} className="text-ardoise underline hover:text-encre">
-                  Lire la lettre de la semaine précédente (n° {précédente.numéro}, {DATE.format(new Date(précédente.dateÉdition))})
-                </Link>
-              ) : null}
+              <div className="flex flex-wrap gap-3">
+                {lettres.map((lettre) => (
+                  <BoutonDAccès key={lettre.veille} href={`/exemple/lettre/${slug}/${lettre.veille}`}>
+                    Lire la lettre {QUALIFICATIF_DE_LA_VEILLE[lettre.veille]}
+                  </BoutonDAccès>
+                ))}
+              </div>
             </>
           ) : null}
         </div>
@@ -88,7 +92,7 @@ export default function Exemples() {
       <OuvertureVitrine
         surtitre="Exemples"
         titre="Ce que vous recevez chaque semaine."
-        chapeau="Trois organisations, une par profil de client, avec leur espace et leur dernière lettre. Elles sont fictives, comme leurs concurrents et les faits relevés ; la forme est exactement celle que reçoivent nos clients."
+        chapeau="Trois organisations, une par profil de client, avec leur espace et leurs deux lettres de la semaine, l’écosystème et la concurrence. Elles sont fictives, comme leurs concurrents et les faits relevés ; la forme est exactement celle que reçoivent nos clients."
       >
         <BoutonDémo libellé="Demander la vôtre" />
       </OuvertureVitrine>

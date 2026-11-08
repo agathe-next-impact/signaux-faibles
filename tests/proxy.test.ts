@@ -42,9 +42,8 @@ describe('proxy', () => {
     expect(proxy(requête('/exemple/lettres')).status).toBe(307)
     // La dernière lettre d'une démonstration, telle que reçue par courriel : la page et le document encadré.
     expect(proxy(requête('/exemple/lettre/lisiere-conseil')).status).toBe(200)
-    expect(proxy(requête('/exemple/lettre/lisiere-conseil/courriel')).status).toBe(200)
-    expect(proxy(requête('/exemple/lettre/lisiere-conseil/13')).status).toBe(200)
-    expect(proxy(requête('/exemple/lettre/lisiere-conseil/13/courriel')).status).toBe(200)
+    expect(proxy(requête('/exemple/lettre/lisiere-conseil/ecosysteme')).status).toBe(200)
+    expect(proxy(requête('/exemple/lettre/lisiere-conseil/concurrentielle/courriel')).status).toBe(200)
   })
 
   it('n’ouvre /demo qu’à l’adresse exacte, pas en préfixe', () => {
