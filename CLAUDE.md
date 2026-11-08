@@ -1065,7 +1065,7 @@ qui prennent la démonstration en paramètre) ; la lettre est rendue par
 les cases ne mènent nulle part. Le test passe
 chaque lettre au lint de la lettre unique. **Logos clients** (7 novembre 2026, à la
 demande de l'opératrice) : sous l'ouverture de l'accueil, L'Hermitage, Infralliance
-et Konica Minolta en une rangée immobile, en niveaux de gris, couleurs au survol,
+et Konica Minolta, puis Heritech et Suneido le 8 novembre, en une rangée immobile, en niveaux de gris, couleurs au survol,
 inversés en mode sombre (`components/bandeau-logos.tsx`, fichiers dans
 `public/logos/`, ouverts par le proxy en préfixe `/logos/` ; le slug `logos` est
 réservé ; depuis le 8 novembre 2026, à sa demande, la rangée est **dans l'ouverture**, sous les
