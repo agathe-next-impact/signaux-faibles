@@ -1,7 +1,13 @@
 import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const strategie = vi.hoisted(() => ({ recevoirLaSynthèse: vi.fn(), lireLaSynthèseDuPilote: vi.fn(), publierLaSynthèseDuPilote: vi.fn(), modifierLÉnoncéDuPilote: vi.fn() }))
+const strategie = vi.hoisted(() => ({
+  recevoirLaSynthèse: vi.fn(),
+  lireLaSynthèseDuPilote: vi.fn(),
+  publierLaSynthèseDuPilote: vi.fn(),
+  modifierLÉnoncéDuPilote: vi.fn(),
+  recalculerLeBenchmarkDuPilote: vi.fn(),
+}))
 const client = vi.hoisted(() => ({ baseConfigurée: vi.fn() }))
 vi.mock('@/lib/portail/strategie', () => strategie)
 vi.mock('@/lib/base/client', () => client)
@@ -224,6 +230,36 @@ describe('PATCH /api/veille/syntheses', () => {
     }
     expect(strategie.modifierLÉnoncéDuPilote).toHaveBeenLastCalledWith({ slug: 'mastora', période: '2026-10', élément, énoncé: 'Nouvel énoncé.', titre: null })
     expect(strategie.publierLaSynthèseDuPilote).not.toHaveBeenCalled()
+  })
+
+  it('recalcule le benchmark d’un trimestre quand le corps le demande, sans publier ni retoucher', async () => {
+    // Un mois n'a pas de benchmark, et seul le benchmark se recalcule.
+    expect((await publier({ slug: 'hermitage', periode: '2026-10', recalcul: 'benchmark' })).status).toBe(400)
+    expect((await publier({ slug: 'hermitage', periode: '2026-T3', recalcul: 'indice' })).status).toBe(400)
+    expect((await publier({ slug: 'hermitage', periode: '2026-T3', recalcul: 'benchmark' }, 'mauvais')).status).toBe(401)
+    expect(strategie.recalculerLeBenchmarkDuPilote).not.toHaveBeenCalled()
+    const cas: Array<[unknown, number]> = [
+      [{ sorte: 'recalculé', période: '2026-T3', grilleVersion: 5, avant: null, après: { fiches: 14, avecComptes: 6, médiane: 499_592, rang: 4, noms: [] }, interprétation: 'remplacée' }, 200],
+      [{ sorte: 'refusé', refus: [{ code: 'longueur', message: 'trop long' }] }, 422],
+      [{ sorte: 'sans-benchmark' }, 404],
+      [{ sorte: 'grille-absente' }, 409],
+      [{ sorte: 'organisation-inconnue' }, 404],
+      [{ sorte: 'hors-pilote' }, 200],
+    ]
+    for (const [résultat, statut] of cas) {
+      strategie.recalculerLeBenchmarkDuPilote.mockResolvedValueOnce(résultat)
+      const réponse = await publier({ slug: 'hermitage', periode: '2026-T3', recalcul: 'benchmark', enonce: 'Six fiches sur quatorze.' })
+      expect(réponse.status, (résultat as { sorte: string }).sorte).toBe(statut)
+      expect(await réponse.json()).toMatchObject({ état: (résultat as { sorte: string }).sorte })
+    }
+    expect(strategie.recalculerLeBenchmarkDuPilote).toHaveBeenLastCalledWith({ slug: 'hermitage', période: '2026-T3', énoncé: 'Six fiches sur quatorze.' })
+    strategie.recalculerLeBenchmarkDuPilote.mockResolvedValueOnce({ sorte: 'sans-benchmark' })
+    await publier({ slug: 'hermitage', periode: '2026-T3', recalcul: 'benchmark' })
+    expect(strategie.recalculerLeBenchmarkDuPilote).toHaveBeenLastCalledWith({ slug: 'hermitage', période: '2026-T3', énoncé: null })
+    strategie.recalculerLeBenchmarkDuPilote.mockRejectedValueOnce(new Error('base injoignable'))
+    expect((await publier({ slug: 'hermitage', periode: '2026-T3', recalcul: 'benchmark' })).status).toBe(502)
+    expect(strategie.publierLaSynthèseDuPilote).not.toHaveBeenCalled()
+    expect(strategie.modifierLÉnoncéDuPilote).not.toHaveBeenCalled()
   })
 })
 

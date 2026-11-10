@@ -11,6 +11,7 @@ import {
   lireLaGrille,
   lireLaSynthèse,
   modifierUnÉnoncé,
+  remplacerLeBenchmark,
   organisationPourLesOutils,
   type OrganisationDesOutils,
   positionsPubliées,
@@ -80,6 +81,7 @@ import {
   rendreLaSynthèse,
   trousDuPestel,
   type CaseSwot,
+  type Benchmark,
   type LigneDeBenchmark,
   type ForcePorter,
   type Grille,
@@ -828,6 +830,86 @@ export async function modifierLÉnoncéDuPilote(
   if (refus.length > 0) return { sorte: 'refusé', refus }
   const r = await modifierUnÉnoncé({ organisationId: organisation.id, période: entrée.période, élémentId: élément.id, énoncé, titre }, db)
   return r.sorte === 'modifié' ? { sorte: 'modifié' } : r
+}
+
+/** Ce qu'un benchmark compare, en quatre chiffres : pour dire ce qu'un recalcul a changé. */
+export type RésuméDuBenchmark = {
+  readonly fiches: number
+  readonly avecComptes: number | null
+  readonly médiane: number | null
+  readonly rang: number | null
+  readonly noms: readonly string[]
+}
+
+function résuméDuBenchmark(valeur: Record<string, unknown> | null): RésuméDuBenchmark | null {
+  const b = valeur as Partial<Benchmark> | null
+  if (!b || !Array.isArray(b.lignes)) return null
+  return {
+    fiches: b.lignes.length,
+    avecComptes: typeof b.avecComptes === 'number' ? b.avecComptes : null,
+    médiane: typeof b.médianeDuChiffreDAffaires === 'number' ? b.médianeDuChiffreDAffaires : null,
+    rang: typeof b.rangDeLOrganisation === 'number' ? b.rangDeLOrganisation : null,
+    noms: b.lignes.map((l) => l.nom),
+  }
+}
+
+export type RésultatDuRecalcul =
+  | {
+      readonly sorte: 'recalculé'
+      readonly période: string
+      readonly grilleVersion: number
+      readonly avant: RésuméDuBenchmark | null
+      readonly après: RésuméDuBenchmark
+      readonly interprétation: 'remplacée' | 'conservée' | 'absente'
+    }
+  | { readonly sorte: 'refusé'; readonly refus: readonly Refus[] }
+  | { readonly sorte: 'sans-benchmark' | 'grille-absente' | 'organisation-inconnue' | 'hors-pilote' }
+
+/**
+ * Recalcule le benchmark d'un trimestre enregistré, sur la grille en vigueur,
+ * sans reposter la synthèse (10 novembre 2026, `PATCH /api/veille/syntheses`
+ * avec `recalcul`). Quand une grille est reclassée (une entité quitte la veille
+ * concurrentielle), le benchmark gardé avec la synthèse compare encore
+ * l'ancienne liste ; reposter remettrait la période en proposition, et une
+ * synthèse ancienne peut ne plus passer la porte de la grille d'aujourd'hui.
+ *
+ * Le pilote et la grille d'abord, la porte de l'énoncé ensuite, les registres
+ * après, l'écriture en dernier. Les chiffres sont ceux de `calculer` à la fin de
+ * la fenêtre de la période, jamais fournis par l'appelant ; l'indice de cycle de
+ * vie n'est pas touché. L'interprétation se remplace dans le même geste quand
+ * l'appelant en donne une : un énoncé qui cite l'ancien rang sous les nouveaux
+ * chiffres serait pire que l'écart corrigé. Rien d'autre ne change, pas même
+ * l'état de publication.
+ */
+export async function recalculerLeBenchmarkDuPilote(
+  entrée: { readonly slug: string; readonly période: string; readonly énoncé?: string | null },
+  db?: Base,
+  dépendances: Dépendances = {},
+): Promise<RésultatDuRecalcul> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const grille = await lireLaGrille(organisation.id, db)
+  if (!grille) return { sorte: 'grille-absente' }
+  const lue = await lireLaSynthèse({ organisationId: organisation.id, période: entrée.période }, db)
+  const élément = lue.éléments.find((é) => é.outil === 'benchmark')
+  if (!élément) return { sorte: 'sans-benchmark' }
+  const énoncé = entrée.énoncé == null ? null : entrée.énoncé.trim()
+  if (énoncé !== null) {
+    const refus = contrôlerUnÉnoncé({ outil: 'benchmark', énoncé })
+    if (refus.length > 0) return { sorte: 'refusé', refus }
+  }
+  const { benchmark } = await calculer({ grille: grille.grille, organisation: organisation.nom, fin: élément.fenêtreFin, cycle: null }, dépendances)
+  const écrit = await remplacerLeBenchmark({ organisationId: organisation.id, période: entrée.période, valeur: { ...benchmark }, énoncé }, db)
+  if (écrit.sorte !== 'recalculé') return écrit
+  return {
+    sorte: 'recalculé',
+    période: entrée.période,
+    grilleVersion: grille.version,
+    avant: résuméDuBenchmark(écrit.avant),
+    après: résuméDuBenchmark({ ...benchmark })!,
+    interprétation: écrit.interprétation,
+  }
 }
 
 /** Une lecture bornée dans le temps : `null` au-delà du délai, ou sur toute erreur, sans faire tomber l'écran. */

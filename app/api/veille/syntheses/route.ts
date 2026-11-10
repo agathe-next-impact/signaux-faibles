@@ -3,7 +3,14 @@ import { z } from 'zod'
 import { baseConfigurée } from '@/lib/base/client'
 import type { SynthèseProposée } from '@/lib/domaine/strategie'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
-import { lireLaSynthèseDuPilote, modifierLÉnoncéDuPilote, publierLaSynthèseDuPilote, recevoirLaSynthèse, type RésultatDeLaSynthèse } from '@/lib/portail/strategie'
+import {
+  lireLaSynthèseDuPilote,
+  modifierLÉnoncéDuPilote,
+  publierLaSynthèseDuPilote,
+  recalculerLeBenchmarkDuPilote,
+  recevoirLaSynthèse,
+  type RésultatDeLaSynthèse,
+} from '@/lib/portail/strategie'
 
 /**
  * La synthèse stratégique d'une période (outils stratégiques, lot 6 de
@@ -40,6 +47,14 @@ import { lireLaSynthèseDuPilote, modifierLÉnoncéDuPilote, publierLaSynthèseD
  *
  * Le geste de l'opératrice après relecture (lot 11) : seule une synthèse
  * publiée est lue par les écrans « Acteurs » et « Recommandations » du client.
+ *
+ *   PATCH /api/veille/syntheses
+ *   { "slug": "hermitage", "periode": "2026-T3", "recalcul": "benchmark", "enonce": "…" }
+ *
+ * Recalcule le benchmark d'un trimestre enregistré sur la grille en vigueur,
+ * sans reposter la synthèse (10 novembre 2026) : après un reclassement de la
+ * grille, la période garde son état de publication et tous ses autres éléments.
+ * `enonce`, facultatif, remplace l'interprétation dans le même geste.
  *
  *   PATCH /api/veille/syntheses
  *   { "slug": "hermitage", "periode": "2026-10", "element": "<uuid>", "enonce": "…", "titre": "…" }
@@ -247,6 +262,23 @@ const retouche = z.object({
   titre: z.string().max(400).nullish(),
 })
 
+/** Le benchmark ne se garde qu'avec un trimestre : la période le dit. */
+const recalcul = z.object({
+  slug: z.string().trim().regex(SLUG),
+  periode: z.string().regex(/^\d{4}-T[1-4]$/),
+  recalcul: z.literal('benchmark'),
+  enonce: z.string().max(2000).nullish(),
+})
+
+const STATUT_DU_RECALCUL: Record<string, number> = {
+  recalculé: 200,
+  refusé: 422,
+  'sans-benchmark': 404,
+  'grille-absente': 409,
+  'organisation-inconnue': 404,
+  'hors-pilote': 200,
+}
+
 const STATUT_DE_LA_RETOUCHE: Record<string, number> = {
   modifié: 200,
   refusé: 422,
@@ -263,6 +295,21 @@ export async function PATCH(requête: NextRequest): Promise<NextResponse> {
   if (!baseConfigurée()) return NextResponse.json({ état: 'base-non-configurée' }, { status: 503 })
 
   const corps: unknown = await requête.json().catch(() => null)
+  if (corps && typeof corps === 'object' && 'recalcul' in corps) {
+    const r = recalcul.safeParse(corps)
+    if (!r.success) {
+      const chemin = r.error.issues[0]?.path.join('.') ?? ''
+      return NextResponse.json({ état: 'invalide', raison: chemin ? `champ « ${chemin} »` : 'corps illisible' }, { status: 400 })
+    }
+    try {
+      const résultat = await recalculerLeBenchmarkDuPilote({ slug: r.data.slug, période: r.data.periode, énoncé: r.data.enonce ?? null })
+      console.info(`[veille/syntheses] ${r.data.slug} ${r.data.periode} : recalcul du benchmark ${résultat.sorte}.`)
+      return NextResponse.json({ état: résultat.sorte, ...résultat }, { status: STATUT_DU_RECALCUL[résultat.sorte] ?? 200 })
+    } catch (erreur) {
+      console.error(`[veille/syntheses] ${r.data.slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return NextResponse.json({ état: 'erreur' }, { status: 502 })
+    }
+  }
   if (corps && typeof corps === 'object' && 'element' in corps) {
     const r = retouche.safeParse(corps)
     if (!r.success) {
