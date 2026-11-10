@@ -990,9 +990,14 @@ virgules) et `texte` vont ensemble, ou sont omis tous deux (benchmark seul).
 `calculé` (200) rend `indice` (au BODACC, créations et immatriculations contre
 procédures collectives sur les douze mois qui finissent à `fin` et les douze
 précédents : entrées, sorties, solde, ratio, évolutions, limites) et
-`benchmark` (fiches de la Recherche d'entreprises des entités de la grille qui
-portent un SIREN, l'organisation en tête, quinze au plus : chiffre d'affaires,
-résultat, tranche d'effectif, médiane, rang de l'organisation, limites).
+`benchmark` (fiches de la Recherche d'entreprises des seuls **concurrents** de
+la grille qui portent un SIREN, c'est-à-dire les entités de la veille
+concurrentielle, celles de l'écran « Concurrents », « Entreprises suivies »
+pour la CCI ; l'organisation en tête, comme repère, quinze au plus : chiffre
+d'affaires, résultat, tranche d'effectif, médiane, rang de l'organisation,
+limites). Depuis le 10 novembre 2026 (décision de l'opératrice), une entité de
+la seule veille écosystème, financeur, réseau ou institution, n'y entre plus,
+même avec un SIREN (`entitésDuBenchmark`, `lib/domaine/strategie.ts`).
 Autres réponses : `hors-pilote` (200), `organisation-inconnue` (404),
 `grille-absente` (409), `refusée` (422, paramètres du cycle), `invalide` (400),
 `erreur` (502).

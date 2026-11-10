@@ -985,7 +985,7 @@ function lignesDuBenchmark(valeur: unknown): string[] {
   const v = (valeur ?? null) as Partial<Benchmark> | null
   if (!v || !v.lignes) return ['- Chiffres : non calculés']
   return [
-    `- ${v.lignes.length} entité(s) avec SIREN, ${nd(v.avecComptes)} avec un chiffre d’affaires publié ; médiane ${euros(v.médianeDuChiffreDAffaires)} ; rang de l’organisation ${v.rangDeLOrganisation ?? 'n.d.'}`,
+    `- ${v.lignes.length} fiche(s) comparée(s), l’organisation et ses seuls concurrents de la grille qui portent un SIREN, ${nd(v.avecComptes)} avec un chiffre d’affaires publié ; médiane ${euros(v.médianeDuChiffreDAffaires)} ; rang de l’organisation ${v.rangDeLOrganisation ?? 'n.d.'}`,
     ...v.lignes.map(
       (l) =>
         `- ${l.nom}${l.organisation ? ' (vous)' : ''} : ${l.fiche === 'n.d.' ? 'fiche n.d.' : `${l.active ? 'active' : 'cessée'}, CA ${euros(l.chiffreDAffaires)}, résultat ${euros(l.résultatNet)}${l.année ? ` (${l.année})` : ''}, effectif (code INSEE) ${l.trancheEffectif ?? 'n.d.'}`}`,
@@ -1260,12 +1260,22 @@ function médiane(valeurs: readonly number[]): number | null {
   return triées.length % 2 ? triées[m]! : Math.round((triées[m - 1]! + triées[m]!) / 2)
 }
 
-/** Les entités de la grille qui portent un SIREN, dans l'ordre de la grille, au plus `plafond`, l'organisation toujours comprise. */
+/**
+ * Les entités que le benchmark compare : l'organisation en tête, comme repère,
+ * puis les seuls **concurrents** de la grille qui portent un SIREN (veille
+ * concurrentielle : ceux de l'écran « Concurrents », « Entreprises suivies »
+ * pour la CCI), dans l'ordre de la grille, au plus `plafond`. Une entité de la
+ * seule veille écosystème (financeur, réseau, institution) n'y entre jamais :
+ * décision de l'opératrice du 10 novembre 2026, les indicateurs n'analysent que
+ * les concurrents ou les entreprises suivies.
+ */
 export function entitésDuBenchmark(grille: Grille, organisation: string, plafond = 15): readonly { readonly nom: string; readonly siren: string }[] {
   const avecSiren = grille.entités.filter((e): e is EntitéDeGrille & { siren: string } => typeof e.siren === 'string' && /^\d{9}$/.test(e.siren))
   const elle = normaliserTitre(organisation)
+  const elleMême = avecSiren.filter((x) => normaliserTitre(x.nom) === elle)
+  const concurrents = avecSiren.filter((x) => x.veille === 'concurrentiel' && normaliserTitre(x.nom) !== elle)
   const uniques = new Map<string, { nom: string; siren: string }>()
-  for (const e of [...avecSiren.filter((x) => normaliserTitre(x.nom) === elle), ...avecSiren]) if (!uniques.has(e.siren)) uniques.set(e.siren, { nom: e.nom, siren: e.siren })
+  for (const e of [...elleMême, ...concurrents]) if (!uniques.has(e.siren)) uniques.set(e.siren, { nom: e.nom, siren: e.siren })
   return [...uniques.values()].slice(0, plafond)
 }
 

@@ -82,8 +82,11 @@ la revue mensuelle ; elle n'est relue que par l'opératrice, dans le courriel
 « [Relecture] ». Depuis le 28 octobre 2026 (lots 7 à 13) : le trimestre
 (`AAAA-Tn`, cinq forces, trois scénarios, indice de cycle de vie et benchmark
 **calculés par le portail** après la porte, `GET /api/veille/calculs`,
-`lib/portail/calculs.ts`, jamais fournis par le modèle) et la matrice GE au
-seul T4 ; **rien n'est montré au client avant que l'opératrice publie la
+`lib/portail/calculs.ts`, jamais fournis par le modèle ; depuis le 10 novembre
+2026, le benchmark ne compare que les **concurrents** de la grille, entités de
+la veille concurrentielle, « entreprises suivies » pour la CCI, l'organisation
+en repère : une entité de la seule veille écosystème n'y entre plus) et la
+matrice GE au seul T4 ; **rien n'est montré au client avant que l'opératrice publie la
 période** (`PATCH /api/veille/syntheses`, `etat: publie`, ou, depuis le
 29 octobre 2026, le bouton « Publier » de la section « Synthèses
 stratégiques » de `/espaces/abonnements` : `listerLesSynthèses`, garde dans

@@ -20,6 +20,7 @@ const GRILLE: Grille = {
     { nom: 'Excellence Business School', veille: 'concurrentiel', siren: null },
     { nom: 'Mastora', veille: 'concurrentiel', siren: '984299941' },
     { nom: 'Doublon ISCOD', veille: 'ecosysteme', siren: '888777265' },
+    { nom: 'Bpifrance', veille: 'ecosysteme', siren: '320252489' },
   ],
   partiesPrenantes: [],
 }
@@ -72,6 +73,17 @@ describe('benchmark', () => {
   it('l’organisation d’abord, une entité par SIREN, sans SIREN écartée, au plus quinze', () => {
     expect(entitésDuBenchmark(GRILLE, 'Mastora').map((e) => e.nom)).toEqual(['Mastora', 'ISCOD', 'Studi'])
     expect(entitésDuBenchmark(GRILLE, 'Mastora', 2)).toHaveLength(2)
+  })
+
+  it('seuls les concurrents de la grille sont comparés : une entité de la seule veille écosystème n’y entre pas', () => {
+    const noms = entitésDuBenchmark(GRILLE, 'Mastora').map((e) => e.nom)
+    expect(noms).not.toContain('Bpifrance')
+    expect(noms).not.toContain('Doublon ISCOD')
+    // L'organisation reste le repère, même si la grille ne la range que dans l'écosystème.
+    const grille: Grille = { ...GRILLE, entités: GRILLE.entités.map((e) => (e.nom === 'Mastora' ? { ...e, veille: 'ecosysteme' as const } : e)) }
+    expect(entitésDuBenchmark(grille, 'Mastora').map((e) => e.nom)).toEqual(['Mastora', 'ISCOD', 'Studi'])
+    // Une organisation absente de sa grille (la CCI et ses entreprises suivies) : les seules entreprises suivies.
+    expect(entitésDuBenchmark(GRILLE, 'CCI du Cantal').map((e) => e.nom)).toEqual(['ISCOD', 'Studi', 'Mastora'])
   })
 
   it('médiane et rang sur les seuls chiffres publiés ; une fiche absente vaut n.d.', () => {
