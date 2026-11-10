@@ -92,6 +92,22 @@ Organisation visée : $ARGUMENTS
      envoyer, même pour une ligne déjà active : l'espace s'ouvre par
      `/onboarding-ouvrir-espace`, et l'activation de la veille se fait quand
      même.
+   - **Écrans alimentés, avant que le lien parte** (10 novembre 2026, décision
+     de l'opératrice : tous les écrans de l'espace sont alimentés pour tout
+     utilisateur créé). Avant le point (e) du 1.3, appelle
+     `GET /api/veille/grille?slug=<slug>`, `GET /api/veille/fiche?slug=<slug>` et
+     `GET /api/veille/syntheses?slug=<slug>&periode=<mois de la première lettre,
+     AAAA-MM>`. Si l'un répond `hors-pilote` ou `aucune`, ou si la grille n'a pas
+     `validéeLe` : **n'envoie pas le lien**, coche « Outils stratégiques » au
+     registre si elle ne l'est pas, écris « espace en attente : écrans
+     stratégiques à alimenter » et dis qu'il faut lancer `/onboarding-outils
+     <nom>` puis `/onboarding-ouvrir-espace <nom>`. L'activation de la veille se
+     fait quand même. Une synthèse ou une fiche « proposée » ne retient pas le
+     lien : dis seulement qu'il reste à l'opératrice de les publier.
+     L'**amorçage trimestriel** (`GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>`
+     du trimestre de la première lettre) ne retient pas le lien non plus : s'il
+     répond `aucune`, dis que les écrans « Forces du marché », « Scénarios » et
+     « Indicateurs » sont vides et que `/onboarding-outils <nom>` le poste.
 
    Appels au portail : toujours `https://www.signauxfaibles.io`. **Aucun jeton
    à manipuler** : n'ajoute aucun en-tête `Authorization`, n'écris jamais de

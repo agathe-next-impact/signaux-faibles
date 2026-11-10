@@ -222,11 +222,15 @@ Organisation visée : $ARGUMENTS
    encadrés au moins ou fenêtre élargie dite, lint conforme, brouillon présent une
    seule fois. Une lettre qui manque l'un de ces points n'est pas prête.
 
-5bis. **Outils stratégiques**, si la case « Outils stratégiques » est cochée sur
-   la ligne du registre, **relue à cette étape** : après l'entrée dans l'essai (e1)
-   et le lint des deux lettres, les pas s1 à s5 de l'étape 2 du prompt (drapeau,
+5bis. **Outils stratégiques, pour toute organisation** (décision de l'opératrice
+   du 10 novembre 2026 : tous les écrans de l'espace sont alimentés pour tout
+   utilisateur créé ; il n'y a plus d'organisation hors du pilote). Si la case
+   « Outils stratégiques » n'est pas cochée sur la ligne du registre, **coche-la**.
+   Après l'entrée dans l'essai (e1)
+   et le lint des deux lettres, les pas s1 à s8 de l'étape 2 du prompt (drapeau,
    grille, étiquettes des deux lettres, synthèse initiale, texte rendu dans la
-   notification), **intégralement et sans confirmation** (décision de l'opératrice
+   notification, espace réorganisé, fiche de veille, contrôle), **intégralement
+   et sans confirmation** (décision de l'opératrice
    du 2 novembre 2026, qui prime sur la page Notion) :
    - si le référentiel concurrentiel n'a pas de section « Grille stratégique »,
      écris-la toi-même (règle du point 4 de `/onboarding-referentiels`), en y
@@ -242,12 +246,48 @@ Organisation visée : $ARGUMENTS
    - étiquette les deux lettres (s3) ; si l'étiquetage ne peut pas se faire dans
      la session, lance le workflow `taches.yml` (`tache: etiquetage`,
      `organisation: <slug>`) et vérifie le résultat par `GET
-     /api/veille/faits?slug=<slug>&debut=<J-99>&fin=<J>`.
+     /api/veille/faits?slug=<slug>&debut=<J-99>&fin=<J>` ;
+   - poste la synthèse initiale (s4) et la **fiche de veille** (s7, `POST
+     /api/veille/fiche`, S.8 de « Tâche — Revue mensuelle des référentiels » :
+     thèmes, sources, niches, échéances, présentations de chaque entité et partie
+     prenante de la grille, écrits pour le client). Sans elle, les écrans « Votre
+     veille » restent vides ;
+   - poste l'**amorçage trimestriel** (s4bis, décision de l'opératrice du
+     10 novembre 2026 : les écrans « Forces du marché », « Scénarios » et
+     « Indicateurs » portent de l'information dès la première lettre, sans
+     attendre la première revue trimestrielle). Seulement si `GET
+     /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>` répond `aucune` pour le
+     trimestre civil de l'édition : une seconde synthèse, `"periode": "AAAA-Tn"`,
+     `"mode": "trimestriel"`, même fenêtre que la synthèse initiale. Elle reprend
+     tels quels le PESTEL, la SWOT, le TOWS, la carte et Mendelow de la synthèse
+     initiale, et y ajoute, selon le S.7 de « Tâche — Revue mensuelle des
+     référentiels » : les cinq forces (cran et tendance lus dans les faits
+     étiquetés à la force ; `nonSuivi` pour une force de `forcesNonSuivies`),
+     trois scénarios sur Q3 (2 à 4 indicateurs datables chacun, aucune
+     probabilité), et les deux interprétations des chiffres que rend `GET
+     /api/veille/calculs` (départements et premier texte d'activité de la famille
+     « Nouveaux entrants », repris dans `"cycle"`). Aucun chiffre qui n'y figure
+     pas. Pas de matrice GE : elle revient à la revue de janvier, et
+     l'avertissement `ge-absente` est attendu au quatrième trimestre. Une force
+     portée par une famille mais sans fait étiqueté dans la fenêtre cite le fait
+     de la fenêtre qui la documente le mieux, au cran 1 « contenue », tendance
+     « stable » ; s'il n'en existe aucun, l'amorçage n'est pas posté et la
+     notification le dit. La revue trimestrielle ordinaire postera la même
+     période et le remplacera.
    Aucun de ces pas ne bloque la lettre ; rien n'en va au client avant que
-   l'opératrice ne publie la synthèse. Vérifie en fin d'étape que `GET
-   /api/veille/grille?slug=<slug>` rend `"état": "lue"` et `validéeLe` posé ; le
-   2 novembre 2026, Infrastructures services est sortie de l'onboarding case
-   cochée mais sans grille, et son écran « Concurrents » était vide.
+   l'opératrice ne publie les deux synthèses et la fiche. **Contrôle de fin
+   d'étape (s8)** : `GET /api/veille/grille?slug=<slug>` rend `"état": "lue"` et
+   `validéeLe` posé, `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-MM>`,
+   `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>` et
+   `GET /api/veille/fiche?slug=<slug>` rendent `"état": "lue"`. Ce qui manque se
+   dit en tête de la notification, et se rattrape par `/onboarding-outils <nom>`.
+   La notification porte le « texte » des deux synthèses et dit de la
+   trimestrielle qu'elle est un **amorçage** : bâtie sur les faits de la première
+   lettre, ses scénarios sont des hypothèses de départ.
+   Le 2 novembre 2026, Infrastructures services est sortie de l'onboarding case
+   cochée mais sans grille, et son écran « Concurrents » était vide ; le
+   9 novembre 2026, Proditec en est sortie case décochée, grille et fiche « hors
+   du pilote ».
 
 6. **Rapporte au portail** (1er novembre 2026, lot 4 de
    `docs/proposition-onboarding-admin.md`), en fin de run, réussi ou non, **sans

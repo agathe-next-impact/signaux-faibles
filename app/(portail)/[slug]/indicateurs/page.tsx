@@ -4,13 +4,15 @@ import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { BarresDuBenchmark, EntréesEtSorties } from '@/components/graphiques-strategie'
 import { EnBref } from '@/components/strategie-ecrans'
 import { enBrefDesIndicateurs, libelléDePériode } from '@/lib/domaine/strategie-vues'
+import { vocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
 import { espaceDeLOrganisation, indicateursDeLEspace } from '@/lib/portail/strategie'
 
 /**
  * Indicateurs (lot 5 de `docs/proposition-reorganisation-espace.md`,
  * 30 octobre 2026) : le secteur grandit-il. L'indice de cycle de vie (entrées et
  * procédures collectives au BODACC sur deux périodes de douze mois) et le
- * benchmark (comptes publiés au registre des entités de la grille), tels que le
+ * benchmark (comptes publiés au registre des seuls concurrents de la grille, ou
+ * entreprises suivies, l'organisation en repère ; 10 novembre 2026), tels que le
  * portail les a calculés pour le dernier trimestre publié ; l'interprétation
  * est celle de la synthèse, relue par l'opératrice. Aucune lecture Notion, aucun
  * appel aux registres depuis l'écran. Seulement pour un espace réorganisé :
@@ -23,6 +25,7 @@ export default async function Indicateurs({ params }: { params: Promise<{ slug: 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
   const vue = espace ? await indicateursDeLEspace({ registre: accès.organisationId }) : null
+  const marché = espace?.marché ?? vocabulaireDuMarché(null)
 
   return (
     <>
@@ -61,7 +64,8 @@ export default async function Indicateurs({ params }: { params: Promise<{ slug: 
                 <p className="label-mono text-ardoise">Registre des entreprises · outil en test</p>
               </div>
               <p className="max-w-[68ch] text-ardoise">
-                Le dernier exercice publié de chaque entité suivie qui a un SIREN. Un chiffre absent n’est pas publié, il n’est pas nul ; les exercices diffèrent d’une entité à l’autre.
+                Le dernier exercice publié de chaque {marché.un} {marché.suivi} qui a un SIREN{vue.benchmark.valeurs.lignes.some((l) => l.organisation) ? ', à côté du vôtre' : ''}. Un chiffre absent
+                n’est pas publié, il n’est pas nul ; les exercices diffèrent d’une entreprise à l’autre.
               </p>
               <BarresDuBenchmark benchmark={vue.benchmark.valeurs} />
               {vue.benchmark.interprétation ? <p className="max-w-[68ch] text-encre">{vue.benchmark.interprétation}</p> : null}

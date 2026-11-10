@@ -75,6 +75,9 @@ Demande reçue : $ARGUMENTS
    - Objectifs de veille = la réponse à l'étape 1 bis, telle quelle, sinon vide ;
    - Statut = « 1 · Demande reçue » ;
    - ▶ Générer les référentiels (A) = cochée ;
+   - Outils stratégiques = cochée, **toujours** (décision de l'opératrice du
+     10 novembre 2026 : tous les écrans de l'espace sont alimentés pour tout
+     utilisateur créé ; il n'y a plus d'organisation hors du pilote) ;
    - Exécuteur = « Cowork » ou « API » seulement si la demande le dit, avec
      « Exécuteur fixé le » = la date du jour pour Cowork ; sinon vide (vide
      vaut API, règle « PARTAGE DES ONBOARDINGS » de la page). Pour Cowork, au-delà

@@ -894,6 +894,17 @@ répond pas vaut n.d.) ; les chiffres sont gardés dans `valeur`, à côté des
 interprétations, jamais fournis par le modèle. Une synthèse refusée ne
 déclenche aucun appel aux registres.
 
+**Amorçage trimestriel** (10 novembre 2026, décision de l'opératrice). La
+route n'exige pas que le trimestre soit clos : seulement l'accord du mode et de
+la période, et une fenêtre de cent jours au plus. L'onboarding poste donc, à la
+première lettre, une synthèse du trimestre civil en cours (pas s4bis du
+« Prompt — Première lettre », `/onboarding-outils` en rattrapage), sur la
+fenêtre de la synthèse initiale : mêmes PESTEL, SWOT, TOWS, carte et Mendelow,
+plus les cinq forces, trois scénarios et les deux interprétations, sans matrice
+GE (`ge-absente` attendu au quatrième trimestre). Elle ne se poste que si `GET`
+répond `aucune` pour ce trimestre ; la revue trimestrielle ordinaire poste la
+même période plus tard et la remplace, et l'opératrice publie de nouveau.
+
 **Matrice GE**, une fois l'an : seulement pour une période `AAAA-T4` (revue de
 janvier) et seulement si la grille porte au moins deux `offres`. Pour chaque
 offre de la grille, deux positions `outil: "ge"`, `sujet` = nom exact de
@@ -979,9 +990,14 @@ virgules) et `texte` vont ensemble, ou sont omis tous deux (benchmark seul).
 `calculé` (200) rend `indice` (au BODACC, créations et immatriculations contre
 procédures collectives sur les douze mois qui finissent à `fin` et les douze
 précédents : entrées, sorties, solde, ratio, évolutions, limites) et
-`benchmark` (fiches de la Recherche d'entreprises des entités de la grille qui
-portent un SIREN, l'organisation en tête, quinze au plus : chiffre d'affaires,
-résultat, tranche d'effectif, médiane, rang de l'organisation, limites).
+`benchmark` (fiches de la Recherche d'entreprises des seuls **concurrents** de
+la grille qui portent un SIREN, c'est-à-dire les entités de la veille
+concurrentielle, celles de l'écran « Concurrents », « Entreprises suivies »
+pour la CCI ; l'organisation en tête, comme repère, quinze au plus : chiffre
+d'affaires, résultat, tranche d'effectif, médiane, rang de l'organisation,
+limites). Depuis le 10 novembre 2026 (décision de l'opératrice), une entité de
+la seule veille écosystème, financeur, réseau ou institution, n'y entre plus,
+même avec un SIREN (`entitésDuBenchmark`, `lib/domaine/strategie.ts`).
 Autres réponses : `hors-pilote` (200), `organisation-inconnue` (404),
 `grille-absente` (409), `refusée` (422, paramètres du cycle), `invalide` (400),
 `erreur` (502).

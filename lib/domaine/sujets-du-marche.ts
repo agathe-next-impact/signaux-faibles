@@ -3,7 +3,10 @@
  *
  * Dans la grille, une entité de la veille `concurrentiel` est ce que la veille
  * suit nommément sur le marché. Pour la plupart des organisations, ce sont ses
- * concurrents. Pour une organisation qui n'a pas de concurrents à suivre, un
+ * concurrents, et eux seuls depuis le 10 novembre 2026 : un grand compte, un
+ * client ou un opérateur public que la veille concurrentielle nomme se déclare
+ * en `ecosysteme` dans la grille, pour ne figurer ni à l'écran « Concurrents »
+ * ni dans le benchmark des indicateurs (`entitésDuBenchmark`). Pour une organisation qui n'a pas de concurrents à suivre, un
  * établissement consulaire par exemple, l'onboarding adapte cette veille aux
  * **mouvements des entreprises de son territoire** (la CCI du Cantal, référentiel
  * du 2 novembre 2026, contexte client du 21 octobre qui exclut toute veille

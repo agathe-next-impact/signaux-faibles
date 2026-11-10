@@ -56,7 +56,17 @@ ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
 `lib/portail/strategie.ts`, qui passe la porte de `lib/domaine/strategie.ts`
 avant d'écrire ; `tests/architecture.test.ts` tient la frontière, et le pilote
 est borné par `organisations.outils_strategiques` (faux par défaut, réponse
-`hors-pilote`). **Organisations du pilote au 30 octobre 2026** : Mastora,
+`hors-pilote`). **Depuis le 10 novembre 2026, toute organisation est dans le
+pilote** (décision de l'opératrice : tous les écrans de l'espace sont alimentés
+pour tout utilisateur créé) : la case « Outils stratégiques » du registre se coche
+à la demande, la première lettre pose le drapeau et l'espace réorganisé, poste la
+grille, les étiquettes, la synthèse initiale, l'**amorçage trimestriel** (une
+synthèse `AAAA-Tn` du trimestre en cours, mêmes faits, pour que « Forces du
+marché », « Scénarios » et « Indicateurs » ne restent pas vides jusqu'à la
+première revue trimestrielle, qui la remplace ; sans matrice GE) et la fiche de
+veille, et `/onboarding-outils` rattrape ce qui manque ; le défaut de la colonne reste faux,
+et une réponse `hors-pilote` est désormais une anomalie que les tâches signalent.
+**Organisations du pilote au 30 octobre 2026** : Mastora,
 Infralliance, L'Hermitage (`hermitage`), Heritech, Konica Minolta France
 (`konica-minolta-france`) et, depuis le 30 octobre, Suneido ; les six grilles
 suivent les cinq forces et couvrent les six dimensions PESTEL depuis le même jour
@@ -72,8 +82,11 @@ la revue mensuelle ; elle n'est relue que par l'opératrice, dans le courriel
 « [Relecture] ». Depuis le 28 octobre 2026 (lots 7 à 13) : le trimestre
 (`AAAA-Tn`, cinq forces, trois scénarios, indice de cycle de vie et benchmark
 **calculés par le portail** après la porte, `GET /api/veille/calculs`,
-`lib/portail/calculs.ts`, jamais fournis par le modèle) et la matrice GE au
-seul T4 ; **rien n'est montré au client avant que l'opératrice publie la
+`lib/portail/calculs.ts`, jamais fournis par le modèle ; depuis le 10 novembre
+2026, le benchmark ne compare que les **concurrents** de la grille, entités de
+la veille concurrentielle, « entreprises suivies » pour la CCI, l'organisation
+en repère : une entité de la seule veille écosystème n'y entre plus) et la
+matrice GE au seul T4 ; **rien n'est montré au client avant que l'opératrice publie la
 période** (`PATCH /api/veille/syntheses`, `etat: publie`, ou, depuis le
 29 octobre 2026, le bouton « Publier » de la section « Synthèses
 stratégiques » de `/espaces/abonnements` : `listerLesSynthèses`, garde dans
@@ -1006,8 +1019,9 @@ opérateur et n'écrivent que si Postgres fait foi (`lecteursModifiables`,
 **Une page publique de demande de démonstration, hors des sept (21 octobre
 2026).** `/demo` (`app/demo/`, logique dans `lib/portail/demo.ts`) ne lit ni
 Notion ni Postgres et ne crée rien : ni organisation, ni lecteur, ni
-prospection. Le formulaire (nom, adresse, organisation, fonction et message
-facultatifs) fait partir un courrier texte vers `agathe@signauxfaibles.io` par
+prospection. Le formulaire (nom, adresse, organisation et son site, obligatoires ;
+fonction et message facultatifs ; le site est complété en `https://` par
+`siteDeLOrganisation` et refusé s'il n'est pas un site web) fait partir un courrier texte vers `agathe@signauxfaibles.io` par
 `envoyerCourrier`, sorte `demande_demo` (migration 0007), avec l'adresse du
 demandeur en `Reply-To` (posé seulement si `adresseDeRéponseSûre` l'accepte,
 jamais de retour à la ligne dans un en-tête). Champ piège et limitation de débit
