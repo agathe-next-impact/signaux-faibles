@@ -251,13 +251,39 @@ Organisation visée : $ARGUMENTS
      /api/veille/fiche`, S.8 de « Tâche — Revue mensuelle des référentiels » :
      thèmes, sources, niches, échéances, présentations de chaque entité et partie
      prenante de la grille, écrits pour le client). Sans elle, les écrans « Votre
-     veille » restent vides.
+     veille » restent vides ;
+   - poste l'**amorçage trimestriel** (s4bis, décision de l'opératrice du
+     10 novembre 2026 : les écrans « Forces du marché », « Scénarios » et
+     « Indicateurs » portent de l'information dès la première lettre, sans
+     attendre la première revue trimestrielle). Seulement si `GET
+     /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>` répond `aucune` pour le
+     trimestre civil de l'édition : une seconde synthèse, `"periode": "AAAA-Tn"`,
+     `"mode": "trimestriel"`, même fenêtre que la synthèse initiale. Elle reprend
+     tels quels le PESTEL, la SWOT, le TOWS, la carte et Mendelow de la synthèse
+     initiale, et y ajoute, selon le S.7 de « Tâche — Revue mensuelle des
+     référentiels » : les cinq forces (cran et tendance lus dans les faits
+     étiquetés à la force ; `nonSuivi` pour une force de `forcesNonSuivies`),
+     trois scénarios sur Q3 (2 à 4 indicateurs datables chacun, aucune
+     probabilité), et les deux interprétations des chiffres que rend `GET
+     /api/veille/calculs` (départements et premier texte d'activité de la famille
+     « Nouveaux entrants », repris dans `"cycle"`). Aucun chiffre qui n'y figure
+     pas. Pas de matrice GE : elle revient à la revue de janvier, et
+     l'avertissement `ge-absente` est attendu au quatrième trimestre. Une force
+     portée par une famille mais sans fait étiqueté dans la fenêtre cite le fait
+     de la fenêtre qui la documente le mieux, au cran 1 « contenue », tendance
+     « stable » ; s'il n'en existe aucun, l'amorçage n'est pas posté et la
+     notification le dit. La revue trimestrielle ordinaire postera la même
+     période et le remplacera.
    Aucun de ces pas ne bloque la lettre ; rien n'en va au client avant que
-   l'opératrice ne publie la synthèse et la fiche. **Contrôle de fin d'étape
-   (s8)** : `GET /api/veille/grille?slug=<slug>` rend `"état": "lue"` et
-   `validéeLe` posé, `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-MM>` et
+   l'opératrice ne publie les deux synthèses et la fiche. **Contrôle de fin
+   d'étape (s8)** : `GET /api/veille/grille?slug=<slug>` rend `"état": "lue"` et
+   `validéeLe` posé, `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-MM>`,
+   `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>` et
    `GET /api/veille/fiche?slug=<slug>` rendent `"état": "lue"`. Ce qui manque se
    dit en tête de la notification, et se rattrape par `/onboarding-outils <nom>`.
+   La notification porte le « texte » des deux synthèses et dit de la
+   trimestrielle qu'elle est un **amorçage** : bâtie sur les faits de la première
+   lettre, ses scénarios sont des hypothèses de départ.
    Le 2 novembre 2026, Infrastructures services est sortie de l'onboarding case
    cochée mais sans grille, et son écran « Concurrents » était vide ; le
    9 novembre 2026, Proditec en est sortie case décochée, grille et fiche « hors

@@ -106,7 +106,7 @@ rouvre au navigateur une source en échec. Le validateur du portail avertit
 | `/onboarding-premiere-lettre <nom>` | B, première lettre | 3 |
 | `/onboarding-activation <nom>` | activation, balayage §1 | 4 ou 5 |
 | `/onboarding-ouvrir-espace <nom>` | ouverture manuelle de l'espace, §1.3 (d) et (e), après la première publication | 4, 5 ou 6, une édition `Envoyé` |
-| `/onboarding-outils <nom>` | rattrapage des écrans stratégiques : drapeaux, grille, étiquettes, synthèse initiale, fiche de veille | 4, 5 ou 6, une édition |
+| `/onboarding-outils <nom>` | rattrapage des écrans stratégiques : drapeaux, grille, étiquettes, synthèse initiale, amorçage trimestriel, fiche de veille | 4, 5 ou 6, une édition |
 
 **Tous les écrans alimentés pour tout utilisateur créé** (10 novembre 2026,
 décision de l'opératrice). Il n'y a plus d'organisation hors du pilote des
@@ -114,15 +114,31 @@ outils stratégiques : `/onboarding-demande` coche « Outils stratégiques » à
 création de la ligne, `/onboarding-referentiels` écrit toujours la section
 « Grille stratégique » du référentiel concurrentiel, et
 `/onboarding-premiere-lettre` pose le drapeau et l'espace réorganisé, poste la
-grille et la valide, étiquette les deux lettres, poste la synthèse initiale et
-la fiche de veille, puis contrôle par quatre `GET` (grille, faits, synthèse,
-fiche). `/onboarding-activation` et `/onboarding-ouvrir-espace` retiennent le
+grille et la valide, étiquette les deux lettres, poste la synthèse initiale,
+l'amorçage trimestriel et la fiche de veille, puis contrôle par cinq `GET`
+(grille, faits, synthèse du mois, synthèse du trimestre, fiche). `/onboarding-activation` et `/onboarding-ouvrir-espace` retiennent le
 lien tant qu'un de ces `GET` répond `hors-pilote` ou `aucune`, et renvoient à
 `/onboarding-outils`, qui rattrape ce qui manque sans rien publier. Restent à
-l'opératrice, sur `/espaces/abonnements/<slug>` : publier la synthèse et la
-fiche. Le 9 novembre 2026, Proditec était sortie de la première lettre case
+l'opératrice, sur `/espaces/abonnements/<slug>` : publier les deux synthèses
+et la fiche. Le 9 novembre 2026, Proditec était sortie de la première lettre case
 décochée : sa fiche d'organisation disait « Hors du pilote : pas de grille »
 et « pas de fiche ».
+
+**Amorçage trimestriel** (10 novembre 2026, décision de l'opératrice). Les
+écrans « Forces du marché », « Scénarios » et « Indicateurs » lisent la dernière
+synthèse trimestrielle publiée, que la revue ne poste qu'en janvier, avril,
+juillet et octobre : une organisation nouvelle les gardait vides jusqu'à trois
+mois. La première lettre poste donc, après la synthèse initiale, une synthèse
+du trimestre civil en cours (`AAAA-Tn`, mode `trimestriel`, même fenêtre de cent
+jours) : le PESTEL, la SWOT, le TOWS, la carte et Mendelow de la synthèse
+initiale, plus les cinq forces, trois scénarios sur Q3 et les interprétations
+de l'indice de cycle de vie et du benchmark, dont les chiffres restent calculés
+par le portail. Pas de matrice GE. Elle ne se poste que si aucune synthèse du
+trimestre n'existe, et la revue trimestrielle ordinaire la remplace en postant
+la même période. Elle est relue comme un amorçage : bâtie sur une ou deux
+lettres, ses scénarios sont des hypothèses de départ. Aucun changement de
+code : la route n'a jamais exigé que le trimestre soit clos. Rattrapage du
+même jour : Proditec, Suneido et Next Impact (`2026-T4`).
 
 **Invitation manuelle** (18 octobre 2026). La case du même nom, sur la ligne du
 registre, retient l'ouverture de l'espace au-delà de la publication : l'étape

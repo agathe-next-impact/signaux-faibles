@@ -76,6 +76,10 @@ Organisation visée : $ARGUMENTS
      `validéeLe`, n'ouvre rien, dis ce qui manque et renvoie à `/onboarding-outils
      <nom>`. Une synthèse ou une fiche « proposée » ne retient pas l'ouverture :
      dis seulement qu'il reste à l'opératrice de les publier.
+     L'**amorçage trimestriel** (`GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>`
+     du trimestre de la première lettre) ne retient pas l'ouverture non plus :
+     s'il répond `aucune`, dis que les écrans « Forces du marché », « Scénarios »
+     et « Indicateurs » sont vides et que `/onboarding-outils <nom>` le poste.
 
 4. **Vérifie le portail.** Sans en-tête `Authorization` :
    - `GET https://www.signauxfaibles.io/api/acces/ouvrir` doit répondre 200

@@ -1,6 +1,6 @@
 ---
 name: onboarding-outils
-description: Rattrapage des écrans stratégiques d'une organisation dont la première lettre existe déjà — coche « Outils stratégiques », pose le drapeau du pilote et l'espace réorganisé, écrit et poste la grille, étiquette les lettres, poste la synthèse initiale et la fiche de veille, sans rien publier. À lancer par /onboarding-outils <organisation>.
+description: Rattrapage des écrans stratégiques d'une organisation dont la première lettre existe déjà — coche « Outils stratégiques », pose le drapeau du pilote et l'espace réorganisé, écrit et poste la grille, étiquette les lettres, poste la synthèse initiale, l'amorçage trimestriel et la fiche de veille, sans rien publier. À lancer par /onboarding-outils <organisation>.
 argument-hint: "<nom de l'organisation, au statut 4, 5 ou 6>"
 disable-model-invocation: true
 allowed-tools:
@@ -35,7 +35,7 @@ Organisation visée : $ARGUMENTS
    (`3d5fe829ce718112a40cfcaf55d3fd76`), passage « OUTILS STRATÉGIQUES » (pas s1 à
    s8) ; l'étape 4ter de « Tâche — Lettres de veille »
    (`3d5fe829ce718107af65f4fccf8089ab`) ; la section « SYNTHÈSE STRATÉGIQUE » (S.0 à
-   S.8) de « Tâche — Revue mensuelle des référentiels »
+   S.8, dont S.7 pour l'amorçage trimestriel) de « Tâche — Revue mensuelle des référentiels »
    (`3d5fe829ce71819ba0d0ce67d742d652`) ; la « GRILLE STRATÉGIQUE » du prompt
    « Référentiel de veille » (`3d2fe829ce71801eae49fa7fc4a0e76c`). Les formats des
    routes sont dans `docs/api-veille.md` (« Outils stratégiques »). Si une page est
@@ -50,8 +50,9 @@ Organisation visée : $ARGUMENTS
 3. **État des lieux**, sans en-tête `Authorization`, toujours sur
    `https://www.signauxfaibles.io`, `curl -sS -m 60` :
    `GET /api/veille/grille?slug=<slug>`, `GET /api/veille/faits?slug=<slug>&debut=<J-99>&fin=<J>`,
-   `GET /api/veille/syntheses?slug=<slug>&periode=<mois courant, AAAA-MM>` et
-   `GET /api/veille/fiche?slug=<slug>`. Ne refais que ce qui manque : une grille
+   `GET /api/veille/syntheses?slug=<slug>&periode=<mois courant, AAAA-MM>`,
+   `GET /api/veille/syntheses?slug=<slug>&periode=<trimestre civil courant, AAAA-Tn>`
+   et `GET /api/veille/fiche?slug=<slug>`. Ne refais que ce qui manque : une grille
    « lue » et validée, des faits déjà étiquetés, une synthèse ou une fiche « lue »
    ne se repostent pas.
 
@@ -80,20 +81,43 @@ Organisation visée : $ARGUMENTS
      jours qui finissent aujourd'hui, mode « initial » si aucune synthèse
      n'existe. Positions déclaratives seulement pour les organisations que S.4
      nomme.
+   - **Amorçage trimestriel** (10 novembre 2026, décision de l'opératrice : les
+     écrans « Forces du marché », « Scénarios » et « Indicateurs » portent de
+     l'information dès les premières lettres). Seulement si le `GET` du trimestre
+     courant répond `aucune` : jamais par-dessus la synthèse d'une revue
+     trimestrielle. Une seconde synthèse, `"periode": "AAAA-Tn"`, `"mode":
+     "trimestriel"`, même fenêtre que la synthèse du mois. Elle reprend tels quels
+     le PESTEL, la SWOT, le TOWS, la carte et Mendelow de la synthèse du mois (tout
+     « nouveau », sans filiation) et y ajoute, selon S.7 : les cinq forces (cran
+     et tendance lus dans les faits étiquetés à la force, `nonSuivi` pour une
+     force de `forcesNonSuivies`), trois scénarios sur Q3 (2 à 4 indicateurs
+     datables chacun, aucune probabilité), et les deux interprétations des
+     chiffres que rend `GET /api/veille/calculs?slug=<slug>&fin=<J>&departements=…&texte=…`
+     (départements et premier texte d'activité de la famille « Nouveaux
+     entrants », repris dans `"cycle"` ; sans cette famille, ni `cycle` ni
+     interprétation de l'indice). Aucun chiffre qui n'y figure pas. Pas de matrice
+     GE : l'avertissement `ge-absente` est attendu au quatrième trimestre. Une
+     force portée par une famille mais sans fait étiqueté dans la fenêtre cite le
+     fait de la fenêtre qui la documente le mieux, au cran 1 « contenue »,
+     tendance « stable » ; s'il n'en existe aucun, ne poste pas l'amorçage et
+     dis-le. La revue trimestrielle ordinaire postera la même période et le
+     remplacera.
    - **Fiche de veille** : S.8, `POST /api/veille/fiche` avec la version de la
      grille. Une présentation par nom de la grille, l'organisation exceptée.
    Un refus 422 se corrige point par point et se renvoie complet, deux reprises
    au plus ; au-delà, consigne-le et passe au pas suivant.
 
-5. **Contrôle** : les quatre `GET` du point 3 rendent « lue » (grille avec
+5. **Contrôle** : les cinq `GET` du point 3 rendent « lue » (grille avec
    `validéeLe`) et un nombre de faits non nul. Écris dans « Dernier lancement
    manuel » : « outils stratégiques rattrapés le JJ/MM : grille vN, N faits,
-   synthèse AAAA-MM et fiche vN proposées ».
+   synthèses AAAA-MM et AAAA-Tn (amorçage) et fiche vN proposées ».
 
 6. **Notification `[Relecture]`** à agathe@signauxfaibles.io : ce qui a été
-   posté, le « texte » de la synthèse tel que le rend le `GET`, et ce qui reste à
-   l'opératrice sur `/espaces/abonnements/<slug>` : publier la synthèse et la
-   fiche de veille. Tu ne publies rien toi-même.
+   posté, le « texte » de chaque synthèse tel que le rend le `GET` (celle du
+   trimestre présentée comme un **amorçage** : bâtie sur les premières lettres,
+   ses scénarios sont des hypothèses de départ), et ce qui reste à l'opératrice
+   sur `/espaces/abonnements/<slug>` : publier les deux synthèses et la fiche de
+   veille. Tu ne publies rien toi-même.
 
 Aucun jeton à manipuler : n'en écris jamais dans une commande. 401 ou 403 : la
 session n'a pas le secret réseau pour ce chemin, dis-le en tête du compte rendu.

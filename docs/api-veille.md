@@ -894,6 +894,17 @@ répond pas vaut n.d.) ; les chiffres sont gardés dans `valeur`, à côté des
 interprétations, jamais fournis par le modèle. Une synthèse refusée ne
 déclenche aucun appel aux registres.
 
+**Amorçage trimestriel** (10 novembre 2026, décision de l'opératrice). La
+route n'exige pas que le trimestre soit clos : seulement l'accord du mode et de
+la période, et une fenêtre de cent jours au plus. L'onboarding poste donc, à la
+première lettre, une synthèse du trimestre civil en cours (pas s4bis du
+« Prompt — Première lettre », `/onboarding-outils` en rattrapage), sur la
+fenêtre de la synthèse initiale : mêmes PESTEL, SWOT, TOWS, carte et Mendelow,
+plus les cinq forces, trois scénarios et les deux interprétations, sans matrice
+GE (`ge-absente` attendu au quatrième trimestre). Elle ne se poste que si `GET`
+répond `aucune` pour ce trimestre ; la revue trimestrielle ordinaire poste la
+même période plus tard et la remplace, et l'opératrice publie de nouveau.
+
 **Matrice GE**, une fois l'an : seulement pour une période `AAAA-T4` (revue de
 janvier) et seulement si la grille porte au moins deux `offres`. Pour chaque
 offre de la grille, deux positions `outil: "ge"`, `sujet` = nom exact de

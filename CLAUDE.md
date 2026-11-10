@@ -60,8 +60,11 @@ est borné par `organisations.outils_strategiques` (faux par défaut, réponse
 pilote** (décision de l'opératrice : tous les écrans de l'espace sont alimentés
 pour tout utilisateur créé) : la case « Outils stratégiques » du registre se coche
 à la demande, la première lettre pose le drapeau et l'espace réorganisé, poste la
-grille, les étiquettes, la synthèse initiale et la fiche de veille, et
-`/onboarding-outils` rattrape ce qui manque ; le défaut de la colonne reste faux,
+grille, les étiquettes, la synthèse initiale, l'**amorçage trimestriel** (une
+synthèse `AAAA-Tn` du trimestre en cours, mêmes faits, pour que « Forces du
+marché », « Scénarios » et « Indicateurs » ne restent pas vides jusqu'à la
+première revue trimestrielle, qui la remplace ; sans matrice GE) et la fiche de
+veille, et `/onboarding-outils` rattrape ce qui manque ; le défaut de la colonne reste faux,
 et une réponse `hors-pilote` est désormais une anomalie que les tâches signalent.
 **Organisations du pilote au 30 octobre 2026** : Mastora,
 Infralliance, L'Hermitage (`hermitage`), Heritech, Konica Minolta France

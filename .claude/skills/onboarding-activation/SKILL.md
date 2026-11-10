@@ -104,6 +104,10 @@ Organisation visée : $ARGUMENTS
      <nom>` puis `/onboarding-ouvrir-espace <nom>`. L'activation de la veille se
      fait quand même. Une synthèse ou une fiche « proposée » ne retient pas le
      lien : dis seulement qu'il reste à l'opératrice de les publier.
+     L'**amorçage trimestriel** (`GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>`
+     du trimestre de la première lettre) ne retient pas le lien non plus : s'il
+     répond `aucune`, dis que les écrans « Forces du marché », « Scénarios » et
+     « Indicateurs » sont vides et que `/onboarding-outils <nom>` le poste.
 
    Appels au portail : toujours `https://www.signauxfaibles.io`. **Aucun jeton
    à manipuler** : n'ajoute aucun en-tête `Authorization`, n'écris jamais de
