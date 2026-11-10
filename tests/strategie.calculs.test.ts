@@ -8,6 +8,7 @@ import {
   rendreLaSynthèse,
   type Grille,
 } from '@/lib/domaine/strategie'
+import { nomsDesConcurrents } from '@/lib/domaine/strategie-vues'
 import { calculer } from '@/lib/portail/calculs'
 import { clauseBodacc, compterLesAnnonces, ficheChiffrée, fichesChiffrées } from '@/lib/registres'
 
@@ -84,6 +85,28 @@ describe('benchmark', () => {
     expect(entitésDuBenchmark(grille, 'Mastora').map((e) => e.nom)).toEqual(['Mastora', 'ISCOD', 'Studi'])
     // Une organisation absente de sa grille (la CCI et ses entreprises suivies) : les seules entreprises suivies.
     expect(entitésDuBenchmark(GRILLE, 'CCI du Cantal').map((e) => e.nom)).toEqual(['ISCOD', 'Studi', 'Mastora'])
+  })
+
+  it('l’organisation que sa grille désigne est en tête et classée, même sous un autre nom qu’en base', () => {
+    // En base « Mastora Formation », dans la grille « Mastora » : sans la marque, elle n'est ni en tête ni « vous ».
+    expect(entitésDuBenchmark(GRILLE, 'Mastora Formation').map((e) => e.nom)).toEqual(['ISCOD', 'Studi', 'Mastora'])
+    const grille: Grille = { ...GRILLE, entités: GRILLE.entités.map((e) => (e.nom === 'Mastora' ? { ...e, organisation: true } : e)) }
+    const entités = entitésDuBenchmark(grille, 'Mastora Formation')
+    expect(entités.map((e) => e.nom)).toEqual(['Mastora', 'ISCOD', 'Studi'])
+    expect(nomsDesConcurrents(grille, 'Mastora Formation')).not.toContain('Mastora')
+    expect(nomsDesConcurrents(GRILLE, 'Mastora Formation')).toContain('Mastora')
+  })
+
+  it('le calcul du portail classe l’organisation désignée par sa grille', async () => {
+    const grille: Grille = { ...GRILLE, entités: GRILLE.entités.map((e) => (e.nom === 'Mastora' ? { ...e, organisation: true } : e)) }
+    const chiffres: Record<string, number> = { '984299941': 400_000, '888777265': 9_000_000, '911148369': 1_000_000 }
+    const f = vi.fn(async (url: string) => {
+      const siren = new URL(url).searchParams.get('q') ?? ''
+      return json({ results: [{ siren, nom_complet: 'x', etat_administratif: 'A', finances: { '2025': { ca: chiffres[siren], resultat_net: 1 } } }] })
+    })
+    const { benchmark } = await calculer({ grille, organisation: 'Mastora Formation', fin: '2026-10-06', cycle: null }, { f: f as unknown as typeof fetch, attente: async () => {} })
+    expect(benchmark.lignes[0]).toMatchObject({ nom: 'Mastora', organisation: true })
+    expect(benchmark.rangDeLOrganisation).toBe(3)
   })
 
   it('médiane et rang sur les seuls chiffres publiés ; une fiche absente vaut n.d.', () => {

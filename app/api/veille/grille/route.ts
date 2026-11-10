@@ -14,7 +14,7 @@ import { lireLaGrilleDuPilote, recevoirLaGrille, validerLaVersion, type Résulta
  *   { "slug": "infralliance", "referentiel": "<page_id du référentiel>", "grille": {
  *       "axes": [{ "cle", "libelle", "crans": [] }, …],
  *       "familles": [{ "numero", "veille", "pestel" | "porter", "cadence", "libelle"? }],
- *       "entites": [{ "nom", "veille", "siren" }],
+ *       "entites": [{ "nom", "veille", "siren", "organisation"? }],
  *       "partiesPrenantes": [{ "nom" }], "offres": [] } }
  *
  * Deux axes de groupes stratégiques de 3 à 5 crans, libellés de 40 caractères
@@ -60,7 +60,7 @@ const demande = z.object({
         }),
       )
       .max(60),
-    entites: z.array(z.object({ nom: texte(300), veille: texte(40), siren: texte(20).nullish() })).max(200),
+    entites: z.array(z.object({ nom: texte(300), veille: texte(40), siren: texte(20).nullish(), organisation: z.boolean().nullish() })).max(200),
     partiesPrenantes: z.array(z.object({ nom: texte(300) })).max(40),
     offres: z.array(texte(120)).max(12).nullish(),
   }),
@@ -87,7 +87,12 @@ function versLeDomaine(grille: z.infer<typeof demande>['grille']): Grille {
       cadence: f.cadence as Grille['familles'][number]['cadence'],
       ...(f.libelle ? { libellé: f.libelle } : {}),
     })),
-    entités: grille.entites.map((e) => ({ nom: e.nom, veille: e.veille as Grille['entités'][number]['veille'], siren: e.siren ?? null })),
+    entités: grille.entites.map((e) => ({
+      nom: e.nom,
+      veille: e.veille as Grille['entités'][number]['veille'],
+      siren: e.siren ?? null,
+      ...(e.organisation === true ? { organisation: true } : {}),
+    })),
     partiesPrenantes: grille.partiesPrenantes.map((p) => ({ nom: p.nom })),
     offres: grille.offres ?? null,
   }
@@ -144,7 +149,7 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       grille: {
         axes: lecture.grille.axesGroupes.map((a) => ({ cle: a.clé, libelle: a.libellé, crans: a.crans })),
         familles: lecture.grille.familles.map((f) => ({ numero: f.numéro, veille: f.veille, pestel: f.pestel ?? null, porter: f.porter ?? null, cadence: f.cadence, libelle: f.libellé ?? null })),
-        entites: lecture.grille.entités.map((e) => ({ nom: e.nom, veille: e.veille, siren: e.siren ?? null })),
+        entites: lecture.grille.entités.map((e) => ({ nom: e.nom, veille: e.veille, siren: e.siren ?? null, ...(e.organisation === true ? { organisation: true } : {}) })),
         partiesPrenantes: lecture.grille.partiesPrenantes,
         offres: lecture.grille.offres ?? null,
       },

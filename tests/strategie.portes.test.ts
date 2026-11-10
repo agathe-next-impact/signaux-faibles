@@ -9,6 +9,7 @@ import {
   empreinteDeTitre,
   faitsDeLaLettre,
   forcesNonSuivies,
+  nomDansLaGrille,
   lectureDesÉtiquettes,
   messageDeRefus,
   normaliserUrl,
@@ -238,6 +239,27 @@ describe('la porte de la grille', () => {
     const réordonnée: Grille = { ...GRILLE, familles: [...GRILLE.familles].reverse(), partiesPrenantes: [...GRILLE.partiesPrenantes].reverse() }
     expect(empreinteDeLaGrille(réordonnée)).toBe(empreinteDeLaGrille(GRILLE))
     expect(empreinteDeLaGrille({ ...GRILLE, offres: ['Colloque'] })).not.toBe(empreinteDeLaGrille(GRILLE))
+  })
+
+  it('la grille désigne l’entité qui est l’organisation elle-même, une seule, et son nom fait foi', () => {
+    const désignée = (noms: readonly string[]): Grille => ({
+      ...GRILLE,
+      entités: [
+        ...GRILLE.entités,
+        { nom: 'Konica Minolta Business Solutions France', veille: 'concurrentiel', siren: '302695614', organisation: noms.includes('conc') },
+        { nom: 'Konica Minolta Business Solutions France', veille: 'ecosysteme', siren: '302695614', organisation: noms.includes('eco') },
+        { nom: 'Ricoh France', veille: 'concurrentiel', siren: '337621841', organisation: noms.includes('autre') },
+      ],
+    })
+    // Sans marque, le nom en base reste le repère, et l'empreinte ne change pas.
+    expect(nomDansLaGrille(GRILLE, 'Konica Minolta France')).toBe('Konica Minolta France')
+    expect(empreinteDeLaGrille(désignée([]))).toBe(empreinteDeLaGrille({ ...désignée([]), entités: désignée([]).entités.map(({ nom, veille, siren }) => ({ nom, veille, siren })) }))
+    // Désignée, sous le même nom dans les deux veilles : acceptée, et c'est ce nom que le portail cherche.
+    expect(contrôlerLaGrille(désignée(['conc', 'eco']))).toEqual([])
+    expect(nomDansLaGrille(désignée(['conc', 'eco']), 'Konica Minolta France')).toBe('Konica Minolta Business Solutions France')
+    expect(empreinteDeLaGrille(désignée(['conc']))).not.toBe(empreinteDeLaGrille(désignée([])))
+    // Deux entités différentes ne peuvent pas être toutes deux l'organisation.
+    expect(codes(contrôlerLaGrille(désignée(['conc', 'autre'])))).toEqual(['organisation-ambiguë'])
   })
 
   it('le libellé d’une famille est facultatif, borné comme les autres, et n’entre dans l’empreinte que s’il est posé', () => {

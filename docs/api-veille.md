@@ -757,7 +757,8 @@ entités que les lettres suivent, sans quoi l'étape 4ter échouera.
   "familles": [
     { "numero": 1, "veille": "ecosysteme", "pestel": "legal", "cadence": "hebdomadaire", "libelle": "Cadre réglementaire" },
     { "numero": 1, "veille": "concurrentiel", "porter": "rivalite", "cadence": "hebdomadaire" } ],
-  "entites": [ { "nom": "Cigref", "veille": "concurrentiel", "siren": "310785985" } ],
+  "entites": [ { "nom": "Cigref", "veille": "concurrentiel", "siren": "310785985" },
+               { "nom": "Infralliance", "veille": "concurrentiel", "siren": "929000719", "organisation": true } ],
   "partiesPrenantes": [ { "nom": "DGE" }, … ],
   "offres": null } }
 ```
@@ -771,7 +772,16 @@ libellés (l'onglet PESTEL le montre quand aucune lettre lue par l'écran ne por
 l'axe, cas ordinaire d'une famille mensuelle ; sans lui, « Famille N ». Absent,
 il ne change pas l'empreinte : une grille postée avant lui ne crée pas de
 version ; posé, il en crée une, à valider à son tour) ;
-40 entités au plus par veille, `siren` à neuf chiffres ou `null` ; 8 à 15
+40 entités au plus par veille, `siren` à neuf chiffres ou `null` ; l'entité qui
+est **l'organisation elle-même** porte `"organisation": true` (10 novembre 2026 ;
+sous le même nom si elle figure dans les deux veilles, `organisation-ambiguë`
+sinon) : c'est par elle que le portail reconnaît l'organisation dans sa grille,
+pour sa ligne et son rang au benchmark, pour l'exclure de ses concurrents et
+pour la carte des groupes (`nomDansLaGrille`). Sans cette marque, le nom en
+base sert de repère, ce qui suffit tant que les deux noms sont les mêmes ; ils
+différaient pour Konica Minolta France, qui sortait de son propre benchmark et
+figurait parmi ses concurrents. Absente, la marque ne change pas l'empreinte ;
+posée, elle crée une version, à valider ; 8 à 15
 parties prenantes, 80 caractères au plus ; `offres` seulement si la fiche porte
 plusieurs offres (matrice GE, lot 13).
 

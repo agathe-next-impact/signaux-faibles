@@ -1,5 +1,5 @@
 import { enSlug } from '@/lib/domaine/slug'
-import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER, normaliserTitre, VEILLES, type Grille, type Veille } from '@/lib/domaine/strategie'
+import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER, nomDansLaGrille, normaliserTitre, VEILLES, type Grille, type Veille } from '@/lib/domaine/strategie'
 import { LIBELLÉS_MENDELOW, libelléDePériode, segmentDeFamille, type CranNommé, type PositionDatée } from '@/lib/domaine/strategie-vues'
 
 /**
@@ -301,7 +301,7 @@ export const segmentDEntité = (nom: string) => enSlug(nom)
  * entité. L'organisation elle-même n'est pas un concurrent qu'on lui présente.
  */
 export function entitésDuCorpus(grille: Grille, organisation: string): readonly { readonly nom: string; readonly sorte: SorteDEntité }[] {
-  const elle = normaliserTitre(organisation)
+  const elle = normaliserTitre(nomDansLaGrille(grille, organisation))
   const entités = grille.entités
     .filter((e) => normaliserTitre(e.nom) !== elle)
     .map((e) => ({ nom: e.nom, sorte: (e.veille === 'concurrentiel' ? 'concurrent' : 'acteur') as SorteDEntité }))

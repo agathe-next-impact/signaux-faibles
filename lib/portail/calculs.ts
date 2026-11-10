@@ -1,6 +1,7 @@
 import {
   benchmarkDesFiches,
   entitésDuBenchmark,
+  nomDansLaGrille,
   indiceDeCycle,
   périodesDuCycle,
   type Benchmark,
@@ -76,5 +77,5 @@ export async function calculer(
   )
 
   const [i, chiffres] = await Promise.all([indice, fiches])
-  return { indice: i, benchmark: benchmarkDesFiches(entités, chiffres, entrée.organisation, calculéLe) }
+  return { indice: i, benchmark: benchmarkDesFiches(entités, chiffres, nomDansLaGrille(entrée.grille, entrée.organisation), calculéLe) }
 }

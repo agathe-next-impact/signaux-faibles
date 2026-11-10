@@ -3,6 +3,7 @@ import {
   FORCES_PORTER,
   LIBELLÉS_PESTEL,
   LIBELLÉS_PORTER,
+  nomDansLaGrille,
   normaliserTitre,
   normaliserUrl,
   PESTEL,
@@ -139,7 +140,7 @@ export function vueDeLaCarte(
   }
   const maintenant = crans(positionsDuMois)
   const avant = crans(précédentes)
-  const elle = normaliserTitre(organisation)
+  const elle = normaliserTitre(nomDansLaGrille(grille, organisation))
   const cases = new Map<string, OccupantDeCase[]>()
   const anciennes = new Map<string, string[]>()
   let placés = 0
@@ -212,7 +213,7 @@ export function vueDesConcurrents(
   faits: ReadonlyMap<string, { readonly nombre: number; readonly dernier: string }>,
   organisation: string,
 ): VueDesConcurrents {
-  const elle = normaliserTitre(organisation)
+  const elle = normaliserTitre(nomDansLaGrille(grille, organisation))
   const parSujet = (liste: readonly PositionLue[]) => {
     const m = new Map<string, PositionLue[]>()
     for (const p of liste) if (p.outil === 'groupes') m.set(normaliserTitre(p.sujet), [...(m.get(normaliserTitre(p.sujet)) ?? []), p])
@@ -332,7 +333,7 @@ export function vueDeLaFiche(
 
 /** Les noms des concurrents de la grille, l'organisation exclue : ce qu'« Acteurs » laisse à « Concurrents ». */
 export function nomsDesConcurrents(grille: Grille, organisation: string): readonly string[] {
-  const elle = normaliserTitre(organisation)
+  const elle = normaliserTitre(nomDansLaGrille(grille, organisation))
   return grille.entités.filter((e) => e.veille === 'concurrentiel' && normaliserTitre(e.nom) !== elle).map((e) => e.nom)
 }
 

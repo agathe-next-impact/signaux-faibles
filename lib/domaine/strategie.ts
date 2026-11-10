@@ -495,7 +495,20 @@ export type FamilleDeGrille = {
    */
   readonly libellé?: string | null
 }
-export type EntitéDeGrille = { readonly nom: string; readonly veille: Veille; readonly siren?: string | null }
+export type EntitéDeGrille = {
+  readonly nom: string
+  readonly veille: Veille
+  readonly siren?: string | null
+  /**
+   * `true` : cette entité est l'organisation elle-même (10 novembre 2026). Le
+   * portail reconnaissait l'organisation dans sa grille par son nom en base ;
+   * quand les deux diffèrent (Konica Minolta France en base, « Konica Minolta
+   * Business Solutions France » dans la grille), elle sortait de son propre
+   * benchmark et figurait parmi ses concurrents. La grille la désigne donc
+   * elle-même ; sans cette marque, le nom en base reste le repère.
+   */
+  readonly organisation?: boolean | null
+}
 
 export type Grille = {
   readonly axesGroupes: readonly AxeDeGroupes[]
@@ -548,6 +561,9 @@ export function contrôlerLaGrille(grille: Grille): readonly Refus[] {
     if (e.nom.trim().length === 0 || e.nom.length > BORNES.entitéMax) refuser('longueur', `nom vide ou de plus de ${BORNES.entitéMax} caractères`, `entité « ${e.nom.slice(0, 40)} »`)
     if (e.siren != null && !/^\d{9}$/.test(e.siren)) refuser('siren-invalide', 'neuf chiffres, ou null', `entité « ${e.nom} »`)
   }
+  // L'organisation elle-même : un seul nom, même déclaré dans les deux veilles.
+  const désignées = new Set(grille.entités.filter((e) => e.organisation === true).map((e) => normaliserTitre(e.nom)))
+  if (désignées.size > 1) refuser('organisation-ambiguë', 'une seule entité de la grille est l’organisation elle-même, sous le même nom dans les deux veilles')
 
   const pp = grille.partiesPrenantes
   if (pp.length < BORNES.partiesPrenantesMin || pp.length > BORNES.partiesPrenantesMax) {
@@ -564,11 +580,22 @@ export function empreinteDeLaGrille(grille: Grille): string {
     JSON.stringify({
       a: grille.axesGroupes.map((a) => [a.clé, a.libellé, a.crans]),
       f: trié(grille.familles, (f) => `${f.veille}:${String(f.numéro).padStart(3, '0')}`).map((f) => [f.veille, f.numéro, f.pestel ?? null, f.porter ?? null, f.cadence, ...(f.libellé != null ? [f.libellé] : [])]),
-      e: trié(grille.entités, (e) => `${e.veille}:${e.nom}`).map((e) => [e.veille, e.nom, e.siren ?? null]),
+      e: trié(grille.entités, (e) => `${e.veille}:${e.nom}`).map((e) => [e.veille, e.nom, e.siren ?? null, ...(e.organisation === true ? [true] : [])]),
       p: trié(grille.partiesPrenantes, (p) => p.nom).map((p) => p.nom),
       o: grille.offres ?? null,
     }),
   )
+}
+
+/**
+ * Le nom sous lequel l'organisation figure dans sa grille : celui de l'entité
+ * que la grille désigne (`organisation: true`), sinon son nom en base. Tout ce
+ * qui reconnaît l'organisation parmi les entités passe par ici : le benchmark
+ * (sa ligne « vous » et son rang), la carte des groupes, la liste des
+ * concurrents (dont elle est exclue) et le corpus.
+ */
+export function nomDansLaGrille(grille: Grille, nomEnBase: string): string {
+  return grille.entités.find((e) => e.organisation === true)?.nom ?? nomEnBase
 }
 
 /** Les lettres PESTEL qu'aucune famille ne couvre : les trous du référentiel. */
@@ -1271,7 +1298,7 @@ function médiane(valeurs: readonly number[]): number | null {
  */
 export function entitésDuBenchmark(grille: Grille, organisation: string, plafond = 15): readonly { readonly nom: string; readonly siren: string }[] {
   const avecSiren = grille.entités.filter((e): e is EntitéDeGrille & { siren: string } => typeof e.siren === 'string' && /^\d{9}$/.test(e.siren))
-  const elle = normaliserTitre(organisation)
+  const elle = normaliserTitre(nomDansLaGrille(grille, organisation))
   const elleMême = avecSiren.filter((x) => normaliserTitre(x.nom) === elle)
   const concurrents = avecSiren.filter((x) => x.veille === 'concurrentiel' && normaliserTitre(x.nom) !== elle)
   const uniques = new Map<string, { nom: string; siren: string }>()

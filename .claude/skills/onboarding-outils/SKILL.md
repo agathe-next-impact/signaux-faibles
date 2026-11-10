@@ -72,7 +72,9 @@ Organisation visée : $ARGUMENTS
      compte, un client, un donneur d'ordre, un opérateur public ou une
      institution se déclare en « ecosysteme » : l'écran « Concurrents » et le
      benchmark des indicateurs ne montrent que la veille « concurrentiel »
-     (10 novembre 2026). `POST /api/veille/grille`, puis
+     (10 novembre 2026). L'entité qui est l'organisation elle-même porte
+     `"organisation": true` : le portail la reconnaît ainsi, quel que soit son
+     nom en base. `POST /api/veille/grille`, puis
      **valide toi-même** la version (`PATCH /api/veille/grille`) : aucun point de
      validation pour la grille (décision du 2 novembre 2026).
    - **Étiquettes** : pour chaque édition non étiquetée, l'étape 4ter telle
