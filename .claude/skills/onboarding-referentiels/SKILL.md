@@ -118,6 +118,10 @@ Organisation visée : $ARGUMENTS
    veille « ecosysteme » : l'écran « Concurrents » et le benchmark des
    indicateurs ne montrent que la veille « concurrentiel » (décision de
    l'opératrice du 10 novembre 2026).
+   L'entité qui est l'organisation elle-même y est marquée comme telle
+   (`"organisation": true` au dépôt de la grille) : le portail la reconnaît
+   ainsi dans son benchmark et l'exclut de ses concurrents, quel que soit son
+   nom en base.
    **Aucun point de validation
    pour la grille** : l'onboarding tranche les axes et les rattachements, et le
    journal du référentiel le dit (« décidé par l'onboarding »). Décision de

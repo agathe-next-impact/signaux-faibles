@@ -85,7 +85,9 @@ la revue mensuelle ; elle n'est relue que par l'opératrice, dans le courriel
 `lib/portail/calculs.ts`, jamais fournis par le modèle ; depuis le 10 novembre
 2026, le benchmark ne compare que les **concurrents** de la grille, entités de
 la veille concurrentielle, « entreprises suivies » pour la CCI, l'organisation
-en repère : une entité de la seule veille écosystème n'y entre plus ; après un
+en repère, reconnue par l'entité que sa grille marque `organisation: true`
+(`nomDansLaGrille`, son nom en base à défaut : Konica en sortait, les deux noms
+différant) : une entité de la seule veille écosystème n'y entre plus ; après un
 reclassement de grille, `PATCH /api/veille/syntheses` avec `recalcul: benchmark`
 recalcule ces seuls chiffres sans reposter la synthèse ni toucher à son état de
 publication, `recalculerLeBenchmarkDuPilote`) et la

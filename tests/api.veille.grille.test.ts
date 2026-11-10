@@ -29,6 +29,7 @@ const GRILLE = {
   entites: [
     { nom: 'CISPE', veille: 'concurrentiel', siren: null },
     { nom: 'Cigref', veille: 'concurrentiel', siren: '310785985' },
+    { nom: 'Infralliance', veille: 'concurrentiel', siren: '929000719', organisation: true },
   ],
   partiesPrenantes: ['DGE', 'Commission européenne', 'Assemblée nationale', 'Sénat', 'ANSSI', 'RTE', 'Cnam', 'France-IX'].map((nom) => ({ nom })),
 }
@@ -84,6 +85,7 @@ describe('POST /api/veille/grille', () => {
         entités: [
           { nom: 'CISPE', veille: 'concurrentiel', siren: null },
           { nom: 'Cigref', veille: 'concurrentiel', siren: '310785985' },
+          { nom: 'Infralliance', veille: 'concurrentiel', siren: '929000719', organisation: true },
         ],
         partiesPrenantes: GRILLE.partiesPrenantes,
         offres: null,
@@ -135,7 +137,7 @@ describe('GET /api/veille/grille', () => {
           { numéro: 1, veille: 'ecosysteme', pestel: 'legal', cadence: 'hebdomadaire' },
           { numéro: 2, veille: 'ecosysteme', pestel: 'technologique', cadence: 'mensuelle', libellé: 'Technologies et substituts' },
         ],
-        entités: [{ nom: 'CISPE', veille: 'concurrentiel' }],
+        entités: [{ nom: 'CISPE', veille: 'concurrentiel' }, { nom: 'Infralliance', veille: 'concurrentiel', siren: '929000719', organisation: true }],
         partiesPrenantes: [{ nom: 'DGE' }],
       },
       trousDuPestel: ['politique'],
@@ -156,7 +158,10 @@ describe('GET /api/veille/grille', () => {
           { numero: 1, veille: 'ecosysteme', pestel: 'legal', porter: null, cadence: 'hebdomadaire', libelle: null },
           { numero: 2, veille: 'ecosysteme', pestel: 'technologique', porter: null, cadence: 'mensuelle', libelle: 'Technologies et substituts' },
         ],
-        entites: [{ nom: 'CISPE', veille: 'concurrentiel', siren: null }],
+        entites: [
+          { nom: 'CISPE', veille: 'concurrentiel', siren: null },
+          { nom: 'Infralliance', veille: 'concurrentiel', siren: '929000719', organisation: true },
+        ],
         partiesPrenantes: [{ nom: 'DGE' }],
         offres: null,
       },
