@@ -34,6 +34,7 @@ const {
   synthèseDeLEspace,
   synthèseÀRelire,
   modifierLÉnoncéDuPilote,
+  recalculerLeBenchmarkDuPilote,
   recevoirLaGrille,
   recevoirLaSynthèse,
   recevoirLesÉtiquettes,
@@ -42,7 +43,7 @@ const {
   validerLaVersion,
 } = await import('@/lib/portail/strategie')
 const { construireDocument } = await import('@/lib/domaine/document')
-const { organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
+const { lireLaSynthèse, organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
 const REGISTRE = '1f2fe829ce71802a9c3bd1f4e8a7b6c5'
 const AUTRE_REGISTRE = '2f2fe829ce71802a9c3bd1f4e8a7b6c5'
@@ -511,6 +512,58 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       expect(lue.texte).toContain('- Interprétation : Un marché qui attire en 2026')
       expect(lue.texte).toContain('- Rivalité entre acteurs : intense, tendance hausse')
       expect(lue.texte).toContain('- Substituts : non suivi')
+    })
+
+    it('recalcule le benchmark d’un trimestre publié sans le reposter : chiffres et interprétation changent, rien d’autre', async () => {
+      const dépôt = registres()
+      await recevoirLaSynthèse(
+        { slug: 'infralliance', période: '2026-T4', fenêtre: FENÊTRE, synthèse: trimestre(), cycle: { départements: ['75', '92'], texte: 'centre de données' } },
+        db,
+        { f: dépôt as unknown as typeof fetch, attente: async () => {} },
+      )
+      await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-T4', état: 'publie' }, db)
+      const organisation = (await organisationPourLesOutils({ slug: 'infralliance' }, db))!
+      const avant = await lireLaSynthèse({ organisationId: organisation.id, période: '2026-T4' }, db)
+      const indiceAvant = avant.éléments.find((é) => é.outil === 'indice_cycle')
+
+      // Le registre répond autrement aujourd'hui : c'est lui, jamais l'appelant, qui donne les chiffres.
+      const f = vi.fn(async (url: string) => {
+        const u = new URL(url)
+        return json({ results: [{ siren: u.searchParams.get('q'), nom_complet: 'CIGREF', etat_administratif: 'A', finances: { '2025': { ca: 7_000_000, resultat_net: 100_000 } } }] })
+      })
+      const dépendances = { f: f as unknown as typeof fetch, attente: async () => {} }
+
+      // Un énoncé hors bornes est refusé avant tout appel aux registres.
+      const refusé = await recalculerLeBenchmarkDuPilote({ slug: 'infralliance', période: '2026-T4', énoncé: 'x'.repeat(241) }, db, dépendances)
+      expect(refusé.sorte === 'refusé' && refusé.refus.map((x) => x.code)).toEqual(['longueur'])
+      expect(f).not.toHaveBeenCalled()
+
+      const sansÉnoncé = await recalculerLeBenchmarkDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, dépendances)
+      expect(sansÉnoncé).toMatchObject({ sorte: 'recalculé', période: '2026-T4', grilleVersion: 1, interprétation: 'conservée', avant: { avecComptes: 1, médiane: 5_000_000 }, après: { avecComptes: 1, médiane: 7_000_000 } })
+      // Le benchmark seul : aucun appel au BODACC.
+      expect(f.mock.calls.every(([url]) => !new URL(url).hostname.startsWith('bodacc'))).toBe(true)
+
+      const recalculé = await recalculerLeBenchmarkDuPilote({ slug: 'infralliance', période: '2026-T4', énoncé: ' Le Cigref publie 7 000 000 € en 2025 ; les autres voix n’en publient pas. ' }, db, dépendances)
+      expect(recalculé).toMatchObject({ sorte: 'recalculé', interprétation: 'remplacée', avant: { médiane: 7_000_000 } })
+
+      const après = await lireLaSynthèse({ organisationId: organisation.id, période: '2026-T4' }, db)
+      // Rien n'est archivé ni créé, et la période reste publiée.
+      expect(après.éléments.map((é) => é.id)).toEqual(avant.éléments.map((é) => é.id))
+      expect(après.positions).toEqual(avant.positions)
+      expect([...après.éléments, ...après.positions].every((l) => l.étatPublication === 'publie')).toBe(true)
+      // L'indice de cycle de vie et les autres éléments ne bougent pas.
+      expect(après.éléments.find((é) => é.outil === 'indice_cycle')).toEqual(indiceAvant)
+      expect(après.éléments.filter((é) => é.outil !== 'benchmark')).toEqual(avant.éléments.filter((é) => é.outil !== 'benchmark'))
+      const benchmark = après.éléments.find((é) => é.outil === 'benchmark')!
+      expect(benchmark.énoncé).toBe('Le Cigref publie 7 000 000 € en 2025 ; les autres voix n’en publient pas.')
+      expect((benchmark.valeur as { médianeDuChiffreDAffaires: number }).médianeDuChiffreDAffaires).toBe(7_000_000)
+
+      // Un mois n'a pas de benchmark ; hors du pilote ou inconnue, rien n'est lu ni appelé.
+      f.mockClear()
+      await recevoir(octobre())
+      expect(await recalculerLeBenchmarkDuPilote({ slug: 'infralliance', période: '2026-10' }, db, dépendances)).toEqual({ sorte: 'sans-benchmark' })
+      expect(await recalculerLeBenchmarkDuPilote({ slug: 'inconnue', période: '2026-T4' }, db, dépendances)).toEqual({ sorte: 'organisation-inconnue' })
+      expect(f).not.toHaveBeenCalled()
     })
 
     it('graphiques de l’espace réorganisé : faits récents et indicateurs du trimestre publié, rien ailleurs', async () => {

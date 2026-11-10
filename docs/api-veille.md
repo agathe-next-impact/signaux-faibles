@@ -982,6 +982,30 @@ d'abord), `introuvable` et `organisation-inconnue` (404), `sans-énoncé` (422),
 un formulaire par élément et le bouton « Publier » en tête
 (`modifierUnÉnoncéDeSynthèse`, garde opérateur avant l'écriture).
 
+**Recalculer le benchmark sans reposter** (10 novembre 2026) :
+`{ "slug": "hermitage", "periode": "2026-T3", "recalcul": "benchmark", "enonce": "…" }`.
+Le benchmark d'un trimestre n'est calculé qu'au dépôt de sa synthèse. Quand la
+grille est reclassée ensuite (une entité quitte la veille concurrentielle), la
+synthèse garde l'ancienne liste. Reposter n'est pas le bon geste : la période
+repasserait en proposition, et une synthèse ancienne peut ne plus passer la
+porte de la grille d'aujourd'hui (L'Hermitage, `2026-T3` : trois forces « non
+suivies » à l'époque, portées par des familles depuis). Ce `PATCH` recalcule
+les seuls chiffres du benchmark, sur la grille en vigueur et à la fin de la
+fenêtre de la période, et les range à la place des anciens. `periode` est un
+trimestre (`AAAA-Tn`, 400 sinon). `enonce`, facultatif, remplace
+l'interprétation dans le même geste, après la porte des énoncés (240
+caractères, mêmes interdits) : à fournir dès que l'ancienne cite un rang ou un
+compte qui change. L'indice de cycle de vie, les autres éléments, les positions
+et **l'état de publication** ne bougent pas : c'est la seule écriture qui touche
+une période publiée sans la retirer, et elle n'y change que des chiffres
+calculés par le portail et le texte qui les lit. Réponses : `recalculé` (200,
+avec `grilleVersion`, `avant` et `après` : `fiches`, `avecComptes`, `médiane`,
+`rang`, `noms`, et `interprétation` : `remplacée`, `conservée` ou `absente`),
+`refusé` (422, l'énoncé), `sans-benchmark` (404 : la période n'en porte pas),
+`grille-absente` (409), `organisation-inconnue` (404), `hors-pilote` (200),
+`invalide` (400). `recalculerLeBenchmarkDuPilote` (`lib/portail/strategie.ts`),
+seul écrivain `remplacerLeBenchmark` (`lib/base/strategie.ts`).
+
 ### `GET /api/veille/calculs?slug&fin&departements&texte` : les chiffres du trimestre (lot 7, 28 octobre 2026)
 
 Les chiffres que la revue lit **avant** d'écrire ses deux interprétations ;

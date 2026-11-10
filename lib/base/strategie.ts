@@ -760,6 +760,52 @@ export async function modifierUnÉnoncé(
 }
 
 /**
+ * Remplace les chiffres du benchmark d'un trimestre déjà enregistré, sans
+ * reposter la synthèse (10 novembre 2026). Une grille reclassée change ce que le
+ * benchmark compare, et le portail ne le calculait qu'au dépôt : reposter aurait
+ * remis la période en proposition, et une synthèse ancienne ne repasse pas
+ * toujours la porte de la grille d'aujourd'hui. Seule la `valeur` de l'élément
+ * `benchmark` change, et son énoncé quand un nouveau est fourni, déjà passé par
+ * `contrôlerUnÉnoncé` : un texte qui cite les anciens chiffres ne doit pas rester
+ * sous les nouveaux. L'état de publication, les autres éléments et les positions
+ * ne bougent pas.
+ */
+export async function remplacerLeBenchmark(
+  entrée: { readonly organisationId: string; readonly période: string; readonly valeur: Record<string, unknown>; readonly énoncé?: string | null },
+  db: Base = base(),
+): Promise<
+  | { readonly sorte: 'recalculé'; readonly interprétation: 'remplacée' | 'conservée' | 'absente'; readonly avant: Record<string, unknown> | null }
+  | { readonly sorte: 'sans-benchmark' }
+> {
+  return protéger('recalcul du benchmark', () =>
+    db.transaction(async (tx) => {
+      const [élément] = await tx
+        .select({ id: élémentsSynthèse.id, énoncé: élémentsSynthèse.énoncé, valeur: élémentsSynthèse.valeur })
+        .from(élémentsSynthèse)
+        .where(
+          and(
+            eq(élémentsSynthèse.organisationId, entrée.organisationId),
+            eq(élémentsSynthèse.période, entrée.période),
+            eq(élémentsSynthèse.outil, 'benchmark'),
+            isNull(élémentsSynthèse.archivéeLe),
+          ),
+        )
+        .limit(1)
+      if (!élément) return { sorte: 'sans-benchmark' } as const
+      await tx
+        .update(élémentsSynthèse)
+        .set({ valeur: entrée.valeur, ...(entrée.énoncé != null ? { énoncé: entrée.énoncé } : {}) })
+        .where(eq(élémentsSynthèse.id, élément.id))
+      return {
+        sorte: 'recalculé',
+        interprétation: entrée.énoncé != null ? 'remplacée' : élément.énoncé === null ? 'absente' : 'conservée',
+        avant: élément.valeur ?? null,
+      } as const
+    }),
+  )
+}
+
+/**
  * La dernière synthèse publiée d'une granularité (`mois` ou `trimestre`),
  * strictement avant `avant` quand il est donné : c'est ce que les écrans du
  * client lisent, et rien d'autre. Une période dont une seule ligne n'est pas
