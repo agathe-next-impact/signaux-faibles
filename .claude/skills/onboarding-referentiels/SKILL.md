@@ -110,7 +110,15 @@ Organisation visée : $ARGUMENTS
    stratégique » (après le §2, pour les deux veilles), au modèle de celle de
    Mastora : deux axes tirés des variables du §2, chaque famille des deux
    référentiels rattachée à une dimension PESTEL ou à une force, toutes les
-   entités des deux §2, 8 à 15 parties prenantes. **Aucun point de validation
+   entités des deux §2, 8 à 15 parties prenantes.
+   La veille « concurrentiel » d'une entité est réservée aux concurrents
+   (rivaux, substituts, nouveaux entrants) ou aux entreprises suivies ; un
+   grand compte, un client, un prospect, un donneur d'ordre, un opérateur
+   public ou une institution que le §2 concurrentiel nomme se déclare en
+   veille « ecosysteme » : l'écran « Concurrents » et le benchmark des
+   indicateurs ne montrent que la veille « concurrentiel » (décision de
+   l'opératrice du 10 novembre 2026).
+   **Aucun point de validation
    pour la grille** : l'onboarding tranche les axes et les rattachements, et le
    journal du référentiel le dit (« décidé par l'onboarding »). Décision de
    l'opératrice du 2 novembre 2026 : l'onboarding se fait intégralement dans

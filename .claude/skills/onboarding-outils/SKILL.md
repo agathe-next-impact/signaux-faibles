@@ -67,7 +67,12 @@ Organisation visée : $ARGUMENTS
      force avec son nom court, toutes les entités des deux §2 et celles que les
      lettres nomment, 8 à 15 parties prenantes, offres en liste de noms), pose un
      renvoi d'un paragraphe dans le référentiel écosystème, et note-le au journal
-     des deux (« décidé par l'onboarding »). `POST /api/veille/grille`, puis
+     des deux (« décidé par l'onboarding »). La veille « concurrentiel » d'une
+     entité est réservée aux concurrents ou aux entreprises suivies ; un grand
+     compte, un client, un donneur d'ordre, un opérateur public ou une
+     institution se déclare en « ecosysteme » : l'écran « Concurrents » et le
+     benchmark des indicateurs ne montrent que la veille « concurrentiel »
+     (10 novembre 2026). `POST /api/veille/grille`, puis
      **valide toi-même** la version (`PATCH /api/veille/grille`) : aucun point de
      validation pour la grille (décision du 2 novembre 2026).
    - **Étiquettes** : pour chaque édition non étiquetée, l'étape 4ter telle
