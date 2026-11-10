@@ -102,9 +102,11 @@ Organisation visée : $ARGUMENTS
    d'activité, colonne SIREN du §2). Aucun §4 : il est retiré depuis le
    26 octobre 2026 (veille stratégique, scénario C).
 
-   **Outils stratégiques** (28 octobre 2026, revu le 2 novembre 2026) : si la case
-   « Outils stratégiques » est cochée sur la ligne du registre, **relue au moment
-   de cette étape**, le référentiel concurrentiel porte la section « Grille
+   **Outils stratégiques, pour toute organisation** (28 octobre 2026, revu le
+   2 novembre puis le 10 novembre 2026 : tous les écrans de l'espace sont
+   alimentés pour tout utilisateur créé). Si la case « Outils stratégiques »
+   n'est pas cochée sur la ligne du registre, **coche-la**. Le référentiel
+   concurrentiel porte **toujours** la section « Grille
    stratégique » (après le §2, pour les deux veilles), au modèle de celle de
    Mastora : deux axes tirés des variables du §2, chaque famille des deux
    référentiels rattachée à une dimension PESTEL ou à une force, toutes les

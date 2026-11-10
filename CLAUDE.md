@@ -56,7 +56,14 @@ ne garde que l'empreinte de sa phrase-titre. Ces tables ne s'écrivent que par
 `lib/portail/strategie.ts`, qui passe la porte de `lib/domaine/strategie.ts`
 avant d'écrire ; `tests/architecture.test.ts` tient la frontière, et le pilote
 est borné par `organisations.outils_strategiques` (faux par défaut, réponse
-`hors-pilote`). **Organisations du pilote au 30 octobre 2026** : Mastora,
+`hors-pilote`). **Depuis le 10 novembre 2026, toute organisation est dans le
+pilote** (décision de l'opératrice : tous les écrans de l'espace sont alimentés
+pour tout utilisateur créé) : la case « Outils stratégiques » du registre se coche
+à la demande, la première lettre pose le drapeau et l'espace réorganisé, poste la
+grille, les étiquettes, la synthèse initiale et la fiche de veille, et
+`/onboarding-outils` rattrape ce qui manque ; le défaut de la colonne reste faux,
+et une réponse `hors-pilote` est désormais une anomalie que les tâches signalent.
+**Organisations du pilote au 30 octobre 2026** : Mastora,
 Infralliance, L'Hermitage (`hermitage`), Heritech, Konica Minolta France
 (`konica-minolta-france`) et, depuis le 30 octobre, Suneido ; les six grilles
 suivent les cinq forces et couvrent les six dimensions PESTEL depuis le même jour

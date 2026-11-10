@@ -106,6 +106,23 @@ rouvre au navigateur une source en échec. Le validateur du portail avertit
 | `/onboarding-premiere-lettre <nom>` | B, première lettre | 3 |
 | `/onboarding-activation <nom>` | activation, balayage §1 | 4 ou 5 |
 | `/onboarding-ouvrir-espace <nom>` | ouverture manuelle de l'espace, §1.3 (d) et (e), après la première publication | 4, 5 ou 6, une édition `Envoyé` |
+| `/onboarding-outils <nom>` | rattrapage des écrans stratégiques : drapeaux, grille, étiquettes, synthèse initiale, fiche de veille | 4, 5 ou 6, une édition |
+
+**Tous les écrans alimentés pour tout utilisateur créé** (10 novembre 2026,
+décision de l'opératrice). Il n'y a plus d'organisation hors du pilote des
+outils stratégiques : `/onboarding-demande` coche « Outils stratégiques » à la
+création de la ligne, `/onboarding-referentiels` écrit toujours la section
+« Grille stratégique » du référentiel concurrentiel, et
+`/onboarding-premiere-lettre` pose le drapeau et l'espace réorganisé, poste la
+grille et la valide, étiquette les deux lettres, poste la synthèse initiale et
+la fiche de veille, puis contrôle par quatre `GET` (grille, faits, synthèse,
+fiche). `/onboarding-activation` et `/onboarding-ouvrir-espace` retiennent le
+lien tant qu'un de ces `GET` répond `hors-pilote` ou `aucune`, et renvoient à
+`/onboarding-outils`, qui rattrape ce qui manque sans rien publier. Restent à
+l'opératrice, sur `/espaces/abonnements/<slug>` : publier la synthèse et la
+fiche. Le 9 novembre 2026, Proditec était sortie de la première lettre case
+décochée : sa fiche d'organisation disait « Hors du pilote : pas de grille »
+et « pas de fiche ».
 
 **Invitation manuelle** (18 octobre 2026). La case du même nom, sur la ligne du
 registre, retient l'ouverture de l'espace au-delà de la publication : l'étape
