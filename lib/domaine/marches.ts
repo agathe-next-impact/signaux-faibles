@@ -696,14 +696,14 @@ export const SEUIL_D_ACTIVITÉ_SOUTENUE = 10
 /** Au moins autant de concurrents suivis sur le segment : la concurrence est dense. */
 export const SEUIL_DE_CONCURRENCE_DENSE = 4
 
-export type VerdictDeSegment = 'pousser' | 'defendre' | 'surveiller' | 'ecarter'
+export type VerdictDeSegment = 'pousser' | 'disputer' | 'surveiller' | 'ecarter'
 
 /** Dans l'ordre de lecture de la matrice : soutenu puis calme, concurrence limitée puis dense. */
-export const VERDICTS: readonly VerdictDeSegment[] = ['pousser', 'defendre', 'surveiller', 'ecarter']
+export const VERDICTS: readonly VerdictDeSegment[] = ['pousser', 'disputer', 'surveiller', 'ecarter']
 
 export const LIBELLÉS_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = {
   pousser: 'à pousser',
-  defendre: 'à défendre',
+  disputer: 'à disputer',
   surveiller: 'à surveiller',
   ecarter: 'à écarter',
 }
@@ -711,7 +711,7 @@ export const LIBELLÉS_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = 
 /** La règle de chaque verdict, telle que l'écran l'affiche sous son titre. */
 export const RÈGLES_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = {
   pousser: `Activité soutenue (${SEUIL_D_ACTIVITÉ_SOUTENUE} faits ou plus), moins de ${SEUIL_DE_CONCURRENCE_DENSE} concurrents suivis`,
-  defendre: `Activité soutenue, ${SEUIL_DE_CONCURRENCE_DENSE} concurrents suivis ou plus`,
+  disputer: `Activité soutenue, ${SEUIL_DE_CONCURRENCE_DENSE} concurrents suivis ou plus`,
   surveiller: `Activité calme, ou concurrence non mesurée`,
   ecarter: `Activité calme et concurrence dense, ou segment en recul`,
 }
@@ -740,7 +740,7 @@ export function lectureDuSegment(l: LigneDeMarché): LectureDeSegment {
   const concurrence = l.présents.length === 0 ? 'aucun concurrent suivi' : pluriel(l.présents.length, 'concurrent')
   const raison = `${activité}, ${concurrence}${l.présents.length > 0 ? ` suivi${l.présents.length > 1 ? 's' : ''}` : ''}.`
   const dense = l.présents.length >= SEUIL_DE_CONCURRENCE_DENSE
-  return { verdict: soutenue ? (dense ? 'defendre' : 'pousser') : dense ? 'ecarter' : 'surveiller', raison: raison.charAt(0).toUpperCase() + raison.slice(1) }
+  return { verdict: soutenue ? (dense ? 'disputer' : 'pousser') : dense ? 'ecarter' : 'surveiller', raison: raison.charAt(0).toUpperCase() + raison.slice(1) }
 }
 
 export type CaseDeDécision = {

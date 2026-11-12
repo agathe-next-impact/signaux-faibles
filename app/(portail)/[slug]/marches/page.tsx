@@ -10,7 +10,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
  * Marchés et niches (12 novembre 2026, `docs/plan-marches-et-niches.md`) : où
  * porter l'effort. Un écran de décision, refait le jour même à la demande de
  * l'opératrice : en tête, la matrice qui range chaque offre et chaque niche
- * sous un verdict (à pousser, à défendre, à surveiller, à écarter), par règle
+ * sous un verdict (à pousser, à disputer, à surveiller, à écarter), par règle
  * affichée et jamais par un modèle (`lectureDuSegment`) ; dessous, une fiche
  * courte par segment, son verdict, la phrase de chiffres qui le fonde et trois
  * chiffres au plus. Les hypothèses et les sources restent repliées. Aucune

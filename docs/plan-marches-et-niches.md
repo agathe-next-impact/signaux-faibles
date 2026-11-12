@@ -144,7 +144,7 @@ registres.
 | Verdict | Règle |
 | --- | --- |
 | à pousser | dix faits du trimestre ou plus, moins de quatre concurrents suivis présents |
-| à défendre | dix faits ou plus, quatre concurrents suivis ou plus |
+| à disputer | dix faits ou plus, quatre concurrents suivis ou plus |
 | à surveiller | moins de dix faits et moins de quatre concurrents, ou concurrence non mesurée |
 | à écarter | moins de dix faits et quatre concurrents ou plus, ou segment éteint ou en régression |
 
