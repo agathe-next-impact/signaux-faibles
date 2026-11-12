@@ -37,6 +37,7 @@ export default async function Espaces() {
         </p>
         <p className="flex flex-wrap gap-6">
           <LienFlèche href="/espaces/abonnements">Gérer les abonnements</LienFlèche>
+          <LienFlèche href="/espaces/syntheses">Publier les synthèses stratégiques</LienFlèche>
           <LienFlèche href="/espaces/file">Suivre la file de travaux</LienFlèche>
           <LienFlèche href="/espaces/onboardings">Suivre les onboardings</LienFlèche>
           <LienFlèche href="/espaces/prescripteurs">Suivre les prescripteurs</LienFlèche>

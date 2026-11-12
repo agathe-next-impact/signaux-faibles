@@ -4,6 +4,8 @@ import {
   libelléDePériode,
   nomsDesConcurrents,
   périodesAPublier,
+  périodesÀRelire,
+  comptesDesPériodes,
   vueDeLaCarte,
   vueDeLaFiche,
   vueDesConcurrents,
@@ -331,5 +333,27 @@ describe('périodesAPublier', () => {
     ])
     expect(t[0]!.périodes[1]).toMatchObject({ granularité: 'trimestre', libellé: 'de juillet à septembre 2026' })
     expect(t[1]!.périodes[0]).toMatchObject({ état: 'proposée', granularité: 'mois' })
+  })
+})
+
+describe('périodesÀRelire et comptesDesPériodes', () => {
+  const c = (slug: string, nom: string, période: string, lignes: number, publiées = 0, retirées = 0) => ({ slug, nom, période, lignes, publiées, retirées })
+  const organisations = périodesAPublier([
+    c('mastora', 'Mastora', '2026-10', 40),
+    c('mastora', 'Mastora', '2026-T3', 50),
+    c('hermitage', 'L’Hermitage', '2026-10', 40, 10),
+    c('hermitage', 'L’Hermitage', '2026-09', 40, 40),
+    c('hermitage', 'L’Hermitage', '2026-08', 40, 0, 40),
+  ])
+  it('ne garde que les périodes proposées ou publiées en partie, la plus récente d’abord, puis par nom', () => {
+    expect(périodesÀRelire(organisations).map((p) => [p.slug, p.période, p.état])).toEqual([
+      ['hermitage', '2026-10', 'mêlée'],
+      ['mastora', '2026-10', 'proposée'],
+      ['mastora', '2026-T3', 'proposée'],
+    ])
+  })
+  it('compte des périodes, jamais des lignes', () => {
+    expect(comptesDesPériodes(organisations)).toEqual({ organisations: 2, àRelire: 3, publiées: 1, retirées: 1 })
+    expect(comptesDesPériodes([])).toEqual({ organisations: 0, àRelire: 0, publiées: 0, retirées: 0 })
   })
 })

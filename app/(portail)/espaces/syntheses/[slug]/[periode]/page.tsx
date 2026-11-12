@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: 'Relire une synthèse — signauxfaib
  * interprétations du trimestre. Les faits cités, les cases, les crans de la
  * carte et de Mendelow ne se changent pas ici : ils viennent de la porte, et
  * les corriger demande de re-poster la synthèse. Une période dont une ligne est
- * publiée se lit seulement : la retirer d'abord, depuis le tableau.
+ * publiée se lit seulement : la retirer d'abord, depuis l'écran des synthèses.
  *
  * Comme le tableau, la garde est dans `lireUneSynthèseÀRelire`, avant toute
  * lecture ; la page vit hors de `/[slug]` et n'emprunte pas la coquille.
@@ -82,8 +82,8 @@ export default async function RelireUneSynthèse({
         <p className="text-ardoise">
           {synthèse?.sorte === 'lue' ? `${synthèse.nom}, ` : `${slug}, `}
           {periode.includes('T') ? 'trimestre' : 'mois'} {libelléDePériode(periode)}.{' '}
-          <Link href="/espaces/abonnements#syntheses" className="text-encre underline underline-offset-2">
-            Retour au tableau
+          <Link href="/espaces/syntheses" className="text-encre underline underline-offset-2">
+            Retour aux synthèses
           </Link>
         </p>
       </header>

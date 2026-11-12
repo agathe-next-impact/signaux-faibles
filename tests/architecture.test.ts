@@ -789,8 +789,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('les synthèses du pilote ne se publient à l’écran que derrière le privilège opérateur', () => {
     // 29 octobre 2026 : le tableau de l'opératrice liste les périodes de tous les
     // clients du pilote (garde dans listerLesSynthèses) et les publie par une
-    // action serveur qui vérifie le privilège avant d'écrire.
-    expect(appelants('listerLesSynthèses')).toEqual(['app/(portail)/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
+    // action serveur qui vérifie le privilège avant d'écrire. Depuis le
+    // 12 novembre 2026, ce tableau est son propre écran, /espaces/syntheses.
+    expect(appelants('listerLesSynthèses')).toEqual(['app/(portail)/espaces/syntheses/page.tsx', 'lib/auth/appartenance.ts'])
     expect(appelants('tableauDesSynthèses')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/strategie.ts'])
     expect(appelants('périodesDesSynthèses')).toEqual(['lib/base/strategie.ts', 'lib/portail/strategie.ts'])
     expect(appelants('publierLaSynthèseDuPilote')).toEqual(['app/api/veille/syntheses/route.ts', 'lib/portail/publication.ts', 'lib/portail/strategie.ts'])
