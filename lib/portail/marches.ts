@@ -16,6 +16,7 @@ import {
   fenêtreDuTrimestre,
   mesurerLesSegments,
   messageDeRepriseDesSegments,
+  TRANCHES_D_EFFECTIF,
   vueDesMarchés,
   type Compte,
   type ComptesDuSegment,
@@ -25,7 +26,7 @@ import {
 } from '@/lib/domaine/marches'
 import { périodesDuCycle, type LigneDeBenchmark, type Refus } from '@/lib/domaine/strategie'
 import { bornée, organisationDuRegistre } from '@/lib/portail/strategie'
-import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS } from '@/lib/registres'
+import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS, SECTIONS_D_ACTIVITÉ } from '@/lib/registres'
 
 /**
  * Marchés et niches (12 novembre 2026, `docs/plan-marches-et-niches.md`) :
@@ -44,10 +45,10 @@ import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS } from '@/
  *     registres.
  */
 
-export const BUDGET_DES_MESURES_MS = 40_000
+export const BUDGET_DES_MESURES_MS = 45_000
 const BUDGET_D_UN_COMPTE_MS = 6_000
 /** L'API publique limite le débit par adresse : un appel après l'autre, avec une pause. */
-const PAUSE_ENTRE_DEUX_COMPTES_MS = 200
+const PAUSE_ENTRE_DEUX_COMPTES_MS = 150
 
 export type DépendancesDesMesures = {
   readonly f?: typeof fetch
@@ -132,7 +133,7 @@ export async function lireLesMarchésDuPilote(entrée: { readonly slug: string }
 async function compterUnSegment(
   segment: SegmentDeMarché,
   fin: string,
-  contexte: { readonly f: typeof fetch; readonly attente: (ms: number) => Promise<unknown>; readonly maintenant: () => number; readonly échéance: number },
+  contexte: { readonly f: typeof fetch; readonly attente: (ms: number) => Promise<unknown>; readonly maintenant: () => number; readonly échéance: number; readonly lus: Map<string, Promise<Awaited<ReturnType<typeof compterLesEntreprises>> | null>> },
 ): Promise<ComptesDuSegment> {
   const dansLeTemps = async <T>(lecture: (signal: AbortSignal) => Promise<T>): Promise<T | null> => {
     const reste = contexte.échéance - contexte.maintenant()
@@ -150,9 +151,55 @@ async function compterUnSegment(
     }
     return null
   }
-  const compte = async (périmètre: Parameters<typeof compterLesEntreprises>[0]): Promise<Compte> => {
-    const lu = await dansLeTemps((signal) => compterLesEntreprises(périmètre, contexte.f, signal))
-    return lu ?? { nombre: null, plafonné: false, source: null }
+  type Périmètre = Parameters<typeof compterLesEntreprises>[0]
+  const lire = (périmètre: Périmètre) => {
+    const clé = JSON.stringify(périmètre)
+    const connu = contexte.lus.get(clé)
+    if (connu) return connu
+    const lecture = dansLeTemps((signal) => compterLesEntreprises(périmètre, contexte.f, signal))
+    contexte.lus.set(clé, lecture)
+    return lecture
+  }
+  /**
+   * Au plafond du registre, le périmètre se partage : par tranche d'effectif
+   * d'abord, puis, pour une tranche encore au plafond, par code NAF quand il en
+   * porte plusieurs, par section d'activité quand il n'en porte aucun. Chaque
+   * entreprise est dans une seule case, la somme est le nombre. Une case qui
+   * resterait au plafond fait du total un minimum, et le compte le dit.
+   */
+  const compte = async (périmètre: Périmètre): Promise<Compte> => {
+    const lu = await lire(périmètre)
+    if (!lu) return { nombre: null, plafonné: false, source: null }
+    if (!lu.plafonné) return lu
+    let somme = 0
+    let plafonné = false
+    for (const tranche of périmètre.tranches?.length ? périmètre.tranches : TRANCHES_D_EFFECTIF) {
+      const part = await lire({ ...périmètre, tranches: [tranche] })
+      if (!part) return lu
+      const codes = périmètre.naf ?? []
+      const cases: Périmètre[] = !part.plafonné
+        ? []
+        : codes.length > 1
+          ? codes.map((naf) => ({ ...périmètre, tranches: [tranche], naf: [naf] }))
+          : codes.length === 0
+            ? SECTIONS_D_ACTIVITÉ.map((section) => ({ ...périmètre, tranches: [tranche], section }))
+            : []
+      if (cases.length === 0) {
+        somme += part.nombre
+        plafonné ||= part.plafonné
+        continue
+      }
+      // Trois à la fois : vingt et une sections l'une après l'autre mangeraient le budget, plus de trois dépasseraient le débit du registre.
+      for (let i = 0; i < cases.length; i += 3) {
+        const fines = await Promise.all(cases.slice(i, i + 3).map(lire))
+        for (const fine of fines) {
+          if (!fine) return lu
+          somme += fine.nombre
+          plafonné ||= fine.plafonné
+        }
+      }
+    }
+    return { nombre: somme, plafonné, source: lu.source, découpé: true }
   }
 
   const c = segment.cibles ?? null
@@ -206,9 +253,10 @@ export async function mesurerLesMarchésDuPilote(
   const maintenant = dépendances.maintenant ?? Date.now
   const aujourdHui = new Date(maintenant()).toISOString().slice(0, 10)
   const fin = fenêtre.fin < aujourdHui ? fenêtre.fin : aujourdHui
-  const [faits, synthèse] = await Promise.all([
+  const [faits, synthèse, grille] = await Promise.all([
     faitsDeLaFenêtre({ organisationId, début: fenêtre.début, fin }, db),
     lireLaSynthèse({ organisationId, période: entrée.période }, db),
+    lireLaGrille(organisationId, db),
   ])
   // Le benchmark de ce trimestre, ou à défaut celui du trimestre d'avant : un trimestre en cours n'a pas encore sa revue.
   const lignesDe = (éléments: readonly { outil: string; valeur: unknown }[] | undefined) =>
@@ -221,6 +269,8 @@ export async function mesurerLesMarchésDuPilote(
     attente: dépendances.attente ?? ((ms: number) => new Promise((r) => setTimeout(r, ms))),
     maintenant,
     échéance: maintenant() + BUDGET_DES_MESURES_MS,
+    // Deux segments de même périmètre ne paient qu'un compte.
+    lus: new Map(),
   }
   const comptes = new Map<string, ComptesDuSegment>()
   for (const s of segments) comptes.set(s.clé, await compterUnSegment(s, fin, contexte))
@@ -229,6 +279,7 @@ export async function mesurerLesMarchésDuPilote(
     comptes,
     faits: faits.map((f) => ({ famille: f.familleÉdition, axe: f.numéroAxe, entité: f.entité, impact: f.impact })),
     chiffres,
+    concurrents: grille ? grille.grille.entités.filter((e) => e.veille === 'concurrentiel' && e.organisation !== true).map((e) => e.nom) : [],
   })
   const écrit = await remplacerLesMesures(
     { organisationId, période: entrée.période, segmentsVersion: enregistrés.version, mesures: mesures.map((m) => ({ clé: m.clé, valeur: { ...m } })) },

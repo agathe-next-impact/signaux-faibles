@@ -1359,7 +1359,10 @@ avec `refus` et `message` de reprise ; `hors-pilote`, `grille-absente` (200) ;
 La dernière version des segments, dans le format où ils se postent, les
 `périodes` mesurées avec leur état de publication, et la `vue` calculée sur
 toutes les mesures vivantes : une ligne par segment dans l'ordre de l'arbre,
-avec `cibles`, `potentiel`, `offreurs`, `entrées`, `sorties`, `présents`,
+avec `cibles` (un périmètre au plafond du registre est découpé par tranche
+d'effectif puis par code NAF ou section d'activité, et la limite l'écrit),
+`potentiel`, `offreurs`, `entrées`, `sorties`, `présents` et `présentsOrigine`
+(`arbre`, ou `faits` quand la présence est déduite des faits du trimestre),
 `faits`, `état`, `tendance`, `modifié`, `ouverte`, `sources` et `limites`.
 `aucun` tant que rien n'est posté.
 
