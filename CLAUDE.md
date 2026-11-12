@@ -255,7 +255,7 @@ code NAF ou section d'activité, et sommé ; la présence des concurrents, quand
 la pose pas, est déduite des faits du trimestre qui nomment un concurrent de la grille
 (`présentsOrigine: faits`), jamais conclue « ouverte » ; un segment qui porte des codes CPV (`marchésPublics.cpv`) reçoit l'**achat public constaté** sur douze mois, lu dans les marchés attribués (DECP, `lireLesAchatsPublics`, même seul appelant, garde d'architecture), affiché à part du potentiel, et ses concurrents titulaires reconnus par le SIREN de la grille (`présentsOrigine: marches`, avant les faits) ; l'écran « Marchés et niches » (`/[slug]/marches`, rubrique
 « Le marché », dix-huit écrans au rail) lit les seules mesures publiées par
-`marchésDeLEspace`, bornée, sans appel aux registres, 404 hors de l'espace
+`marchésDeLEspace` (plus les proposées, sous un bandeau, pour la session au privilège « Tous les espaces », `accès.aperçu`), bornée, sans appel aux registres, 404 hors de l'espace
 réorganisé ; garde d'architecture.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la

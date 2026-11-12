@@ -333,12 +333,25 @@ export async function publierLesMarchésDuPilote(entrée: { readonly slug: strin
  * toutes périodes, d'où l'état de chaque segment se calcule. `null` hors de
  * l'espace réorganisé, sans mesure publiée, ou dans le doute. Aucune lecture
  * Notion, aucun appel aux registres depuis l'écran.
+ *
+ * `aperçu` (12 novembre 2026) : la session de l'opératrice (`accès.aperçu`,
+ * privilège « Tous les espaces ») lit aussi les mesures proposées, pour les
+ * relire dans l'espace avant de les publier ; jamais les retirées. `nonPublié`
+ * dit alors que la période montrée n'est pas celle que le client voit, et
+ * l'écran le signale. Un client ne passe jamais `aperçu`.
  */
-export async function marchésDeLEspace(entrée: { readonly registre: string }, db?: Base): Promise<VueDesMarchés | null> {
+export async function marchésDeLEspace(
+  entrée: { readonly registre: string; readonly aperçu?: boolean },
+  db?: Base,
+): Promise<(VueDesMarchés & { readonly nonPublié: boolean }) | null> {
   return bornée('lecture des marchés', async () => {
     const organisation = await organisationDuRegistre(entrée.registre, db)
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
-    const mesures = await mesuresVivantes({ organisationId: organisation.id, publiées: true }, db)
-    return vueDesMarchés(versLesMesures(mesures))
+    const mesures =
+      entrée.aperçu === true
+        ? (await mesuresVivantes({ organisationId: organisation.id }, db)).filter((m) => m.état !== 'retire')
+        : await mesuresVivantes({ organisationId: organisation.id, publiées: true }, db)
+    const vue = vueDesMarchés(versLesMesures(mesures))
+    return vue ? { ...vue, nonPublié: mesures.some((m) => m.période === vue.période && m.état !== 'publie') } : null
   })
 }

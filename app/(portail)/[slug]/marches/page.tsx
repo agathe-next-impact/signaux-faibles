@@ -61,7 +61,7 @@ export default async function Marchés({ params }: { params: Promise<{ slug: str
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
-  const vue = espace ? await marchésDeLEspace({ registre: accès.organisationId }) : null
+  const vue = espace ? await marchésDeLEspace({ registre: accès.organisationId, aperçu: accès.aperçu }) : null
   const racine = vue?.lignes.find((l) => l.niveau === 'marche') ?? null
 
   return (
@@ -69,6 +69,11 @@ export default async function Marchés({ params }: { params: Promise<{ slug: str
       <EntêteÉcran surtitre="le marché" titre="Marchés et niches" état={vue ? `trimestre ${libelléDePériode(vue.période)}` : undefined} />
       {vue ? (
         <>
+          {vue.nonPublié ? (
+            <p role="status" className="mt-6 border-l-2 border-ardoise bg-fond-ardoise px-4 py-3 text-sm text-encre">
+              Aperçu : ces mesures sont proposées et ne sont pas publiées. Vos lecteurs ne les voient pas.
+            </p>
+          ) : null}
           <EnBref
             chiffres={[
               { intitulé: 'Potentiel global', valeur: racine ? potentiel(racine) : 'n.d.', mention: 'par an, hypothèses affichées' },
