@@ -680,6 +680,11 @@ function étatDeLaPériode(c: ComptesDePériode): ÉtatDeLaPériode {
 }
 
 /** Une entrée par organisation, par nom ; ses périodes de la plus récente à la plus ancienne, le trimestre après les mois qu'il couvre. */
+/** « 2026-T3 » se range comme « 2026-09-99 » : après septembre, avant octobre. */
+function rangDePériode(p: string): string {
+  return p.replace(/^(\d{4})-T([1-4])$/, (_, a: string, t: string) => `${a}-${String(Number(t) * 3).padStart(2, '0')}-99`)
+}
+
 export function périodesAPublier(comptes: readonly ComptesDePériode[]): SynthèsesDUneOrganisation[] {
   const parOrganisation = new Map<string, { nom: string; périodes: PériodeAPublier[] }>()
   for (const c of comptes) {
@@ -693,11 +698,41 @@ export function périodesAPublier(comptes: readonly ComptesDePériode[]): Synth�
     })
     parOrganisation.set(c.slug, entrée)
   }
-  // « 2026-T3 » se range comme « 2026-09-99 » : après septembre, avant octobre.
-  const rang = (p: string) => p.replace(/^(\d{4})-T([1-4])$/, (_, a: string, t: string) => `${a}-${String(Number(t) * 3).padStart(2, '0')}-99`)
   return [...parOrganisation.entries()]
-    .map(([slug, e]) => ({ slug, nom: e.nom, périodes: [...e.périodes].sort((a, b) => rang(b.période).localeCompare(rang(a.période))) }))
+    .map(([slug, e]) => ({ slug, nom: e.nom, périodes: [...e.périodes].sort((a, b) => rangDePériode(b.période).localeCompare(rangDePériode(a.période))) }))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}
+
+/**
+ * L'écran des synthèses stratégiques de l'opératrice (12 novembre 2026) : ce
+ * qui attend sa relecture passe devant, toutes organisations confondues. Une
+ * période `proposée` n'a encore jamais été montrée ; une période `mêlée` est
+ * publiée en partie, ce que les écrans du client ne lisent pas : les deux
+ * demandent un geste. Une période `retirée` l'a déjà reçu et reste à sa place
+ * dans la liste de son organisation. La plus récente d'abord, puis par nom.
+ */
+export type PériodeÀRelire = PériodeAPublier & { readonly slug: string; readonly nom: string }
+
+export function périodesÀRelire(organisations: readonly SynthèsesDUneOrganisation[]): PériodeÀRelire[] {
+  return organisations
+    .flatMap((o) => o.périodes.filter((p) => p.état === 'proposée' || p.état === 'mêlée').map((p) => ({ ...p, slug: o.slug, nom: o.nom })))
+    .sort((a, b) => rangDePériode(b.période).localeCompare(rangDePériode(a.période)) || a.nom.localeCompare(b.nom, 'fr'))
+}
+
+/** Les comptes en tête de l'écran : des périodes, jamais des lignes. */
+export function comptesDesPériodes(organisations: readonly SynthèsesDUneOrganisation[]): {
+  readonly organisations: number
+  readonly àRelire: number
+  readonly publiées: number
+  readonly retirées: number
+} {
+  const périodes = organisations.flatMap((o) => o.périodes)
+  return {
+    organisations: organisations.length,
+    àRelire: périodes.filter((p) => p.état === 'proposée' || p.état === 'mêlée').length,
+    publiées: périodes.filter((p) => p.état === 'publiée').length,
+    retirées: périodes.filter((p) => p.état === 'retirée').length,
+  }
 }
 
 // ── En bref (lot 4 de la réorganisation, 30 octobre 2026) ────────────────────

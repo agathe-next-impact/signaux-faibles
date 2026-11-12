@@ -94,9 +94,12 @@ publication, `recalculerLeBenchmarkDuPilote`) et la
 matrice GE au seul T4 ; **rien n'est montré au client avant que l'opératrice publie la
 période** (`PATCH /api/veille/syntheses`, `etat: publie`, ou, depuis le
 29 octobre 2026, le bouton « Publier » de la section « Synthèses
-stratégiques » de `/espaces/abonnements` : `listerLesSynthèses`, garde dans
-la fonction, et l'action `lib/portail/publication.ts`, privilège vérifié avant
-d'écrire). Depuis le 30 octobre 2026, l'opératrice **retouche le texte** d'une
+stratégiques » de `/espaces/abonnements`, devenue le 12 novembre 2026 son propre
+écran, `/espaces/syntheses` (comptes, périodes à relire toutes organisations
+confondues, puis toutes les périodes par organisation, `périodesÀRelire` et
+`comptesDesPériodes`, `lib/domaine/strategie-vues.ts`) : `listerLesSynthèses`,
+garde dans la fonction, et l'action `lib/portail/publication.ts`, privilège
+vérifié avant d'écrire). Depuis le 30 octobre 2026, l'opératrice **retouche le texte** d'une
 période non publiée avant de la publier, sur `/espaces/syntheses/[slug]/[periode]`
 (`lireUneSynthèseÀRelire`, garde dans la fonction ; action
 `lib/portail/relecture.ts`, privilège avant l'écriture ; porte

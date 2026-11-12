@@ -973,6 +973,7 @@ dernière période entièrement publiée (mois sur « Acteurs » et
 tag : les écrans relisent Postgres à chaque requête, bornés à 1 500 ms.
 Le même geste existe pour l'opératrice dans son navigateur depuis le
 29 octobre 2026 : section « Synthèses stratégiques » de `/espaces/abonnements`,
+devenue le 12 novembre 2026 l'écran `/espaces/syntheses`,
 une ligne par période et par organisation du pilote, avec son état (proposée,
 publiée, retirée, ou publiée en partie, que les écrans ne lisent pas) et un
 bouton « Publier » ou « Retirer » (`publierUnePériode`, même
