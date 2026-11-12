@@ -68,7 +68,16 @@ Organisation visée : $ARGUMENTS
    - 1.1 garde : statut 4 ou 5, au moins une édition trouvée par la
      **relation** Organisation avec l'URL de cette ligne ; retiens cet
      identifiant, c'est le seul qui serve en 1.3 ;
-   - 1.2 activation : Veille automatique, Activée le, statut 6, jour et cadence ;
+   - 1.2 activation : Veille automatique, Activée le, statut 6, cadence, et
+     **jour de parution = jour de la semaine où la première lettre a été
+     envoyée** (décision de l'opératrice du 12 novembre 2026, toutes les
+     organisations) : lu dans la boîte émettrice, date d'envoi à l'heure de
+     Paris du premier courriel envoyé au lecteur final pour l'édition n°1,
+     jamais la « Date d'édition » (Proditec : éditions datées du lundi 9/11,
+     envoyées le mercredi 11/11). La valeur en place, saisie ou attribuée à
+     l'étape A, est remplacée ; même valeur dans la page organisation ; un
+     envoi le week-end donne le lundi ; courriel introuvable : valeur gardée,
+     « jour de parution non aligné » au compte rendu ;
    - 1.3 espace client : **le lien d'accès part après la publication de la
      première lettre, jamais avant** (décision du 20 octobre 2026). Garde de
      publication d'abord : au moins une édition de l'organisation au statut
@@ -132,7 +141,8 @@ Organisation visée : $ARGUMENTS
 
 6. **Consomme la case** en fin de run, activation faite ou refusée, et écris
    le résultat dans « Dernier lancement manuel » (« activée le JJ/MM —
-   première parution le [jour] », puis la trace du 1.3 f).
+   première parution le [jour], jour de l'envoi de la n°1 », puis la trace du
+   1.3 f).
 
 7. **Compte rendu** : ce qui a été activé, l'état de l'espace du portail
    (ouvert et lien envoyé, ou en attente de la première publication, contrôlé,
