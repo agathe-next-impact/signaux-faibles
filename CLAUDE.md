@@ -658,7 +658,7 @@ Les lire avant toute session.
   le brouillon** dans la boîte de l'opératrice (`GMAIL_BOITE_OPERATRICE`,
   facultative, `déposerChezLOpératrice`, seul appelant la route, après le
   contrôle) : le HTML ne passe plus par un modèle (`docs/cout-premiere-lettre.md`).
-  Rien ne part ; sans la boîte, la route rend le HTML comme avant. Les trois emails
+  Rien ne part ; sans la boîte, la route rend le HTML comme avant. **Pied « Dans votre espace »** (12 novembre 2026, demande de l'opératrice) : sous la lettre, le courriel porte jusqu'à trois liens chiffrés vers Diagnostic, Scénarios et Marchés et niches, calculés sur les seules périodes publiées (`liensDeLEspace`, `lib/domaine/espace-dans-la-lettre.ts`), lus par `espaceDansLaLettre` (`lib/portail/espace-dans-la-lettre.ts`, bornée, par le registre de l'édition, slug contrôlé, pilote des outils et espace réorganisé seulement, aucun lien dans le doute) ; seuls appelants la route `courriel` et l'envoi des lettres à publier ; la page Notion de la lettre ne change pas, et la règle de la revue (« rien de la synthèse dans une lettre ») tient pour le corps. Les trois emails
   lemlist sont générés par `pnpm emails:lemlist` dans `docs/emails/lemlist/`,
   et le test vérifie qu'ils n'ont pas été retouchés. Le rose ne colore jamais
   un texte, un seul bouton, trois badges ; une image Notion n'entre jamais dans

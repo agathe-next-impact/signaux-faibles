@@ -1,4 +1,5 @@
 import type { Bloc, BlocNotion, Segment, ÉlémentDeLettre } from '@/lib/domaine/document'
+import type { LienDEspace } from '@/lib/domaine/espace-dans-la-lettre'
 import { suiteDeLaLettre } from '@/lib/domaine/document'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 import { sansAccent } from '@/lib/domaine/texte'
@@ -277,6 +278,55 @@ export function impulsionsDeLaLettre(suite: readonly ÉlémentDeLettre[]): Impul
   return retenus.map((a, i) => ({ forte: a.niveau === 'FORT', hauteur: a.niveau === 'FORT' ? (i % 2 === 0 ? 26 : 20) : 13 }))
 }
 
+// ── Le pied « Dans votre espace » (12 novembre 2026) ─────────────────────────
+
+const TITRE_DU_PIED = 'Dans votre espace'
+
+/**
+ * Les écrans des outils stratégiques, chacun avec son chiffre, sous la lettre
+ * et après elle : une rubrique de plus dans le corps, jamais dans la lettre
+ * Notion. Les liens sont à l'encre, soulignés, comme ceux de la lettre ; le
+ * bouton du courriel reste le seul bouton.
+ */
+function piedDeLEspaceHtml(liens: readonly LienDEspace[], racine: string): Html {
+  const lignes = liens.flatMap((lien) => {
+    const url = urlSûre(`${racine}${lien.chemin}`)
+    if (!url) return []
+    return [
+      joindre(
+        new Html(`<tr><td style="padding:10px 0; border-bottom:1px solid ${COULEURS.ligne};">`),
+        new Html(
+          `<a href="${attribut(url)}" target="_blank" class="serif" style="font-family:${SERIF}; font-size:17px; line-height:24px; font-weight:600; color:${COULEURS.encre}; text-decoration:underline;">`,
+        ),
+        lien.écran,
+        new Html(`</a><br><span style="font-size:15px; line-height:23px; color:${COULEURS.encre};"><strong style="font-weight:600;">`),
+        lien.valeur,
+        new Html(`</strong> <span style="color:${COULEURS.ardoise};">`),
+        lien.mention,
+        new Html('</span></span></td></tr>'),
+      ),
+    ]
+  })
+  if (lignes.length === 0) return new Html('')
+  return joindre(
+    new Html(
+      `<h2 class="serif" style="margin:32px 0 6px 0; padding-top:24px; border-top:1px solid ${COULEURS.ligne}; font-family:${SERIF}; font-size:23px; line-height:30px; font-weight:700; color:${COULEURS.encre}; letter-spacing:-0.2px;">`,
+    ),
+    TITRE_DU_PIED,
+    new Html(`</h2><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; margin:0 0 16px 0;">`),
+    ...lignes,
+    new Html('</table>'),
+  )
+}
+
+function piedDeLEspaceTexte(liens: readonly LienDEspace[], racine: string): string {
+  const lignes = liens.flatMap((lien) => {
+    const url = urlSûre(`${racine}${lien.chemin}`)
+    return url ? [`- ${lien.écran} : ${lien.valeur} ${lien.mention} (${url})`] : []
+  })
+  return lignes.length > 0 ? `\n${TITRE_DU_PIED.toUpperCase()}\n\n${lignes.join('\n')}` : ''
+}
+
 export type ÉditionÀEnvoyer = {
   readonly pageId: string
   readonly titre: string
@@ -296,15 +346,20 @@ export function composerLettre(entrée: {
   readonly portailUrl: string
   readonly adressePostale: string | null
   readonly aujourdHui?: Date
+  /** Le pied « Dans votre espace » (`espaceDansLaLettre`) ; aucun pied sans lien. */
+  readonly espace?: readonly LienDEspace[]
 }): { readonly html: string; readonly texte: string; readonly courriel: Courriel; readonly axes: number } {
   const racine = racineDuPortail(entrée.portailUrl)
   const espace = `${racine}/${entrée.slug}`
   const suite = suiteDeLaLettre(entrée.blocs).filter((é) => é.type === 'rubrique' || é.type === 'axe' || !estEncadréInterne(é))
 
   const premièreRubrique = suite.findIndex((é) => é.type === 'rubrique' && é.titre.trim().length > 0)
-  const html = joindre(...suite.map((élément, rang) => élémentHtml(élément, rang === premièreRubrique && rang === 0)))
-  const texte = suite
-    .map(élémentTexte)
+  const liens = entrée.espace ?? []
+  const html = joindre(
+    ...suite.map((élément, rang) => élémentHtml(élément, rang === premièreRubrique && rang === 0)),
+    piedDeLEspaceHtml(liens, racine),
+  )
+  const texte = [...suite.map(élémentTexte), piedDeLEspaceTexte(liens, racine)]
     .filter((t) => t.length > 0)
     .join('\n\n')
 

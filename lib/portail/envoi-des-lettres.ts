@@ -1,5 +1,6 @@
 import { lireAccèsActifParEmail } from '@/lib/auth/source-acces'
 import { cléDUneOrganisationÀGérer } from '@/lib/base/gestion'
+import { espaceDansLaLettre } from '@/lib/portail/espace-dans-la-lettre'
 import { destinatairesDUneLettre } from '@/lib/base/parution'
 import { lireBlocsDeLÉdition } from '@/lib/documents'
 import { composerLettre } from '@/lib/email/lettre'
@@ -70,6 +71,9 @@ export async function envoyerLesLettresÀPublier(entrée: { readonly slug: strin
     : organisation.lecteurs.map((l) => ({ lecteurId: l.id as string | null, adresse: l.email, relecture: false }))
   if (destinataires.length === 0) return { sorte: 'sans-destinataire' }
 
+  // Le pied « Dans votre espace » (12 novembre 2026) : une lecture pour toutes les lettres.
+  const espace = await espaceDansLaLettre({ registre: clé, slug: organisation.slug })
+
   const publiées: string[] = []
   let nonConformes = 0
   let envoyés = 0
@@ -91,6 +95,7 @@ export async function envoyerLesLettresÀPublier(entrée: { readonly slug: strin
       organisation: organisation.nom,
       portailUrl: portailUrl(),
       adressePostale: adressePostale(),
+      espace,
     })
     let partisOuDéjà = 0
     for (const d of destinataires) {
