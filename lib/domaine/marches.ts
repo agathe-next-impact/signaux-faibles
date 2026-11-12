@@ -689,6 +689,81 @@ export function vueDesMarchés(périodes: readonly { readonly période: string; 
   }
 }
 
+// ── La décision : un verdict par segment, par règle ─────────────────────────
+
+/** Au moins autant de faits dans le trimestre : l'activité de la veille est soutenue. */
+export const SEUIL_D_ACTIVITÉ_SOUTENUE = 10
+/** Au moins autant de concurrents suivis sur le segment : la concurrence est dense. */
+export const SEUIL_DE_CONCURRENCE_DENSE = 4
+
+export type VerdictDeSegment = 'pousser' | 'defendre' | 'surveiller' | 'ecarter'
+
+/** Dans l'ordre de lecture de la matrice : soutenu puis calme, concurrence limitée puis dense. */
+export const VERDICTS: readonly VerdictDeSegment[] = ['pousser', 'defendre', 'surveiller', 'ecarter']
+
+export const LIBELLÉS_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = {
+  pousser: 'à pousser',
+  defendre: 'à défendre',
+  surveiller: 'à surveiller',
+  ecarter: 'à écarter',
+}
+
+/** La règle de chaque verdict, telle que l'écran l'affiche sous son titre. */
+export const RÈGLES_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = {
+  pousser: `Activité soutenue (${SEUIL_D_ACTIVITÉ_SOUTENUE} faits ou plus), moins de ${SEUIL_DE_CONCURRENCE_DENSE} concurrents suivis`,
+  defendre: `Activité soutenue, ${SEUIL_DE_CONCURRENCE_DENSE} concurrents suivis ou plus`,
+  surveiller: `Activité calme, ou concurrence non mesurée`,
+  ecarter: `Activité calme et concurrence dense, ou segment en recul`,
+}
+
+export type LectureDeSegment = {
+  readonly verdict: VerdictDeSegment
+  /** Ce qui fonde le verdict, en une phrase de chiffres. */
+  readonly raison: string
+}
+
+const pluriel = (n: number, mot: string) => `${n.toLocaleString('fr-FR')} ${mot}${n > 1 ? 's' : ''}`
+
+/**
+ * Le verdict d'un segment, par règle et jamais par un modèle : deux mesures du
+ * trimestre, l'activité de la veille (faits rattachés) et la concurrence
+ * (concurrents suivis présents), croisées en quatre cases. Un segment éteint ou
+ * en régression est écarté quelle que soit sa case ; une concurrence non
+ * mesurée ne conclut jamais mieux que « à surveiller ».
+ */
+export function lectureDuSegment(l: LigneDeMarché): LectureDeSegment {
+  const activité = `${pluriel(l.faits, 'fait')} ce trimestre${l.faitsForts > 0 ? `, dont ${l.faitsForts} ${l.faitsForts > 1 ? 'signaux forts' : 'signal fort'}` : ''}`
+  if (l.état === 'eteint') return { verdict: 'ecarter', raison: 'Aucun fait ni cible depuis deux trimestres.' }
+  if (l.état === 'en_regression') return { verdict: 'ecarter', raison: `En recul depuis deux trimestres, ${activité}.` }
+  const soutenue = l.faits >= SEUIL_D_ACTIVITÉ_SOUTENUE
+  if (l.présents === null) return { verdict: 'surveiller', raison: `${activité}, concurrence non mesurée.` }
+  const concurrence = l.présents.length === 0 ? 'aucun concurrent suivi' : pluriel(l.présents.length, 'concurrent')
+  const raison = `${activité}, ${concurrence}${l.présents.length > 0 ? ` suivi${l.présents.length > 1 ? 's' : ''}` : ''}.`
+  const dense = l.présents.length >= SEUIL_DE_CONCURRENCE_DENSE
+  return { verdict: soutenue ? (dense ? 'defendre' : 'pousser') : dense ? 'ecarter' : 'surveiller', raison: raison.charAt(0).toUpperCase() + raison.slice(1) }
+}
+
+export type CaseDeDécision = {
+  readonly verdict: VerdictDeSegment
+  /** Les segments de la case, du plus actif au moins actif. */
+  readonly segments: readonly { readonly clé: string; readonly libellé: string; readonly niveau: NiveauDeSegment; readonly faits: number }[]
+}
+
+/** La matrice de décision : les offres et les niches rangées par verdict, le marché entier à part. */
+export function matriceDeDécision(lignes: readonly LigneDeMarché[]): { readonly cases: readonly CaseDeDécision[]; readonly faitsMax: number } {
+  const classées = lignes.filter((l) => l.niveau !== 'marche').map((l) => ({ l, verdict: lectureDuSegment(l).verdict }))
+  return {
+    cases: VERDICTS.map((verdict) => ({
+      verdict,
+      segments: classées
+        .filter((c) => c.verdict === verdict)
+        .map(({ l }) => ({ clé: l.clé, libellé: l.libellé, niveau: l.niveau, faits: l.faits }))
+        .sort((a, b) => b.faits - a.faits),
+    })),
+    faitsMax: Math.max(0, ...classées.map((c) => c.l.faits)),
+  }
+}
+
 /** Les bornes d'un trimestre `AAAA-Tn`, en dates du calendrier. */
 export function fenêtreDuTrimestre(période: string): { readonly début: string; readonly fin: string } | null {
   const t = /^(\d{4})-T([1-4])$/.exec(période)

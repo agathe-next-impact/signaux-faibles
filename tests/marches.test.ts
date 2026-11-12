@@ -5,6 +5,8 @@ import {
   empreinteDuPérimètre,
   faitsDuSegment,
   fenêtreDuTrimestre,
+  lectureDuSegment,
+  matriceDeDécision,
   mesurerLesSegments,
   montantCourt,
   niveauDe,
@@ -337,6 +339,37 @@ describe('l’état d’un segment', () => {
     expect(vue.comptes).toEqual({ segments: 3, chiffrés: 2, ouverts: 1 })
     // Une seule période : tout est une première mesure.
     expect(vueDesMarchés([{ période: '2026-T3', mesures: avant }])!.lignes.every((l) => l.état === 'apparu')).toBe(true)
+  })
+
+  it('le verdict : activité et concurrence croisées, par règle', () => {
+    const l = (plus: Partial<MesureDeSegment>, état: 'apparu' | 'en_regression' | 'eteint' = 'apparu') => ({ ...m(plus), état, tendance: null, modifié: false, ouverte: false })
+    expect(lectureDuSegment(l({ faits: 16, faitsForts: 3, présents: ['A', 'B', 'C'] }))).toEqual({ verdict: 'pousser', raison: '16 faits ce trimestre, dont 3 signaux forts, 3 concurrents suivis.' })
+    expect(lectureDuSegment(l({ faits: 10, présents: [] }))).toEqual({ verdict: 'pousser', raison: '10 faits ce trimestre, aucun concurrent suivi.' })
+    expect(lectureDuSegment(l({ faits: 10, présents: ['A', 'B', 'C', 'D'] })).verdict).toBe('defendre')
+    expect(lectureDuSegment(l({ faits: 9, faitsForts: 1, présents: ['A'] }))).toEqual({ verdict: 'surveiller', raison: '9 faits ce trimestre, dont 1 signal fort, 1 concurrent suivi.' })
+    expect(lectureDuSegment(l({ faits: 9, présents: ['A', 'B', 'C', 'D'] })).verdict).toBe('ecarter')
+    // Une concurrence non mesurée ne conclut jamais mieux que « à surveiller ».
+    expect(lectureDuSegment(l({ faits: 30, présents: null }))).toEqual({ verdict: 'surveiller', raison: '30 faits ce trimestre, concurrence non mesurée.' })
+    // Un segment en recul ou éteint est écarté quelle que soit sa case.
+    expect(lectureDuSegment(l({ faits: 30, présents: [] }, 'en_regression')).verdict).toBe('ecarter')
+    expect(lectureDuSegment(l({ faits: 0, cibles: null }, 'eteint')).verdict).toBe('ecarter')
+  })
+
+  it('la matrice : quatre cases dans l’ordre, le marché entier à part, le plus actif d’abord', () => {
+    const l = (plus: Partial<MesureDeSegment>) => ({ ...m(plus), état: 'apparu' as const, tendance: null, modifié: false, ouverte: false })
+    const matrice = matriceDeDécision([
+      l({ clé: 'marche', niveau: 'marche', parent: null, faits: 80 }),
+      l({ clé: 'a', faits: 12, présents: ['A'] }),
+      l({ clé: 'b', niveau: 'niche', faits: 20, présents: [] }),
+      l({ clé: 'c', faits: 2, présents: null }),
+    ])
+    expect(matrice.cases.map((c) => [c.verdict, c.segments.map((x) => x.clé)])).toEqual([
+      ['pousser', ['b', 'a']],
+      ['defendre', []],
+      ['surveiller', ['c']],
+      ['ecarter', []],
+    ])
+    expect(matrice.faitsMax).toBe(20)
   })
 
   it('les bornes d’un trimestre et un montant lisible', () => {
