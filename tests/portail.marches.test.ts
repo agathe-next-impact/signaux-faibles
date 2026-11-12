@@ -241,6 +241,59 @@ describe('marchés et niches', () => {
     expect(appels).toHaveLength(24)
   })
 
+  it('lit les marchés publics du segment une fois par jeu de codes, et reconnaît un concurrent titulaire par son SIREN', async () => {
+    await ouvrirLePilote()
+    const marchésPublics = { cpv: ['7231', '72317'] }
+    await recevoirLesSegments(
+      {
+        slug: 'infralliance',
+        segments: [SEGMENTS[0]!, { clé: 'public', libellé: 'Hébergement public', parent: 'marche', marchésPublics }, { clé: 'jumeau', libellé: 'Mêmes codes', parent: 'marche', marchésPublics: { cpv: ['72317', '7231'] } }],
+      },
+      db,
+    )
+    const appels: URL[] = []
+    let coupure = true
+    const f = (async (entrée: string | URL | Request) => {
+      const url = new URL(String(entrée))
+      appels.push(url)
+      expect(url.hostname).toBe('data.economie.gouv.fr')
+      // La première connexion est coupée : la lecture réessaie.
+      if (coupure) {
+        coupure = false
+        throw new Error('connexion coupée')
+      }
+      const où = url.searchParams.get('where') ?? ''
+      if (url.searchParams.get('group_by')) {
+        return Response.json({ results: [{ titulaire_id_1: '31078598500012', n: 2, total: 100_000 }, { titulaire_id_1: '31078598500038', n: 1, total: 50_000.4 }] })
+      }
+      if (où.includes('montant >=')) return Response.json({ results: [{ n: 0 }] })
+      return Response.json({ results: [{ n: 40, total: 2_000_000.6, titulaires: 12 }] })
+    }) as typeof fetch
+    const mesuré = await mesurerLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, { f, maintenant: () => Date.parse('2026-11-12T08:00:00Z'), ...sansAttente })
+    expect(mesuré).toMatchObject({ sorte: 'enregistrées' })
+    if (mesuré.sorte !== 'enregistrées') return
+    const attendu = { montant: 2_000_001, marchés: 40, titulaires: 12, du: '2025-11-13', au: '2026-11-13', concurrents: [{ nom: 'Cigref', marchés: 3, montant: 150_000.4 }], organisation: null }
+    expect(mesuré.vue!.lignes.find((l) => l.clé === 'public')).toMatchObject({ achatPublic: attendu, présents: ['Cigref'], présentsOrigine: 'marches' })
+    expect(mesuré.vue!.lignes.find((l) => l.clé === 'jumeau')).toMatchObject({ achatPublic: attendu })
+    // Une coupure, puis trois agrégats : le jumeau ne paie rien.
+    expect(appels).toHaveLength(4)
+    const où = appels[1]!.searchParams.get('where')!
+    expect(où).toContain("startswith(codecpv,'7231') or startswith(codecpv,'72317')")
+    expect(où).toContain("datenotification >= date'2025-11-13' and datenotification < date'2026-11-13'")
+    expect(où).toContain('montant < 100000000')
+    // Seul le concurrent de la grille qui porte un SIREN est cherché parmi les titulaires.
+    expect(appels[2]!.searchParams.get('where')).toContain("(startswith(titulaire_id_1,'310785985'))")
+  })
+
+  it('la requête des marchés publics ne reçoit que des codes et des dates contrôlés', async () => {
+    const { clauseDesAchatsPublics } = await import('@/lib/registres')
+    const demande = { cpv: ['3012'], depuis: '2025-11-13', jusqua: '2026-11-13', montantMax: 100_000_000 }
+    expect(clauseDesAchatsPublics(demande)).toBe("(startswith(codecpv,'3012')) and datenotification >= date'2025-11-13' and datenotification < date'2026-11-13'")
+    expect(() => clauseDesAchatsPublics({ ...demande, cpv: [] })).toThrow()
+    expect(() => clauseDesAchatsPublics({ ...demande, cpv: ["3012') or 1=1"] })).toThrow()
+    expect(() => clauseDesAchatsPublics({ ...demande, depuis: 'hier' })).toThrow()
+  })
+
   it('un registre qui ne répond pas donne n.d., jamais une erreur ni un chiffre', async () => {
     await ouvrirLePilote()
     await recevoirLesSegments({ slug: 'infralliance', segments: SEGMENTS }, db)

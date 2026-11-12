@@ -166,6 +166,83 @@ describe('la mesure d’un segment', () => {
     expect(vide).toMatchObject({ présents: null, présentsOrigine: null })
   })
 
+  it('l’achat public : une dépense constatée à part du potentiel, et les titulaires reconnus par leur SIREN', () => {
+    const cpv = { cpv: ['30232', '3012'] }
+    const segments: SegmentDeMarché[] = [
+      SEGMENTS[0]!,
+      { ...SEGMENTS[1]!, marchésPublics: cpv },
+      { clé: 'public', libellé: 'Achat public d’impression', parent: 'impression', marchésPublics: cpv, familles: [{ veille: 'ecosysteme', numéro: 4 }] },
+      { clé: 'muet', libellé: 'Source muette', parent: 'impression', marchésPublics: { cpv: ['7231'] } },
+      { clé: 'sans', libellé: 'Aucun titulaire suivi', parent: 'impression', marchésPublics: { cpv: ['4882'] }, familles: [{ veille: 'ecosysteme', numéro: 4 }] },
+    ]
+    const achats = {
+      marchés: 334,
+      montant: 123_295_034.91,
+      titulaires: 124,
+      écartés: 1,
+      // Deux établissements de Ricoh déjà additionnés par la lecture ; un SIREN hors grille est ignoré.
+      parSiren: [
+        { siren: '738205269', marchés: 12, montant: 17_618_906.2 },
+        { siren: '337621841', marchés: 49, montant: 23_538_254.3 },
+        { siren: '999999999', marchés: 3, montant: 1 },
+      ],
+      du: '2025-11-13',
+      au: '2026-11-13',
+      source: 'https://data.economie.gouv.fr/explore/dataset/decp-2022-marches-valides/',
+    }
+    const vide = { ...achats, marchés: 4, montant: 80_000, titulaires: 3, écartés: 0, parSiren: [] }
+    const nu = { cibles: null, offreurs: null, entrées: null, sorties: null }
+    const mesures = mesurerLesSegments(segments, {
+      comptes: new Map<string, ComptesDuSegment>([
+        ['impression', { ...COMPTES.get('impression')!, achats }],
+        ['public', { ...nu, achats }],
+        ['muet', { ...nu, achats: null }],
+        ['sans', { ...nu, achats: vide }],
+      ]),
+      faits: [{ famille: 'Écosystème', axe: 4, entité: 'Canon France', impact: 'MOYEN' }],
+      chiffres: [],
+      concurrents: ['Ricoh France', 'Canon France'],
+      sirens: [
+        { nom: 'Ricoh France', siren: '337621841' },
+        { nom: 'Canon France', siren: '738205269' },
+      ],
+      // Le SIREN hors des concurrents est ici celui de l'organisation : sa part, jamais une présence.
+      sirenDeLOrganisation: '999999999',
+    })
+    const [racine, impression, pub, muet, sans] = mesures
+    // La présence posée avec le segment fait foi ; l'achat public s'y ajoute sans toucher au potentiel.
+    expect(impression).toMatchObject({ présentsOrigine: 'arbre', potentiel: { bas: 1_200_000, haut: 3_600_000 }, achatPublic: { montant: 123_295_035, marchés: 334, titulaires: 124 } })
+    expect(pub).toMatchObject({ présents: ['Ricoh France', 'Canon France'], présentsOrigine: 'marches', potentiel: null })
+    expect(pub!.achatPublic!.concurrents).toEqual([
+      { nom: 'Ricoh France', marchés: 49, montant: 23_538_254.3 },
+      { nom: 'Canon France', marchés: 12, montant: 17_618_906.2 },
+    ])
+    expect(pub!.achatPublic!.organisation).toEqual({ marchés: 3, montant: 1 })
+    expect(sans!.achatPublic!.organisation).toEqual({ marchés: 0, montant: 0 })
+    expect(pub!.limites.join(' ')).toContain('1 marché(s) de 100 M€ ou plus écarté(s)')
+    expect(pub!.limites.join(' ')).toContain('3012, 30232')
+    expect(pub!.sources).toContain(achats.source)
+    // Source muette : n.d., dit, sans chiffre ni présence.
+    expect(muet).toMatchObject({ achatPublic: null, présents: null })
+    expect(muet!.limites.join(' ')).toContain('Achat public n.d.')
+    // Aucun concurrent titulaire : les faits reprennent la main, jamais « ouverte ».
+    expect(sans).toMatchObject({ présents: ['Canon France'], présentsOrigine: 'faits', achatPublic: { marchés: 4, concurrents: [] } })
+    // Un segment sans code CPV ne porte pas le champ.
+    expect(racine).not.toHaveProperty('achatPublic')
+  })
+
+  it('les codes CPV passent la porte, et n’entrent dans l’empreinte que s’ils existent', () => {
+    const avec = (cpv: string[]): SegmentDeMarché[] => [SEGMENTS[0]!, { ...SEGMENTS[1]!, marchésPublics: { cpv } }]
+    expect(contrôlerLesSegments(avec(['3012', '30232000']), GRILLE)).toEqual([])
+    expect(contrôlerLesSegments(avec([]), GRILLE).map((r) => r.code)).toEqual(['périmètre-vide'])
+    expect(contrôlerLesSegments(avec(['301', "3012' or 1=1"]), GRILLE).map((r) => r.code)).toEqual(['code-invalide', 'code-invalide'])
+    expect(contrôlerLesSegments(avec(Array.from({ length: 11 }, (_, i) => String(3000 + i))), GRILLE).map((r) => r.code)).toEqual(['périmètre-hors-bornes'])
+    const impression = SEGMENTS[1]!
+    expect(empreinteDuPérimètre({ ...impression, marchésPublics: null })).toBe(empreinteDuPérimètre(impression))
+    expect(empreinteDuPérimètre({ ...impression, marchésPublics: { cpv: ['3012'] } })).not.toBe(empreinteDuPérimètre(impression))
+    expect(empreinteDuPérimètre({ ...impression, marchésPublics: { cpv: ['30232', '3012'] } })).toBe(empreinteDuPérimètre({ ...impression, marchésPublics: { cpv: ['3012', '30232'] } }))
+  })
+
   it('un périmètre découpé par tranche : un nombre, son potentiel, et la limite écrite', () => {
     const découpé = { nombre: 23_500, plafonné: false, source: 'https://recherche-entreprises.api.gouv.fr/search?x', découpé: true }
     const [, impression] = mesurerLesSegments(SEGMENTS, { comptes: new Map([['impression', { cibles: découpé, offreurs: { ...découpé, plafonné: true }, entrées: null, sorties: null }]]), faits: [], chiffres: [] })

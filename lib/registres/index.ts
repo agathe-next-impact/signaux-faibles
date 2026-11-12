@@ -379,3 +379,126 @@ export async function compterLesEntreprises(
   if (typeof données.total_results !== 'number') throw new Error("Recherche d'entreprises : total_results absent")
   return { nombre: données.total_results, plafonné: données.total_results >= PLAFOND_DE_RECHERCHE, source }
 }
+
+// ── Les marchés publics attribués (marchés et niches, 12 novembre 2026) ──────
+
+/**
+ * Les données essentielles de la commande publique, publiées par le ministère
+ * de l'Économie : un enregistrement par marché notifié, avec son code CPV, son
+ * montant, sa date de notification et le SIRET de son premier titulaire. Le jeu
+ * « decp-2022 » est celui du format en vigueur ; l'ancien (`decp-v3`) s'arrête
+ * à la fin de 2023.
+ */
+export const API_DECP = 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/decp-2022-marches-valides/records'
+export const PAGE_DECP = 'https://data.economie.gouv.fr/explore/dataset/decp-2022-marches-valides/'
+
+export type DemandeDAchatsPublics = {
+  /** Codes CPV ou leur début, quatre à huit chiffres. */
+  readonly cpv: readonly string[]
+  readonly depuis: string
+  /** Borne exclue. */
+  readonly jusqua: string
+  /** Les SIREN dont on veut savoir s'ils sont titulaires. */
+  readonly sirens?: readonly string[]
+  /** Un montant égal ou supérieur est écarté de la somme, et compté à part. */
+  readonly montantMax: number
+}
+
+const CPV = /^\d{4,8}$/
+
+/** La clause `where`, construite à partir de codes et de dates contrôlés un à un : aucun texte libre n'y entre. */
+export function clauseDesAchatsPublics(demande: DemandeDAchatsPublics): string {
+  if (!DATE.test(demande.depuis) || !DATE.test(demande.jusqua)) throw new Error('dates attendues en AAAA-MM-JJ')
+  if (demande.cpv.length === 0) throw new Error('au moins un code CPV : une requête sans filtre est refusée')
+  for (const c of demande.cpv) if (!CPV.test(c)) throw new Error(`code CPV « ${c} » : quatre à huit chiffres attendus`)
+  if (!Number.isFinite(demande.montantMax) || demande.montantMax <= 0) throw new Error('montant maximal invalide')
+  return `(${demande.cpv.map((c) => `startswith(codecpv,'${c}')`).join(' or ')}) and datenotification >= date'${demande.depuis}' and datenotification < date'${demande.jusqua}'`
+}
+
+/**
+ * Les marchés notifiés d'une fenêtre sur des codes CPV : leur nombre, la somme
+ * de leurs montants, le nombre de titulaires distincts, et, pour les SIREN
+ * demandés, ce que chacun a remporté (ses établissements additionnés). Trois
+ * requêtes d'agrégat, aucune ligne de marché n'est rapportée.
+ */
+export async function lireLesAchatsPublics(
+  demande: DemandeDAchatsPublics,
+  f: typeof fetch = fetch,
+  signal?: AbortSignal,
+): Promise<{
+  readonly marchés: number
+  readonly montant: number
+  readonly titulaires: number
+  readonly écartés: number | null
+  readonly parSiren: readonly { readonly siren: string; readonly marchés: number; readonly montant: number }[]
+  readonly du: string
+  readonly au: string
+  readonly source: string
+}> {
+  const base = clauseDesAchatsPublics(demande)
+  const retenus = `${base} and montant < ${Math.round(demande.montantMax)}`
+  const sirens = (demande.sirens ?? []).map((s) => {
+    const n = sirenNormalisé(s)
+    if (!n) throw new Error(`SIREN « ${s} » : neuf chiffres attendus`)
+    return n
+  })
+  const lire = async (params: Record<string, string>): Promise<Record<string, unknown>[]> => {
+    const url = new URL(API_DECP)
+    for (const [clé, valeur] of Object.entries(params)) url.searchParams.set(clé, valeur)
+    // Un second essai : le portail de données coupe parfois une connexion sans raison durable.
+    let dernière: unknown = null
+    for (const _essai of [1, 2]) {
+      try {
+        const réponse = await f(url.toString(), { headers: { accept: 'application/json' }, ...(signal ? { signal } : {}) })
+        if (!réponse.ok) throw new Error(`Commande publique : HTTP ${réponse.status}`)
+        const données = (await réponse.json()) as { results?: unknown }
+        if (!Array.isArray(données.results)) throw new Error('Commande publique : results absent')
+        return données.results as Record<string, unknown>[]
+      } catch (erreur) {
+        dernière = erreur
+        if (signal?.aborted) break
+      }
+    }
+    throw dernière instanceof Error ? dernière : new Error('Commande publique : lecture impossible')
+  }
+  const nombre = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+
+  const [total] = await lire({ where: retenus, select: 'count(*) as n, sum(montant) as total, count(distinct titulaire_id_1) as titulaires', limit: '1' })
+  if (!total || typeof total['n'] !== 'number') throw new Error('Commande publique : agrégat illisible')
+
+  const parSiren = new Map<string, { marchés: number; montant: number }>()
+  if (sirens.length > 0 && total['n'] > 0) {
+    const lignes = await lire({
+      where: `${retenus} and (${sirens.map((s) => `startswith(titulaire_id_1,'${s}')`).join(' or ')})`,
+      select: 'titulaire_id_1, count(*) as n, sum(montant) as total',
+      group_by: 'titulaire_id_1',
+      limit: '100',
+    })
+    for (const l of lignes) {
+      const siren = String(l['titulaire_id_1'] ?? '').slice(0, 9)
+      if (!SIREN.test(siren)) continue
+      const déjà = parSiren.get(siren) ?? { marchés: 0, montant: 0 }
+      parSiren.set(siren, { marchés: déjà.marchés + nombre(l['n']), montant: déjà.montant + nombre(l['total']) })
+    }
+  }
+
+  // Le compte des marchés écartés est une précision : s'il manque, la mesure tient.
+  let écartés: number | null = null
+  try {
+    const [hors] = await lire({ where: `${base} and montant >= ${Math.round(demande.montantMax)}`, select: 'count(*) as n', limit: '1' })
+    écartés = hors ? nombre(hors['n']) : 0
+  } catch {
+    écartés = null
+  }
+
+  return {
+    marchés: total['n'],
+    montant: nombre(total['total']),
+    titulaires: nombre(total['titulaires']),
+    écartés,
+    parSiren: [...parSiren.entries()].map(([siren, x]) => ({ siren, ...x })),
+    du: demande.depuis,
+    au: demande.jusqua,
+    source: PAGE_DECP,
+  }
+}

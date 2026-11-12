@@ -616,6 +616,8 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('marchésDeLEspace')).toEqual(['app/(portail)/[slug]/marches/page.tsx', 'lib/portail/marches.ts'])
     // Le comptage du registre : la seule orchestration l'appelle, jamais un écran ni une route.
     expect(appelants('compterLesEntreprises')).toEqual(['lib/portail/marches.ts', 'lib/registres/index.ts'])
+    // Les marchés publics attribués : même frontière.
+    expect(appelants('lireLesAchatsPublics')).toEqual(['lib/portail/marches.ts', 'lib/registres/index.ts'])
 
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'marches.ts'), 'utf8')
     const recevoir = source.slice(source.indexOf('export async function recevoirLesSegments'))
@@ -625,7 +627,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(écran.indexOf("bornée('")).toBeGreaterThan(0)
     expect(écran).toContain('espaceRéorganisé')
     expect(écran).toContain('publiées: true')
-    expect(écran).not.toMatch(/compterLesEntreprises\(|compterLesAnnonces\(|fetch\(/)
+    expect(écran).not.toMatch(/compterLesEntreprises\(|compterLesAnnonces\(|lireLesAchatsPublics\(|fetch\(/)
     expect(source).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
     // La route ne reçoit que des segments et un geste : aucune mesure ne vient de l'appelant.
     const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'marches', 'route.ts'), 'utf8')

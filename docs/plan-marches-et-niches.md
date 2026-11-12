@@ -72,6 +72,26 @@ Tout le reste en découle.
   un concurrent de la grille que nomme un fait du segment dans le trimestre
   (`présentsOrigine: faits`, le nombre de faits écrit dans les limites) ; sans
   concurrent nommé, elle reste non renseignée, jamais « ouverte ».
+- **L'achat public est lu, pas supposé** (12 novembre 2026, même décision). Un
+  segment peut porter des codes CPV (`marchésPublics.cpv`, quatre à huit
+  chiffres, un début de code couvre tout ce qui commence ainsi, dix au plus).
+  Le portail lit alors les **marchés attribués** dans les données essentielles
+  de la commande publique (DECP, jeu `decp-2022-marches-valides` de
+  data.economie.gouv.fr, public et sans clé) sur les douze mois qui s'achèvent
+  à la fin de la mesure : nombre de marchés notifiés, somme des montants,
+  nombre de titulaires (`achatPublic`). C'est une **dépense constatée**,
+  affichée à part du potentiel, qui reste une hypothèse. Un marché de 100 M€ ou
+  plus est écarté de la somme et compté dans les limites (erreur de saisie
+  avérée dans le jeu). Les **concurrents de la grille titulaires** sont reconnus
+  par leur SIREN (les neuf premiers chiffres du SIRET du premier titulaire,
+  établissements additionnés) : quand l'arbre ne pose pas la présence, ce sont
+  eux les présents (`présentsOrigine: marches`), avant la déduction par les
+  faits, qui ne joue plus qu'à défaut. Quand la grille porte le SIREN de
+  l'organisation elle-même, sa propre part est lue de la même façon
+  (`achatPublic.organisation`), sans jamais compter comme une présence. Limites écrites avec la mesure : les
+  achats privés n'y sont pas, ni les marchés non publiés par leur acheteur ; un
+  accord-cadre compte pour son montant notifié entier ; seul le premier
+  titulaire est lu ; un concurrent sans SIREN dans la grille n'est pas reconnu.
 
 Seuils (`lib/domaine/marches.ts`) : un écart de taille compte à partir de 5 % ;
 à taille égale ou absente, l'activité départage à partir d'un quart et de deux
@@ -84,6 +104,7 @@ faits d'écart.
 | Types, porte, assemblage d'une mesure, état calculé, vue | `lib/domaine/marches.ts` |
 | Tables `segments_de_marche`, `mesures_de_marche` (migration 0026) | `lib/base/schema.ts`, `lib/base/marches.ts` (seul écrivain) |
 | Comptage d'un périmètre au registre | `compterLesEntreprises`, `lib/registres/index.ts` |
+| Marchés publics attribués par code CPV (DECP) | `lireLesAchatsPublics`, `lib/registres/index.ts` |
 | Orchestration : recevoir, mesurer, publier, lire pour l'écran | `lib/portail/marches.ts` |
 | Route des tâches | `app/api/veille/marches/route.ts` (`docs/api-veille.md`) |
 | Écran « Marchés et niches », rubrique « Le marché » | `app/(portail)/[slug]/marches/page.tsx` |

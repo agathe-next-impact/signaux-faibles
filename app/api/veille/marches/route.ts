@@ -57,6 +57,7 @@ const segment = z.object({
     .nullish(),
   offre: z.object({ naf: codes.optional(), departements: codes.optional(), texte: texte(200).optional() }).nullish(),
   depense: z.object({ basse: z.number(), haute: z.number(), source: texte(600) }).nullish(),
+  marches_publics: z.object({ cpv: codes }).nullish(),
   entites: z.array(texte(300)).max(200).optional(),
   presents: z.array(texte(300)).max(200).nullish(),
   familles: z.array(z.object({ veille: texte(40), numero: z.number().int().min(1).max(99) })).max(60).optional(),
@@ -90,6 +91,7 @@ function versLeDomaine(s: z.infer<typeof segment>): SegmentDeMarché {
       ? { ...(s.offre.naf ? { naf: s.offre.naf } : {}), ...(s.offre.departements ? { départements: s.offre.departements } : {}), ...(s.offre.texte !== undefined ? { texte: s.offre.texte } : {}) }
       : null,
     dépense: s.depense ?? null,
+    ...(s.marches_publics ? { marchésPublics: { cpv: s.marches_publics.cpv } } : {}),
     entités: s.entites ?? [],
     présents: s.presents ?? null,
     familles: (s.familles ?? []).map((f) => ({ veille: f.veille as Veille, numéro: f.numero })),
@@ -111,6 +113,7 @@ function versLeJson(s: SegmentDeMarché) {
           : { sorte: 'registre', ...(c.naf ? { naf: c.naf } : {}), ...(c.tranches ? { tranches: c.tranches } : {}), ...(c.départements ? { departements: c.départements } : {}), ...(c.collectivités ? { collectivites: true } : {}) },
     offre: s.offre ? { ...(s.offre.naf ? { naf: s.offre.naf } : {}), ...(s.offre.départements ? { departements: s.offre.départements } : {}), ...(s.offre.texte !== undefined ? { texte: s.offre.texte } : {}) } : null,
     depense: s.dépense ?? null,
+    ...(s.marchésPublics ? { marches_publics: { cpv: s.marchésPublics.cpv } } : {}),
     entites: s.entités ?? [],
     presents: s.présents ?? null,
     familles: (s.familles ?? []).map((f) => ({ veille: f.veille, numero: f.numéro })),

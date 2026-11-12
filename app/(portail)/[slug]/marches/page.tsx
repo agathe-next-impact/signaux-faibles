@@ -12,7 +12,8 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
  * pèse chaque segment, et comment il évolue. L'arbre du marché, de ses offres
  * et de leurs niches, avec les mesures que le portail a calculées pour le
  * dernier trimestre publié : cibles comptées au registre des entreprises,
- * potentiel en fourchette, offre en place, activité de la veille. L'état de
+ * potentiel en fourchette, achat public constaté sur douze mois, offre en
+ * place, activité de la veille. L'état de
  * chaque segment est déduit de la suite de ses mesures. Aucune lecture Notion,
  * aucun appel aux registres depuis l'écran. Seulement pour un espace
  * réorganisé : ailleurs, 404 avant toute lecture.
@@ -31,7 +32,7 @@ function potentiel(l: LigneDeMarché): string {
 
 function offre(l: LigneDeMarché): string {
   const parties: string[] = []
-  if (l.présents && l.présents.length > 0) parties.push(`${l.présents.length} concurrent${l.présents.length > 1 ? 's' : ''} suivi${l.présents.length > 1 ? 's' : ''}${l.présentsOrigine === 'faits' ? ' d’après les faits' : ''}`)
+  if (l.présents && l.présents.length > 0) parties.push(`${l.présents.length} concurrent${l.présents.length > 1 ? 's' : ''} suivi${l.présents.length > 1 ? 's' : ''}${l.présentsOrigine === 'faits' ? ' d’après les faits' : l.présentsOrigine === 'marches' ? ' titulaires de marchés publics' : ''}`)
   if (l.présents && l.présents.length === 0) parties.push('aucun concurrent suivi')
   if (l.offreurs !== null) parties.push(`${l.offreursPlafonnés ? 'plus de ' : ''}${nombre(l.offreurs)} offreur${l.offreurs > 1 ? 's' : ''} au registre`)
   return parties.length > 0 ? parties.join(', ') : 'non renseignée'
@@ -83,7 +84,7 @@ export default async function Marchés({ params }: { params: Promise<{ slug: str
             </div>
             <p className="max-w-[68ch] text-ardoise">
               Votre marché, vos offres, puis leurs niches. Les cibles sont comptées au registre des entreprises ; le potentiel les multiplie par une dépense annuelle posée en hypothèse. C’est un ordre de
-              grandeur : ce qui compte, c’est son évolution d’un trimestre à l’autre.
+              grandeur : ce qui compte, c’est son évolution d’un trimestre à l’autre. L’achat public, lui, est constaté : la somme des marchés notifiés sur douze mois, quand le segment en relève.
             </p>
             <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
               {vue.lignes.map((l) => (
@@ -103,6 +104,24 @@ export default async function Marchés({ params }: { params: Promise<{ slug: str
                   {l.entrées !== null || l.sorties !== null ? (
                     <p className="text-sm text-ardoise">
                       Sur douze mois au BODACC : {l.entrées ?? 'n.d.'} création{(l.entrées ?? 0) > 1 ? 's' : ''}, {l.sorties ?? 'n.d.'} procédure{(l.sorties ?? 0) > 1 ? 's' : ''} collective{(l.sorties ?? 0) > 1 ? 's' : ''}.
+                    </p>
+                  ) : null}
+                  {l.achatPublic ? (
+                    <p className="text-sm text-ardoise">
+                      Achat public sur douze mois : {montantCourt(l.achatPublic.montant)} en {nombre(l.achatPublic.marchés)} marché{l.achatPublic.marchés > 1 ? 's' : ''} notifié{l.achatPublic.marchés > 1 ? 's' : ''},{' '}
+                      {nombre(l.achatPublic.titulaires)} titulaire{l.achatPublic.titulaires > 1 ? 's' : ''}
+                      {l.achatPublic.concurrents.length > 0
+                        ? `, dont ${l.achatPublic.concurrents
+                            .slice(0, 5)
+                            .map((c) => `${c.nom} (${montantCourt(c.montant)})`)
+                            .join(', ')}${l.achatPublic.concurrents.length > 5 ? ` et ${l.achatPublic.concurrents.length - 5} autre${l.achatPublic.concurrents.length > 6 ? 's' : ''}` : ''}`
+                        : ''}
+                      .
+                      {l.achatPublic.organisation
+                        ? l.achatPublic.organisation.marchés > 0
+                          ? ` Vous en êtes titulaire pour ${montantCourt(l.achatPublic.organisation.montant)}, en ${nombre(l.achatPublic.organisation.marchés)} marché${l.achatPublic.organisation.marchés > 1 ? 's' : ''}.`
+                          : ' Aucun de ces marchés ne vous nomme premier titulaire.'
+                        : ''}
                     </p>
                   ) : null}
                   {l.limites.length > 0 || l.sources.length > 0 ? (

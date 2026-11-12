@@ -30,6 +30,7 @@ const SEGMENT = {
   cibles: { sorte: 'registre', naf: ['18.12Z'], departements: ['69'], collectivites: false },
   offre: { naf: ['46.66Z'] },
   depense: { basse: 1000, haute: 3000, source: 'https://exemple.example/etude' },
+  marches_publics: { cpv: ['3012', '30232'] },
   entites: ['Ricoh France'],
   presents: ['Ricoh France'],
   familles: [{ veille: 'concurrentiel', numero: 1 }],
@@ -67,6 +68,7 @@ describe('/api/veille/marches', () => {
           cibles: { sorte: 'registre', naf: ['18.12Z'], départements: ['69'] },
           offre: { naf: ['46.66Z'] },
           dépense: SEGMENT.depense,
+          marchésPublics: { cpv: ['3012', '30232'] },
           entités: ['Ricoh France'],
           présents: ['Ricoh France'],
           familles: [{ veille: 'concurrentiel', numéro: 1 }],
@@ -85,7 +87,7 @@ describe('/api/veille/marches', () => {
       sorte: 'lus',
       version: 2,
       grilleVersion: 5,
-      segments: [{ clé: 'impression', libellé: 'Parc', parent: 'marche', cibles: { sorte: 'registre', naf: ['18.12Z'], départements: ['69'] }, offre: null, dépense: null, entités: [], familles: [{ veille: 'concurrentiel', numéro: 1 }] }],
+      segments: [{ clé: 'impression', libellé: 'Parc', parent: 'marche', cibles: { sorte: 'registre', naf: ['18.12Z'], départements: ['69'] }, offre: null, dépense: null, marchésPublics: { cpv: ['3012'] }, entités: [], familles: [{ veille: 'concurrentiel', numéro: 1 }] }],
       périodes: [{ période: '2026-T4', état: 'propose', mesures: 1 }],
       vue: null,
     })
@@ -93,7 +95,7 @@ describe('/api/veille/marches', () => {
     expect(await réponse.json()).toMatchObject({
       état: 'lus',
       version: 2,
-      segments: [{ cle: 'impression', libelle: 'Parc', cibles: { sorte: 'registre', naf: ['18.12Z'], departements: ['69'] }, familles: [{ veille: 'concurrentiel', numero: 1 }] }],
+      segments: [{ cle: 'impression', libelle: 'Parc', cibles: { sorte: 'registre', naf: ['18.12Z'], departements: ['69'] }, marches_publics: { cpv: ['3012'] }, familles: [{ veille: 'concurrentiel', numero: 1 }] }],
       périodes: [{ période: '2026-T4', état: 'propose' }],
     })
     expect((await GET(requête('GET'))).status).toBe(400)
