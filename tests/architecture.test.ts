@@ -283,7 +283,16 @@ describe('Postgres ne se lit que par lib/base, l’appartenance que par la faça
     for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) parcourir(join(process.cwd(), racine))
     // La fiche de veille (lot 6, 30 octobre 2026) lit la grille et l'organisation, et, pour la fiche de
     // présentation d'une entité (6 novembre 2026), les positions publiées : des lectures, aucune écriture stratégique.
-    expect(importateurs.filter((chemin) => chemin !== 'lib/portail/strategie.ts' && chemin !== 'lib/portail/fiche-veille.ts')).toEqual([])
+    // Marchés et niches (12 novembre 2026) lit la grille, l'organisation, les faits d'une fenêtre et le benchmark d'un trimestre : des lectures aussi.
+    expect(importateurs.filter((chemin) => !['lib/portail/strategie.ts', 'lib/portail/fiche-veille.ts', 'lib/portail/marches.ts'].includes(chemin))).toEqual([])
+    const marchés = readFileSync(join(process.cwd(), 'lib', 'portail', 'marches.ts'), 'utf8')
+    expect(/import \{([^}]*)\} from '@\/lib\/base\/strategie'/.exec(marchés)?.[1]?.split(',').map((x) => x.trim()).filter(Boolean)).toEqual([
+      'faitsDeLaFenêtre',
+      'lireLaGrille',
+      'lireLaSynthèse',
+      'organisationPourLesOutils',
+      'synthèsePrécédente',
+    ])
     const fiche = readFileSync(join(process.cwd(), 'lib', 'portail', 'fiche-veille.ts'), 'utf8')
     const importés = /import \{([^}]*)\} from '@\/lib\/base\/strategie'/.exec(fiche)?.[1]?.split(',').map((x) => x.trim()).filter(Boolean)
     expect(importés).toEqual(['lireLaGrille', 'organisationPourLesOutils', 'positionsPubliées'])
@@ -524,6 +533,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/indicateurs/page.tsx',
       'app/(portail)/[slug]/layout.tsx',
       'app/(portail)/[slug]/lettres/page.tsx',
+      'app/(portail)/[slug]/marches/page.tsx',
       'app/(portail)/[slug]/page.tsx',
       'app/(portail)/[slug]/pestel/[axe]/page.tsx',
       'app/(portail)/[slug]/pestel/page.tsx',
@@ -562,13 +572,65 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       // Les fiches de présentation du référentiel (6 novembre 2026).
       join('veille', 'corpus', '[entite]', 'page.tsx'),
       join('veille', 'themes', '[axe]', 'page.tsx'),
+      // Marchés et niches (12 novembre 2026).
+      join('marches', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|présentationDeLEntité|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|présentationDeLEntité|marchésDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
     }
+  })
+
+  /**
+   * Marchés et niches (12 novembre 2026, `docs/plan-marches-et-niches.md`) : les
+   * deux tables ne s'écrivent que par `lib/base/marches.ts`, appelé par la seule
+   * orchestration `lib/portail/marches.ts`, qui passe la porte
+   * `contrôlerLesSegments` avant d'écrire. Les chiffres sont calculés par le
+   * portail : la route ne reçoit jamais une mesure. L'écran ne lit que les
+   * mesures publiées, par `marchésDeLEspace`, bornée, sans appel aux registres.
+   */
+  it('marchés et niches : un écrivain, la porte avant l’écriture, des mesures calculées, une lecture bornée', () => {
+    const nommées = (table: string) => {
+      const trouvés: string[] = []
+      const parcourir = (dossier: string) => {
+        for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+          const chemin = join(dossier, entrée.name)
+          if (entrée.isDirectory()) {
+            if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+          } else if (/\.tsx?$/.test(entrée.name) && readFileSync(chemin, 'utf8').includes(table)) trouvés.push(relatif(chemin))
+        }
+      }
+      for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) parcourir(join(process.cwd(), racine))
+      return trouvés.sort()
+    }
+    expect(nommées('segmentsDeMarché')).toEqual(['lib/base/marches.ts', 'lib/base/schema.ts'])
+    expect(nommées('mesuresDeMarché')).toEqual(['lib/base/marches.ts', 'lib/base/schema.ts'])
+    for (const nom of ['posterLesSegments', 'derniersSegments', 'remplacerLesMesures', 'mesuresVivantes', 'publierLesMesures', 'périodesMesurées']) {
+      expect(appelants(nom), nom).toEqual(['lib/base/marches.ts', 'lib/portail/marches.ts'])
+    }
+    for (const nom of ['recevoirLesSegments', 'lireLesMarchésDuPilote', 'mesurerLesMarchésDuPilote', 'publierLesMarchésDuPilote']) {
+      expect(appelants(nom), nom).toEqual(['app/api/veille/marches/route.ts', 'lib/portail/marches.ts'])
+    }
+    expect(appelants('marchésDeLEspace')).toEqual(['app/(portail)/[slug]/marches/page.tsx', 'lib/portail/marches.ts'])
+    // Le comptage du registre : la seule orchestration l'appelle, jamais un écran ni une route.
+    expect(appelants('compterLesEntreprises')).toEqual(['lib/portail/marches.ts', 'lib/registres/index.ts'])
+
+    const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'marches.ts'), 'utf8')
+    const recevoir = source.slice(source.indexOf('export async function recevoirLesSegments'))
+    expect(recevoir.indexOf('contrôlerLesSegments(')).toBeGreaterThan(0)
+    expect(recevoir.indexOf('contrôlerLesSegments(')).toBeLessThan(recevoir.indexOf('posterLesSegments('))
+    const écran = source.slice(source.indexOf('export async function marchésDeLEspace'))
+    expect(écran.indexOf("bornée('")).toBeGreaterThan(0)
+    expect(écran).toContain('espaceRéorganisé')
+    expect(écran).toContain('publiées: true')
+    expect(écran).not.toMatch(/compterLesEntreprises\(|compterLesAnnonces\(|fetch\(/)
+    expect(source).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
+    // La route ne reçoit que des segments et un geste : aucune mesure ne vient de l'appelant.
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'marches', 'route.ts'), 'utf8')
+    expect(route).not.toMatch(/potentiel|mesures:\s*z\./)
+    expect(route.indexOf("refuserSiNonAutorisé(requête, 'marches')")).toBeGreaterThan(0)
   })
 
   /**
@@ -1260,11 +1322,11 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     }
   })
 
-  it('l’espace réorganisé : dix-sept écrans en rubriques, chacun avec sa route', async () => {
+  it('l’espace réorganisé : dix-huit écrans en rubriques, chacun avec sa route', async () => {
     const { ongletsDe } = await import('@/lib/portail/semaine')
     const comptes = { lettres: 2, recommandations: 0, archives: 1 }
     const onglets = ongletsDe('client', comptes, 'complète', { réorganisé: true })
-    expect(onglets).toHaveLength(17)
+    expect(onglets).toHaveLength(18)
     for (const onglet of onglets) {
       const segment = onglet.href.replace(/^\/client\/?/, '')
       const chemin = join(process.cwd(), 'app', '(portail)', '[slug]', ...(segment ? [segment] : []), 'page.tsx')

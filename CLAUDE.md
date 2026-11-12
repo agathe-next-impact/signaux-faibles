@@ -232,7 +232,27 @@ axes » (`synthèseDeLEspace`, `pestelDeLEspace`, par le registre de la
 session, bornées à 1 500 ms (400 ms jusqu'au 29 octobre 2026 : la recette a
 montré qu'en production la section n'apparaissait jamais), sans lecture Notion de plus, `null` dans le
 doute) ; vues pures dans `lib/domaine/strategie-vues.ts`, rendu dans
-`components/strategie-ecrans.tsx`.
+`components/strategie-ecrans.tsx`. **Marchés et niches** (12 novembre 2026, demande de
+l'opératrice, `docs/plan-marches-et-niches.md`, pilote sur Konica Minolta France ;
+migration 0026) : un marché, une offre et une niche sont le même objet à trois
+échelles, un **segment** (clé, libellé de 40 caractères, parent, périmètre en codes
+NAF, tranches d'effectif et départements, hypothèse de dépense chiffrée et sourcée,
+concurrents présents, entités et familles de la grille dont les faits comptent).
+L'arbre se poste par `POST /api/veille/marches` (porte `contrôlerLesSegments`,
+`lib/domaine/marches.ts`, table `segments_de_marche`) ; les mesures d'un trimestre
+(cibles comptées au registre des entreprises, potentiel en fourchette, offreurs,
+entrées et procédures au BODACC, comptes publiés lus par le benchmark, faits
+étiquetés rattachés par règle) sont **calculées par le portail**, jamais fournies par
+un modèle (`PATCH`, `action: mesurer`, table `mesures_de_marche`), et rien n'est
+montré avant que l'opératrice publie la période (`etat: publie`) ; une période
+publiée ne se recalcule pas. L'état d'un segment (première mesure, en croissance,
+stable, en régression, éteint, périmètre modifié, retiré) n'est **jamais stocké** :
+`étatDuSegment` le déduit de la suite des mesures. Seul écrivain
+`lib/base/marches.ts`, seule orchestration `lib/portail/marches.ts`, seul appelant de
+`compterLesEntreprises` ; l'écran « Marchés et niches » (`/[slug]/marches`, rubrique
+« Le marché », dix-huit écrans au rail) lit les seules mesures publiées par
+`marchésDeLEspace`, bornée, sans appel aux registres, 404 hors de l'espace
+réorganisé ; garde d'architecture.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et

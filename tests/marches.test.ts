@@ -1,0 +1,247 @@
+import { describe, expect, it } from 'vitest'
+import {
+  contrôlerLesSegments,
+  empreinteDesSegments,
+  empreinteDuPérimètre,
+  faitsDuSegment,
+  fenêtreDuTrimestre,
+  mesurerLesSegments,
+  montantCourt,
+  niveauDe,
+  tendanceEntre,
+  vueDesMarchés,
+  étatDuSegment,
+  type ComptesDuSegment,
+  type MesureDeSegment,
+  type SegmentDeMarché,
+} from '@/lib/domaine/marches'
+import type { Grille } from '@/lib/domaine/strategie'
+
+/**
+ * Marchés et niches, le domaine pur : la porte des segments, l'assemblage d'une
+ * mesure sans chiffre inventé, l'état calculé sur la suite des mesures.
+ */
+const GRILLE: Grille = {
+  axesGroupes: [],
+  familles: [
+    { numéro: 1, veille: 'concurrentiel', porter: 'rivalite', cadence: 'hebdomadaire' },
+    { numéro: 4, veille: 'ecosysteme', porter: 'pouvoir_clients', cadence: 'hebdomadaire' },
+  ],
+  entités: [
+    { nom: 'Ricoh France', veille: 'concurrentiel', siren: '337621841' },
+    { nom: 'Canon France', veille: 'concurrentiel', siren: '738205269' },
+    { nom: 'UGAP', veille: 'ecosysteme', siren: null },
+  ],
+  partiesPrenantes: [],
+}
+const SOURCE = 'https://exemple.example/etude'
+const SEGMENTS: SegmentDeMarché[] = [
+  { clé: 'marche', libellé: 'Impression et documents', parent: null },
+  {
+    clé: 'impression',
+    libellé: 'Parc d’impression',
+    parent: 'marche',
+    cibles: { sorte: 'registre', tranches: ['21', '22'], départements: ['69'] },
+    offre: { naf: ['46.66Z'] },
+    dépense: { basse: 1000, haute: 3000, source: SOURCE },
+    entités: ['Ricoh France', 'Canon France'],
+    présents: ['Ricoh France', 'Canon France'],
+    familles: [{ veille: 'concurrentiel', numéro: 1 }],
+  },
+  { clé: 'sante', libellé: 'Accords-cadres hospitaliers', parent: 'impression', cibles: { sorte: 'declare', nombre: 135, source: SOURCE }, entités: ['UGAP'], familles: [{ veille: 'ecosysteme', numéro: 4 }] },
+  { clé: 'reconditionne', libellé: 'Matériel reconditionné', parent: 'impression', présents: [] },
+]
+const compte = (nombre: number | null, plafonné = false) => ({ nombre, plafonné, source: nombre === null ? null : 'https://recherche-entreprises.api.gouv.fr/search?x' })
+const COMPTES = new Map<string, ComptesDuSegment>([['impression', { cibles: compte(1200), offreurs: compte(340), entrées: null, sorties: null }]])
+const FAITS = [
+  { famille: 'Concurrentiel', axe: 1, entité: null, impact: 'FORT' },
+  { famille: 'Écosystème', axe: 1, entité: null, impact: 'MOYEN' },
+  { famille: 'Écosystème', axe: 4, entité: null, impact: 'MOYEN' },
+  { famille: 'Écosystème', axe: 2, entité: 'ugap', impact: 'MOYEN' },
+  { famille: null, axe: null, entité: 'Ricoh France', impact: 'MOYEN' },
+]
+
+describe('la porte des segments', () => {
+  it('accepte un arbre à trois niveaux rattaché à la grille', () => {
+    expect(contrôlerLesSegments(SEGMENTS, GRILLE)).toEqual([])
+    expect(SEGMENTS.map((s) => niveauDe(s, SEGMENTS))).toEqual(['marche', 'offre', 'niche', 'niche'])
+  })
+
+  it('refuse deux racines, un parent inconnu, une boucle et un quatrième niveau', () => {
+    const codes = (segments: SegmentDeMarché[]) => contrôlerLesSegments(segments, GRILLE).map((r) => r.code)
+    expect(codes([])).toContain('segments-absents')
+    expect(codes([...SEGMENTS, { clé: 'autre', libellé: 'Autre marché', parent: null }])).toContain('racine')
+    expect(codes([...SEGMENTS, { clé: 'x', libellé: 'X', parent: 'absent' }])).toContain('parent-inconnu')
+    expect(codes([{ clé: 'a', libellé: 'A', parent: 'b' }, { clé: 'b', libellé: 'B', parent: 'a' }])).toEqual(expect.arrayContaining(['racine', 'arbre-invalide']))
+    expect(codes([...SEGMENTS, { clé: 'trop', libellé: 'Trop profond', parent: 'sante' }])).toContain('arbre-invalide')
+    expect(codes([...SEGMENTS, { clé: 'impression', libellé: 'Doublon', parent: 'marche' }])).toContain('doublon')
+    expect(codes([{ clé: 'Marché', libellé: 'Clé invalide', parent: null }])).toContain('clé-invalide')
+  })
+
+  it('refuse un libellé long ou au vocabulaire de l’impact, une entité et une famille hors de la grille', () => {
+    const codes = (s: Partial<SegmentDeMarché>) => contrôlerLesSegments([SEGMENTS[0]!, { clé: 'x', libellé: 'X', parent: 'marche', ...s }], GRILLE).map((r) => r.code)
+    expect(codes({ libellé: 'x'.repeat(41) })).toEqual(['libellé-hors-bornes'])
+    expect(codes({ libellé: 'Marché à fort potentiel' })).toEqual(['vocabulaire-interdit'])
+    expect(codes({ entités: ['Inconnue SA'] })).toEqual(['entité-hors-grille'])
+    // Présent : un concurrent de la grille, pas une entité de l'écosystème.
+    expect(codes({ présents: ['UGAP'] })).toEqual(['présent-hors-grille'])
+    expect(codes({ présents: ['Ricoh France'] })).toEqual([])
+    expect(codes({ familles: [{ veille: 'concurrentiel', numéro: 9 }] })).toEqual(['famille-inconnue'])
+  })
+
+  it('refuse un périmètre vide ou mal codé, une dépense sans fourchette ni source', () => {
+    const codes = (s: Partial<SegmentDeMarché>) => contrôlerLesSegments([SEGMENTS[0]!, { clé: 'x', libellé: 'X', parent: 'marche', ...s }], GRILLE).map((r) => r.code)
+    expect(codes({ cibles: { sorte: 'registre' } })).toEqual(['périmètre-vide'])
+    expect(codes({ cibles: { sorte: 'registre', naf: ['6202A'] } })).toEqual(['code-invalide'])
+    expect(codes({ cibles: { sorte: 'registre', tranches: ['99'] } })).toEqual(['code-invalide'])
+    expect(codes({ cibles: { sorte: 'registre', départements: ['690'] } })).toEqual(['code-invalide'])
+    expect(codes({ cibles: { sorte: 'declare', nombre: 1.5, source: 'http://sans-tls.example' } })).toEqual(['nombre-invalide', 'source-invalide'])
+    expect(codes({ offre: { texte: 'impression' } })).toEqual(['périmètre-vide'])
+    expect(codes({ offre: {} })).toEqual(['périmètre-vide'])
+    expect(codes({ dépense: { basse: 3000, haute: 1000, source: SOURCE } })).toEqual(['dépense-invalide'])
+    expect(codes({ dépense: { basse: 1, haute: 2, source: 'une étude' } })).toEqual(['source-invalide'])
+  })
+
+  it('l’empreinte ignore l’ordre, et celle du périmètre ne bouge qu’avec ce qui chiffre', () => {
+    expect(empreinteDesSegments([...SEGMENTS].reverse())).toBe(empreinteDesSegments(SEGMENTS))
+    const impression = SEGMENTS[1]!
+    expect(empreinteDuPérimètre({ ...impression, libellé: 'Autre nom', entités: [] })).toBe(empreinteDuPérimètre(impression))
+    expect(empreinteDuPérimètre({ ...impression, dépense: { basse: 1000, haute: 4000, source: SOURCE } })).not.toBe(empreinteDuPérimètre(impression))
+    expect(empreinteDesSegments([...SEGMENTS.slice(0, 3)])).not.toBe(empreinteDesSegments(SEGMENTS))
+  })
+})
+
+describe('la mesure d’un segment', () => {
+  it('rattache les faits par famille ou par entité, sans confondre les deux veilles', () => {
+    expect(faitsDuSegment(SEGMENTS[1]!, FAITS)).toHaveLength(2) // l'axe 1 concurrentiel, et le fait qui nomme Ricoh
+    expect(faitsDuSegment(SEGMENTS[2]!, FAITS)).toHaveLength(2) // l'axe 4 écosystème, et le fait qui nomme l'UGAP
+    expect(faitsDuSegment(SEGMENTS[3]!, FAITS)).toHaveLength(0)
+    // Une lettre unique, sans famille d'édition : le numéro seul rattache.
+    expect(faitsDuSegment(SEGMENTS[1]!, [{ famille: null, axe: 1, entité: null, impact: 'MOYEN' }])).toHaveLength(1)
+  })
+
+  it('multiplie les cibles par la dépense, et additionne les offres à la racine', () => {
+    const mesures = mesurerLesSegments(SEGMENTS, { comptes: COMPTES, faits: FAITS, chiffres: [{ nom: 'Ricoh France', chiffreDAffaires: 500_000_000 }, { nom: 'Canon France', chiffreDAffaires: null }] })
+    const [racine, impression, santé, reconditionné] = mesures
+    expect(impression).toMatchObject({
+      niveau: 'offre',
+      cibles: 1200,
+      ciblesOrigine: 'registre',
+      potentiel: { bas: 1_200_000, haut: 3_600_000, origine: 'calcul' },
+      offreurs: 340,
+      présents: ['Ricoh France', 'Canon France'],
+      chiffreDAffairesDesPrésents: 500_000_000,
+      présentsAvecComptes: 1,
+      faits: 2,
+      faitsForts: 1,
+    })
+    expect(impression!.sources).toContain(SOURCE)
+    expect(racine).toMatchObject({ niveau: 'marche', cibles: null, potentiel: { bas: 1_200_000, haut: 3_600_000, origine: 'somme' } })
+    expect(racine!.limites.join(' ')).toContain('1 sur 1')
+    // Des cibles déclarées sans dépense : un nombre, pas d'euros, et la limite le dit.
+    expect(santé).toMatchObject({ niveau: 'niche', cibles: 135, ciblesOrigine: 'declare', potentiel: null })
+    expect(santé!.limites.join(' ')).toContain('aucune hypothèse de dépense')
+    expect(reconditionné).toMatchObject({ cibles: null, potentiel: null, faits: 0, présents: [] })
+    // Présence non renseignée : ni présents, ni « ouvert ».
+    expect(santé!.présents).toBeNull()
+    // La racine sans rattachement propre porte toute l'activité de la veille.
+    expect(racine!.faits).toBe(FAITS.length)
+  })
+
+  it('n’invente aucun chiffre : registre muet ou plafonné, pas de potentiel', () => {
+    const avec = (cibles: ReturnType<typeof compte>) =>
+      mesurerLesSegments(SEGMENTS, { comptes: new Map([['impression', { cibles, offreurs: null, entrées: null, sorties: null }]]), faits: [], chiffres: [] })[1]!
+    const muet = avec(compte(null))
+    expect(muet).toMatchObject({ cibles: null, potentiel: null })
+    expect(muet.limites.join(' ')).toContain('n’a pas répondu')
+    const plafonné = avec(compte(10_000, true))
+    expect(plafonné).toMatchObject({ cibles: 10_000, ciblesPlafonnées: true, potentiel: null })
+    expect(plafonné.limites.join(' ')).toContain('ne compte pas au-delà')
+    // Et la racine reste sans potentiel : aucune offre n'est chiffrée.
+    expect(mesurerLesSegments(SEGMENTS, { comptes: new Map(), faits: [], chiffres: [] })[0]!.potentiel).toBeNull()
+  })
+})
+
+describe('l’état d’un segment', () => {
+  const m = (plus: Partial<MesureDeSegment>): MesureDeSegment => ({
+    clé: 'x',
+    libellé: 'X',
+    parent: 'marche',
+    niveau: 'offre',
+    périmètre: 'aaaaaaaa',
+    cibles: 1000,
+    ciblesPlafonnées: false,
+    ciblesOrigine: 'registre',
+    potentiel: null,
+    offreurs: null,
+    offreursPlafonnés: false,
+    entrées: null,
+    sorties: null,
+    présents: null,
+    chiffreDAffairesDesPrésents: null,
+    présentsAvecComptes: 0,
+    faits: 4,
+    faitsForts: 0,
+    sources: [],
+    limites: [],
+    ...plus,
+  })
+
+  it('une seule mesure : apparu, sans tendance', () => {
+    expect(étatDuSegment([m({})])).toEqual({ état: 'apparu', tendance: null, modifié: false })
+  })
+
+  it('la taille d’abord, au seuil de cinq pour cent ; l’activité départage', () => {
+    expect(tendanceEntre(m({}), m({ cibles: 1040 }))).toBe('stable')
+    expect(tendanceEntre(m({}), m({ cibles: 1050 }))).toBe('hausse')
+    expect(tendanceEntre(m({}), m({ cibles: 940 }))).toBe('baisse')
+    expect(tendanceEntre(m({}), m({ faits: 5 }))).toBe('stable') // un fait d'écart
+    expect(tendanceEntre(m({}), m({ faits: 6 }))).toBe('hausse')
+    expect(tendanceEntre(m({ faits: 10 }), m({ faits: 8 }))).toBe('stable') // moins d'un quart
+    expect(tendanceEntre(m({ cibles: null, faits: 0 }), m({ cibles: null, faits: 3 }))).toBe('hausse')
+    // Le potentiel prime sur les cibles quand il existe.
+    expect(tendanceEntre(m({ potentiel: { bas: 1, haut: 100, origine: 'calcul' } }), m({ cibles: 2000, potentiel: { bas: 1, haut: 90, origine: 'calcul' } }))).toBe('baisse')
+  })
+
+  it('croissance sur une hausse, régression sur deux baisses de suite seulement', () => {
+    expect(étatDuSegment([m({}), m({ cibles: 1100 })])).toMatchObject({ état: 'en_croissance', tendance: 'hausse' })
+    expect(étatDuSegment([m({}), m({ cibles: 900 })])).toMatchObject({ état: 'stable', tendance: 'baisse' })
+    expect(étatDuSegment([m({}), m({ cibles: 900 }), m({ cibles: 800 })])).toMatchObject({ état: 'en_regression', tendance: 'baisse' })
+    expect(étatDuSegment([m({}), m({ cibles: 1100 }), m({ cibles: 1000 })])).toMatchObject({ état: 'stable', tendance: 'baisse' })
+  })
+
+  it('éteint : ni fait ni cible sur deux trimestres ; modifié : le périmètre a changé, rien n’est comparé', () => {
+    expect(étatDuSegment([m({ cibles: null, faits: 0 }), m({ cibles: null, faits: 0 })])).toMatchObject({ état: 'eteint' })
+    expect(étatDuSegment([m({ cibles: null, faits: 3 }), m({ cibles: null, faits: 0 })])).toMatchObject({ état: 'stable', tendance: 'baisse' })
+    expect(étatDuSegment([m({}), m({ périmètre: 'bbbbbbbb', cibles: 5000 })])).toEqual({ état: 'stable', tendance: null, modifié: true })
+  })
+
+  it('la vue : l’ordre de l’arbre, les segments ouverts, les disparus', () => {
+    const avant = mesurerLesSegments(SEGMENTS, { comptes: COMPTES, faits: FAITS, chiffres: [] })
+    const sans = SEGMENTS.filter((s) => s.clé !== 'sante')
+    const après = mesurerLesSegments(sans, { comptes: new Map([['impression', { cibles: compte(1400), offreurs: compte(340), entrées: 12, sorties: 3 }]]), faits: FAITS, chiffres: [] })
+    expect(vueDesMarchés([])).toBeNull()
+    const vue = vueDesMarchés([
+      { période: '2026-T3', mesures: avant },
+      { période: '2026-T4', mesures: [...après].reverse() },
+    ])!
+    expect(vue.période).toBe('2026-T4')
+    expect(vue.lignes.map((l) => l.clé)).toEqual(['marche', 'impression', 'reconditionne'])
+    expect(vue.lignes[1]).toMatchObject({ état: 'en_croissance', tendance: 'hausse', ouverte: false, entrées: 12, sorties: 3 })
+    expect(vue.lignes[2]).toMatchObject({ ouverte: true })
+    expect(vue.disparus).toEqual([{ clé: 'sante', libellé: 'Accords-cadres hospitaliers', niveau: 'niche' }])
+    expect(vue.comptes).toEqual({ segments: 3, chiffrés: 2, ouverts: 1 })
+    // Une seule période : tout est une première mesure.
+    expect(vueDesMarchés([{ période: '2026-T3', mesures: avant }])!.lignes.every((l) => l.état === 'apparu')).toBe(true)
+  })
+
+  it('les bornes d’un trimestre et un montant lisible', () => {
+    expect(fenêtreDuTrimestre('2026-T4')).toEqual({ début: '2026-10-01', fin: '2026-12-31' })
+    expect(fenêtreDuTrimestre('2026-T1')).toEqual({ début: '2026-01-01', fin: '2026-03-31' })
+    expect(fenêtreDuTrimestre('2026-11')).toBeNull()
+    expect(montantCourt(1_250_000)).toBe('1,3 M€')
+    expect(montantCourt(340_000)).toBe('340 k€')
+    expect(montantCourt(2_400_000_000)).toBe('2,4 Md€')
+    expect(montantCourt(950)).toBe('950 €')
+  })
+})
