@@ -319,3 +319,56 @@ export async function fichesChiffrées(
   }
   return fiches
 }
+
+// ── Le compte d'un périmètre dans le registre (marchés et niches, 12 novembre 2026) ──
+
+/** Un périmètre d'entreprises : codes NAF, tranches d'effectif, départements, ou les seules collectivités. */
+export type PérimètreDEntreprises = {
+  readonly naf?: readonly string[]
+  readonly tranches?: readonly string[]
+  readonly départements?: readonly string[]
+  readonly collectivités?: boolean
+}
+
+/** Le registre ne compte pas au-delà : il rend ce nombre pour tout périmètre plus large. */
+export const PLAFOND_DE_RECHERCHE = 10_000
+
+const NAF = /^\d{2}\.\d{2}[A-Z]$/
+const TRANCHE = /^(NN|\d{2})$/
+
+/** L'adresse de la requête, construite à partir de codes contrôlés un à un : aucun texte libre n'y entre. */
+export function requêteDuPérimètre(p: PérimètreDEntreprises): string {
+  const naf = p.naf ?? []
+  const tranches = p.tranches ?? []
+  const départements = (p.départements ?? []).map((d) => d.trim().toUpperCase())
+  for (const c of naf) if (!NAF.test(c)) throw new Error(`code NAF « ${c} » : attendu 62.02A`)
+  for (const t of tranches) if (!TRANCHE.test(t)) throw new Error(`tranche d'effectif « ${t} » inconnue`)
+  for (const d of départements) if (!DÉPARTEMENT.test(d)) throw new Error(`département « ${d} » : deux chiffres, 2A, 2B ou 97x attendus`)
+  if (!naf.length && !tranches.length && !départements.length && p.collectivités !== true) throw new Error('périmètre vide : une requête sans filtre est refusée')
+  const url = new URL(API_ENTREPRISES)
+  if (naf.length) url.searchParams.set('activite_principale', naf.join(','))
+  if (tranches.length) url.searchParams.set('tranche_effectif_salarie', tranches.join(','))
+  if (départements.length) url.searchParams.set('departement', départements.join(','))
+  if (p.collectivités === true) url.searchParams.set('est_collectivite_territoriale', 'true')
+  url.searchParams.set('etat_administratif', 'A')
+  url.searchParams.set('minimal', 'true')
+  url.searchParams.set('per_page', '1')
+  return url.toString()
+}
+
+/**
+ * Le nombre d'entreprises actives d'un périmètre, lu dans `total_results`.
+ * `plafonné` : le registre a rendu son plafond, le vrai nombre est au-dessus.
+ */
+export async function compterLesEntreprises(
+  périmètre: PérimètreDEntreprises,
+  f: typeof fetch = fetch,
+  signal?: AbortSignal,
+): Promise<{ readonly nombre: number; readonly plafonné: boolean; readonly source: string }> {
+  const source = requêteDuPérimètre(périmètre)
+  const réponse = await f(source, { headers: { accept: 'application/json' }, ...(signal ? { signal } : {}) })
+  if (!réponse.ok) throw new Error(`Recherche d'entreprises : HTTP ${réponse.status}`)
+  const données = (await réponse.json()) as { total_results?: unknown }
+  if (typeof données.total_results !== 'number') throw new Error("Recherche d'entreprises : total_results absent")
+  return { nombre: données.total_results, plafonné: données.total_results >= PLAFOND_DE_RECHERCHE, source }
+}

@@ -975,6 +975,77 @@ export const fichesDeVeille = pgTable(
 export type LigneDeFiche = typeof fichesDeVeille.$inferSelect
 
 /**
+ * Les segments de marché d'une organisation (12 novembre 2026,
+ * `docs/plan-marches-et-niches.md`) : l'arbre du marché, de ses offres et de
+ * leurs niches, une version par envoi. `contenu` porte la liste des segments :
+ * une clé, un libellé court (40 caractères, la borne de la grille), un parent,
+ * un périmètre en codes (NAF, tranches d'effectif, départements), une
+ * hypothèse de dépense chiffrée et sourcée, les noms d'entités et les numéros
+ * de familles de la grille. Ni corps de lettre ni texte de référentiel ; la
+ * porte est `contrôlerLesSegments` (`lib/domaine/marches.ts`).
+ */
+export const segmentsDeMarché = pgTable(
+  'segments_de_marche',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    version: integer('version').notNull(),
+    /** `empreinteDesSegments` : la même liste re-postée ne crée pas de version. */
+    empreinte: text('empreinte').notNull(),
+    grilleVersion: integer('grille_version').notNull(),
+    contenu: jsonb('contenu').$type<unknown[]>().notNull(),
+    crééeLe: horodatage('créée_le').notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('segments_de_marche_version_unique').on(table.organisationId, table.version),
+    check('segments_de_marche_version', sql`${table.version} >= 1`),
+    check('segments_de_marche_grille_version', sql`${table.grilleVersion} >= 1`),
+    check('segments_de_marche_empreinte_forme', sql`${table.empreinte} ~ '^[0-9a-f]{8}$'`),
+    // Une borne d'ensemble, en plus de celles de la porte : jamais un document.
+    check('segments_de_marche_taille', sql`length(${table.contenu}::text) <= 60000`),
+  ],
+)
+
+/**
+ * La mesure d'un segment pour un trimestre : des chiffres calculés par le
+ * portail (cibles, potentiel, offreurs, entrées et sorties, activité de la
+ * veille), jamais fournis par un modèle. Une ligne vivante par segment et par
+ * période ; un recalcul archive la précédente. Rien n'est montré au client
+ * avant que l'opératrice publie la période. L'état d'un segment (apparu, en
+ * croissance, en régression, éteint) n'est pas stocké : il se calcule sur la
+ * suite de ses mesures.
+ */
+export const mesuresDeMarché = pgTable(
+  'mesures_de_marche',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    /** `AAAA-Tn`. */
+    période: text('période').notNull(),
+    /** La clé du segment dans la version mesurée. */
+    clé: text('clé').notNull(),
+    segmentsVersion: integer('segments_version').notNull(),
+    valeur: jsonb('valeur').$type<Record<string, unknown>>().notNull(),
+    étatPublication: étatDePublication('état_publication').notNull().default('propose'),
+    calculéeLe: horodatage('calculée_le').notNull().defaultNow(),
+    archivéeLe: horodatage('archivée_le'),
+  },
+  (table) => [
+    uniqueIndex('mesures_de_marche_place_unique')
+      .on(table.organisationId, table.période, table.clé)
+      .where(sql`${table.archivéeLe} is null`),
+    check('mesures_de_marche_periode_forme', sql`${table.période} ~ '^[0-9]{4}-T[1-4]$'`),
+    check('mesures_de_marche_cle', sql`${table.clé} ~ '^[a-z][a-z0-9_]{0,39}$'`),
+    check('mesures_de_marche_version', sql`${table.segmentsVersion} >= 1`),
+    check('mesures_de_marche_taille', sql`length(${table.valeur}::text) <= 8000`),
+  ],
+)
+
+/**
  * L'onboarding d'une organisation, suivi par le portail (lot 1 de
  * `docs/proposition-onboarding-admin.md`, 1er novembre 2026, migration 0019).
  *

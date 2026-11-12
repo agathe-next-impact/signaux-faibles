@@ -137,6 +137,8 @@ export function ongletsDe(
       { href: `/${slug}/concurrents`, libellé: espace.marché?.écran ?? 'Concurrents', libelléCourt: espace.marché?.écranCourt ?? 'Concurr.', rubrique: 'Le marché' },
       { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs', rubrique: 'Le marché' },
       { href: `/${slug}/forces`, libellé: 'Forces du marché', libelléCourt: 'Forces', rubrique: 'Le marché' },
+      // Marchés et niches (12 novembre 2026) : le potentiel et l'évolution de chaque segment.
+      { href: `/${slug}/marches`, libellé: 'Marchés et niches', libelléCourt: 'Marchés', rubrique: 'Le marché' },
       { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes', rubrique: 'L’environnement' },
       { href: `/${slug}/pestel`, libellé: 'PESTEL', libelléCourt: 'PESTEL', rubrique: 'L’environnement' },
       { href: `/${slug}/diagnostic`, libellé: 'Diagnostic', libelléCourt: 'Diagnos.', rubrique: 'Stratégie' },

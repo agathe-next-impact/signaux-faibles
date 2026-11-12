@@ -1321,3 +1321,61 @@ L'onboarding, l'organisation du même slug (nom, état, J0), le nombre de lecteu
 actifs, la date du dernier lien d'accès parti et les dix derniers runs. Aucune
 adresse.
 
+
+## Marchés et niches (12 novembre 2026)
+
+`docs/plan-marches-et-niches.md`. Pour les seules organisations du pilote des
+outils stratégiques. Le portail calcule les mesures lui-même : la route ne
+reçoit jamais un chiffre de marché.
+
+### `POST /api/veille/marches` : poster les segments
+
+```
+{ "slug": "konica-minolta-france", "segments": [
+  { "cle": "marche", "libelle": "Impression, documents et services IT", "parent": null },
+  { "cle": "industries_graphiques", "libelle": "Industries graphiques", "parent": "marche",
+    "cibles": { "sorte": "registre", "naf": ["18.12Z"], "tranches": ["11", "12"], "departements": ["69"], "collectivites": false },
+    "offre": { "naf": ["46.66Z"], "departements": ["69"], "texte": "photocopieurs" },
+    "depense": { "basse": 1000, "haute": 3000, "source": "https://…" },
+    "presents": ["Heidelberg"], "entites": ["Heidelberg"], "familles": [{ "veille": "concurrentiel", "numero": 2 }] } ] }
+```
+
+Une racine (`parent: null`), ses offres, leurs niches : trois niveaux, quarante
+segments au plus. `cibles` est soit un périmètre compté au registre des
+entreprises (`registre`), soit un nombre posé avec sa source
+(`{ "sorte": "declare", "nombre": 135, "source": "https://…" }`). `depense` est
+l'hypothèse de dépense annuelle par cible, en euros hors taxes. `presents` :
+les concurrents de la grille présents sur le segment (`null` ou absent : non
+renseigné ; liste vide : aucun, le segment est dit ouvert). `entites` et
+`familles` désignent les faits qui comptent pour l'activité du segment ; les
+unes et les autres doivent figurer dans la grille.
+
+Réponses : `créée` (201) ou `inchangée` (200) avec `version` ; `refusée` (422)
+avec `refus` et `message` de reprise ; `hors-pilote`, `grille-absente` (200) ;
+`organisation-inconnue` (404).
+
+### `GET /api/veille/marches?slug=<slug>` : relire
+
+La dernière version des segments, dans le format où ils se postent, les
+`périodes` mesurées avec leur état de publication, et la `vue` calculée sur
+toutes les mesures vivantes : une ligne par segment dans l'ordre de l'arbre,
+avec `cibles`, `potentiel`, `offreurs`, `entrées`, `sorties`, `présents`,
+`faits`, `état`, `tendance`, `modifié`, `ouverte`, `sources` et `limites`.
+`aucun` tant que rien n'est posté.
+
+### `PATCH /api/veille/marches` : mesurer, puis publier
+
+```
+{ "slug": "konica-minolta-france", "periode": "2026-T4", "action": "mesurer" }
+{ "slug": "konica-minolta-france", "periode": "2026-T4", "etat": "publie" }
+```
+
+`mesurer` : le portail compte chaque périmètre au registre des entreprises et
+au BODACC (quarante secondes au plus, n.d. au-delà), rattache les faits
+étiquetés du trimestre, reprend les comptes publiés du benchmark du trimestre
+(du précédent à défaut), et enregistre les mesures en proposition. Un trimestre
+en cours se mesure jusqu'à aujourd'hui. Rejouable tant que la période n'est pas
+publiée ; `période-publiée` (409) ensuite, la retirer d'abord.
+
+`etat` (`publie`, `retire`, `propose`) : le geste de l'opératrice. Rien n'est
+montré au client avant `publie` ; `aucune` (404) sans mesure pour la période.
