@@ -180,6 +180,9 @@ describe('marchés et niches', () => {
     // Proposées : la relecture les voit, l'écran non.
     expect(await lireLesMarchésDuPilote({ slug: 'infralliance' }, db)).toMatchObject({ sorte: 'lus', périodes: [{ période: '2026-T4', état: 'propose', mesures: 3 }] })
     expect(await marchésDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+    // L'aperçu de l'opératrice les lit, et dit qu'elles ne sont pas publiées.
+    expect(await marchésDeLEspace({ registre: REGISTRE, aperçu: true }, db)).toMatchObject({ période: '2026-T4', nonPublié: true })
+    expect(await marchésDeLEspace({ registre: AUTRE_REGISTRE, aperçu: true }, db)).toBeNull()
 
     // Un recalcul archive et remplace, tant que rien n'est publié.
     expect(await mesurerLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, { f, maintenant, ...sansAttente })).toMatchObject({ sorte: 'enregistrées', mesures: 3, archivées: 3 })
@@ -189,6 +192,8 @@ describe('marchés et niches', () => {
     const vue = await marchésDeLEspace({ registre: REGISTRE }, db)
     expect(vue?.lignes.map((l) => l.clé)).toEqual(['marche', 'colocation', 'souverain'])
     expect(vue?.comptes).toEqual({ segments: 3, chiffrés: 2, ouverts: 1 })
+    expect(vue?.nonPublié).toBe(false)
+    expect(await marchésDeLEspace({ registre: REGISTRE, aperçu: true }, db)).toMatchObject({ période: '2026-T4', nonPublié: false })
 
     // Publiée : un recalcul est refusé, ce que le client lit ne change pas sous ses yeux.
     expect(await mesurerLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, { f, maintenant, ...sansAttente })).toEqual({ sorte: 'période-publiée' })
@@ -206,6 +211,8 @@ describe('marchés et niches', () => {
     // Retirée : l'écran revient au dernier trimestre publié.
     await publierLesMarchésDuPilote({ slug: 'infralliance', période: '2027-T1', état: 'retire' }, db)
     expect((await marchésDeLEspace({ registre: REGISTRE }, db))?.période).toBe('2026-T4')
+    // Une période retirée ne revient pas par l'aperçu.
+    expect((await marchésDeLEspace({ registre: REGISTRE, aperçu: true }, db))?.période).toBe('2026-T4')
 
     // Rien pour un autre registre, rien hors de l'espace réorganisé, rien en mode notion.
     expect(await marchésDeLEspace({ registre: AUTRE_REGISTRE }, db)).toBeNull()

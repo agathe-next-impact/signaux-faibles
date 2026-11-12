@@ -59,6 +59,9 @@ Tout le reste en découle.
 - **L'étude concurrentielle devient « qui occupe quel segment »** : concurrents
   présents par segment, chiffre d'affaires cumulé lu par le benchmark, segments
   ouverts.
+- **Aperçu de l'opératrice** (12 novembre 2026) : une session au privilège
+  « Tous les espaces » lit sur l'écran les mesures proposées, signalées par un
+  bandeau, avant de les publier ; un client ne lit que les publiées.
 - **Aucun chiffre ne vient d'un modèle.** La route ne reçoit que des segments et
   un geste. Un registre muet vaut n.d. ; chaque limite est écrite avec la mesure.
 - **Rien n'est demandé au client** (décision de l'opératrice, 12 novembre 2026).

@@ -627,6 +627,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(écran.indexOf("bornée('")).toBeGreaterThan(0)
     expect(écran).toContain('espaceRéorganisé')
     expect(écran).toContain('publiées: true')
+    // L'aperçu des mesures proposées ne tient qu'au privilège de la session, passé par l'écran.
+    expect(écran).toContain('entrée.aperçu === true')
+    expect(readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', 'marches', 'page.tsx'), 'utf8')).toContain('aperçu: accès.aperçu')
     expect(écran).not.toMatch(/compterLesEntreprises\(|compterLesAnnonces\(|lireLesAchatsPublics\(|fetch\(/)
     expect(source).not.toMatch(/lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(/)
     // La route ne reçoit que des segments et un geste : aucune mesure ne vient de l'appelant.
