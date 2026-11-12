@@ -4,15 +4,20 @@
  * seul endroit où ses chiffres sont écrits dans le code : un écran qui les
  * recopierait finirait par afficher un ancien prix.
  *
- * Depuis le 7 novembre 2026 : **149 € HT par mois** (259 € le seul 6 novembre,
- * ramené à 149 € le 7 à la demande de l'opératrice), par organisation, qui
- * comprend la création du référentiel et deux heures de prise en main. La
- * formule annuelle, retirée le 6 novembre, revient le 7 novembre 2026 (demande
- * de l'opératrice) : dix mois payés, deux mois offerts.
+ * Depuis le 12 novembre 2026 : **249 € HT par mois** (demande de
+ * l'opératrice ; 149 € du 7 au 11 novembre, 259 € le seul 6 novembre), par
+ * organisation, qui comprend la création du référentiel et deux heures de prise
+ * en main. La formule annuelle, retirée le 6 novembre, revient le 7 novembre
+ * 2026 (demande de l'opératrice).
  */
-export const PRIX_MENSUEL_HT = 149
-/** Dix mois payés : « deux mois offerts », la règle tenue depuis l'offre du 17 octobre. */
-export const PRIX_ANNUEL_HT = PRIX_MENSUEL_HT * 10
+export const PRIX_MENSUEL_HT = 249
+/**
+ * L'annuel, écrit en clair depuis le 12 novembre 2026 : il valait jusque-là
+ * `PRIX_MENSUEL_HT * 10` (dix mois payés, « deux mois offerts »), et le passage
+ * du mensuel à 249 € l'aurait porté à 2 490 € sans décision de l'opératrice.
+ * Il reste à 1 490 € HT, sur `STRIPE_PRIX_ANNUEL`, tant qu'elle n'a pas tranché.
+ */
+export const PRIX_ANNUEL_HT = 1490
 /** La prise en main comprise dans l'abonnement, en heures. */
 export const HEURES_DE_PRISE_EN_MAIN = 2
 /**
