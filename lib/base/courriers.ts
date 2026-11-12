@@ -124,6 +124,8 @@ export async function courriersRécents(
     readonly état: string
     readonly slug: string | null
     readonly lecteur: string | null
+    /** La ligne du lecteur, pour le renvoi depuis la fiche (12 novembre 2026) ; jamais une adresse. */
+    readonly lecteurId: string | null
     readonly destinataireEmpreinte: string
     readonly déclencheur: string
     readonly messageGmail: string | null
@@ -138,6 +140,7 @@ export async function courriersRécents(
         état: courriers.état,
         slug: organisations.slug,
         lecteur: lecteurs.nom,
+        lecteurId: courriers.lecteurId,
         destinataireEmpreinte: courriers.destinataireEmpreinte,
         déclencheur: courriers.déclencheur,
         messageGmail: courriers.messageGmail,
@@ -229,6 +232,8 @@ export type DestinatairesDOrganisation = {
   readonly nom: string
   readonly registreNotion: string | null
   readonly offre: 'standard' | 'fondateur' | 'gratuite'
+  /** Parutions complètes de l'essai : le renvoi d'un courrier d'essai les écrit (12 novembre 2026). */
+  readonly parutionsDEssai: number
   readonly lecteurs: Array<{ readonly id: string; readonly nom: string; readonly email: string }>
 }
 
@@ -248,6 +253,7 @@ export async function organisationEtSesLecteurs(
         nom: organisations.nom,
         registreNotion: organisations.registreNotion,
         offre: organisations.offre,
+        parutionsDEssai: organisations.parutionsDEssai,
       })
       .from(organisations)
       .where(and(eq(organisations.id, organisationId), isNull(organisations.archivéeLe)))

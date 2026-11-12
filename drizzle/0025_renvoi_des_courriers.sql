@@ -1,0 +1,2 @@
+DROP INDEX "courriers_parcours_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "courriers_parcours_unique" ON "courriers" USING btree ("sorte","organisation_id",coalesce("lecteur_id", '00000000-0000-0000-0000-000000000000'::uuid)) WHERE "courriers"."sorte" in ('essai_derniere_parution', 'essai_tronquee') and "courriers"."état" <> 'echec' and "courriers"."clé" is null;

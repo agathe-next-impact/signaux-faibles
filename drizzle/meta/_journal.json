@@ -176,6 +176,13 @@
       "when": 1794057436455,
       "tag": "0024_sujets_du_marche",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794459162756,
+      "tag": "0025_renvoi_des_courriers",
+      "breakpoints": true
     }
   ]
 }

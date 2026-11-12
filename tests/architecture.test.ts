@@ -834,6 +834,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // les lecteurs actifs derrière `exigerOpérateur`, comme `adresseDUnLecteur`.
     expect(appelants('lecteursÀGérer')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts', 'lib/portail/gestion.ts'])
     expect(appelants('adresseDUnLecteur')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts'])
+    // Le renvoi manuel d'un courrier commercial (12 novembre 2026) : une seule
+    // entrée, l'action de la fiche, derrière la garde ; toujours un brouillon.
+    expect(appelants('renvoyerUnCourrierCommercial')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/renvoi-courriers.ts'])
     const garde = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
     for (const [fonction, lecture] of [
       ['export async function lireLaGestionDUneOrganisation', 'gestionDUneOrganisation('],
@@ -855,6 +858,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       ['export async function révoquerUnLecteur', 'révoquerLecteurParId('],
       ['export async function réactiverUnLecteur', 'changerActivation('],
       ['export async function publierLaLettre', 'publierEtEnvoyer('],
+      ['export async function renvoyerUnCourrier', 'renvoyerUnCourrierCommercial('],
     ] as const) {
       const corps = actions.slice(actions.indexOf(action))
       expect(corps.indexOf('exigerOpérateur()'), action).toBeGreaterThan(0)

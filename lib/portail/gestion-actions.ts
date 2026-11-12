@@ -12,7 +12,9 @@ import { publierLaFicheDuPilote } from '@/lib/portail/fiche-veille'
 import { publierEtEnvoyer } from '@/lib/portail/lettres-a-publier'
 import { lancerLOuverture, moteurDesOnboardings, vueDeLOnboarding } from '@/lib/portail/onboarding'
 import { envoyerUnLienDAccès, type IssueDuLien } from '@/lib/portail/ouverture'
+import { estRenvoyable, renvoyerUnCourrierCommercial } from '@/lib/portail/renvoi-courriers'
 import { lecteursModifiables } from '@/lib/portail/situation'
+import { env } from '@/lib/env'
 import { réglerLEspace, réglerLeMarché, réglerLePilote, validerLaVersion } from '@/lib/portail/strategie'
 
 /**
@@ -187,6 +189,58 @@ export async function renvoyerLeLien(données: FormData): Promise<void> {
   const code = email ? await envoyerLeLien(email, organisation.id, 'operatrice') : 'lecteur-inconnu'
   console.info(`[gestion] ${accès.nom} : ${slug}, lien de ${email ? empreinte(email) : 'lecteur inconnu'}, ${code}.`)
   retour(slug, code, 'lecteurs')
+}
+
+/**
+ * Renvoyer un courrier commercial (12 novembre 2026) : un nouveau brouillon Gmail
+ * du courrier choisi, pour un lecteur actif ou pour tous, malgré l'unicité du
+ * courrier d'origine (`lib/portail/renvoi-courriers.ts`). Rien ne part au client :
+ * l'opératrice relit et envoie le brouillon. La garde d'abord.
+ */
+export async function renvoyerUnCourrier(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const sorte = données.get('sorte')
+  if (typeof sorte !== 'string' || !estRenvoyable(sorte)) notFound()
+  const cible = données.get('lecteur')
+  const tous = cible === 'tous'
+  const lecteurId = tous ? null : lecteurDu(données)
+  const accès = await exigerOpérateur()
+  const organisation = await organisationÀGérer(slug)
+  if (!organisation) notFound()
+  let code: string
+  try {
+    const r = await renvoyerUnCourrierCommercial({
+      organisationId: organisation.id,
+      sorte,
+      lecteurId,
+      maintenant: new Date(),
+      portailUrl: env().PORTAIL_URL,
+    })
+    if (r.sorte !== 'préparé') code = r.sorte
+    else {
+      const issues = r.courriers.map((c) => c.issue)
+      const déposés = issues.filter((i) => i === 'brouillon').length
+      code =
+        déposés === issues.length
+          ? 'renvoi-préparé'
+          : déposés > 0
+            ? 'renvoi-partiel'
+            : issues.includes('déjà-envoyé')
+              ? 'renvoi-déjà-préparé'
+              : issues.includes('sans-destinataire')
+                ? 'renvoi-sans-lecteur'
+                : issues.includes('accès-inactif')
+                  ? 'renvoi-accès-inactif'
+                  : issues.includes('non-journalisable')
+                    ? 'renvoi-sans-journal'
+                    : 'renvoi-échec'
+    }
+  } catch (erreur) {
+    console.error(`[gestion] ${slug} : renvoi de ${sorte} impossible (${messageDe(erreur)}).`)
+    code = 'échec'
+  }
+  console.info(`[gestion] ${accès.nom} : ${slug}, renvoi de ${sorte} (${tous ? 'tous les lecteurs actifs' : 'un lecteur'}), ${code}.`)
+  retour(slug, code, 'courriers')
 }
 
 const nomEtAdresse = z.object({ nom: z.string().trim().min(1).max(200), email: z.email().max(320) })
