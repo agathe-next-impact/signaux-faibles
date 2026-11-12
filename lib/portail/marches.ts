@@ -3,6 +3,7 @@ import {
   derniersSegments,
   mesuresVivantes,
   périodesMesurées,
+  périodesMesuréesDuPilote,
   posterLesSegments,
   publierLesMesures,
   remplacerLesMesures,
@@ -15,6 +16,8 @@ import {
   empreinteDesSegments,
   fenêtreDuTrimestre,
   mesurerLesSegments,
+  périodesDeMarchés,
+  trimestreDuJour,
   MONTANT_MAX_D_UN_MARCHÉ,
   messageDeRepriseDesSegments,
   TRANCHES_D_EFFECTIF,
@@ -22,6 +25,7 @@ import {
   type AchatsPublics,
   type Compte,
   type ComptesDuSegment,
+  type MarchésDUneOrganisation,
   type MesureDeSegment,
   type SegmentDeMarché,
   type VueDesMarchés,
@@ -324,6 +328,39 @@ export async function publierLesMarchésDuPilote(entrée: { readonly slug: strin
   if (pilote.sorte !== 'pilote') return pilote
   const mesures = await publierLesMesures({ organisationId: pilote.organisation.id, période: entrée.période, état: entrée.état }, db)
   return mesures > 0 ? { sorte: 'réglée', période: entrée.période, état: entrée.état, mesures } : { sorte: 'aucune' }
+}
+
+/**
+ * La mesure qui suit un dépôt, sans qu'aucune tâche ait à la demander : un arbre
+ * de segments qui vient d'être enregistré mesure le trimestre en cours, la
+ * synthèse d'un trimestre mesure ce trimestre. Toujours en proposition ; une
+ * période publiée, une organisation sans arbre ou hors pilote ne mesurent rien.
+ * Appelée dans `after()` : elle ne lève jamais, la réponse du dépôt est partie.
+ */
+export async function mesurerÀLaSuite(
+  entrée: { readonly slug: string; readonly période?: string },
+  db?: Base,
+  dépendances: DépendancesDesMesures = {},
+): Promise<RésultatDesMesures['sorte'] | 'échec'> {
+  const jour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date((dépendances.maintenant ?? Date.now)()))
+  const période = entrée.période ?? trimestreDuJour(jour)
+  try {
+    const { sorte } = await mesurerLesMarchésDuPilote({ slug: entrée.slug, période }, db, dépendances)
+    console.info(`[veille/marches] ${entrée.slug} ${période} : mesure à la suite d’un dépôt, ${sorte}.`)
+    return sorte
+  } catch (erreur) {
+    console.error(`[veille/marches] ${entrée.slug} ${période} : mesure à la suite d’un dépôt impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    return 'échec'
+  }
+}
+
+/**
+ * Les périodes mesurées de toutes les organisations du pilote, pour l'écran des
+ * synthèses de l'opératrice. Traverse les clients : sa garde est dans
+ * `listerLesSynthèses` (`lib/auth/appartenance.ts`), son seul appelant.
+ */
+export async function tableauDesMarchés(db?: Base): Promise<MarchésDUneOrganisation[]> {
+  return périodesDeMarchés(await périodesMesuréesDuPilote(db))
 }
 
 // ── L'écran « Marchés et niches » ───────────────────────────────────────────

@@ -1,8 +1,9 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { after, NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { baseConfigurée } from '@/lib/base/client'
 import type { SynthèseProposée } from '@/lib/domaine/strategie'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
+import { mesurerÀLaSuite } from '@/lib/portail/marches'
 import {
   lireLaSynthèseDuPilote,
   modifierLÉnoncéDuPilote,
@@ -63,6 +64,9 @@ import {
  * `titre` pour un scénario seulement. Mêmes bornes que la porte de la synthèse ;
  * `refusé` (422) avec les refus, `déjà-publiée` (409) : retirer d'abord.
  */
+/** La mesure des marchés qui suit la synthèse d'un trimestre tient dans `after()` : quarante-cinq secondes au plus. */
+export const maxDuration = 60
+
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 const PÉRIODE = /^\d{4}-(?:0[1-9]|1[0-2]|T[1-4])$/
@@ -219,6 +223,8 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
         (résultat.sorte === 'refusée' ? ` (${résultat.refus.length} refus)` : '') +
         '.',
     )
+    // La synthèse d'un trimestre mesure les marchés de ce trimestre, en proposition (12 novembre 2026).
+    if (résultat.sorte === 'enregistrée' && periode.includes('-T')) after(() => mesurerÀLaSuite({ slug, période: periode }))
     return NextResponse.json({ état: résultat.sorte, ...résultat }, { status: STATUT[résultat.sorte] })
   } catch (erreur) {
     console.error(`[veille/syntheses] ${slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

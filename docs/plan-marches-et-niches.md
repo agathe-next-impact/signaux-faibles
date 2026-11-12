@@ -183,20 +183,36 @@ Restent à l'opératrice ou à la revue : les hypothèses de dépense par cible,
 leur source ; les nombres déclarés pour les trois périmètres plafonnés ; la
 présence des concurrents sur les niches où elle n'est pas renseignée.
 
-## 5. Suite
+## 5. Pour tout client (12 novembre 2026)
+
+Décision de l'opératrice : l'écran est alimenté pour tout client, sans rien lui
+demander. Trois pièces.
+
+- **L'arbre s'écrit à l'onboarding.** Le point 5bis de
+  `/onboarding-premiere-lettre` et `/onboarding-outils` (rattrapage) le rédigent
+  depuis les référentiels et la grille, selon `docs/arbre-des-marches.md`, qui
+  fait foi : ce que rien n'établit s'omet, aucun chiffre ne vient de la tâche.
+- **La mesure suit le dépôt, en code.** Un arbre créé mesure le trimestre en
+  cours ; la synthèse d'un trimestre (amorçage compris) mesure ce trimestre
+  (`mesurerÀLaSuite`, dans `after()` des deux routes). Aucune tâche n'appelle
+  `mesurer`, aucune consigne à tenir dans une page ; toujours en proposition,
+  jamais sur une période publiée.
+- **L'opératrice publie depuis l'admin.** `/espaces/syntheses`, section
+  « Marchés et niches » : une ligne par trimestre mesuré, « Relire dans
+  l'espace » (sa session y voit les mesures proposées sous un bandeau), puis
+  « Publier » ou « Retirer » (`publierLesMarchés`, privilège avant l'écriture).
+
+## 6. Suite
 
 - **Étape 3, demande révélée** : commande publique (DECP, BOAMP), montants par
   segment et marchés gagnés par concurrent. Seule source nouvelle prévue.
-- Le calcul trimestriel dans la revue (appel de `mesurer` avec la synthèse du
-  trimestre), et la consigne correspondante dans la page Notion de la revue.
-- Le bouton « Publier » des mesures sur `/espaces/syntheses`.
 - Un rattachement explicite d'un fait à un segment par l'étiquetage, pour les
   niches qu'aucune famille ni entité ne délimite.
 - La matrice GE calculée (attractivité depuis le potentiel et la dynamique),
   une fois deux trimestres mesurés.
 - URSSAF, France Travail, INPI : seulement si un besoin précis les justifie.
 
-## 6. Limites connues
+## 7. Limites connues
 
 - Le potentiel est un ordre de grandeur : sa valeur tient aux hypothèses
   affichées et à son évolution d'un trimestre à l'autre.

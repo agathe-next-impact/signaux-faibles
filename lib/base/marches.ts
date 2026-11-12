@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
-import { mesuresDeMarché, segmentsDeMarché } from '@/lib/base/schema'
+import { mesuresDeMarché, organisations, segmentsDeMarché } from '@/lib/base/schema'
 
 /**
  * Marchés et niches (12 novembre 2026) : seul écrivain et seul lecteur des
@@ -140,5 +140,21 @@ export async function périodesMesurées(organisationId: string, db: Base = base
       .groupBy(mesuresDeMarché.période, mesuresDeMarché.étatPublication)
       .orderBy(asc(mesuresDeMarché.période))
     return lignes.map((l) => ({ période: l.période, état: l.état, mesures: Number(l.mesures) }))
+  })
+}
+
+/**
+ * Les périodes mesurées de toutes les organisations du pilote, par état : le
+ * tableau de l'opératrice. Traverse les clients ; des comptes, jamais une mesure.
+ */
+export async function périodesMesuréesDuPilote(db: Base = base()): Promise<{ slug: string; nom: string; période: string; état: ÉtatDesMesures; mesures: number }[]> {
+  return protéger('lecture des périodes mesurées du pilote', async () => {
+    const lignes = await db
+      .select({ slug: organisations.slug, nom: organisations.nom, période: mesuresDeMarché.période, état: mesuresDeMarché.étatPublication, mesures: sql<number>`count(*)::int` })
+      .from(mesuresDeMarché)
+      .innerJoin(organisations, eq(organisations.id, mesuresDeMarché.organisationId))
+      .where(and(isNull(mesuresDeMarché.archivéeLe), eq(organisations.outilsStratégiques, true), isNull(organisations.archivéeLe)))
+      .groupBy(organisations.slug, organisations.nom, mesuresDeMarché.période, mesuresDeMarché.étatPublication)
+    return lignes.map((l) => ({ slug: l.slug, nom: l.nom, période: l.période, état: l.état, mesures: Number(l.mesures) }))
   })
 }

@@ -1,6 +1,6 @@
 ---
 name: onboarding-outils
-description: Rattrapage des écrans stratégiques d'une organisation dont la première lettre existe déjà — coche « Outils stratégiques », pose le drapeau du pilote et l'espace réorganisé, écrit et poste la grille, étiquette les lettres, poste la synthèse initiale, l'amorçage trimestriel et la fiche de veille, sans rien publier. À lancer par /onboarding-outils <organisation>.
+description: Rattrapage des écrans stratégiques d'une organisation dont la première lettre existe déjà — coche « Outils stratégiques », pose le drapeau du pilote et l'espace réorganisé, écrit et poste la grille, étiquette les lettres, poste la synthèse initiale, l'amorçage trimestriel, la fiche de veille et l'arbre des marchés, sans rien publier. À lancer par /onboarding-outils <organisation>.
 argument-hint: "<nom de l'organisation, au statut 4, 5 ou 6>"
 disable-model-invocation: true
 allowed-tools:
@@ -52,9 +52,10 @@ Organisation visée : $ARGUMENTS
    `GET /api/veille/grille?slug=<slug>`, `GET /api/veille/faits?slug=<slug>&debut=<J-99>&fin=<J>`,
    `GET /api/veille/syntheses?slug=<slug>&periode=<mois courant, AAAA-MM>`,
    `GET /api/veille/syntheses?slug=<slug>&periode=<trimestre civil courant, AAAA-Tn>`
-   et `GET /api/veille/fiche?slug=<slug>`. Ne refais que ce qui manque : une grille
-   « lue » et validée, des faits déjà étiquetés, une synthèse ou une fiche « lue »
-   ne se repostent pas.
+   `GET /api/veille/fiche?slug=<slug>` et `GET /api/veille/marches?slug=<slug>`.
+   Ne refais que ce qui manque : une grille « lue » et validée, des faits déjà
+   étiquetés, une synthèse ou une fiche « lue », un arbre des marchés « lus » ne
+   se repostent pas.
 
 4. **Rattrape, dans cet ordre.** Aucun de ces pas ne touche aux lettres ni
    n'envoie quoi que ce soit au client.
@@ -111,20 +112,35 @@ Organisation visée : $ARGUMENTS
      remplacera.
    - **Fiche de veille** : S.8, `POST /api/veille/fiche` avec la version de la
      grille. Une présentation par nom de la grille, l'organisation exceptée.
+   - **Arbre des marchés** (12 novembre 2026, décision de l'opératrice : l'écran
+     « Marchés et niches » est alimenté pour tout client). Seulement si le `GET`
+     des marchés répond `aucun`. Écris l'arbre selon `docs/arbre-des-marches.md`,
+     qui fait foi : une racine, trois à six offres tirées de la liste des offres
+     de la grille, zéro à trois niches par offre ; périmètres en codes NAF et
+     tranches d'effectif avec leur `libelle` de cibles, dépense seulement avec sa
+     source publique, codes CPV pour un segment d'achat public, entités et
+     familles de la grille. **Aucun chiffre de marché** : ce que rien n'établit
+     s'omet. `POST /api/veille/marches`. Le portail mesure seul le trimestre en
+     cours après un arbre créé : n'appelle ni `mesurer` ni `etat`. Une minute
+     plus tard, le `GET` doit rendre le trimestre dans `périodes`, à l'état
+     `propose`.
    Un refus 422 se corrige point par point et se renvoie complet, deux reprises
    au plus ; au-delà, consigne-le et passe au pas suivant.
 
-5. **Contrôle** : les cinq `GET` du point 3 rendent « lue » (grille avec
-   `validéeLe`) et un nombre de faits non nul. Écris dans « Dernier lancement
+5. **Contrôle** : les `GET` du point 3 rendent « lue » (grille avec
+   `validéeLe`), « lus » pour les marchés, et un nombre de faits non nul. Écris dans « Dernier lancement
    manuel » : « outils stratégiques rattrapés le JJ/MM : grille vN, N faits,
-   synthèses AAAA-MM et AAAA-Tn (amorçage) et fiche vN proposées ».
+   synthèses AAAA-MM et AAAA-Tn (amorçage), fiche vN et arbre des marchés vN (N segments) proposés ».
 
 6. **Notification `[Relecture]`** à agathe@signauxfaibles.io : ce qui a été
    posté, le « texte » de chaque synthèse tel que le rend le `GET` (celle du
    trimestre présentée comme un **amorçage** : bâtie sur les premières lettres,
    ses scénarios sont des hypothèses de départ), et ce qui reste à l'opératrice
    sur `/espaces/abonnements/<slug>` : publier les deux synthèses et la fiche de
-   veille. Tu ne publies rien toi-même.
+   veille ; et sur `/espaces/syntheses`, section « Marchés et niches » : relire
+   les mesures dans l'espace puis les publier. Dis l'arbre posté (ses offres,
+   ses niches) et les segments laissés sans cibles ou sans dépense. Tu ne
+   publies rien toi-même.
 
 Aucun jeton à manipuler : n'en écris jamais dans une commande. 401 ou 403 : la
 session n'a pas le secret réseau pour ce chemin, dis-le en tête du compte rendu.

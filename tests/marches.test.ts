@@ -403,4 +403,21 @@ describe('l’état d’un segment', () => {
     expect(montantCourt(2_400_000_000)).toBe('2,4 Md€')
     expect(montantCourt(950)).toBe('950 €')
   })
+
+  it('le trimestre d’un jour, et les périodes rangées pour l’opératrice', async () => {
+    const { trimestreDuJour, périodesDeMarchés } = await import('@/lib/domaine/marches')
+    expect(['2026-01-01', '2026-03-31', '2026-04-01', '2026-11-12', '2026-12-31'].map(trimestreDuJour)).toEqual(['2026-T1', '2026-T1', '2026-T2', '2026-T4', '2026-T4'])
+    expect(
+      périodesDeMarchés([
+        { slug: 'b', nom: 'Bêta', période: '2026-T4', état: 'propose', mesures: 5 },
+        { slug: 'a', nom: 'Alpha', période: '2026-T3', état: 'publie', mesures: 4 },
+        { slug: 'a', nom: 'Alpha', période: '2026-T4', état: 'publie', mesures: 2 },
+        { slug: 'a', nom: 'Alpha', période: '2026-T4', état: 'propose', mesures: 2 },
+        { slug: 'b', nom: 'Bêta', période: '2026-T2', état: 'retire', mesures: 5 },
+      ]),
+    ).toEqual([
+      { slug: 'a', nom: 'Alpha', périodes: [{ période: '2026-T4', mesures: 4, état: 'mêlée' }, { période: '2026-T3', mesures: 4, état: 'publiée' }] },
+      { slug: 'b', nom: 'Bêta', périodes: [{ période: '2026-T4', mesures: 5, état: 'proposée' }, { période: '2026-T2', mesures: 5, état: 'retirée' }] },
+    ])
+  })
 })

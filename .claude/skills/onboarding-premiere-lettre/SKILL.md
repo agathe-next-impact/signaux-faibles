@@ -274,12 +274,24 @@ Organisation visée : $ARGUMENTS
      « stable » ; s'il n'en existe aucun, l'amorçage n'est pas posté et la
      notification le dit. La revue trimestrielle ordinaire postera la même
      période et le remplacera.
+   - poste l'**arbre des marchés** (12 novembre 2026, décision de l'opératrice :
+     l'écran « Marchés et niches » est alimenté pour tout client, sans rien lui
+     demander). Seulement si `GET /api/veille/marches?slug=<slug>` répond
+     `aucun`, et après la grille validée. Règle d'écriture :
+     `docs/arbre-des-marches.md`, qui fait foi (une racine, trois à six offres
+     tirées des offres de la grille, zéro à trois niches par offre ; périmètres
+     en codes NAF et tranches d'effectif avec leur `libelle` de cibles, dépense
+     seulement avec sa source publique, codes CPV pour l'achat public, entités
+     et familles de la grille). **Aucun chiffre de marché** : ce que rien
+     n'établit s'omet. `POST /api/veille/marches` ; le portail mesure seul le
+     trimestre en cours, en proposition : n'appelle ni `mesurer` ni `etat`.
    Aucun de ces pas ne bloque la lettre ; rien n'en va au client avant que
    l'opératrice ne publie les deux synthèses et la fiche. **Contrôle de fin
    d'étape (s8)** : `GET /api/veille/grille?slug=<slug>` rend `"état": "lue"` et
    `validéeLe` posé, `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-MM>`,
    `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>` et
-   `GET /api/veille/fiche?slug=<slug>` rendent `"état": "lue"`. Ce qui manque se
+   `GET /api/veille/fiche?slug=<slug>` rendent `"état": "lue"`, et
+   `GET /api/veille/marches?slug=<slug>` rend `"état": "lus"`. Ce qui manque se
    dit en tête de la notification, et se rattrape par `/onboarding-outils <nom>`.
    La notification porte le « texte » des deux synthèses et dit de la
    trimestrielle qu'elle est un **amorçage** : bâtie sur les faits de la première
