@@ -328,7 +328,12 @@ export type PérimètreDEntreprises = {
   readonly tranches?: readonly string[]
   readonly départements?: readonly string[]
   readonly collectivités?: boolean
+  /** Section de la nomenclature d'activités (A à U) : elle partage un périmètre sans code NAF. */
+  readonly section?: string
 }
+
+/** Les vingt et une sections de la NAF : toute entreprise est dans une seule. */
+export const SECTIONS_D_ACTIVITÉ = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U'] as const
 
 /** Le registre ne compte pas au-delà : il rend ce nombre pour tout périmètre plus large. */
 export const PLAFOND_DE_RECHERCHE = 10_000
@@ -344,12 +349,14 @@ export function requêteDuPérimètre(p: PérimètreDEntreprises): string {
   for (const c of naf) if (!NAF.test(c)) throw new Error(`code NAF « ${c} » : attendu 62.02A`)
   for (const t of tranches) if (!TRANCHE.test(t)) throw new Error(`tranche d'effectif « ${t} » inconnue`)
   for (const d of départements) if (!DÉPARTEMENT.test(d)) throw new Error(`département « ${d} » : deux chiffres, 2A, 2B ou 97x attendus`)
+  if (p.section !== undefined && !/^[A-U]$/.test(p.section)) throw new Error(`section d'activité « ${p.section} » : une lettre de A à U`)
   if (!naf.length && !tranches.length && !départements.length && p.collectivités !== true) throw new Error('périmètre vide : une requête sans filtre est refusée')
   const url = new URL(API_ENTREPRISES)
   if (naf.length) url.searchParams.set('activite_principale', naf.join(','))
   if (tranches.length) url.searchParams.set('tranche_effectif_salarie', tranches.join(','))
   if (départements.length) url.searchParams.set('departement', départements.join(','))
   if (p.collectivités === true) url.searchParams.set('est_collectivite_territoriale', 'true')
+  if (p.section !== undefined) url.searchParams.set('section_activite_principale', p.section)
   url.searchParams.set('etat_administratif', 'A')
   url.searchParams.set('minimal', 'true')
   url.searchParams.set('per_page', '1')

@@ -60,8 +60,18 @@ Tout le reste en découle.
   présents par segment, chiffre d'affaires cumulé lu par le benchmark, segments
   ouverts.
 - **Aucun chiffre ne vient d'un modèle.** La route ne reçoit que des segments et
-  un geste. Un registre muet vaut n.d. ; un compte au plafond du registre
-  (10 000) ne donne pas de potentiel ; chaque limite est écrite avec la mesure.
+  un geste. Un registre muet vaut n.d. ; chaque limite est écrite avec la mesure.
+- **Rien n'est demandé au client** (décision de l'opératrice, 12 novembre 2026).
+  Un périmètre au plafond du registre (10 000) est **découpé par le portail** :
+  par tranche d'effectif, puis, pour une tranche encore au plafond, par code NAF
+  quand il en porte plusieurs, par section d'activité (A à U) quand il n'en porte
+  aucun ; chaque entreprise est dans une seule case, la somme est le nombre. Une
+  case encore au plafond fait du total un minimum, sans potentiel. Une entreprise
+  sans tranche déclarée n'y entre pas (0,5 % sur le périmètre témoin 18.12Z).
+  La **présence des concurrents**, quand l'arbre ne la pose pas, est **déduite** :
+  un concurrent de la grille que nomme un fait du segment dans le trimestre
+  (`présentsOrigine: faits`, le nombre de faits écrit dans les limites) ; sans
+  concurrent nommé, elle reste non renseignée, jamais « ouverte ».
 
 Seuils (`lib/domaine/marches.ts`) : un écart de taille compte à partir de 5 % ;
 à taille égale ou absente, l'activité départage à partir d'un quart et de deux

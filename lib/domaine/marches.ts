@@ -254,7 +254,8 @@ export function empreinteDesSegments(segments: readonly SegmentDeMarché[]): str
 // ── La mesure d'un segment ──────────────────────────────────────────────────
 
 /** Un compte lu dans un registre : `null` s'il n'a pas répondu, `plafonné` s'il a rendu son plafond. */
-export type Compte = { readonly nombre: number | null; readonly plafonné: boolean; readonly source: string | null }
+/** `découpé` : le périmètre dépassait le plafond du registre, le nombre est la somme de ses tranches d'effectif. */
+export type Compte = { readonly nombre: number | null; readonly plafonné: boolean; readonly source: string | null; readonly découpé?: boolean }
 
 /** Ce que l'orchestration a lu pour un segment, avant l'assemblage. */
 export type ComptesDuSegment = {
@@ -293,6 +294,8 @@ export type MesureDeSegment = {
   readonly sorties: number | null
   /** `null` : la présence des concurrents n'est pas renseignée sur ce segment. */
   readonly présents: readonly string[] | null
+  /** `arbre` : posés avec le segment. `faits` : déduits des faits du trimestre qui nomment un concurrent de la grille. */
+  readonly présentsOrigine?: 'arbre' | 'faits' | null
   readonly chiffreDAffairesDesPrésents: number | null
   readonly présentsAvecComptes: number
   readonly faits: number
@@ -336,9 +339,13 @@ export function mesurerLesSegments(
     readonly comptes: ReadonlyMap<string, ComptesDuSegment>
     readonly faits: readonly FaitPourLesSegments[]
     readonly chiffres: readonly ChiffreDUnPrésent[]
+    /** Les concurrents de la grille : un fait du segment qui en nomme un le dit présent. */
+    readonly concurrents?: readonly string[]
   },
 ): MesureDeSegment[] {
   const chiffres = new Map(entrée.chiffres.map((c) => [normaliserTitre(c.nom), c.chiffreDAffaires]))
+  const concurrents = new Map((entrée.concurrents ?? []).map((nom) => [normaliserTitre(nom), nom]))
+  const DÉCOUPE = 'compté tranche d’effectif par tranche, le périmètre dépassant le plafond du registre ; une entreprise sans tranche déclarée n’y entre pas.'
   const mesures = segments.map((s): MesureDeSegment => {
     const comptes = entrée.comptes.get(s.clé) ?? { cibles: null, offreurs: null, entrées: null, sorties: null }
     const limites: string[] = []
@@ -356,7 +363,14 @@ export function mesurerLesSegments(
       ciblesPlafonnées = comptes.cibles?.plafonné ?? false
       if (comptes.cibles?.source) sources.push(comptes.cibles.source)
       if (cibles === null) limites.push('Cibles n.d. : le registre des entreprises n’a pas répondu dans le temps imparti.')
-      if (ciblesPlafonnées) limites.push(`Plus de ${PLAFOND_DU_REGISTRE.toLocaleString('fr-FR')} cibles : le registre ne compte pas au-delà. Périmètre à resserrer, ou nombre à déclarer avec sa source.`)
+      if (comptes.cibles?.découpé) limites.push(`Cibles : ${DÉCOUPE}`)
+      if (ciblesPlafonnées) {
+        limites.push(
+          comptes.cibles?.découpé
+            ? 'Cibles : une tranche dépasse encore le plafond du registre, le nombre affiché est un minimum.'
+            : `Plus de ${PLAFOND_DU_REGISTRE.toLocaleString('fr-FR')} cibles : le registre ne compte pas au-delà. Périmètre à resserrer, ou nombre à déclarer avec sa source.`,
+        )
+      }
     }
 
     const d = s.dépense ?? null
@@ -370,16 +384,39 @@ export function mesurerLesSegments(
     }
 
     if (comptes.offreurs?.source) sources.push(comptes.offreurs.source)
-    if (comptes.offreurs?.plafonné) limites.push(`Plus de ${PLAFOND_DU_REGISTRE.toLocaleString('fr-FR')} offreurs : le registre ne compte pas au-delà.`)
+    if (comptes.offreurs?.découpé) limites.push(`Offreurs : ${DÉCOUPE}`)
+    if (comptes.offreurs?.plafonné) {
+      limites.push(
+        comptes.offreurs.découpé
+          ? 'Offreurs : une tranche dépasse encore le plafond du registre, le nombre affiché est un minimum.'
+          : `Plus de ${PLAFOND_DU_REGISTRE.toLocaleString('fr-FR')} offreurs : le registre ne compte pas au-delà.`,
+      )
+    }
     if (s.offre?.texte !== undefined) limites.push(`Entrées et procédures collectives : annonces du BODACC sur douze mois, filtrées par le texte « ${s.offre.texte} ».`)
-
-    const présents = s.présents == null ? null : [...s.présents]
-    const lus = (présents ?? []).map((nom) => chiffres.get(normaliserTitre(nom)) ?? null).filter((x): x is number => x !== null)
-    if (présents && présents.length > 0) limites.push(`Chiffre d’affaires des concurrents présents : comptes publiés au registre (${lus.length} sur ${présents.length}), toutes activités confondues, pas leur seul chiffre sur ce segment.`)
 
     // Le marché entier, sans rattachement propre, porte toute l'activité de la veille.
     const entier = s.parent === null && !(s.familles ?? []).length && !(s.entités ?? []).length
     const siens = entier ? [...entrée.faits] : faitsDuSegment(s, entrée.faits)
+
+    // Présence posée avec le segment, ou à défaut déduite : un concurrent de la grille que nomme un fait du segment.
+    // Aucun fait ne prouve une niche ouverte : sans concurrent nommé, la présence reste non renseignée.
+    let présents: string[] | null = s.présents == null ? null : [...s.présents]
+    let présentsOrigine: 'arbre' | 'faits' | null = présents === null ? null : 'arbre'
+    if (présents === null && !entier) {
+      const nommés = new Map<string, number>()
+      for (const f of siens) {
+        const nom = f.entité === null ? undefined : concurrents.get(normaliserTitre(f.entité))
+        if (nom !== undefined) nommés.set(nom, (nommés.get(nom) ?? 0) + 1)
+      }
+      if (nommés.size > 0) {
+        présents = [...nommés.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], 'fr')).map(([nom]) => nom)
+        présentsOrigine = 'faits'
+        limites.push(`Concurrents présents déduits des faits du trimestre : ${[...nommés.entries()].map(([nom, n]) => `${nom} (${n})`).join(', ')}. Un concurrent que la veille n’a pas nommé sur ce segment n’y figure pas.`)
+      }
+    }
+    const lus = (présents ?? []).map((nom) => chiffres.get(normaliserTitre(nom)) ?? null).filter((x): x is number => x !== null)
+    if (présents && présents.length > 0) limites.push(`Chiffre d’affaires des concurrents présents : comptes publiés au registre (${lus.length} sur ${présents.length}), toutes activités confondues, pas leur seul chiffre sur ce segment.`)
+
     return {
       clé: s.clé,
       libellé: s.libellé,
@@ -395,6 +432,7 @@ export function mesurerLesSegments(
       entrées: comptes.entrées,
       sorties: comptes.sorties,
       présents,
+      présentsOrigine,
       chiffreDAffairesDesPrésents: lus.length > 0 ? lus.reduce((a, b) => a + b, 0) : null,
       présentsAvecComptes: lus.length,
       faits: siens.length,

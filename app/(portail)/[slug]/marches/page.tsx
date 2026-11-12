@@ -31,7 +31,7 @@ function potentiel(l: LigneDeMarché): string {
 
 function offre(l: LigneDeMarché): string {
   const parties: string[] = []
-  if (l.présents && l.présents.length > 0) parties.push(`${l.présents.length} concurrent${l.présents.length > 1 ? 's' : ''} suivi${l.présents.length > 1 ? 's' : ''}`)
+  if (l.présents && l.présents.length > 0) parties.push(`${l.présents.length} concurrent${l.présents.length > 1 ? 's' : ''} suivi${l.présents.length > 1 ? 's' : ''}${l.présentsOrigine === 'faits' ? ' d’après les faits' : ''}`)
   if (l.présents && l.présents.length === 0) parties.push('aucun concurrent suivi')
   if (l.offreurs !== null) parties.push(`${l.offreursPlafonnés ? 'plus de ' : ''}${nombre(l.offreurs)} offreur${l.offreurs > 1 ? 's' : ''} au registre`)
   return parties.length > 0 ? parties.join(', ') : 'non renseignée'

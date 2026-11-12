@@ -148,6 +148,33 @@ describe('la mesure d’un segment', () => {
     expect(racine!.faits).toBe(FAITS.length)
   })
 
+  it('déduit la présence des concurrents des faits du segment, sans jamais conclure à une niche ouverte', () => {
+    const segments: SegmentDeMarché[] = [SEGMENTS[0]!, SEGMENTS[1]!, { clé: 'sante', libellé: 'Accords-cadres hospitaliers', parent: 'impression', familles: [{ veille: 'ecosysteme', numéro: 4 }] }, { clé: 'vide', libellé: 'Sans fait', parent: 'impression' }]
+    const faits = [
+      { famille: 'Écosystème', axe: 4, entité: 'Canon France', impact: 'MOYEN' },
+      { famille: 'Écosystème', axe: 4, entité: 'canon france', impact: 'FORT' },
+      { famille: 'Écosystème', axe: 4, entité: 'Ricoh France', impact: 'MOYEN' },
+      // Un acteur de l'écosystème n'est pas un concurrent : il ne dit rien de la présence.
+      { famille: 'Écosystème', axe: 4, entité: 'UGAP', impact: 'MOYEN' },
+    ]
+    const mesures = mesurerLesSegments(segments, { comptes: new Map(), faits, chiffres: [{ nom: 'Canon France', chiffreDAffaires: 9 }], concurrents: ['Ricoh France', 'Canon France'] })
+    const [, impression, santé, vide] = mesures
+    // Posée avec le segment : elle fait foi, les faits n'y ajoutent rien.
+    expect(impression).toMatchObject({ présents: ['Ricoh France', 'Canon France'], présentsOrigine: 'arbre' })
+    expect(santé).toMatchObject({ présents: ['Canon France', 'Ricoh France'], présentsOrigine: 'faits', présentsAvecComptes: 1, chiffreDAffairesDesPrésents: 9 })
+    expect(santé!.limites.join(' ')).toContain('Canon France (2), Ricoh France (1)')
+    expect(vide).toMatchObject({ présents: null, présentsOrigine: null })
+  })
+
+  it('un périmètre découpé par tranche : un nombre, son potentiel, et la limite écrite', () => {
+    const découpé = { nombre: 23_500, plafonné: false, source: 'https://recherche-entreprises.api.gouv.fr/search?x', découpé: true }
+    const [, impression] = mesurerLesSegments(SEGMENTS, { comptes: new Map([['impression', { cibles: découpé, offreurs: { ...découpé, plafonné: true }, entrées: null, sorties: null }]]), faits: [], chiffres: [] })
+    expect(impression).toMatchObject({ cibles: 23_500, ciblesPlafonnées: false, potentiel: { bas: 23_500_000, haut: 70_500_000 }, offreursPlafonnés: true })
+    const limites = impression!.limites.join(' ')
+    expect(limites).toContain('Cibles : compté tranche d’effectif par tranche')
+    expect(limites).toContain('Offreurs : une tranche dépasse encore le plafond')
+  })
+
   it('n’invente aucun chiffre : registre muet ou plafonné, pas de potentiel', () => {
     const avec = (cibles: ReturnType<typeof compte>) =>
       mesurerLesSegments(SEGMENTS, { comptes: new Map([['impression', { cibles, offreurs: null, entrées: null, sorties: null }]]), faits: [], chiffres: [] })[1]!

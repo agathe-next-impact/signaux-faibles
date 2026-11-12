@@ -249,7 +249,11 @@ publiée ne se recalcule pas. L'état d'un segment (première mesure, en croissa
 stable, en régression, éteint, périmètre modifié, retiré) n'est **jamais stocké** :
 `étatDuSegment` le déduit de la suite des mesures. Seul écrivain
 `lib/base/marches.ts`, seule orchestration `lib/portail/marches.ts`, seul appelant de
-`compterLesEntreprises` ; l'écran « Marchés et niches » (`/[slug]/marches`, rubrique
+`compterLesEntreprises` ; **rien n'est demandé au client** (décision du même jour) : un
+périmètre au plafond du registre (10 000) est découpé par tranche d'effectif, puis par
+code NAF ou section d'activité, et sommé ; la présence des concurrents, quand l'arbre ne
+la pose pas, est déduite des faits du trimestre qui nomment un concurrent de la grille
+(`présentsOrigine: faits`), jamais conclue « ouverte » ; l'écran « Marchés et niches » (`/[slug]/marches`, rubrique
 « Le marché », dix-huit écrans au rail) lit les seules mesures publiées par
 `marchésDeLEspace`, bornée, sans appel aux registres, 404 hors de l'espace
 réorganisé ; garde d'architecture.

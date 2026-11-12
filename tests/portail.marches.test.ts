@@ -152,8 +152,8 @@ describe('marchés et niches', () => {
     const mesuré = await mesurerLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, { f, maintenant, ...sansAttente })
     expect(mesuré).toMatchObject({ sorte: 'enregistrées', période: '2026-T4', version: 1, mesures: 3, archivées: 0 })
     if (mesuré.sorte !== 'enregistrées') return
-    // Deux comptes au registre (cibles, offreurs), deux au BODACC (entrées, procédures) : la colocation seule a un périmètre.
-    expect(appels.filter((u) => u.includes('recherche-entreprises'))).toHaveLength(2)
+    // Cibles et offreurs partagent ici leur périmètre : un seul compte au registre ; deux au BODACC (entrées, procédures).
+    expect(appels.filter((u) => u.includes('recherche-entreprises'))).toHaveLength(1)
     expect(appels.filter((u) => u.includes('bodacc'))).toHaveLength(2)
     expect(appels[0]).toContain('activite_principale=63.11Z')
     expect(appels[0]).toContain('etat_administratif=A')
@@ -214,6 +214,31 @@ describe('marchés et niches', () => {
     await réglerLEspace({ slug: 'infralliance', actif: true }, db)
     vi.stubEnv('SOURCE_ACCES', 'notion')
     expect(await marchésDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+  })
+
+  it('au plafond du registre, découpe par tranche puis par section, et ne compte un même périmètre qu’une fois', async () => {
+    await ouvrirLePilote()
+    const cibles = { sorte: 'registre' as const, tranches: ['21', '22'] }
+    await recevoirLesSegments({ slug: 'infralliance', segments: [SEGMENTS[0]!, { clé: 'pme', libellé: 'PME', parent: 'marche', cibles }, { clé: 'jumeau', libellé: 'Même périmètre', parent: 'marche', cibles }] }, db)
+    const appels: string[] = []
+    const f = (async (entrée: string | URL | Request) => {
+      const url = new URL(String(entrée))
+      appels.push(url.search)
+      const tranche = url.searchParams.get('tranche_effectif_salarie')
+      const section = url.searchParams.get('section_activite_principale')
+      // Les deux tranches ensemble et la tranche 21 seule dépassent le plafond ; la 22 non ; chaque section de la 21 en compte 1 000.
+      const total = section ? 1_000 : tranche === '22' ? 4_000 : 10_000
+      return Response.json({ total_results: total })
+    }) as typeof fetch
+    const mesuré = await mesurerLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, { f, maintenant: () => Date.parse('2026-11-12T08:00:00Z'), ...sansAttente })
+    expect(mesuré).toMatchObject({ sorte: 'enregistrées' })
+    if (mesuré.sorte !== 'enregistrées') return
+    const pme = mesuré.vue!.lignes.find((l) => l.clé === 'pme')!
+    expect(pme).toMatchObject({ cibles: 21 * 1_000 + 4_000, ciblesPlafonnées: false })
+    expect(pme.limites.join(' ')).toContain('tranche d’effectif par tranche')
+    expect(mesuré.vue!.lignes.find((l) => l.clé === 'jumeau')).toMatchObject({ cibles: 25_000 })
+    // Le tout, deux tranches, vingt et une sections : vingt-quatre appels, pas le double.
+    expect(appels).toHaveLength(24)
   })
 
   it('un registre qui ne répond pas donne n.d., jamais une erreur ni un chiffre', async () => {
