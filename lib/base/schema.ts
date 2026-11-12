@@ -442,7 +442,10 @@ export const courriers = pgTable(
      * La clé d'unicité d'un courrier commercial (23 octobre 2026) : `parcours`
      * pour un courrier d'essai, l'abonnement Stripe pour sa confirmation et sa
      * résiliation, l'abonnement et l'échéance pour un paiement refusé ou un
-     * renouvellement. Nulle pour tout autre courrier.
+     * renouvellement. Nulle pour tout autre courrier. Un renvoi demandé par
+     * l'opératrice depuis la fiche de l'organisation (12 novembre 2026) porte
+     * `renvoi:<minute>` : un nouveau brouillon malgré l'unicité, un seul par
+     * minute (un double clic n'en fait pas deux).
      */
     clé: text('clé'),
   },
@@ -456,7 +459,9 @@ export const courriers = pgTable(
         table.organisationId,
         sql`coalesce(${table.lecteurId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
       )
-      .where(sql`${table.sorte} in ('essai_derniere_parution', 'essai_tronquee') and ${table.état} <> 'echec'`),
+      // Un renvoi par l'opératrice (12 novembre 2026) porte une clé `renvoi:…` :
+      // il sort de cet index et passe sous celui des courriers commerciaux.
+      .where(sql`${table.sorte} in ('essai_derniere_parution', 'essai_tronquee') and ${table.état} <> 'echec' and ${table.clé} is null`),
     // Le prédicat ne nomme aucune sorte : une valeur d'enum ajoutée ne peut pas
     // servir dans la transaction qui l'ajoute, et les migrations en font une seule.
     uniqueIndex('courriers_commerciaux_unique')

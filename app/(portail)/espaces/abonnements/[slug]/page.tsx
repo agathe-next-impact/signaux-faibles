@@ -23,10 +23,12 @@ import {
   publierLaLettre,
   réactiverUnLecteur,
   renvoyerLeLien,
+  renvoyerUnCourrier,
   révoquerUnLecteur,
   validerLaGrille,
 } from '@/lib/portail/gestion-actions'
 import { JOURS_DU_JOURNAL } from '@/lib/portail/gestion'
+import { estRenvoyable, SORTES_RENVOYABLES } from '@/lib/portail/renvoi-courriers'
 import { lancementDisponible, type VueDOnboarding } from '@/lib/portail/onboarding'
 import { déciderDeLOrganisation } from '@/lib/portail/reglages'
 
@@ -95,6 +97,14 @@ const MESSAGES: Record<string, string> = {
   'décision-appliquée': 'Décision appliquée.',
   'décision-impossible': 'Décision impossible depuis cet état.',
   échec: 'La base n’a pas répondu : rien n’a changé.',
+  'renvoi-préparé': 'Courrier préparé en brouillon Gmail : à relire et envoyer depuis la boîte émettrice.',
+  'renvoi-partiel': 'Courrier préparé pour une partie des lecteurs seulement : voir le journal ci-dessous.',
+  'renvoi-déjà-préparé': 'Ce courrier vient d’être préparé pour ce lecteur, il y a moins d’une minute : rien de plus.',
+  'renvoi-sans-lecteur': 'Aucun lecteur actif : aucun brouillon préparé.',
+  'renvoi-accès-inactif': 'Lecteur introuvable ou révoqué dans la source qui fait foi pour les accès : aucun brouillon préparé.',
+  'renvoi-sans-journal': 'Le journal des courriers n’est pas disponible (base absente ou SOURCE_ACCES=notion) : aucun brouillon préparé.',
+  'renvoi-échec': 'Gmail n’a pas répondu : aucun brouillon préparé (la ligne en échec est au journal).',
+  'sans-abonnement': 'Aucun abonnement Stripe en copie pour cette organisation : ce courrier n’a rien de vrai à dire.',
 }
 
 const LIBELLÉS_DE_COURRIER: Record<string, string> = {
@@ -389,6 +399,7 @@ function Gestion({
 }) {
   const { organisation, lecteurs, grille, fiche, courriers, onboarding, lettresÀPublier } = gestion
   const actifs = lecteurs.filter((l) => l.actif).length
+  const lecteursActifs = new Set(lecteurs.filter((l) => l.actif).map((l) => l.id))
   const horsService = organisation.état === 'suspendue' || organisation.état === 'ecartee'
 
   return (
@@ -656,6 +667,42 @@ function Gestion({
       </Section>
 
       <Section id="courriers" titre={`Courriers, ${JOURS_DU_JOURNAL} derniers jours`} statut={statut}>
+        <p className="text-ardoise">
+          Renvoyer un courrier commercial prépare un nouveau brouillon Gmail, adressé au lecteur, même si ce courrier a déjà été
+          préparé ou si son brouillon a été supprimé. Rien ne part au client : relisez et envoyez le brouillon depuis la boîte
+          émettrice. Le contenu est celui du jour (offre, parutions d’essai, abonnement en copie Stripe).
+        </p>
+        {actifs > 0 ? (
+          <form action={renvoyerUnCourrier} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="slug" value={slug} />
+            <label className="label-mono flex flex-col gap-1 text-ardoise">
+              courrier
+              <select name="sorte" required className={champ}>
+                {SORTES_RENVOYABLES.map((sorte) => (
+                  <option key={sorte} value={sorte}>
+                    {LIBELLÉS_DE_COURRIER[sorte] ?? sorte}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="label-mono flex flex-col gap-1 text-ardoise">
+              lecteur
+              <select name="lecteur" required className={champ}>
+                <option value="tous">tous les lecteurs actifs</option>
+                {lecteurs
+                  .filter((l) => l.actif)
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nom}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <BoutonEnvoi className={bouton}>Préparer le brouillon</BoutonEnvoi>
+          </form>
+        ) : (
+          <p className="text-ardoise">Aucun lecteur actif : aucun courrier à renvoyer.</p>
+        )}
         {courriers.length === 0 ? (
           <p className="text-ardoise">Aucun courrier journalisé.</p>
         ) : (
@@ -663,7 +710,7 @@ function Gestion({
             <table className="w-full border-collapse text-corps">
               <thead>
                 <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
-                  {['date', 'courrier', 'état', 'destinataire', 'déclencheur'].map((e) => (
+                  {['date', 'courrier', 'état', 'destinataire', 'déclencheur', 'renvoi'].map((e) => (
                     <th key={e} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
                       {e}
                     </th>
@@ -681,6 +728,16 @@ function Gestion({
                     </td>
                     <td className="label-mono px-4 py-3 text-ardoise">{c.lecteur ?? c.destinataireEmpreinte}</td>
                     <td className="label-mono px-4 py-3 text-ardoise">{c.déclencheur}</td>
+                    <td className="px-4 py-3">
+                      {estRenvoyable(c.sorte) && c.lecteurId && lecteursActifs.has(c.lecteurId) ? (
+                        <form action={renvoyerUnCourrier}>
+                          <input type="hidden" name="slug" value={slug} />
+                          <input type="hidden" name="sorte" value={c.sorte} />
+                          <input type="hidden" name="lecteur" value={c.lecteurId} />
+                          <BoutonEnvoi className={lienDeGeste}>Renvoyer</BoutonEnvoi>
+                        </form>
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>

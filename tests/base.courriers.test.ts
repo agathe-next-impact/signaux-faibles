@@ -72,6 +72,30 @@ describe('journal des courriers', () => {
     expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', lecteurId: null }, db)).toBeNull()
   })
 
+  it('un renvoi par l’opératrice passe malgré l’unicité du courrier d’origine, une fois par minute', async () => {
+    const org = await organisation()
+    const [l] = await db.insert(lecteurs).values({ organisationId: org, nom: 'Léa', email: 'lea@x.fr', identifiantAcces: 'c'.repeat(32) }).returning({ id: lecteurs.id })
+    const commun = { organisation: { id: org }, destinataireEmpreinte: '12345678', lecteurId: l!.id }
+
+    // Fin d'essai : l'origine n'a pas de clé et ne se réserve qu'une fois.
+    expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', déclencheur: 'cron' }, db)).not.toBeNull()
+    expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', déclencheur: 'cron' }, db)).toBeNull()
+    const renvoi = { ...commun, sorte: 'essai_tronquee' as const, déclencheur: 'operatrice', clé: 'renvoi:2026-11-12T05:00' }
+    expect(await prévoirCourrier(renvoi, db)).not.toBeNull()
+    expect(await prévoirCourrier(renvoi, db)).toBeNull()
+    expect(await prévoirCourrier({ ...renvoi, clé: 'renvoi:2026-11-12T05:01' }, db)).not.toBeNull()
+    // L'origine reste tenue : le passage quotidien ne la refait pas.
+    expect(await prévoirCourrier({ ...commun, sorte: 'essai_tronquee', déclencheur: 'cron' }, db)).toBeNull()
+
+    // Courrier commercial à clé : le renvoi est une autre clé.
+    expect(await prévoirCourrier({ ...commun, sorte: 'essai_rappel_j7', déclencheur: 'cron', clé: 'parcours' }, db)).not.toBeNull()
+    expect(await prévoirCourrier({ ...commun, sorte: 'essai_rappel_j7', déclencheur: 'operatrice', clé: 'renvoi:2026-11-12T05:00' }, db)).not.toBeNull()
+
+    const journal = await courriersRécents(new Date(0), db)
+    expect(journal.filter((c) => c.déclencheur === 'operatrice')).toHaveLength(3)
+    expect(journal.every((c) => c.lecteurId === l!.id)).toBe(true)
+  })
+
   it('un courrier commercial se réserve une fois par clé ; un brouillon tient la place, un échec la libère', async () => {
     const org = await organisation()
     const [l] = await db.insert(lecteurs).values({ organisationId: org, nom: 'Léa', email: 'lea@x.fr', identifiantAcces: 'b'.repeat(32) }).returning({ id: lecteurs.id })

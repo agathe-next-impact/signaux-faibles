@@ -477,7 +477,17 @@ Les lire avant toute session.
   relecture, `relecture_requise` ne détourne plus ces courriers. Unicité par
   `courriers.clé` (index `courriers_commerciaux_unique`, migration 0010), état
   `brouillon` au journal ; un brouillon supprimé sans envoi n'est jamais
-  recréé. Le lien d'accès, l'alerte du soir, la demande de démo et les lettres
+  recréé par le dispositif. **Renvoi manuel** (12 novembre 2026, demande de
+  l'opératrice) : la section « Courriers » de la fiche
+  (`/espaces/abonnements/[slug]`) prépare de nouveau l'un des huit courriers
+  commerciaux, pour un lecteur actif ou pour tous (bouton « Renvoyer » sur une
+  ligne du journal, ou formulaire courrier × lecteur), toujours en brouillon,
+  contenu composé sur l'état du jour, lecteur revérifié par la façade
+  (`renvoyerUnCourrier`, `exigerOpérateur` d'abord ; seule orchestration
+  `lib/portail/renvoi-courriers.ts`) ; la ligne porte le déclencheur
+  `operatrice` et la clé `renvoi:<minute UTC>`, qui la sort de l'unicité
+  d'origine (`courriers_parcours_unique` exclut les lignes à clé, migration
+  0025) sans qu'un double clic en dépose deux. Le lien d'accès, l'alerte du soir, la demande de démo et les lettres
   partent toujours directement.
   **Entrée en essai** (18 octobre 2026) : l'onboarding Cowork (étape B) appelle
   `POST /api/veille/organisations` `{ slug, nom, registreNotion }` ; l'activation
