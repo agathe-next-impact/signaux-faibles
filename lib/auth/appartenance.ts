@@ -17,6 +17,8 @@ import { lireLaFile } from '@/lib/portail/file'
 import { gestionDUneOrganisation, santéDesEspaces, type GestionDUneOrganisation, type SantéDesEspaces } from '@/lib/portail/gestion'
 import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
 import type { SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
+import { tableauDesMarchés } from '@/lib/portail/marches'
+import type { MarchésDUneOrganisation } from '@/lib/domaine/marches'
 import type { ÉtatDeLaFile } from '@/lib/base/travaux'
 import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
 import { démonstrationDuSlug } from '@/lib/domaine/demonstration'
@@ -214,10 +216,13 @@ export async function listerLesAbonnements(): Promise<{
 export async function listerLesSynthèses(): Promise<{
   readonly accès: Accès
   readonly organisations: SynthèsesDUneOrganisation[] | null
+  /** Les périodes mesurées de « Marchés et niches », même garde, même écran (12 novembre 2026). */
+  readonly marchés: MarchésDUneOrganisation[] | null
 }> {
   const accès = await exigerOpérateur()
-  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, organisations: null }
-  return { accès, organisations: await tableauDesSynthèses() }
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, organisations: null, marchés: null }
+  const [organisations, marchés] = await Promise.all([tableauDesSynthèses(), tableauDesMarchés()])
+  return { accès, organisations, marchés }
 }
 
 /**

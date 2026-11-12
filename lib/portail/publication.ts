@@ -2,6 +2,7 @@
 
 import { notFound, redirect } from 'next/navigation'
 import { exigerOpérateur } from '@/lib/auth/appartenance'
+import { publierLesMarchésDuPilote, type PublicationDesMesures } from '@/lib/portail/marches'
 import { publierLaSynthèseDuPilote, type RésultatDeLaPublication } from '@/lib/portail/strategie'
 
 /**
@@ -36,4 +37,31 @@ export async function publierUnePériode(données: FormData): Promise<void> {
   console.info(`[publication] ${accès.nom} : ${slug} ${période}, ${état}, ${sorte}.`)
   // `redirect` lève une exception de contrôle : hors de tout `try`.
   redirect(`/espaces/syntheses?synthese=${encodeURIComponent(sorte)}&slug=${encodeURIComponent(slug)}&periode=${encodeURIComponent(période)}`)
+}
+
+/**
+ * Publier ou retirer les mesures d'un trimestre de « Marchés et niches »
+ * (12 novembre 2026), depuis le même écran. C'est le geste de
+ * `PATCH /api/veille/marches` (`etat`), par le même `publierLesMarchésDuPilote` :
+ * rien n'est montré au client avant lui. La garde passe d'abord.
+ */
+export async function publierLesMarchés(données: FormData): Promise<void> {
+  const slug = données.get('slug')
+  const période = données.get('periode')
+  const état = données.get('etat')
+  if (typeof slug !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) notFound()
+  if (typeof période !== 'string' || !/^\d{4}-T[1-4]$/.test(période)) notFound()
+  if (état !== 'publie' && état !== 'retire') notFound()
+
+  const accès = await exigerOpérateur()
+  let sorte: PublicationDesMesures['sorte'] | 'échec'
+  try {
+    sorte = (await publierLesMarchésDuPilote({ slug, période, état })).sorte
+  } catch (erreur) {
+    console.error(`[publication] marchés ${slug} ${période} : ${état} impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    sorte = 'échec'
+  }
+  console.info(`[publication] ${accès.nom} : marchés ${slug} ${période}, ${état}, ${sorte}.`)
+  const code = sorte === 'réglée' ? (état === 'publie' ? 'publiés' : 'retirés') : sorte
+  redirect(`/espaces/syntheses?marches=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}&periode=${encodeURIComponent(période)}#marches`)
 }

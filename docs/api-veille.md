@@ -1359,6 +1359,12 @@ Réponses : `créée` (201) ou `inchangée` (200) avec `version` ; `refusée` (4
 avec `refus` et `message` de reprise ; `hors-pilote`, `grille-absente` (200) ;
 `organisation-inconnue` (404).
 
+Un arbre `créée` **mesure à la suite** le trimestre civil en cours, en
+proposition, une fois la réponse partie : la tâche qui poste n'appelle pas
+`mesurer`. Il en va de même de `POST /api/veille/syntheses` pour une période
+`AAAA-Tn` enregistrée, qui mesure ce trimestre. Règle d'écriture de l'arbre :
+`docs/arbre-des-marches.md`.
+
 ### `GET /api/veille/marches?slug=<slug>` : relire
 
 La dernière version des segments, dans le format où ils se postent, les
@@ -1393,3 +1399,5 @@ publiée ; `période-publiée` (409) ensuite, la retirer d'abord.
 
 `etat` (`publie`, `retire`, `propose`) : le geste de l'opératrice. Rien n'est
 montré au client avant `publie` ; `aucune` (404) sans mesure pour la période.
+L'opératrice fait le même geste sur `/espaces/syntheses`, section « Marchés et
+niches ».

@@ -10,7 +10,8 @@ import {
   type PériodeAPublier,
   type SynthèsesDUneOrganisation,
 } from '@/lib/domaine/strategie-vues'
-import { publierUnePériode } from '@/lib/portail/publication'
+import type { MarchésDUneOrganisation, PériodeDeMarchés } from '@/lib/domaine/marches'
+import { publierLesMarchés, publierUnePériode } from '@/lib/portail/publication'
 
 export const metadata: Metadata = { title: 'Synthèses stratégiques — signauxfaibles' }
 
@@ -41,6 +42,22 @@ const MESSAGES: Record<string, string> = {
   échec: 'La base n’a pas répondu : rien n’a changé.',
 }
 
+const MESSAGES_DES_MARCHÉS: Record<string, string> = {
+  publiés: 'Mesures publiées : les lecteurs voient « Marchés et niches » à leur prochaine visite.',
+  retirés: 'Mesures retirées : elles ne sont plus montrées au client.',
+  aucune: 'Aucune mesure enregistrée pour ce trimestre.',
+  'hors-pilote': 'Cette organisation n’est pas dans le pilote des outils stratégiques.',
+  'organisation-inconnue': 'Organisation inconnue.',
+  échec: 'La base n’a pas répondu : rien n’a changé.',
+}
+
+const LIBELLÉS_DES_MARCHÉS: Record<PériodeDeMarchés['état'], string> = {
+  proposée: 'proposées, non montrées',
+  publiée: 'publiées',
+  retirée: 'retirées',
+  mêlée: 'publiées en partie',
+}
+
 const LIBELLÉS_D_ÉTAT: Record<PériodeAPublier['état'], string> = {
   proposée: 'proposée, non montrée',
   publiée: 'publiée',
@@ -54,11 +71,16 @@ const LIEN = 'text-label text-encre underline underline-offset-2'
 export default async function Synthèses({
   searchParams,
 }: {
-  searchParams: Promise<{ synthese?: string | string[]; slug?: string | string[]; periode?: string | string[] }>
+  searchParams: Promise<{ synthese?: string | string[]; marches?: string | string[]; slug?: string | string[]; periode?: string | string[] }>
 }) {
-  const { accès, organisations } = await listerLesSynthèses()
+  const { accès, organisations, marchés } = await listerLesSynthèses()
   const paramètres = await searchParams
-  const résultat = typeof paramètres.synthese === 'string' ? MESSAGES[paramètres.synthese] : undefined
+  const résultat =
+    typeof paramètres.synthese === 'string'
+      ? MESSAGES[paramètres.synthese]
+      : typeof paramètres.marches === 'string'
+        ? MESSAGES_DES_MARCHÉS[paramètres.marches]
+        : undefined
   const slugRéglé = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
   const périodeRéglée = typeof paramètres.periode === 'string' ? paramètres.periode : undefined
 
@@ -109,6 +131,8 @@ export default async function Synthèses({
           </section>
         </>
       )}
+
+      {marchés && marchés.length > 0 ? <Marchés organisations={marchés} /> : null}
     </main>
   )
 }
@@ -173,6 +197,77 @@ function Organisation({ organisation: o }: { organisation: SynthèsesDUneOrganis
         entêtes={['période', 'lignes', 'état', 'publication']}
         lignes={o.périodes.map((p) => ({ slug: o.slug, nom: o.nom, période: p, montrerOrganisation: false }))}
       />
+    </section>
+  )
+}
+
+/**
+ * Les mesures de « Marchés et niches » (12 novembre 2026) : une ligne par
+ * trimestre mesuré, publiée ou retirée en entier. Les chiffres sont calculés
+ * par le portail ; l'opératrice les relit dans l'espace, où sa session voit les
+ * mesures proposées sous un bandeau, puis publie ici.
+ */
+function Marchés({ organisations }: { organisations: readonly MarchésDUneOrganisation[] }) {
+  return (
+    <section id="marches" aria-labelledby="titre-marches" className="flex flex-col gap-4">
+      <h2 id="titre-marches" className="font-titre text-h2 font-bold text-encre">
+        Marchés et niches
+      </h2>
+      <p className="text-ardoise">
+        Les mesures d’un trimestre sont calculées par le portail et restent proposées jusqu’à votre publication. « Relire
+        dans l’espace » les montre telles que le client les verra. Une période publiée ne se recalcule pas : la retirer
+        d’abord.
+      </p>
+      <div className="overflow-x-auto border border-gris-ligne">
+        <table className="w-full border-collapse text-corps">
+          <thead>
+            <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
+              {['organisation', 'trimestre', 'segments mesurés', 'état', 'publication'].map((entête) => (
+                <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
+                  {entête}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {organisations.flatMap((o) =>
+              o.périodes.map((p) => (
+                <tr key={`${o.slug}:${p.période}`} className="border-b border-gris-ligne align-top">
+                  <td className="px-4 py-3">
+                    <p className="text-encre">{o.nom}</p>
+                    <p className="label-mono text-ardoise">{o.slug}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="label-mono text-encre">{p.période}</p>
+                    <Link href={`/${o.slug}/marches`} className={LIEN}>
+                      Relire dans l’espace
+                    </Link>
+                  </td>
+                  <td className="label-mono px-4 py-3 text-ardoise">{p.mesures}</td>
+                  <td className={`label-mono px-4 py-3 ${p.état === 'publiée' ? 'text-encre' : 'text-ardoise'}`}>{LIBELLÉS_DES_MARCHÉS[p.état]}</td>
+                  <td className="px-4 py-3">
+                    <form action={publierLesMarchés} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="slug" value={o.slug} />
+                      <input type="hidden" name="periode" value={p.période} />
+                      {p.état === 'publiée' ? (
+                        <>
+                          <input type="hidden" name="etat" value="retire" />
+                          <BoutonEnvoi className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2">Retirer</BoutonEnvoi>
+                        </>
+                      ) : (
+                        <>
+                          <input type="hidden" name="etat" value="publie" />
+                          <BoutonEnvoi className={BOUTON}>Publier</BoutonEnvoi>
+                        </>
+                      )}
+                    </form>
+                  </td>
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }

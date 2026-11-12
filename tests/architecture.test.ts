@@ -610,9 +610,25 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     for (const nom of ['posterLesSegments', 'derniersSegments', 'remplacerLesMesures', 'mesuresVivantes', 'publierLesMesures', 'périodesMesurées']) {
       expect(appelants(nom), nom).toEqual(['lib/base/marches.ts', 'lib/portail/marches.ts'])
     }
-    for (const nom of ['recevoirLesSegments', 'lireLesMarchésDuPilote', 'mesurerLesMarchésDuPilote', 'publierLesMarchésDuPilote']) {
+    for (const nom of ['recevoirLesSegments', 'lireLesMarchésDuPilote', 'mesurerLesMarchésDuPilote']) {
       expect(appelants(nom), nom).toEqual(['app/api/veille/marches/route.ts', 'lib/portail/marches.ts'])
     }
+    expect(appelants('périodesMesuréesDuPilote')).toEqual(['lib/base/marches.ts', 'lib/portail/marches.ts'])
+    // La mesure à la suite d'un dépôt : l'arbre des segments et la synthèse d'un trimestre, dans `after()`.
+    expect(appelants('mesurerÀLaSuite')).toEqual(['app/api/veille/marches/route.ts', 'app/api/veille/syntheses/route.ts', 'lib/portail/marches.ts'])
+    for (const chemin of [['marches'], ['syntheses']]) {
+      expect(readFileSync(join(process.cwd(), 'app', 'api', 'veille', ...chemin, 'route.ts'), 'utf8')).toMatch(/after\(\(\) => mesurerÀLaSuite\(/)
+    }
+    // Le bouton de l'opératrice : le tableau traverse les clients, sa garde est dans `listerLesSynthèses` ; l'action vérifie le privilège avant d'écrire.
+    expect(appelants('tableauDesMarchés')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/marches.ts'])
+    expect(appelants('publierLesMarchésDuPilote')).toEqual(['app/api/veille/marches/route.ts', 'lib/portail/marches.ts', 'lib/portail/publication.ts'])
+    const lecture = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    const garde = lecture.slice(lecture.indexOf('export async function listerLesSynthèses'))
+    expect(garde.indexOf('exigerOpérateur()')).toBeLessThan(garde.indexOf('tableauDesMarchés('))
+    const action = readFileSync(join(process.cwd(), 'lib', 'portail', 'publication.ts'), 'utf8')
+    const geste = action.slice(action.indexOf('export async function publierLesMarchés'))
+    expect(geste.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(geste.indexOf('exigerOpérateur()')).toBeLessThan(geste.indexOf('publierLesMarchésDuPilote('))
     expect(appelants('marchésDeLEspace')).toEqual(['app/(portail)/[slug]/marches/page.tsx', 'lib/portail/marches.ts'])
     // Le comptage du registre : la seule orchestration l'appelle, jamais un écran ni une route.
     expect(appelants('compterLesEntreprises')).toEqual(['lib/portail/marches.ts', 'lib/registres/index.ts'])

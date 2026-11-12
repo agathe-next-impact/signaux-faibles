@@ -10,7 +10,10 @@ const marchés = vi.hoisted(() => ({
   lireLesMarchésDuPilote: vi.fn(),
   mesurerLesMarchésDuPilote: vi.fn(),
   publierLesMarchésDuPilote: vi.fn(),
+  mesurerÀLaSuite: vi.fn(),
 }))
+const après = vi.hoisted(() => ({ tâches: [] as (() => unknown)[] }))
+vi.mock('next/server', async (original) => ({ ...(await original<typeof import('next/server')>()), after: (tâche: () => unknown) => void après.tâches.push(tâche) }))
 vi.mock('@/lib/portail/marches', () => marchés)
 vi.mock('@/lib/base/client', () => ({ baseConfigurée: () => true }))
 
@@ -39,6 +42,7 @@ const SEGMENT = {
 describe('/api/veille/marches', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    après.tâches.length = 0
     vi.stubEnv('ACTIVATION_SECRET', 'secret')
     vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -75,6 +79,14 @@ describe('/api/veille/marches', () => {
         },
       ],
     })
+
+    // Un arbre créé mesure à la suite le trimestre en cours, une fois la réponse partie.
+    expect(après.tâches).toHaveLength(1)
+    await après.tâches[0]!()
+    expect(marchés.mesurerÀLaSuite).toHaveBeenCalledWith({ slug: 'konica' })
+    marchés.recevoirLesSegments.mockResolvedValue({ sorte: 'inchangée', version: 1, segments: 2 })
+    await POST(requête('POST', { slug: 'konica', segments: [{ cle: 'marche', libelle: 'Marché', parent: null }] }))
+    expect(après.tâches).toHaveLength(1)
 
     marchés.recevoirLesSegments.mockResolvedValue({ sorte: 'refusée', refus: [{ code: 'racine', message: 'une seule racine' }], message: 'LES SEGMENTS…' })
     expect((await POST(requête('POST', { slug: 'konica', segments: [SEGMENT] }))).status).toBe(422)

@@ -1,10 +1,10 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { after, NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { baseConfigurée } from '@/lib/base/client'
 import type { SegmentDeMarché } from '@/lib/domaine/marches'
 import type { Veille } from '@/lib/domaine/strategie'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
-import { lireLesMarchésDuPilote, mesurerLesMarchésDuPilote, publierLesMarchésDuPilote, recevoirLesSegments } from '@/lib/portail/marches'
+import { lireLesMarchésDuPilote, mesurerLesMarchésDuPilote, publierLesMarchésDuPilote, mesurerÀLaSuite, recevoirLesSegments } from '@/lib/portail/marches'
 
 /**
  * Marchés et niches d'une organisation du pilote (12 novembre 2026,
@@ -22,7 +22,8 @@ import { lireLesMarchésDuPilote, mesurerLesMarchésDuPilote, publierLesMarchés
  *
  * L'arbre des segments : une racine (le marché), ses offres, leurs niches. La
  * même liste re-postée ne crée pas de version (`inchangée`). Refusée : 422 avec
- * les refus et le message de reprise.
+ * les refus et le message de reprise. Une version créée mesure à la suite le
+ * trimestre en cours, en proposition (`mesurerÀLaSuite`, dans `after()`).
  *
  *   GET /api/veille/marches?slug=…
  *
@@ -147,6 +148,11 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   try {
     const résultat = await recevoirLesSegments({ slug: lue.data.slug, segments: lue.data.segments.map(versLeDomaine) })
     console.info(`[veille/marches] ${lue.data.slug} : segments, ${résultat.sorte}${résultat.sorte === 'refusée' ? ` (${résultat.refus.length} refus)` : ''}.`)
+    // Un arbre nouveau mesure le trimestre en cours, en proposition : personne n'a à le demander.
+    if (résultat.sorte === 'créée') {
+      const slug = lue.data.slug
+      after(() => mesurerÀLaSuite({ slug }))
+    }
     return NextResponse.json({ état: résultat.sorte, ...résultat }, { status: STATUT[résultat.sorte] ?? 200 })
   } catch (erreur) {
     console.error(`[veille/marches] ${lue.data.slug} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

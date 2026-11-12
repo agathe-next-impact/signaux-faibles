@@ -794,6 +794,48 @@ export function fenêtreDuTrimestre(période: string): { readonly début: string
   return { début: `${année}-${String(premier + 1).padStart(2, '0')}-01`, fin: fin.toISOString().slice(0, 10) }
 }
 
+/** Le trimestre civil d'un jour `AAAA-MM-JJ` : « 2026-T4 ». */
+export function trimestreDuJour(jour: string): string {
+  return `${jour.slice(0, 4)}-T${Math.ceil(Number(jour.slice(5, 7)) / 3)}`
+}
+
+/** Une période mesurée, telle que l'opératrice la publie. */
+export type PériodeDeMarchés = {
+  readonly période: string
+  readonly mesures: number
+  /** `mêlée` : des lignes publiées et d'autres non, le client n'en voit qu'une partie. */
+  readonly état: 'proposée' | 'publiée' | 'retirée' | 'mêlée'
+}
+
+export type MarchésDUneOrganisation = { readonly slug: string; readonly nom: string; readonly périodes: readonly PériodeDeMarchés[] }
+
+/** Les comptes par organisation, période et état, rangés pour le tableau de l'opératrice : la période la plus récente d'abord. */
+export function périodesDeMarchés(
+  comptes: readonly { readonly slug: string; readonly nom: string; readonly période: string; readonly état: 'propose' | 'publie' | 'retire'; readonly mesures: number }[],
+): MarchésDUneOrganisation[] {
+  const parOrganisation = new Map<string, { nom: string; périodes: Map<string, { propose: number; publie: number; retire: number }> }>()
+  for (const c of comptes) {
+    const o = parOrganisation.get(c.slug) ?? { nom: c.nom, périodes: new Map() }
+    const p = o.périodes.get(c.période) ?? { propose: 0, publie: 0, retire: 0 }
+    p[c.état] += c.mesures
+    o.périodes.set(c.période, p)
+    parOrganisation.set(c.slug, o)
+  }
+  return [...parOrganisation]
+    .map(([slug, o]) => ({
+      slug,
+      nom: o.nom,
+      périodes: [...o.périodes]
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([période, p]) => {
+          const mesures = p.propose + p.publie + p.retire
+          const état: PériodeDeMarchés['état'] = p.publie === mesures ? 'publiée' : p.publie > 0 ? 'mêlée' : p.retire === mesures ? 'retirée' : 'proposée'
+          return { période, mesures, état }
+        }),
+    }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+}
+
 /** Un montant en euros, arrondi pour être lu : « 1,2 M€ », « 340 k€ ». */
 export function montantCourt(euros: number): string {
   const f = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: n < 10 ? 1 : 0 })

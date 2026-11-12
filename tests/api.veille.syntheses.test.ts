@@ -9,6 +9,10 @@ const strategie = vi.hoisted(() => ({
   recalculerLeBenchmarkDuPilote: vi.fn(),
 }))
 const client = vi.hoisted(() => ({ baseConfigurée: vi.fn() }))
+const marchés = vi.hoisted(() => ({ mesurerÀLaSuite: vi.fn() }))
+const après = vi.hoisted(() => ({ tâches: [] as (() => unknown)[] }))
+vi.mock('next/server', async (original) => ({ ...(await original<typeof import('next/server')>()), after: (tâche: () => unknown) => void après.tâches.push(tâche) }))
+vi.mock('@/lib/portail/marches', () => marchés)
 vi.mock('@/lib/portail/strategie', () => strategie)
 vi.mock('@/lib/base/client', () => client)
 
@@ -86,7 +90,14 @@ describe('POST /api/veille/syntheses', () => {
     expect((await envoyer({ ...corps, synthese: { ...SYNTHÈSE, mode: 'trimestriel' } })).status).toBe(400)
     strategie.recevoirLaSynthèse.mockResolvedValue({ sorte: 'enregistrée', éléments: 4, positions: 2, archivés: 0, avertissements: [] })
     const fenetre = { debut: '2026-10-01', fin: '2026-12-31' }
+    après.tâches.length = 0
     expect((await envoyer({ ...corps, periode: '2026-T4', fenetre, synthese: { ...SYNTHÈSE, mode: 'trimestriel' } })).status).toBe(201)
+    // La synthèse d'un trimestre mesure les marchés de ce trimestre, une fois la réponse partie ; celle d'un mois, non.
+    expect(après.tâches).toHaveLength(1)
+    await après.tâches[0]!()
+    expect(marchés.mesurerÀLaSuite).toHaveBeenCalledWith({ slug: corps.slug, période: '2026-T4' })
+    expect((await envoyer(corps)).status).toBe(201)
+    expect(après.tâches).toHaveLength(1)
   })
 
   it('traduit la synthèse dans les noms du domaine, sans rien filtrer : la porte nomme les valeurs inconnues', async () => {

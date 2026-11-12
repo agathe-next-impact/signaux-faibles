@@ -12,7 +12,7 @@ import { baseEnMémoire } from './aide/base-en-memoire'
  * portail sur des registres simulés, rien de montré avant la publication, rien
  * d'un autre registre.
  */
-const { lireLesMarchésDuPilote, marchésDeLEspace, mesurerLesMarchésDuPilote, publierLesMarchésDuPilote, recevoirLesSegments } = await import('@/lib/portail/marches')
+const { lireLesMarchésDuPilote, marchésDeLEspace, mesurerLesMarchésDuPilote, mesurerÀLaSuite, publierLesMarchésDuPilote, recevoirLesSegments, tableauDesMarchés } = await import('@/lib/portail/marches')
 const { recevoirLaGrille, réglerLEspace } = await import('@/lib/portail/strategie')
 const { réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
@@ -221,6 +221,30 @@ describe('marchés et niches', () => {
     await réglerLEspace({ slug: 'infralliance', actif: true }, db)
     vi.stubEnv('SOURCE_ACCES', 'notion')
     expect(await marchésDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+  })
+
+  it('mesure à la suite d’un dépôt le trimestre en cours, sans jamais lever ; le tableau de l’opératrice compte par période', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { f } = registres(120)
+    const maintenant = () => Date.parse('2026-11-12T08:00:00Z')
+    // Sans pilote ni arbre : rien de mesuré, rien de levé.
+    expect(await mesurerÀLaSuite({ slug: 'infralliance' }, db, { f, maintenant, ...sansAttente })).toBe('hors-pilote')
+    await ouvrirLePilote()
+    expect(await mesurerÀLaSuite({ slug: 'infralliance' }, db, { f, maintenant, ...sansAttente })).toBe('segments-absents')
+    expect(await tableauDesMarchés(db)).toEqual([])
+
+    await recevoirLesSegments({ slug: 'infralliance', segments: SEGMENTS }, db)
+    // Le trimestre est celui du jour de Paris ; une période donnée (la synthèse d'un trimestre) passe telle quelle.
+    expect(await mesurerÀLaSuite({ slug: 'infralliance' }, db, { f, maintenant, ...sansAttente })).toBe('enregistrées')
+    expect(await mesurerÀLaSuite({ slug: 'infralliance', période: '2026-T3' }, db, { f, maintenant, ...sansAttente })).toBe('enregistrées')
+    await publierLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T3', état: 'publie' }, db)
+    expect(await tableauDesMarchés(db)).toEqual([
+      { slug: 'infralliance', nom: 'Infralliance', périodes: [{ période: '2026-T4', mesures: 3, état: 'proposée' }, { période: '2026-T3', mesures: 3, état: 'publiée' }] },
+    ])
+    // Une période publiée n'est pas remesurée ; un registre qui tombe ne lève pas.
+    expect(await mesurerÀLaSuite({ slug: 'infralliance', période: '2026-T3' }, db, { f, maintenant, ...sansAttente })).toBe('période-publiée')
+    expect(await mesurerÀLaSuite({ slug: 'infralliance' }, { transaction: () => Promise.reject(new Error('base')) } as unknown as Base, { f, maintenant, ...sansAttente })).toBe('échec')
   })
 
   it('au plafond du registre, découpe par tranche puis par section, et ne compte un même périmètre qu’une fois', async () => {
