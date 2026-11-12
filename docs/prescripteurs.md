@@ -118,13 +118,13 @@ privilège opérateur. Faux par défaut.
 
 ## La contrepartie : trois options
 
-Montants calculés sur `lib/domaine/offre.ts` (249 € HT par mois depuis le 12 novembre
-2026, 1 490 € HT par an).
+Montants calculés sur `lib/domaine/offre.ts` (149 € HT par mois, 1 490 € HT par
+an).
 
 | Option | Le prescripteur reçoit | Coût pour signauxfaibles | Ce que cela demande |
 | --- | --- | --- | --- |
 | A. Réciprocité | Son espace en accès offert, et un avantage pour ses clients (quatre parutions d'essai) | Une lettre par semaine pour le prescripteur | Rien de plus que ce qui existe |
-| B. Commission | 20 % du HT encaissé la première année : 49,80 € par mois et par client mensuel (597,60 € au plus), 298 € par client annuel | 20 % de la première année | Un relevé mensuel lu dans `abonnements`, la facture du prescripteur, un contrat |
+| B. Commission | 20 % du HT encaissé la première année : 29,80 € par mois et par client mensuel (357,60 € au plus), 298 € par client annuel | 20 % de la première année | Un relevé mensuel lu dans `abonnements`, la facture du prescripteur, un contrat |
 | C. Remise au client | Rien en propre ; ses clients paient moins (par exemple deux mois offerts sur l'annuel) | La remise | Un prix Stripe ou un coupon de plus |
 
 **Recommandation** : commencer par A, qui ne demande ni contrat ni flux
