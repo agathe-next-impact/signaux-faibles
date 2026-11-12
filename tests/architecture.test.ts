@@ -493,6 +493,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/forces/page.tsx',
       'app/(portail)/[slug]/recommandations/page.tsx',
       'app/(portail)/[slug]/scenarios/page.tsx',
+      'lib/portail/espace-dans-la-lettre.ts',
       'lib/portail/strategie.ts',
       'lib/portail/tableau.ts',
     ])
@@ -629,7 +630,14 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     const geste = action.slice(action.indexOf('export async function publierLesMarchés'))
     expect(geste.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
     expect(geste.indexOf('exigerOpérateur()')).toBeLessThan(geste.indexOf('publierLesMarchésDuPilote('))
-    expect(appelants('marchésDeLEspace')).toEqual(['app/(portail)/[slug]/marches/page.tsx', 'lib/portail/marches.ts'])
+    expect(appelants('marchésDeLEspace')).toEqual(['app/(portail)/[slug]/marches/page.tsx', 'lib/portail/espace-dans-la-lettre.ts', 'lib/portail/marches.ts'])
+    // Le pied « Dans votre espace » (12 novembre 2026) : les seuls compositeurs du courriel d'une lettre,
+    // par le registre de l'édition, bornée, dans le pilote et l'espace réorganisé seulement.
+    expect(appelants('espaceDansLaLettre')).toEqual(['app/api/veille/courriel/route.ts', 'lib/portail/envoi-des-lettres.ts', 'lib/portail/espace-dans-la-lettre.ts'])
+    const pied = readFileSync(join(process.cwd(), 'lib', 'portail', 'espace-dans-la-lettre.ts'), 'utf8')
+    expect(pied.indexOf("bornée('")).toBeGreaterThan(0)
+    expect(pied).toContain('espaceRéorganisé')
+    expect(pied).not.toMatch(/aperçu|lireBlocsDePage\(|fetch\(/)
     // Le comptage du registre : la seule orchestration l'appelle, jamais un écran ni une route.
     expect(appelants('compterLesEntreprises')).toEqual(['lib/portail/marches.ts', 'lib/registres/index.ts'])
     // Les marchés publics attribués : même frontière.

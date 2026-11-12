@@ -10,6 +10,7 @@ import { lireBlocsDePage } from '@/lib/notion/editions'
 import { lireÉditionDeTravail } from '@/lib/notion/travail'
 import { identifiantAvecTirets, identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { empreinte } from '@/lib/portail/debit'
+import { espaceDansLaLettre } from '@/lib/portail/espace-dans-la-lettre'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 
 /**
@@ -208,6 +209,13 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
     }
 
     const objet = demande.objet ?? édition.titre
+    // Le pied « Dans votre espace » (12 novembre 2026) : par le registre de
+    // l'édition, jamais par le slug seul ; une édition sans organisation unique
+    // est une anomalie, et n'a pas de pied.
+    const espace =
+      édition.organisationIds.length === 1
+        ? await espaceDansLaLettre({ registre: édition.organisationIds[0]!, slug: demande.slug })
+        : []
     const lettre = composerLettre({
       objet,
       édition,
@@ -216,8 +224,9 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
       organisation: demande.organisation ?? null,
       portailUrl,
       adressePostale: adressePostale(),
+      espace,
     })
-    console.info(`[veille/courriel] lettre ${pageId} pour ${demande.slug} composée (${lettre.axes} axe(s)).`)
+    console.info(`[veille/courriel] lettre ${pageId} pour ${demande.slug} composée (${lettre.axes} axe(s), ${espace.length} lien(s) vers l’espace).`)
     return réponse(objet, lettre.html, lettre.texte, demande.brouillon, nomExpéditeur)
   } catch (erreur) {
     console.error(`[veille/courriel] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
