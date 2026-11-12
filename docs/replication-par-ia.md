@@ -43,7 +43,7 @@ lettres et voit son tableau de bord. Il sert aussi la vitrine commerciale, les
 routes appelées par les tâches de production, l'abonnement Stripe et les
 courriers.
 
-Prix public : 249 € HT par mois ou 1 490 € HT par an par organisation, trois
+Prix public : 149 € HT par mois ou 1 490 € HT par an par organisation, trois
 lecteurs au plus, essai de trois parutions complètes
 (`lib/domaine/offre.ts`, `lib/domaine/parcours.ts`).
 

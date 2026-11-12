@@ -1084,16 +1084,16 @@ ni Notion ni Postgres ; elles présentent la **lettre unique** du programme du
 TVA et équivalent mensuel viennent de `lib/domaine/offre.ts`, les seuils de la
 lettre de `LETTRE_UNIQUE` et `ESSENTIEL_LIGNES_MAX`, l'essai de
 `PARUTIONS_D_ESSAI` ; le tarif fondateur à 29 € n'y figure pas. Depuis le 6 novembre 2026, l'offre
-publique est **249 € HT par mois** depuis le 12 novembre 2026 (`PRIX_MENSUEL_HT`, demande de
-l'opératrice ; 149 € du 7 au 11 novembre, 259 € le seul 6 novembre), création du référentiel et
+publique est **149 € HT par mois** (`PRIX_MENSUEL_HT`, 259 € le seul 6 novembre, ramené
+le 7 à la demande de l'opératrice), création du référentiel et
 deux heures de prise en main comprises (`HEURES_DE_PRISE_EN_MAIN`), en formule
-mensuelle ou annuelle (**1 490 € HT par an**, `PRIX_ANNUEL_HT`, écrit en clair depuis le 12 novembre 2026 et non plus dix fois le mensuel,
+mensuelle ou annuelle (**1 490 € HT par an**, dix mois payés, `PRIX_ANNUEL_HT`,
 revenue le 7 novembre 2026 à la demande de l'opératrice, sur `STRIPE_PRIX_ANNUEL`) ; les **frais de mise en place** sont offerts aux early adopters,
 pour toute inscription jusqu'au `FIN_DU_TARIF_EARLY_ADOPTER` (31 décembre 2026),
 puis de 790 € HT une fois (`FRAIS_DE_MISE_EN_PLACE_HT`), montants et date écrits
 dans `lib/domaine/offre.ts` seulement ; `/tarifs` porte les données structurées de
 l'offre (schema.org). Le prix facturé reste celui des prix Stripe : un prix
-mensuel à 249 € HT (nouveau prix Stripe, même variable) et un prix annuel à 1 490 € HT sont ceux de `STRIPE_PRIX_MENSUEL` et `STRIPE_PRIX_ANNUEL`, et les frais
+mensuel à 149 € HT et un prix annuel à 1 490 € HT sont ceux de `STRIPE_PRIX_MENSUEL` et `STRIPE_PRIX_ANNUEL`, et les frais
 de mise en place sont facturés depuis le 7 novembre 2026 par la page de
 paiement Stripe, en seconde ligne sur le prix unique `STRIPE_PRIX_MISE_EN_PLACE`
 (790 € HT, à créer), portée par la première facture, quand `fraisDeMiseEnPlaceDus`
