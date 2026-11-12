@@ -8,7 +8,8 @@ import { Panneau } from '@/components/coquille'
 import type { LigneDAbonnement } from '@/lib/base/situation'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
+import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
+import { grouperParStatut, statutDAbonnement } from '@/lib/domaine/statut-d-abonnement'
 import { publierUnePériode } from '@/lib/portail/publication'
 import type { PériodeAPublier, SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 import type { SantéDesEspaces } from '@/lib/portail/gestion'
@@ -36,6 +37,11 @@ export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
  * soir, `lireLaSantéDesEspaces`) et, par organisation, le lien « Gérer » vers
  * `/espaces/abonnements/[slug]` : pilote, espace, grille, fiche de veille,
  * lecteurs, décision et journal des courriers.
+ *
+ * Depuis le 12 novembre 2026, à sa demande, les lignes sont groupées par statut
+ * d'abonnement (`grouperParStatut`, `lib/domaine/statut-d-abonnement.ts`), lu
+ * dans l'étape calculée de chaque ligne : un en-tête par groupe, avec le nombre
+ * d'organisations, et le nom pour ordre dans chaque groupe.
  */
 export const instant = false
 
@@ -71,6 +77,8 @@ const LIBELLÉS_D_ÉTAT: Record<PériodeAPublier['état'], string> = {
   mêlée: 'publiée en partie, non montrée',
 }
 
+const COLONNES = ['organisation', 'santé', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers'] as const
+
 /** Le lundi de la semaine prochaine, valeur par défaut du champ « prochaine lettre ». */
 function lundiProchain(aujourdHui: string): string {
   const date = new Date(`${aujourdHui}T00:00:00Z`)
@@ -96,6 +104,12 @@ export default async function Abonnements({
   const périodeRéglée = typeof paramètres.periode === 'string' ? paramètres.periode : undefined
   const message = réglage ? MESSAGES[réglage] : synthèse ? MESSAGES_DE_SYNTHÈSE[synthèse] : undefined
   const aujourdHui = aujourdHuiÀParis()
+  // L'étape est calculée une fois par ligne : elle donne le groupe et la
+  // colonne « étape », qui ne peuvent donc pas se contredire.
+  const groupes = grouperParStatut(
+    (lignes ?? []).map((ligne) => ({ ligne, étape: étapeDeLaLigne(ligne, aujourdHui) })),
+    ({ ligne, étape }) => statutDAbonnement(étape, ligne.état),
+  )
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-6 py-12">
@@ -104,7 +118,7 @@ export default async function Abonnements({
         <p className="label-mono text-rose-texte">accès opérateur · {accès.nom}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">Abonnements</h1>
         <p className="text-ardoise">
-          Une ligne par organisation. L’étape est calculée comme dans l’espace du client ;
+          Une ligne par organisation, groupées par statut d’abonnement. L’étape est calculée comme dans l’espace du client ;
           les réglages se font sur la fiche de chaque organisation (« Gérer »), et
           l’abonnement chez Stripe.{' '}
           <Link href="/espaces" className="text-encre underline underline-offset-2">
@@ -134,7 +148,7 @@ export default async function Abonnements({
           <table className="w-full border-collapse text-corps">
             <thead>
               <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
-                {['organisation', 'santé', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers'].map(
+                {COLONNES.map(
                   (entête) => (
                     <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
                       {entête}
@@ -143,11 +157,26 @@ export default async function Abonnements({
                 )}
               </tr>
             </thead>
-            <tbody>
-              {lignes.map((ligne) => (
-                <Ligne key={ligne.slug} ligne={ligne} aujourdHui={aujourdHui} santé={santé} />
-              ))}
-            </tbody>
+            {groupes.map((groupe) => (
+              <tbody key={groupe.statut} aria-labelledby={`statut-${groupe.statut}`}>
+                <tr className="border-b border-gris-ligne bg-fond-ardoise">
+                  <th
+                    id={`statut-${groupe.statut}`}
+                    scope="rowgroup"
+                    colSpan={COLONNES.length}
+                    className="px-4 py-2 text-left font-medium text-encre"
+                  >
+                    {groupe.libellé}
+                    <span className="label-mono ml-3 font-normal text-ardoise">
+                      {groupe.éléments.length} organisation{groupe.éléments.length > 1 ? 's' : ''}
+                    </span>
+                  </th>
+                </tr>
+                {groupe.éléments.map(({ ligne, étape }) => (
+                  <Ligne key={ligne.slug} ligne={ligne} étape={étape} santé={santé} />
+                ))}
+              </tbody>
+            ))}
           </table>
         </div>
       )}
@@ -251,21 +280,9 @@ const LIBELLÉS_D_OFFRE: Record<LigneDAbonnement['offre'], string> = {
   gratuite: 'accès offert',
 }
 
-/**
- * Une ligne du tableau : des données seulement, et le lien « Gérer » pour seul
- * geste (31 octobre 2026, décision de l'opératrice). Les réglages du parcours
- * vivent sur la fiche de l'organisation, section « Abonnement ».
- */
-function Ligne({
-  ligne,
-  aujourdHui,
-  santé,
-}: {
-  ligne: LigneDAbonnement
-  aujourdHui: string
-  santé: Promise<SantéDesEspaces | null>
-}) {
-  const étape = étapeDuParcours({
+/** L'étape d'une ligne, par la même fonction que l'espace du client. */
+function étapeDeLaLigne(ligne: LigneDAbonnement, aujourdHui: string): Étape {
+  return étapeDuParcours({
     organisation: {
       état: ligne.état,
       activéeLe: ligne.activéeLe,
@@ -275,6 +292,22 @@ function Ligne({
     abonnement: ligne.abonnement,
     aujourdHui,
   })
+}
+
+/**
+ * Une ligne du tableau : des données seulement, et le lien « Gérer » pour seul
+ * geste (31 octobre 2026, décision de l'opératrice). Les réglages du parcours
+ * vivent sur la fiche de l'organisation, section « Abonnement ».
+ */
+function Ligne({
+  ligne,
+  étape,
+  santé,
+}: {
+  ligne: LigneDAbonnement
+  étape: Étape
+  santé: Promise<SantéDesEspaces | null>
+}) {
   const auPlafond = ligne.lecteursActifs >= LECTEURS_ACTIFS_MAX
 
   return (
