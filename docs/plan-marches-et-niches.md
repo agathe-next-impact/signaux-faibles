@@ -135,6 +135,24 @@ porte avant l'écriture, `compterLesEntreprises` appelé par la seule
 orchestration, aucune mesure acceptée de l'appelant, l'écran sans appel aux
 registres.
 
+### L'écran de décision (12 novembre 2026)
+
+À la demande de l'opératrice, l'écran « Marchés et niches » sert d'abord à décider. En tête, la matrice
+« Où porter l'effort » range chaque offre et chaque niche dans une de quatre cases, par règle
+(`lectureDuSegment`, `lib/domaine/marches.ts`), jamais par un modèle :
+
+| Verdict | Règle |
+| --- | --- |
+| à pousser | dix faits du trimestre ou plus, moins de quatre concurrents suivis présents |
+| à disputer | dix faits ou plus, quatre concurrents suivis ou plus |
+| à surveiller | moins de dix faits et moins de quatre concurrents, ou concurrence non mesurée |
+| à écarter | moins de dix faits et quatre concurrents ou plus, ou segment éteint ou en régression |
+
+Les deux seuils sont des constantes (`SEUIL_D_ACTIVITÉ_SOUTENUE`, `SEUIL_DE_CONCURRENCE_DENSE`) et la règle est
+écrite sous chaque titre de case. Dessous, une fiche courte par segment, dans l'ordre de la matrice : verdict,
+phrase de chiffres qui le fonde, cibles, potentiel, achat public, trois premiers concurrents ; hypothèses et
+sources repliées. Rendu dans `components/marches-ecran.tsx`.
+
 ## 4. Pilote Konica Minolta France
 
 Dix-sept segments préparés (fichier `marches-et-niches/konica-segments.json`
