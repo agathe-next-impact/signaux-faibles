@@ -1334,7 +1334,7 @@ reçoit jamais un chiffre de marché.
 { "slug": "konica-minolta-france", "segments": [
   { "cle": "marche", "libelle": "Impression, documents et services IT", "parent": null },
   { "cle": "industries_graphiques", "libelle": "Industries graphiques", "parent": "marche",
-    "cibles": { "sorte": "registre", "naf": ["18.12Z"], "tranches": ["11", "12"], "departements": ["69"], "collectivites": false },
+    "cibles": { "sorte": "registre", "naf": ["18.12Z"], "tranches": ["11", "12"], "departements": ["69"], "collectivites": false, "libelle": "imprimeurs de 10 à 49 salariés" },
     "offre": { "naf": ["46.66Z"], "departements": ["69"], "texte": "photocopieurs" },
     "depense": { "basse": 1000, "haute": 3000, "source": "https://…" },
     "presents": ["Heidelberg"], "entites": ["Heidelberg"], "familles": [{ "veille": "concurrentiel", "numero": 2 }] } ] }
@@ -1343,7 +1343,9 @@ reçoit jamais un chiffre de marché.
 Une racine (`parent: null`), ses offres, leurs niches : trois niveaux, quarante
 segments au plus. `cibles` est soit un périmètre compté au registre des
 entreprises (`registre`), soit un nombre posé avec sa source
-(`{ "sorte": "declare", "nombre": 135, "source": "https://…" }`). `depense` est
+(`{ "sorte": "declare", "nombre": 135, "source": "https://…" }`) ; `libelle`
+(facultatif, 60 caractères) y nomme ce que l'on compte, au pluriel, et l'écran
+l'écrit après le nombre (« 3 614 établissements hospitaliers »). `depense` est
 l'hypothèse de dépense annuelle par cible, en euros hors taxes.
 `marches_publics` (`{ "cpv": ["3012", "30232"] }`, facultatif) : les codes CPV
 du segment, ou leur début, quatre à huit chiffres, dix au plus ; le portail y

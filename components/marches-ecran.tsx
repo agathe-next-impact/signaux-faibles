@@ -18,9 +18,11 @@ import {
  */
 const nombre = (n: number) => n.toLocaleString('fr-FR')
 
+/** Le nombre de cibles, suivi de ce que l'on compte : « 3 614 établissements hospitaliers ». */
 function cibles(l: LigneDeMarché): string | null {
   if (l.cibles === null) return null
-  return l.ciblesPlafonnées ? `plus de ${nombre(l.cibles)}` : nombre(l.cibles)
+  const quoi = l.ciblesLibellé ?? (l.ciblesOrigine === 'declare' ? 'cibles déclarées' : 'entreprises et établissements au registre')
+  return `${l.ciblesPlafonnées ? 'plus de ' : ''}${nombre(l.cibles)} ${quoi}`
 }
 
 function potentiel(l: LigneDeMarché): string | null {

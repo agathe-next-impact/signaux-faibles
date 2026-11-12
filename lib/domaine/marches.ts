@@ -32,6 +32,7 @@ export const BORNES_DES_SEGMENTS = {
   texteMax: 80,
   sourceMax: 300,
   cpvMax: 10,
+  libelléDesCiblesMax: 60,
 } as const
 
 /** Au-delà, l'API Recherche d'entreprises ne compte plus : elle rend ce plafond. */
@@ -51,7 +52,9 @@ const CPV = /^\d{4,8}$/
  * Qui achète. `registre` : un périmètre que le portail compte dans le registre
  * des entreprises (codes NAF, tranches d'effectif, départements, ou les seules
  * collectivités territoriales). `declare` : un nombre posé avec sa source,
- * quand le registre ne sait pas compter la cible.
+ * quand le registre ne sait pas compter la cible. `libellé` : ce que l'on
+ * compte, au pluriel et en minuscules (« établissements hospitaliers »), pour
+ * que l'écran dise de quoi le nombre est fait.
  */
 export type CiblesDeSegment =
   | {
@@ -60,8 +63,9 @@ export type CiblesDeSegment =
       readonly tranches?: readonly string[]
       readonly départements?: readonly string[]
       readonly collectivités?: boolean
+      readonly libellé?: string
     }
-  | { readonly sorte: 'declare'; readonly nombre: number; readonly source: string }
+  | { readonly sorte: 'declare'; readonly nombre: number; readonly source: string; readonly libellé?: string }
 
 /** Qui vend : les codes NAF des offreurs, et de quoi compter leurs entrées et sorties au BODACC. */
 export type OffreDeSegment = {
@@ -184,6 +188,12 @@ export function contrôlerLesSegments(segments: readonly SegmentDeMarché[], gri
     } else if (c !== null) {
       refuser('cibles-invalides', 'cibles « registre » ou « declare »', cible)
     }
+    if (c?.libellé !== undefined) {
+      if (c.libellé.trim().length === 0 || c.libellé.length > BORNES_DES_SEGMENTS.libelléDesCiblesMax) {
+        refuser('libellé-invalide', `le nom des cibles tient en ${BORNES_DES_SEGMENTS.libelléDesCiblesMax} caractères`, `${cible}, cibles`)
+      }
+      if (/\bfaible\b|\bfort\b/i.test(c.libellé)) refuser('vocabulaire-interdit', '« faible » et « fort » sont réservés à l’impact', `${cible}, cibles`)
+    }
 
     const o = s.offre ?? null
     if (o) {
@@ -266,6 +276,8 @@ export function empreinteDesSegments(segments: readonly SegmentDeMarché[]): str
           trié((s.entités ?? []).map(normaliserTitre)),
           s.présents == null ? null : trié(s.présents.map(normaliserTitre)),
           trié((s.familles ?? []).map((f) => `${f.veille}:${f.numéro}`)),
+          // Posé seulement quand il existe : un arbre sans nom de cibles garde l'empreinte d'avant.
+          ...(s.cibles?.libellé ? [s.cibles.libellé] : []),
         ]),
     ),
   )
@@ -327,6 +339,8 @@ export type MesureDeSegment = {
   readonly cibles: number | null
   readonly ciblesPlafonnées: boolean
   readonly ciblesOrigine: 'registre' | 'declare' | null
+  /** Ce que l'on compte (« établissements hospitaliers »), tel que l'arbre le nomme. Absent des mesures d'avant. */
+  readonly ciblesLibellé?: string | null
   /** Cibles × dépense, en euros par an. `somme` : la racine additionne ses offres chiffrées. */
   readonly potentiel: { readonly bas: number; readonly haut: number; readonly origine: 'calcul' | 'somme' } | null
   readonly offreurs: number | null
@@ -534,6 +548,7 @@ export function mesurerLesSegments(
       cibles,
       ciblesPlafonnées,
       ciblesOrigine: c?.sorte ?? null,
+      ciblesLibellé: c?.libellé?.trim() || null,
       potentiel,
       offreurs: comptes.offreurs?.nombre ?? null,
       offreursPlafonnés: comptes.offreurs?.plafonné ?? false,
@@ -718,7 +733,7 @@ export const RÈGLES_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = {
 
 export type LectureDeSegment = {
   readonly verdict: VerdictDeSegment
-  /** Ce qui fonde le verdict, en une phrase de chiffres. */
+  /** La situation du segment, en une phrase : son activité, puis sa concurrence. */
   readonly raison: string
 }
 
@@ -729,18 +744,23 @@ const pluriel = (n: number, mot: string) => `${n.toLocaleString('fr-FR')} ${mot}
  * trimestre, l'activité de la veille (faits rattachés) et la concurrence
  * (concurrents suivis présents), croisées en quatre cases. Un segment éteint ou
  * en régression est écarté quelle que soit sa case ; une concurrence non
- * mesurée ne conclut jamais mieux que « à surveiller ».
+ * mesurée ne conclut jamais mieux que « à surveiller ». La phrase décrit la
+ * situation avec les mots de la règle, les chiffres entre parenthèses.
  */
 export function lectureDuSegment(l: LigneDeMarché): LectureDeSegment {
-  const activité = `${pluriel(l.faits, 'fait')} ce trimestre${l.faitsForts > 0 ? `, dont ${l.faitsForts} ${l.faitsForts > 1 ? 'signaux forts' : 'signal fort'}` : ''}`
-  if (l.état === 'eteint') return { verdict: 'ecarter', raison: 'Aucun fait ni cible depuis deux trimestres.' }
-  if (l.état === 'en_regression') return { verdict: 'ecarter', raison: `En recul depuis deux trimestres, ${activité}.` }
+  if (l.état === 'eteint') return { verdict: 'ecarter', raison: 'Le segment s’est éteint : ni fait ni cible depuis deux trimestres.' }
   const soutenue = l.faits >= SEUIL_D_ACTIVITÉ_SOUTENUE
-  if (l.présents === null) return { verdict: 'surveiller', raison: `${activité}, concurrence non mesurée.` }
-  const concurrence = l.présents.length === 0 ? 'aucun concurrent suivi' : pluriel(l.présents.length, 'concurrent')
-  const raison = `${activité}, ${concurrence}${l.présents.length > 0 ? ` suivi${l.présents.length > 1 ? 's' : ''}` : ''}.`
-  const dense = l.présents.length >= SEUIL_DE_CONCURRENCE_DENSE
-  return { verdict: soutenue ? (dense ? 'disputer' : 'pousser') : dense ? 'ecarter' : 'surveiller', raison: raison.charAt(0).toUpperCase() + raison.slice(1) }
+  const forts = l.faitsForts > 0 ? `, dont ${l.faitsForts} ${l.faitsForts > 1 ? 'signaux forts' : 'signal fort'}` : ''
+  const activité =
+    l.faits === 0 ? 'Aucun fait relevé par la veille ce trimestre' : `${soutenue ? 'Activité soutenue' : 'Peu d’activité'} ce trimestre (${pluriel(l.faits, 'fait')}${forts})`
+  const début = l.état === 'en_regression' ? `En recul depuis deux trimestres. ${activité}` : activité
+  if (l.présents === null) return { verdict: l.état === 'en_regression' ? 'ecarter' : 'surveiller', raison: `${début} ; la concurrence n’y est pas encore mesurée.` }
+  const n = l.présents.length
+  const dense = n >= SEUIL_DE_CONCURRENCE_DENSE
+  const présence = n === 0 ? 'aucun concurrent suivi n’y est présent' : `${pluriel(n, 'concurrent')} suivi${n > 1 ? 's' : ''} y ${n > 1 ? 'sont présents' : 'est présent'}`
+  const concurrence = dense ? `sur un segment disputé : ${présence}` : `et peu de concurrence : ${présence}`
+  const verdict: VerdictDeSegment = l.état === 'en_regression' ? 'ecarter' : soutenue ? (dense ? 'disputer' : 'pousser') : dense ? 'ecarter' : 'surveiller'
+  return { verdict, raison: `${début} ${concurrence}.` }
 }
 
 export type CaseDeDécision = {

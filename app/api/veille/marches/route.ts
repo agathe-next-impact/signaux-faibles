@@ -13,7 +13,7 @@ import { lireLesMarchésDuPilote, mesurerLesMarchésDuPilote, publierLesMarchés
  *   POST /api/veille/marches
  *   Authorization: Bearer <ACTIVATION_SECRET>
  *   { "slug": "…", "segments": [{ "cle", "libelle", "parent": null | "<cle>",
- *       "cibles": { "sorte": "registre", "naf"?, "tranches"?, "departements"?, "collectivites"? }
+ *       "cibles": { "sorte": "registre", "naf"?, "tranches"?, "departements"?, "collectivites"?, "libelle"? }
  *               | { "sorte": "declare", "nombre", "source" } | null,
  *       "offre": { "naf"?, "departements"?, "texte"? } | null,
  *       "depense": { "basse", "haute", "source" } | null,
@@ -51,8 +51,8 @@ const segment = z.object({
   parent: texte(80).nullable(),
   cibles: z
     .union([
-      z.object({ sorte: z.literal('registre'), naf: codes.optional(), tranches: codes.optional(), departements: codes.optional(), collectivites: z.boolean().optional() }),
-      z.object({ sorte: z.literal('declare'), nombre: z.number(), source: texte(600) }),
+      z.object({ sorte: z.literal('registre'), naf: codes.optional(), tranches: codes.optional(), departements: codes.optional(), collectivites: z.boolean().optional(), libelle: texte(200).optional() }),
+      z.object({ sorte: z.literal('declare'), nombre: z.number(), source: texte(600), libelle: texte(200).optional() }),
     ])
     .nullish(),
   offre: z.object({ naf: codes.optional(), departements: codes.optional(), texte: texte(200).optional() }).nullish(),
@@ -79,13 +79,14 @@ function versLeDomaine(s: z.infer<typeof segment>): SegmentDeMarché {
       c === null
         ? null
         : c.sorte === 'declare'
-          ? { sorte: 'declare', nombre: c.nombre, source: c.source }
+          ? { sorte: 'declare', nombre: c.nombre, source: c.source, ...(c.libelle ? { libellé: c.libelle } : {}) }
           : {
               sorte: 'registre',
               ...(c.naf ? { naf: c.naf } : {}),
               ...(c.tranches ? { tranches: c.tranches } : {}),
               ...(c.departements ? { départements: c.departements } : {}),
               ...(c.collectivites === true ? { collectivités: true } : {}),
+              ...(c.libelle ? { libellé: c.libelle } : {}),
             },
     offre: s.offre
       ? { ...(s.offre.naf ? { naf: s.offre.naf } : {}), ...(s.offre.departements ? { départements: s.offre.departements } : {}), ...(s.offre.texte !== undefined ? { texte: s.offre.texte } : {}) }
@@ -109,8 +110,8 @@ function versLeJson(s: SegmentDeMarché) {
       c === null
         ? null
         : c.sorte === 'declare'
-          ? c
-          : { sorte: 'registre', ...(c.naf ? { naf: c.naf } : {}), ...(c.tranches ? { tranches: c.tranches } : {}), ...(c.départements ? { departements: c.départements } : {}), ...(c.collectivités ? { collectivites: true } : {}) },
+          ? { sorte: 'declare', nombre: c.nombre, source: c.source, ...(c.libellé ? { libelle: c.libellé } : {}) }
+          : { sorte: 'registre', ...(c.naf ? { naf: c.naf } : {}), ...(c.tranches ? { tranches: c.tranches } : {}), ...(c.départements ? { departements: c.départements } : {}), ...(c.collectivités ? { collectivites: true } : {}), ...(c.libellé ? { libelle: c.libellé } : {}) },
     offre: s.offre ? { ...(s.offre.naf ? { naf: s.offre.naf } : {}), ...(s.offre.départements ? { departements: s.offre.départements } : {}), ...(s.offre.texte !== undefined ? { texte: s.offre.texte } : {}) } : null,
     depense: s.dépense ?? null,
     ...(s.marchésPublics ? { marches_publics: { cpv: s.marchésPublics.cpv } } : {}),

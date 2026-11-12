@@ -150,8 +150,12 @@ registres.
 
 Les deux seuils sont des constantes (`SEUIL_D_ACTIVITÉ_SOUTENUE`, `SEUIL_DE_CONCURRENCE_DENSE`) et la règle est
 écrite sous chaque titre de case. Dessous, une fiche courte par segment, dans l'ordre de la matrice : verdict,
-phrase de chiffres qui le fonde, cibles, potentiel, achat public, trois premiers concurrents ; hypothèses et
-sources repliées. Rendu dans `components/marches-ecran.tsx`.
+phrase de situation composée par la même règle (« Activité soutenue ce trimestre (16 faits, dont 3 signaux
+forts) et peu de concurrence : 3 concurrents suivis y sont présents. »), cibles, potentiel, achat public, trois
+premiers concurrents ; hypothèses et sources repliées. Le nombre de cibles est suivi de ce que l'on compte
+(« 3 614 établissements hospitaliers ») : `cibles.libelle` de l'arbre, facultatif, 60 caractères, que la mesure
+recopie ; sans lui, l'écran dit « entreprises et établissements au registre ». Rendu dans
+`components/marches-ecran.tsx`.
 
 ## 4. Pilote Konica Minolta France
 
