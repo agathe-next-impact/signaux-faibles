@@ -341,18 +341,40 @@ describe('l’état d’un segment', () => {
     expect(vueDesMarchés([{ période: '2026-T3', mesures: avant }])!.lignes.every((l) => l.état === 'apparu')).toBe(true)
   })
 
-  it('le verdict : activité et concurrence croisées, par règle', () => {
+  it('le verdict : activité et concurrence croisées, par règle, et la situation en une phrase', () => {
     const l = (plus: Partial<MesureDeSegment>, état: 'apparu' | 'en_regression' | 'eteint' = 'apparu') => ({ ...m(plus), état, tendance: null, modifié: false, ouverte: false })
-    expect(lectureDuSegment(l({ faits: 16, faitsForts: 3, présents: ['A', 'B', 'C'] }))).toEqual({ verdict: 'pousser', raison: '16 faits ce trimestre, dont 3 signaux forts, 3 concurrents suivis.' })
-    expect(lectureDuSegment(l({ faits: 10, présents: [] }))).toEqual({ verdict: 'pousser', raison: '10 faits ce trimestre, aucun concurrent suivi.' })
-    expect(lectureDuSegment(l({ faits: 10, présents: ['A', 'B', 'C', 'D'] })).verdict).toBe('disputer')
-    expect(lectureDuSegment(l({ faits: 9, faitsForts: 1, présents: ['A'] }))).toEqual({ verdict: 'surveiller', raison: '9 faits ce trimestre, dont 1 signal fort, 1 concurrent suivi.' })
+    expect(lectureDuSegment(l({ faits: 16, faitsForts: 3, présents: ['A', 'B', 'C'] }))).toEqual({
+      verdict: 'pousser',
+      raison: 'Activité soutenue ce trimestre (16 faits, dont 3 signaux forts) et peu de concurrence : 3 concurrents suivis y sont présents.',
+    })
+    expect(lectureDuSegment(l({ faits: 10, présents: [] }))).toEqual({ verdict: 'pousser', raison: 'Activité soutenue ce trimestre (10 faits) et peu de concurrence : aucun concurrent suivi n’y est présent.' })
+    expect(lectureDuSegment(l({ faits: 10, présents: ['A', 'B', 'C', 'D'] }))).toEqual({
+      verdict: 'disputer',
+      raison: 'Activité soutenue ce trimestre (10 faits) sur un segment disputé : 4 concurrents suivis y sont présents.',
+    })
+    expect(lectureDuSegment(l({ faits: 9, faitsForts: 1, présents: ['A'] }))).toEqual({
+      verdict: 'surveiller',
+      raison: 'Peu d’activité ce trimestre (9 faits, dont 1 signal fort) et peu de concurrence : 1 concurrent suivi y est présent.',
+    })
     expect(lectureDuSegment(l({ faits: 9, présents: ['A', 'B', 'C', 'D'] })).verdict).toBe('ecarter')
+    expect(lectureDuSegment(l({ faits: 0, présents: ['A'] })).raison).toBe('Aucun fait relevé par la veille ce trimestre et peu de concurrence : 1 concurrent suivi y est présent.')
     // Une concurrence non mesurée ne conclut jamais mieux que « à surveiller ».
-    expect(lectureDuSegment(l({ faits: 30, présents: null }))).toEqual({ verdict: 'surveiller', raison: '30 faits ce trimestre, concurrence non mesurée.' })
+    expect(lectureDuSegment(l({ faits: 30, présents: null }))).toEqual({ verdict: 'surveiller', raison: 'Activité soutenue ce trimestre (30 faits) ; la concurrence n’y est pas encore mesurée.' })
     // Un segment en recul ou éteint est écarté quelle que soit sa case.
-    expect(lectureDuSegment(l({ faits: 30, présents: [] }, 'en_regression')).verdict).toBe('ecarter')
-    expect(lectureDuSegment(l({ faits: 0, cibles: null }, 'eteint')).verdict).toBe('ecarter')
+    expect(lectureDuSegment(l({ faits: 30, présents: [] }, 'en_regression'))).toMatchObject({ verdict: 'ecarter', raison: expect.stringMatching(/^En recul depuis deux trimestres\. Activité soutenue/) })
+    expect(lectureDuSegment(l({ faits: 30, présents: null }, 'en_regression')).verdict).toBe('ecarter')
+    expect(lectureDuSegment(l({ faits: 0, cibles: null }, 'eteint'))).toEqual({ verdict: 'ecarter', raison: 'Le segment s’est éteint : ni fait ni cible depuis deux trimestres.' })
+  })
+
+  it('le nom des cibles : borné par la porte, porté par la mesure, dans l’empreinte seulement s’il existe', () => {
+    const avec = (libellé: string) => SEGMENTS.map((s) => (s.clé === 'impression' && s.cibles?.sorte === 'registre' ? { ...s, cibles: { ...s.cibles, libellé } } : s))
+    expect(contrôlerLesSegments(avec('entreprises de 250 salariés et plus'), GRILLE)).toEqual([])
+    expect(contrôlerLesSegments(avec('x'.repeat(61)), GRILLE).map((r) => r.code)).toEqual(['libellé-invalide'])
+    expect(contrôlerLesSegments(avec('entreprises à fort potentiel'), GRILLE).map((r) => r.code)).toEqual(['vocabulaire-interdit'])
+    expect(empreinteDesSegments(avec('entreprises'))).not.toBe(empreinteDesSegments(SEGMENTS))
+    const mesures = mesurerLesSegments(avec('entreprises de 250 salariés et plus'), { comptes: COMPTES, faits: FAITS, chiffres: [] })
+    expect(mesures.find((x) => x.clé === 'impression')?.ciblesLibellé).toBe('entreprises de 250 salariés et plus')
+    expect(mesurerLesSegments(SEGMENTS, { comptes: COMPTES, faits: FAITS, chiffres: [] }).find((x) => x.clé === 'impression')?.ciblesLibellé).toBeNull()
   })
 
   it('la matrice : quatre cases dans l’ordre, le marché entier à part, le plus actif d’abord', () => {
