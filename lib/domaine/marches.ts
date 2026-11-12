@@ -31,6 +31,7 @@ export const BORNES_DES_SEGMENTS = {
   famillesMax: 12,
   texteMax: 80,
   sourceMax: 300,
+  cpvMax: 10,
 } as const
 
 /** Au-delà, l'API Recherche d'entreprises ne compte plus : elle rend ce plafond. */
@@ -43,6 +44,8 @@ const NAF = /^\d{2}\.\d{2}[A-Z]$/
 const DÉPARTEMENT = /^(\d{2}|2A|2B|97\d)$/
 const CLÉ = /^[a-z][a-z0-9_]{0,39}$/
 const SOURCE = /^https:\/\/[^\s]+$/
+/** Un code CPV ou son début : « 3012 » couvre tous les codes qui commencent ainsi. */
+const CPV = /^\d{4,8}$/
 
 /**
  * Qui achète. `registre` : un périmètre que le portail compte dans le registre
@@ -70,6 +73,13 @@ export type OffreDeSegment = {
 /** La dépense annuelle d'une cible, en euros hors taxes : une hypothèse, toujours une fourchette et une source. */
 export type DépenseDeSegment = { readonly basse: number; readonly haute: number; readonly source: string }
 
+/**
+ * Ce que les acheteurs publics achètent sur le segment : des codes CPV du
+ * vocabulaire commun des marchés publics, ou leur début (quatre à huit
+ * chiffres). Le portail y lit les marchés attribués, publiés par l'État (DECP).
+ */
+export type MarchésPublicsDeSegment = { readonly cpv: readonly string[] }
+
 export type SegmentDeMarché = {
   readonly clé: string
   readonly libellé: string
@@ -78,6 +88,7 @@ export type SegmentDeMarché = {
   readonly cibles?: CiblesDeSegment | null
   readonly offre?: OffreDeSegment | null
   readonly dépense?: DépenseDeSegment | null
+  readonly marchésPublics?: MarchésPublicsDeSegment | null
   /** Les entités de la grille dont les faits comptent pour l'activité du segment, par leur nom de grille. */
   readonly entités?: readonly string[]
   /**
@@ -192,6 +203,12 @@ export function contrôlerLesSegments(segments: readonly SegmentDeMarché[], gri
       source(d.source, `${cible}, dépense`)
     }
 
+    const mp = s.marchésPublics ?? null
+    if (mp) {
+      if (mp.cpv.length === 0) refuser('périmètre-vide', 'des marchés publics demandent au moins un code CPV', `${cible}, marchés publics`)
+      codes(mp.cpv, CPV, BORNES_DES_SEGMENTS.cpvMax, 'code(s) CPV', `${cible}, marchés publics`)
+    }
+
     const présentes = s.entités ?? []
     if (présentes.length > BORNES_DES_SEGMENTS.entitésMax) refuser('entités-hors-bornes', `${présentes.length} entités, ${BORNES_DES_SEGMENTS.entitésMax} au plus`, cible)
     for (const nom of présentes) if (!entités.has(normaliserTitre(nom))) refuser('entité-hors-grille', `« ${nom.slice(0, 60)} » ne figure pas dans la grille`, cible)
@@ -223,8 +240,11 @@ export function empreinteDuPérimètre(s: SegmentDeMarché): string {
   const c = s.cibles ?? null
   const o = s.offre ?? null
   const d = s.dépense ?? null
+  const mp = s.marchésPublics ?? null
   return empreinte(
     JSON.stringify({
+      // Posée seulement quand elle existe : un segment sans code CPV garde l'empreinte d'avant.
+      ...(mp ? { m: trié(mp.cpv) } : {}),
       c: c === null ? null : c.sorte === 'registre' ? ['r', trié(c.naf), trié(c.tranches), trié(c.départements), c.collectivités === true] : ['d', c.nombre, c.source],
       o: o === null ? null : [trié(o.naf), trié(o.départements), o.texte ?? null],
       d: d === null ? null : [d.basse, d.haute, d.source],
@@ -257,12 +277,33 @@ export function empreinteDesSegments(segments: readonly SegmentDeMarché[]): str
 /** `découpé` : le périmètre dépassait le plafond du registre, le nombre est la somme de ses tranches d'effectif. */
 export type Compte = { readonly nombre: number | null; readonly plafonné: boolean; readonly source: string | null; readonly découpé?: boolean }
 
+/** Au-delà, un montant publié est tenu pour une erreur de saisie ou un accord-cadre sans rapport avec la dépense d'une année. */
+export const MONTANT_MAX_D_UN_MARCHÉ = 100_000_000
+
+/** Les marchés publics attribués d'un segment, tels que lus dans les données essentielles de la commande publique. */
+export type AchatsPublics = {
+  readonly marchés: number
+  /** En euros hors taxes, somme des montants notifiés. */
+  readonly montant: number
+  readonly titulaires: number
+  /** Les marchés écartés parce que leur montant dépasse `MONTANT_MAX_D_UN_MARCHÉ` ; `null` si non compté. */
+  readonly écartés: number | null
+  /** Par SIREN demandé (les concurrents de la grille), ceux qui sont titulaires. */
+  readonly parSiren: readonly { readonly siren: string; readonly marchés: number; readonly montant: number }[]
+  readonly du: string
+  /** Borne exclue. */
+  readonly au: string
+  readonly source: string
+}
+
 /** Ce que l'orchestration a lu pour un segment, avant l'assemblage. */
 export type ComptesDuSegment = {
   readonly cibles: Compte | null
   readonly offreurs: Compte | null
   readonly entrées: number | null
   readonly sorties: number | null
+  /** `undefined` : le segment n'a pas de code CPV. `null` : la source n'a pas répondu. */
+  readonly achats?: AchatsPublics | null
 }
 
 /** Un fait étiqueté, réduit à ce que l'activité d'un segment regarde. */
@@ -294,8 +335,28 @@ export type MesureDeSegment = {
   readonly sorties: number | null
   /** `null` : la présence des concurrents n'est pas renseignée sur ce segment. */
   readonly présents: readonly string[] | null
-  /** `arbre` : posés avec le segment. `faits` : déduits des faits du trimestre qui nomment un concurrent de la grille. */
-  readonly présentsOrigine?: 'arbre' | 'faits' | null
+  /**
+   * `arbre` : posés avec le segment. `marches` : titulaires d'un marché public
+   * du segment, reconnus par leur SIREN. `faits` : déduits des faits du
+   * trimestre qui nomment un concurrent de la grille.
+   */
+  readonly présentsOrigine?: 'arbre' | 'marches' | 'faits' | null
+  /**
+   * L'achat public du segment sur douze mois : une dépense constatée, distincte
+   * du potentiel, qui reste une hypothèse. Absent ou `null` : le segment n'a pas
+   * de code CPV, ou la source n'a pas répondu (la limite le dit).
+   */
+  readonly achatPublic?: {
+    readonly montant: number
+    readonly marchés: number
+    readonly titulaires: number
+    readonly du: string
+    readonly au: string
+    /** Les concurrents de la grille titulaires, du plus gros montant au plus petit. */
+    readonly concurrents: readonly { readonly nom: string; readonly marchés: number; readonly montant: number }[]
+    /** Ce que l'organisation elle-même a remporté, quand sa grille porte son SIREN ; `null` sinon. */
+    readonly organisation?: { readonly marchés: number; readonly montant: number } | null
+  } | null
   readonly chiffreDAffairesDesPrésents: number | null
   readonly présentsAvecComptes: number
   readonly faits: number
@@ -341,10 +402,15 @@ export function mesurerLesSegments(
     readonly chiffres: readonly ChiffreDUnPrésent[]
     /** Les concurrents de la grille : un fait du segment qui en nomme un le dit présent. */
     readonly concurrents?: readonly string[]
+    /** Le SIREN des concurrents de la grille qui en portent un : il reconnaît le titulaire d'un marché public. */
+    readonly sirens?: readonly { readonly nom: string; readonly siren: string }[]
+    /** Le SIREN de l'organisation, quand sa grille le porte : sa propre part de l'achat public. */
+    readonly sirenDeLOrganisation?: string | null
   },
 ): MesureDeSegment[] {
   const chiffres = new Map(entrée.chiffres.map((c) => [normaliserTitre(c.nom), c.chiffreDAffaires]))
   const concurrents = new Map((entrée.concurrents ?? []).map((nom) => [normaliserTitre(nom), nom]))
+  const nomDuSiren = new Map((entrée.sirens ?? []).map((x) => [x.siren, x.nom]))
   const DÉCOUPE = 'compté tranche d’effectif par tranche, le périmètre dépassant le plafond du registre ; une entreprise sans tranche déclarée n’y entre pas.'
   const mesures = segments.map((s): MesureDeSegment => {
     const comptes = entrée.comptes.get(s.clé) ?? { cibles: null, offreurs: null, entrées: null, sorties: null }
@@ -401,7 +467,49 @@ export function mesurerLesSegments(
     // Présence posée avec le segment, ou à défaut déduite : un concurrent de la grille que nomme un fait du segment.
     // Aucun fait ne prouve une niche ouverte : sans concurrent nommé, la présence reste non renseignée.
     let présents: string[] | null = s.présents == null ? null : [...s.présents]
-    let présentsOrigine: 'arbre' | 'faits' | null = présents === null ? null : 'arbre'
+    let présentsOrigine: 'arbre' | 'marches' | 'faits' | null = présents === null ? null : 'arbre'
+
+    // L'achat public : ce que les acheteurs publics ont notifié sur les codes CPV du segment, en douze mois.
+    let achatPublic: MesureDeSegment['achatPublic'] = null
+    if (s.marchésPublics) {
+      const a = comptes.achats ?? null
+      if (a === null) {
+        limites.push('Achat public n.d. : les données essentielles de la commande publique n’ont pas répondu dans le temps imparti.')
+      } else {
+        const parNom = new Map<string, { marchés: number; montant: number }>()
+        for (const t of a.parSiren) {
+          const nom = nomDuSiren.get(t.siren)
+          if (nom === undefined) continue
+          const déjà = parNom.get(nom) ?? { marchés: 0, montant: 0 }
+          parNom.set(nom, { marchés: déjà.marchés + t.marchés, montant: déjà.montant + t.montant })
+        }
+        const titulaires = [...parNom.entries()].map(([nom, x]) => ({ nom, ...x })).sort((x, y) => y.montant - x.montant || x.nom.localeCompare(y.nom, 'fr'))
+        const elle = entrée.sirenDeLOrganisation ?? null
+        const sienne = elle === null ? null : (a.parSiren.find((t) => t.siren === elle) ?? { marchés: 0, montant: 0 })
+        achatPublic = {
+          montant: Math.round(a.montant),
+          marchés: a.marchés,
+          titulaires: a.titulaires,
+          du: a.du,
+          au: a.au,
+          concurrents: titulaires,
+          organisation: sienne === null ? null : { marchés: sienne.marchés, montant: sienne.montant },
+        }
+        sources.push(a.source)
+        limites.push(
+          `Achat public : marchés notifiés du ${a.du} au ${a.au} exclu sur les codes CPV ${trié(s.marchésPublics.cpv).join(', ')} (données essentielles de la commande publique). Une dépense constatée, pas tout le marché : les achats privés n’y sont pas, ni les marchés que leur acheteur n’a pas publiés, et un accord-cadre y compte pour son montant notifié entier.`,
+        )
+        if (a.écartés !== null && a.écartés > 0) limites.push(`Achat public : ${a.écartés} marché(s) de ${montantCourt(MONTANT_MAX_D_UN_MARCHÉ)} ou plus écarté(s), montant tenu pour une erreur de saisie.`)
+        if (présents === null && !entier && titulaires.length > 0) {
+          présents = titulaires.map((t) => t.nom)
+          présentsOrigine = 'marches'
+          limites.push(
+            `Concurrents présents reconnus par leur SIREN parmi les titulaires : ${titulaires.map((t) => `${t.nom} (${t.marchés} marché${t.marchés > 1 ? 's' : ''}, ${montantCourt(t.montant)})`).join(', ')}. Seul le premier titulaire d’un marché est lu, et un concurrent sans SIREN dans la grille n’est pas reconnu.`,
+          )
+        }
+      }
+    }
+
     if (présents === null && !entier) {
       const nommés = new Map<string, number>()
       for (const f of siens) {
@@ -433,6 +541,7 @@ export function mesurerLesSegments(
       sorties: comptes.sorties,
       présents,
       présentsOrigine,
+      ...(s.marchésPublics ? { achatPublic } : {}),
       chiffreDAffairesDesPrésents: lus.length > 0 ? lus.reduce((a, b) => a + b, 0) : null,
       présentsAvecComptes: lus.length,
       faits: siens.length,

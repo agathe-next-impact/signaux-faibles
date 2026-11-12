@@ -1344,7 +1344,10 @@ Une racine (`parent: null`), ses offres, leurs niches : trois niveaux, quarante
 segments au plus. `cibles` est soit un périmètre compté au registre des
 entreprises (`registre`), soit un nombre posé avec sa source
 (`{ "sorte": "declare", "nombre": 135, "source": "https://…" }`). `depense` est
-l'hypothèse de dépense annuelle par cible, en euros hors taxes. `presents` :
+l'hypothèse de dépense annuelle par cible, en euros hors taxes.
+`marches_publics` (`{ "cpv": ["3012", "30232"] }`, facultatif) : les codes CPV
+du segment, ou leur début, quatre à huit chiffres, dix au plus ; le portail y
+lit les marchés publics attribués sur douze mois. `presents` :
 les concurrents de la grille présents sur le segment (`null` ou absent : non
 renseigné ; liste vide : aucun, le segment est dit ouvert). `entites` et
 `familles` désignent les faits qui comptent pour l'activité du segment ; les
@@ -1362,7 +1365,13 @@ toutes les mesures vivantes : une ligne par segment dans l'ordre de l'arbre,
 avec `cibles` (un périmètre au plafond du registre est découpé par tranche
 d'effectif puis par code NAF ou section d'activité, et la limite l'écrit),
 `potentiel`, `offreurs`, `entrées`, `sorties`, `présents` et `présentsOrigine`
-(`arbre`, ou `faits` quand la présence est déduite des faits du trimestre),
+(`arbre` ; `marches` quand les présents sont les concurrents de la grille
+titulaires d'un marché public du segment, reconnus par leur SIREN ; `faits`
+quand la présence est déduite des faits du trimestre), `achatPublic` pour un
+segment qui porte des codes CPV (`montant`, `marchés`, `titulaires`, fenêtre
+`du` et `au` exclu, `concurrents` titulaires avec leur montant, `organisation`
+pour la part de l'organisation elle-même quand sa grille porte son SIREN ; `null` si la
+source n'a pas répondu),
 `faits`, `état`, `tendance`, `modifié`, `ouverte`, `sources` et `limites`.
 `aucun` tant que rien n'est posté.
 

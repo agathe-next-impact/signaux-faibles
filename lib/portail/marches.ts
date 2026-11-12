@@ -15,9 +15,11 @@ import {
   empreinteDesSegments,
   fenêtreDuTrimestre,
   mesurerLesSegments,
+  MONTANT_MAX_D_UN_MARCHÉ,
   messageDeRepriseDesSegments,
   TRANCHES_D_EFFECTIF,
   vueDesMarchés,
+  type AchatsPublics,
   type Compte,
   type ComptesDuSegment,
   type MesureDeSegment,
@@ -26,7 +28,7 @@ import {
 } from '@/lib/domaine/marches'
 import { périodesDuCycle, type LigneDeBenchmark, type Refus } from '@/lib/domaine/strategie'
 import { bornée, organisationDuRegistre } from '@/lib/portail/strategie'
-import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS, SECTIONS_D_ACTIVITÉ } from '@/lib/registres'
+import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS, lireLesAchatsPublics, SECTIONS_D_ACTIVITÉ } from '@/lib/registres'
 
 /**
  * Marchés et niches (12 novembre 2026, `docs/plan-marches-et-niches.md`) :
@@ -37,8 +39,9 @@ import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS, SECTIONS_
  *     `contrôlerLesSegments` avant toute écriture ;
  *   · les mesures d'un trimestre sont **calculées par le portail**
  *     (`PATCH`, `action: mesurer`) : comptes du registre des entreprises et du
- *     BODACC, faits étiquetés de la période, comptes publiés lus par le
- *     benchmark du trimestre ; aucun chiffre ne vient d'un modèle ;
+ *     BODACC, marchés publics attribués (DECP) sur les codes CPV du segment,
+ *     faits étiquetés de la période, comptes publiés lus par le benchmark du
+ *     trimestre ; aucun chiffre ne vient d'un modèle ni du client ;
  *   · rien n'est montré au client avant que l'opératrice publie la période ;
  *   · l'écran lit les seules mesures publiées, par le registre de la session
  *     (règle 2), dans une lecture bornée, sans lecture Notion ni appel aux
@@ -133,7 +136,7 @@ export async function lireLesMarchésDuPilote(entrée: { readonly slug: string }
 async function compterUnSegment(
   segment: SegmentDeMarché,
   fin: string,
-  contexte: { readonly f: typeof fetch; readonly attente: (ms: number) => Promise<unknown>; readonly maintenant: () => number; readonly échéance: number; readonly lus: Map<string, Promise<Awaited<ReturnType<typeof compterLesEntreprises>> | null>> },
+  contexte: { readonly f: typeof fetch; readonly attente: (ms: number) => Promise<unknown>; readonly maintenant: () => number; readonly échéance: number; readonly lus: Map<string, Promise<Awaited<ReturnType<typeof compterLesEntreprises>> | null>>; readonly achats: Map<string, Promise<AchatsPublics | null>>; readonly sirens: readonly string[] },
 ): Promise<ComptesDuSegment> {
   const dansLeTemps = async <T>(lecture: (signal: AbortSignal) => Promise<T>): Promise<T | null> => {
     const reste = contexte.échéance - contexte.maintenant()
@@ -222,7 +225,19 @@ async function compterUnSegment(
     entrées = await dansLeTemps((signal) => compterLesAnnonces({ ...base, familles: FAMILLES_ENTRANTS }, contexte.f, signal))
     sorties = await dansLeTemps((signal) => compterLesAnnonces({ ...base, familles: ['collective'] }, contexte.f, signal))
   }
-  return { cibles, offreurs, entrées, sorties }
+  // Les marchés publics attribués sur les codes CPV du segment, sur les douze mois qui s'achèvent à la fin de la mesure.
+  const cpv = segment.marchésPublics?.cpv ?? []
+  if (cpv.length === 0) return { cibles, offreurs, entrées, sorties }
+  const { courante } = périodesDuCycle(fin)
+  const clé = JSON.stringify([...cpv].sort())
+  let achats = contexte.achats.get(clé)
+  if (!achats) {
+    achats = dansLeTemps((signal) =>
+      lireLesAchatsPublics({ cpv, depuis: courante.du, jusqua: courante.au, sirens: contexte.sirens, montantMax: MONTANT_MAX_D_UN_MARCHÉ }, contexte.f, signal),
+    )
+    contexte.achats.set(clé, achats)
+  }
+  return { cibles, offreurs, entrées, sorties, achats: await achats }
 }
 
 export type RésultatDesMesures =
@@ -264,6 +279,9 @@ export async function mesurerLesMarchésDuPilote(
   const benchmark = lignesDe(synthèse.éléments) ?? lignesDe((await synthèsePrécédente({ organisationId, période: entrée.période }, db))?.éléments)
   const chiffres = Array.isArray(benchmark?.lignes) ? benchmark.lignes.map((l) => ({ nom: l.nom, chiffreDAffaires: l.chiffreDAffaires })) : []
 
+  const concurrents = grille ? grille.grille.entités.filter((e) => e.veille === 'concurrentiel' && e.organisation !== true) : []
+  const sirens = concurrents.flatMap((e) => (typeof e.siren === 'string' && /^\d{9}$/.test(e.siren) ? [{ nom: e.nom, siren: e.siren }] : []))
+  const elle = grille?.grille.entités.find((e) => e.organisation === true && typeof e.siren === 'string' && /^\d{9}$/.test(e.siren))?.siren ?? null
   const contexte = {
     f: dépendances.f ?? fetch,
     attente: dépendances.attente ?? ((ms: number) => new Promise((r) => setTimeout(r, ms))),
@@ -271,6 +289,8 @@ export async function mesurerLesMarchésDuPilote(
     échéance: maintenant() + BUDGET_DES_MESURES_MS,
     // Deux segments de même périmètre ne paient qu'un compte.
     lus: new Map(),
+    achats: new Map(),
+    sirens: [...new Set([...sirens.map((x) => x.siren), ...(elle ? [elle] : [])])],
   }
   const comptes = new Map<string, ComptesDuSegment>()
   for (const s of segments) comptes.set(s.clé, await compterUnSegment(s, fin, contexte))
@@ -279,7 +299,9 @@ export async function mesurerLesMarchésDuPilote(
     comptes,
     faits: faits.map((f) => ({ famille: f.familleÉdition, axe: f.numéroAxe, entité: f.entité, impact: f.impact })),
     chiffres,
-    concurrents: grille ? grille.grille.entités.filter((e) => e.veille === 'concurrentiel' && e.organisation !== true).map((e) => e.nom) : [],
+    concurrents: concurrents.map((e) => e.nom),
+    sirens,
+    sirenDeLOrganisation: elle,
   })
   const écrit = await remplacerLesMesures(
     { organisationId, période: entrée.période, segmentsVersion: enregistrés.version, mesures: mesures.map((m) => ({ clé: m.clé, valeur: { ...m } })) },
