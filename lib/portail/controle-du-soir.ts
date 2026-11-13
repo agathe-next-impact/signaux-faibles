@@ -1,5 +1,6 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
+import { organisationsArchivées } from '@/lib/base/organisations'
 import { courriersDeParcoursEnSouffrance, type SorteCourrier } from '@/lib/base/courriers'
 import { migrationsEnAttente } from '@/lib/base/migrer'
 import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
@@ -42,8 +43,12 @@ export async function contrôlerLeDispositif(): Promise<{ readonly état: ÉtatD
   const { parSlug, sansSlug, opérateurs } = regrouperParSlug(await lignesDAccèsPourContrôle())
   const espaces: EspaceContrôlé[] = []
   const lettresParRegistre = new Map<string, Awaited<ReturnType<typeof listerÉditionsPubliées>>>()
+  const archivées = await slugsArchivés()
 
   for (const [slug, lignes] of parSlug) {
+    // Une organisation archivée par l'opératrice (13 novembre 2026) n'est plus
+    // contrôlée, même si une ligne « Accès » la porte encore dans Notion.
+    if (archivées.has(slug)) continue
     // L'identifiant contrôlé est celui que les lignes portent — s'il diverge,
     // `contrôlerUnEspace` le dira, et on regarde le premier non vide pour
     // savoir au moins ce que ce lecteur-là voit.
@@ -163,10 +168,30 @@ export async function contrôlerLeDispositif(): Promise<{ readonly état: ÉtatD
   const état: ÉtatDuDispositif = {
     date: aujourdHuiÀParis(),
     espaces,
-    défauts: [...espaces.flatMap((e) => e.défauts), ...contrôlerLesOpérateurs(opérateurs), ...défautsDeBase, ...défautsDeMigrations, ...défautsDeCourriers, ...défautsDÉtiquetage, ...défautsDOnboarding],
+    défauts: [
+      ...espaces.flatMap((e) => e.défauts),
+      ...contrôlerLesOpérateurs(opérateurs),
+      ...défautsDeBase,
+      ...défautsDeMigrations,
+      ...[...défautsDeCourriers, ...défautsDÉtiquetage, ...défautsDOnboarding].filter((d) => !archivées.has(d.slug)),
+    ],
     lignesSansSlug: sansSlug,
     opérateursActifs: opérateurs.filter((l) => l.actif).length,
   }
 
   return { état, accès }
+}
+
+/**
+ * Les slugs archivés, que le contrôle laisse de côté. Lus seulement quand la
+ * base sert le parcours ; une base qui ne répond pas n'écarte rien.
+ */
+async function slugsArchivés(): Promise<Set<string>> {
+  if (!baseConfigurée() || sourceAccès() === 'notion') return new Set()
+  try {
+    return new Set((await organisationsArchivées()).map((o) => o.slug))
+  } catch (erreur) {
+    console.warn(`[veille/etat] organisations archivées illisibles : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return new Set()
+  }
 }

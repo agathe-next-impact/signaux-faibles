@@ -17,6 +17,7 @@ export type StatutDAbonnement =
   | 'tronquee'
   | 'suspendue'
   | 'avant-parcours'
+  | 'sans-lecteur'
   | 'ecartee'
   | 'test'
 
@@ -28,6 +29,7 @@ export const ORDRE_DES_STATUTS: readonly StatutDAbonnement[] = [
   'tronquee',
   'suspendue',
   'avant-parcours',
+  'sans-lecteur',
   'ecartee',
   'test',
 ]
@@ -40,6 +42,7 @@ export const LIBELLÉS_DE_STATUT: Record<StatutDAbonnement, string> = {
   tronquee: 'Fin d’essai, l’essentiel seul',
   suspendue: 'Suspendues',
   'avant-parcours': 'Avant le parcours',
+  'sans-lecteur': 'Sans lecteur actif',
   ecartee: 'Écartées',
   test: 'Organisations de test',
 }
@@ -49,9 +52,28 @@ export const LIBELLÉS_DE_STATUT: Record<StatutDAbonnement, string> = {
  * abonné, comme dans le parcours ; un hors parcours se partage par l'état de
  * l'organisation, et non par le libellé de sa raison : écartée, de test, ou pas
  * encore entrée (demande, génération, essai sans J0, activation datée dans le
- * futur).
+ * futur). Le compte des lecteurs actifs, quand il est donné, range à part
+ * une organisation qui n'en a plus (`sans-lecteur`).
  */
-export function statutDAbonnement(étape: Étape, état: ÉtatOrganisation): StatutDAbonnement {
+export function statutDAbonnement(étape: Étape, état: ÉtatOrganisation, lecteursActifs?: number): StatutDAbonnement {
+  const statut = statutDeLÉtape(étape, état)
+  return lecteursActifs === 0 && SANS_LECTEUR_POSSIBLE.has(statut) && !(étape.étape === 'abonnee' && étape.source === 'stripe')
+    ? 'sans-lecteur'
+    : statut
+}
+
+/**
+ * Les statuts qu'un compte de lecteurs actifs à zéro fait passer « Sans lecteur
+ * actif » (13 novembre 2026, à la demande de l'opératrice : des organisations
+ * dont les accès ont été supprimés restaient parmi les abonnées). Une
+ * organisation avant le parcours n'a souvent pas encore de lecteur, une
+ * écartée ou de test est déjà à part, et un abonnement Stripe ouvert reste
+ * parmi les abonnées : il se paie, l'absence de lecteur y est une anomalie à
+ * voir là.
+ */
+const SANS_LECTEUR_POSSIBLE = new Set<StatutDAbonnement>(['abonnee', 'offerte', 'essai', 'tronquee', 'suspendue'])
+
+function statutDeLÉtape(étape: Étape, état: ÉtatOrganisation): StatutDAbonnement {
   switch (étape.étape) {
     case 'abonnee':
       return étape.source === 'offerte' ? 'offerte' : 'abonnee'

@@ -31,6 +31,7 @@ import { JOURS_DU_JOURNAL } from '@/lib/portail/gestion'
 import { estRenvoyable, SORTES_RENVOYABLES } from '@/lib/portail/renvoi-courriers'
 import { lancementDisponible, type VueDOnboarding } from '@/lib/portail/onboarding'
 import { déciderDeLOrganisation } from '@/lib/portail/reglages'
+import { archiverLOrganisationDepuisLaFiche } from '@/lib/portail/archivage-actions'
 
 export const metadata: Metadata = { title: 'Gérer une organisation — signauxfaibles' }
 
@@ -96,6 +97,8 @@ const MESSAGES: Record<string, string> = {
   inchangé: 'Rien à changer.',
   'décision-appliquée': 'Décision appliquée.',
   'décision-impossible': 'Décision impossible depuis cet état.',
+  'déjà-archivée': 'Cette organisation est déjà archivée.',
+  'archivage-abonnée-stripe': 'Un abonnement Stripe est ouvert : le résilier chez Stripe avant d’archiver.',
   échec: 'La base n’a pas répondu : rien n’a changé.',
   'renvoi-préparé': 'Courrier préparé en brouillon Gmail : à relire et envoyer depuis la boîte émettrice.',
   'renvoi-partiel': 'Courrier préparé pour une partie des lecteurs seulement : voir le journal ci-dessous.',
@@ -399,6 +402,42 @@ function Gestion({
 }) {
   const { organisation, lecteurs, grille, fiche, courriers, onboarding, lettresÀPublier } = gestion
   const actifs = lecteurs.filter((l) => l.actif).length
+  // Les actifs d'abord, puis les accès révoqués repliés (13 novembre 2026) :
+  // un accès supprimé dans Notion désactive le lecteur sans l'effacer.
+  const ListeDeLecteurs = ({ liste }: { liste: readonly (typeof lecteurs)[number][] }) => (
+    <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
+      {liste.map((l) => (
+              <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className={l.actif ? 'text-encre' : 'text-ardoise'}>{l.nom}</p>
+                  <p className="label-mono text-ardoise">
+                    {l.actif ? 'actif' : 'révoqué'} · {l.dernièreVisiteLe ? `dernière visite le ${dateLongueDeParis(l.dernièreVisiteLe)}` : 'jamais venu'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {l.actif ? (
+                    <form action={renvoyerLeLien}>
+                      <input type="hidden" name="slug" value={slug} />
+                      <input type="hidden" name="lecteur" value={l.id} />
+                      <BoutonEnvoi className={bouton}>
+                        Renvoyer le lien
+                      </BoutonEnvoi>
+                    </form>
+                  ) : null}
+                  {gestion.lecteursModifiables ? (
+                    <form action={l.actif ? révoquerUnLecteur : réactiverUnLecteur}>
+                      <input type="hidden" name="slug" value={slug} />
+                      <input type="hidden" name="lecteur" value={l.id} />
+                      <BoutonEnvoi className={lienDeGeste}>
+                        {l.actif ? 'Révoquer' : 'Réactiver'}
+                      </BoutonEnvoi>
+                    </form>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+    </ul>
+  )
   const lecteursActifs = new Set(lecteurs.filter((l) => l.actif).map((l) => l.id))
   const horsService = organisation.état === 'suspendue' || organisation.état === 'ecartee'
 
@@ -563,38 +602,26 @@ function Gestion({
         {lecteurs.length === 0 ? (
           <p className="text-ardoise">Aucun lecteur en base.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-            {lecteurs.map((l) => (
-              <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className={l.actif ? 'text-encre' : 'text-ardoise'}>{l.nom}</p>
-                  <p className="label-mono text-ardoise">
-                    {l.actif ? 'actif' : 'révoqué'} · {l.dernièreVisiteLe ? `dernière visite le ${dateLongueDeParis(l.dernièreVisiteLe)}` : 'jamais venu'}
-                  </p>
+          <>
+          {[
+            { clé: 'actifs', liste: lecteurs.filter((l) => l.actif) },
+            { clé: 'révoqués', liste: lecteurs.filter((l) => !l.actif) },
+          ].map(({ clé, liste }) =>
+            liste.length === 0 ? null : clé === 'actifs' ? (
+              <ListeDeLecteurs key={clé} liste={liste} />
+            ) : (
+              <details key={clé} className="border border-gris-ligne">
+                <summary className="cursor-pointer px-4 py-3 text-encre">
+                  Accès révoqués
+                  <span className="label-mono ml-3 text-ardoise">{liste.length}</span>
+                </summary>
+                <div className="px-4">
+                  <ListeDeLecteurs liste={liste} />
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {l.actif ? (
-                    <form action={renvoyerLeLien}>
-                      <input type="hidden" name="slug" value={slug} />
-                      <input type="hidden" name="lecteur" value={l.id} />
-                      <BoutonEnvoi className={bouton}>
-                        Renvoyer le lien
-                      </BoutonEnvoi>
-                    </form>
-                  ) : null}
-                  {gestion.lecteursModifiables ? (
-                    <form action={l.actif ? révoquerUnLecteur : réactiverUnLecteur}>
-                      <input type="hidden" name="slug" value={slug} />
-                      <input type="hidden" name="lecteur" value={l.id} />
-                      <BoutonEnvoi className={lienDeGeste}>
-                        {l.actif ? 'Révoquer' : 'Réactiver'}
-                      </BoutonEnvoi>
-                    </form>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
+              </details>
+            ),
+          )}
+          </>
         )}
         {gestion.lecteursModifiables ? (
           <form action={inscrireUnLecteur} className="flex flex-wrap items-end gap-3">
@@ -664,6 +691,28 @@ function Gestion({
             </>
           )}
         </div>
+      </Section>
+
+      <Section id="archivage" titre="Archivage" statut={statut}>
+        {organisation.archivéeLe ? (
+          <p className="text-encre">
+            Archivée le <span className="label-mono text-ardoise">{dateLongueDeParis(organisation.archivéeLe)}</span> : elle n’apparaît
+            plus dans le tableau des abonnements, et se désarchive depuis la liste « Organisations archivées » sous ce tableau.
+          </p>
+        ) : (
+          <>
+            <p className="text-ardoise">
+              Archiver retire l’organisation du tableau des abonnements, désactive ses lecteurs et abandonne ses travaux non pris.
+              Rien n’est effacé : courriers, abonnements et synthèses restent en base, et l’archivage s’annule. Refusé tant qu’un
+              abonnement Stripe est ouvert. Tant que Notion fait foi pour les accès, décochez aussi les lignes « Accès » : une ligne
+              encore active rouvrirait son lecteur au prochain import.
+            </p>
+            <form action={archiverLOrganisationDepuisLaFiche}>
+              <input type="hidden" name="slug" value={slug} />
+              <BoutonEnvoi className={lienDeGeste}>Archiver l’organisation</BoutonEnvoi>
+            </form>
+          </>
+        )}
       </Section>
 
       <Section id="courriers" titre={`Courriers, ${JOURS_DU_JOURNAL} derniers jours`} statut={statut}>

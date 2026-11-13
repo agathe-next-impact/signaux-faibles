@@ -2,6 +2,8 @@ import type { CollectionConfig } from 'payload'
 import { ACCÈS_AUTHENTIFIÉ } from '@/lib/payload/acces'
 import { CONTEXTE_LANCÉ_PAR_LE_PORTAIL } from '@/lib/payload/contexte-onboarding'
 import { lancerDepuisLeRegistre } from '@/lib/portail/onboarding'
+import { archiverAprèsSuppressionDuRegistre } from '@/lib/portail/archivage'
+import { cléDeCloisonnement } from '@/lib/payload/relations'
 
 /**
  * Le registre des organisations, tenu dans Payload à la place de la base
@@ -12,6 +14,12 @@ import { lancerDepuisLeRegistre } from '@/lib/portail/onboarding'
  * 1er novembre 2026 : réservation, budget, suivi), puis Trigger.dev : Payload ne
  * porte jamais un run long, il le confie. Si la clé Trigger.dev est absente, rien ne part et le déclencheur
  * le journalise ; l'enregistrement n'échoue jamais pour autant.
+ *
+ * Supprimer une organisation ici l'archive dans le portail par le crochet
+ * `afterDelete` (13 novembre 2026) : sans lui, sa ligne Postgres restait au
+ * tableau des abonnements. Rien n'y est effacé, et un abonnement Stripe ouvert
+ * empêche l'archivage (journalisé ; à résilier chez Stripe, puis archiver
+ * depuis la fiche).
  */
 export const ÉTATS_D_ORGANISATION = [
   { label: 'Prospect', value: 'prospect' },
@@ -101,6 +109,12 @@ export const organisations: CollectionConfig = {
         } catch (erreur) {
           console.error(`[moteur] onboarding non déclenché pour ${String(doc.id)} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
         }
+        return doc
+      },
+    ],
+    afterDelete: [
+      async ({ doc, id }) => {
+        await archiverAprèsSuppressionDuRegistre(cléDeCloisonnement(String(id)))
         return doc
       },
     ],
