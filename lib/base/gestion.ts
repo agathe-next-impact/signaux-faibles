@@ -28,6 +28,8 @@ export type OrganisationÀGérer = {
   readonly aperçuAvantEnvoi: boolean
   /** Vrai si l'organisation porte sa clé de cloisonnement : sans elle, aucun lecteur ne peut entrer (règle 2). */
   readonly avecRegistre: boolean
+  /** La date d'archivage (13 novembre 2026) : une organisation archivée sort du tableau des abonnements, sa fiche reste lisible pour la désarchiver. */
+  readonly archivéeLe: Date | null
 }
 
 export async function organisationÀGérer(slug: string, db: Base = base()): Promise<OrganisationÀGérer | null> {
@@ -45,6 +47,7 @@ export async function organisationÀGérer(slug: string, db: Base = base()): Pro
         sujetsDuMarché: organisations.sujetsDuMarché,
         aperçuAvantEnvoi: organisations.aperçuAvantEnvoi,
         registreNotion: organisations.registreNotion,
+        archivéeLe: organisations.archivéeLe,
       })
       .from(organisations)
       .where(eq(organisations.slug, slug))

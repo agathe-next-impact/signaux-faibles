@@ -562,7 +562,9 @@ async function lire(filtre: { readonly slug: string } | null, db: Base): Promise
     })
     .from(onboardings)
     .leftJoin(organisations, eq(organisations.slug, onboardings.slug))
-    .where(filtre ? eq(onboardings.slug, filtre.slug) : undefined)
+    // Le tableau et le contrôle du soir (sans filtre) laissent de côté une
+    // organisation archivée (13 novembre 2026) ; la fiche, par son slug, la lit.
+    .where(filtre ? eq(onboardings.slug, filtre.slug) : isNull(organisations.archivéeLe))
     .orderBy(desc(onboardings.misÀJourLe))
   if (lignes.length === 0) return []
 

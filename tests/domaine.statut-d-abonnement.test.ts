@@ -54,6 +54,30 @@ describe('statutDAbonnement', () => {
   })
 })
 
+describe('statutDAbonnement, sans lecteur actif', () => {
+  const étape = (état: ÉtatOrganisation, options: { activéeLe?: string; offre?: Offre; abonnement?: string } = {}) =>
+    étapeDuParcours({
+      organisation: { état, activéeLe: options.activéeLe ? new Date(`${options.activéeLe}T08:00:00Z`) : null, offre: options.offre ?? 'standard', parutionsDEssai: 2 },
+      abonnement: options.abonnement ? { état: options.abonnement } : null,
+      aujourdHui: AUJOURDHUI,
+    })
+
+  it('range à part une organisation dont les accès ont été supprimés', () => {
+    expect(statutDAbonnement(étape('abonnee'), 'abonnee', 0)).toBe('sans-lecteur')
+    expect(statutDAbonnement(étape('abonnee', { offre: 'gratuite' }), 'abonnee', 0)).toBe('sans-lecteur')
+    expect(statutDAbonnement(étape('essai', { activéeLe: '2026-11-09' }), 'essai', 0)).toBe('sans-lecteur')
+    expect(statutDAbonnement(étape('abonnee'), 'abonnee', 1)).toBe('abonnee')
+    expect(statutDAbonnement(étape('abonnee'), 'abonnee')).toBe('abonnee')
+  })
+
+  it('laisse un abonnement Stripe parmi les abonnées, et le hors parcours à sa place', () => {
+    expect(statutDAbonnement(étape('abonnee', { abonnement: 'active' }), 'abonnee', 0)).toBe('abonnee')
+    expect(statutDAbonnement(étape('demande'), 'demande', 0)).toBe('avant-parcours')
+    expect(statutDAbonnement(étape('ecartee'), 'ecartee', 0)).toBe('ecartee')
+    expect(statutDAbonnement(étape('test'), 'test', 0)).toBe('test')
+  })
+})
+
 describe('grouperParStatut', () => {
   it('suit l’ordre des statuts, omet les groupes vides et garde l’ordre d’origine dans chaque groupe', () => {
     const lignes = [

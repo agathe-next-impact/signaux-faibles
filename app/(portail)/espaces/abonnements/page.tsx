@@ -4,6 +4,8 @@ import { Suspense } from 'react'
 import { lireLaSantéDesEspaces, listerLesAbonnements } from '@/lib/auth/appartenance'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
+import { BoutonEnvoi } from '@/components/bouton-envoi'
+import { désarchiverLOrganisationDepuisLeTableau } from '@/lib/portail/archivage-actions'
 import type { LigneDAbonnement } from '@/lib/base/situation'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
@@ -39,6 +41,12 @@ export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
  * d'abonnement (`grouperParStatut`, `lib/domaine/statut-d-abonnement.ts`), lu
  * dans l'étape calculée de chaque ligne : un en-tête par groupe, avec le nombre
  * d'organisations, et le nom pour ordre dans chaque groupe.
+ *
+ * Depuis le 13 novembre 2026, une organisation sans lecteur actif (accès
+ * supprimés) quitte son groupe pour « Sans lecteur actif », sauf abonnement
+ * Stripe ouvert ; une organisation archivée (bouton de sa fiche) quitte le
+ * tableau pour la liste repliée « Organisations archivées », d'où elle se
+ * désarchive.
  */
 export const instant = false
 
@@ -56,6 +64,9 @@ const MESSAGES: Record<string, string> = {
   'parutions-invalides': 'Nombre de parutions hors bornes (1 à 8, et pas plus de restantes que de parutions).',
   'date-invalide': 'Date de prochaine lettre invalide.',
   échec: 'La base n’a pas répondu : réglage non appliqué.',
+  archivée: 'Organisation archivée : ses lecteurs sont désactivés et ses travaux non pris abandonnés. Elle est sous le tableau, dans « Organisations archivées ».',
+  désarchivée: 'Organisation désarchivée : elle revient dans le tableau. Ses lecteurs restent désactivés, à réactiver un par un sur sa fiche.',
+  'pas-archivée': 'Cette organisation n’est pas archivée : rien à faire.',
 }
 
 const COLONNES = ['organisation', 'santé', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers'] as const
@@ -73,7 +84,7 @@ export default async function Abonnements({
 }: {
   searchParams: Promise<{ reglage?: string | string[]; slug?: string | string[] }>
 }) {
-  const { accès, lignes } = await listerLesAbonnements()
+  const { accès, lignes, archivées } = await listerLesAbonnements()
   // La santé arrive en flux, cellule par cellule : le contrôle des espaces
   // dépasse souvent quatre secondes, et l'attendre figeait le tableau et ses
   // boutons (31 octobre 2026). Une seule lecture, partagée par les lignes.
@@ -87,7 +98,7 @@ export default async function Abonnements({
   // colonne « étape », qui ne peuvent donc pas se contredire.
   const groupes = grouperParStatut(
     (lignes ?? []).map((ligne) => ({ ligne, étape: étapeDeLaLigne(ligne, aujourdHui) })),
-    ({ ligne, étape }) => statutDAbonnement(étape, ligne.état),
+    ({ ligne, étape }) => statutDAbonnement(étape, ligne.état, ligne.lecteursActifs),
   )
 
   return (
@@ -164,6 +175,7 @@ export default async function Abonnements({
         </div>
       )}
 
+      {archivées && archivées.length > 0 ? <Archivées archivées={archivées} /> : null}
     </main>
   )
 }
@@ -255,5 +267,43 @@ async function SantéDeLaLigne({ slug, santé }: { slug: string; santé: Promise
     <span className="text-rose-texte" title={défauts.map((d) => d.code).join(', ')}>
       {défauts.length} défaut{défauts.length > 1 ? 's' : ''}
     </span>
+  )
+}
+
+/**
+ * Les organisations archivées, sous le tableau et repliées : rien n'est effacé,
+ * chacune se désarchive ici ou se consulte sur sa fiche (13 novembre 2026).
+ */
+function Archivées({ archivées }: { archivées: { slug: string; nom: string; archivéeLe: Date }[] }) {
+  return (
+    <details className="border border-gris-ligne">
+      <summary className="cursor-pointer px-4 py-3 font-medium text-encre">
+        Organisations archivées
+        <span className="label-mono ml-3 font-normal text-ardoise">
+          {archivées.length} organisation{archivées.length > 1 ? 's' : ''}
+        </span>
+      </summary>
+      <ul className="flex flex-col divide-y divide-gris-ligne border-t border-gris-ligne">
+        {archivées.map((o) => (
+          <li key={o.slug} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <p className="text-encre">{o.nom}</p>
+              <p className="label-mono text-ardoise">
+                {o.slug} · archivée le {dateLongueDeParis(o.archivéeLe)}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href={`/espaces/abonnements/${o.slug}`} className="text-label text-encre underline underline-offset-2">
+                Fiche
+              </Link>
+              <form action={désarchiverLOrganisationDepuisLeTableau}>
+                <input type="hidden" name="slug" value={o.slug} />
+                <BoutonEnvoi className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2">Désarchiver</BoutonEnvoi>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }
