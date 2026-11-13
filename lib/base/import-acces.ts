@@ -185,10 +185,51 @@ export function planifierImport(lignes: readonly LigneAccèsNotion[]): PlanDImpo
 }
 
 export type RapportDImport = {
+  /** Organisations écrites (créées ou réalignées), hors celles écartées en base. */
   readonly organisations: number
+  readonly organisationsCréées: number
+  /** Lecteurs et opérateurs écrits, créés ou réalignés. */
   readonly lecteurs: number
+  readonly lecteursCréés: number
+  /** Lecteurs déjà en base, réalignés sur Notion (y compris ceux qui n'ont pas changé). */
+  readonly lecteursMisÀJour: number
   readonly lecteursDésactivés: number
   readonly écartés: ReadonlyArray<Écart>
+}
+
+export type OptionsDImport = {
+  /**
+   * À blanc : la transaction est jouée entièrement, puis annulée. Le rapport
+   * porte donc les comptes exacts de ce qu'un import écrirait **maintenant**,
+   * désactivations comprises, sans rien laisser en base (13 novembre 2026,
+   * aperçu du bouton de synchronisation de l'opératrice).
+   */
+  readonly àBlanc?: boolean
+  /**
+   * Le nombre de désactivations que l'opératrice a vues à l'aperçu. Si
+   * l'import en ferait davantage, la transaction est annulée et
+   * `appliquerImport` lève `DésactivationsAuDelàDeLAperçu` : un lecteur ne perd
+   * pas son accès parce que Notion a changé entre l'aperçu et la confirmation.
+   */
+  readonly désactivationsAuPlus?: number
+}
+
+/** L'import ferait plus de désactivations que l'aperçu ne l'annonçait : rien n'est écrit. */
+export class DésactivationsAuDelàDeLAperçu extends Error {
+  override readonly name = 'DésactivationsAuDelàDeLAperçu'
+  constructor(
+    readonly attendues: number,
+    readonly constatées: number,
+  ) {
+    super(`[base] import refusé : ${constatées} désactivation(s) au lieu de ${attendues} au plus.`)
+  }
+}
+
+/** Le signal qui annule la transaction d'un import à blanc, rapport en main. */
+class AnnulationÀBlanc extends Error {
+  constructor(readonly rapport: RapportDImport) {
+    super('import à blanc')
+  }
 }
 
 /**
@@ -205,15 +246,35 @@ export type RapportDImport = {
  *   jamais supprimé — y compris quand Notion est vide, ce qui désactive tout :
  *   c'est le comportement de Notion lui-même, et le script refuse d'importer
  *   une base vide pour cette raison (voir `scripts/importer-acces.ts`).
+ *
+ * L'import n'envoie rien : ni lien d'accès, ni courrier. Il n'écrit que les
+ * tables `organisations` et `lecteurs`.
  */
-export async function appliquerImport(db: Base, plan: PlanDImport): Promise<RapportDImport> {
-  return protéger('import de la base Accès', () => écrire(db, plan))
+export async function appliquerImport(db: Base, plan: PlanDImport, options: OptionsDImport = {}): Promise<RapportDImport> {
+  // Les deux signaux sont rattrapés **dans** `protéger`, qui ne laisserait
+  // sortir qu'une erreur réduite à son code SQLSTATE. La transaction est déjà
+  // annulée quand ils arrivent ici : Drizzle relance l'erreur du rappel telle
+  // quelle après le `rollback`.
+  const issue = await protéger('import de la base Accès', async () => {
+    try {
+      return { rapport: await écrire(db, plan, options) }
+    } catch (erreur) {
+      if (erreur instanceof AnnulationÀBlanc) return { rapport: erreur.rapport }
+      if (erreur instanceof DésactivationsAuDelàDeLAperçu) return { refus: erreur }
+      throw erreur
+    }
+  })
+  if ('refus' in issue) throw issue.refus
+  return issue.rapport
 }
 
-async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
+async function écrire(db: Base, plan: PlanDImport, options: OptionsDImport): Promise<RapportDImport> {
   return db.transaction(async (tx) => {
     const idParSlug = new Map<string, string>()
     const écartés: Écart[] = [...plan.écartés]
+    let organisationsCréées = 0
+    let lecteursCréés = 0
+    let lecteursMisÀJour = 0
 
     // Depuis le 18/10/2026, l'onboarding crée aussi des organisations
     // (`POST /api/veille/organisations`) : un registre peut donc déjà porter un
@@ -223,6 +284,11 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
       .select({ slug: organisations.slug, registreNotion: organisations.registreNotion })
       .from(organisations)
     const slugParRegistre = new Map(existants.flatMap((o) => (o.registreNotion ? [[o.registreNotion, o.slug] as const] : [])))
+
+    // `xmax = 0` : la ligne rendue vient d'être insérée, et non mise à jour par
+    // le `on conflict`. C'est la façon Postgres de distinguer les deux dans un
+    // même `insert … returning`, sans relire la table avant.
+    const créée = sql<boolean>`(xmax = 0)`
 
     for (const organisation of plan.organisations) {
       const porteur = slugParRegistre.get(organisation.registreNotion)
@@ -247,14 +313,23 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
             modifiéeLe: sql`now()`,
           },
         })
-        .returning({ id: organisations.id })
-      if (ligne) idParSlug.set(organisation.slug, ligne.id)
+        .returning({ id: organisations.id, créée })
+      if (ligne) {
+        idParSlug.set(organisation.slug, ligne.id)
+        if (ligne.créée) organisationsCréées++
+      }
+    }
+
+    const compter = (ligne: { créée: boolean } | undefined) => {
+      if (!ligne) return
+      if (ligne.créée) lecteursCréés++
+      else lecteursMisÀJour++
     }
 
     for (const lecteur of plan.lecteurs) {
       const organisationId = idParSlug.get(lecteur.slug)
       if (!organisationId) continue
-      await tx
+      const [écrit] = await tx
         .insert(lecteurs)
         .values({
           organisationId,
@@ -276,6 +351,8 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
             rôle: lecteur.tousLesEspaces ? 'operateur' : 'lecteur',
           },
         })
+        .returning({ créée })
+      compter(écrit)
     }
 
     for (const opérateur of plan.opérateurs) {
@@ -287,10 +364,12 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
         tousLesEspaces: true,
         rôle: 'operateur' as const,
       }
-      await tx
+      const [écrit] = await tx
         .insert(lecteurs)
         .values({ ...valeurs, identifiantAcces: opérateur.identifiant })
         .onConflictDoUpdate({ target: lecteurs.identifiantAcces, set: valeurs })
+        .returning({ créée })
+      compter(écrit)
     }
 
     const connus = [
@@ -308,11 +387,22 @@ async function écrire(db: Base, plan: PlanDImport): Promise<RapportDImport> {
       )
       .returning({ id: lecteurs.id })
 
-    return {
-      organisations: plan.organisations.length,
-      lecteurs: plan.lecteurs.length + plan.opérateurs.length,
+    const rapport: RapportDImport = {
+      organisations: idParSlug.size,
+      organisationsCréées,
+      lecteurs: lecteursCréés + lecteursMisÀJour,
+      lecteursCréés,
+      lecteursMisÀJour,
       lecteursDésactivés: désactivés.length,
       écartés,
     }
+
+    // Lever dans le rappel de la transaction l'annule : rien de ce qui précède
+    // n'est gardé, ni pour l'aperçu, ni pour un plan qui a changé depuis.
+    if (options.désactivationsAuPlus !== undefined && désactivés.length > options.désactivationsAuPlus) {
+      throw new DésactivationsAuDelàDeLAperçu(options.désactivationsAuPlus, désactivés.length)
+    }
+    if (options.àBlanc) throw new AnnulationÀBlanc(rapport)
+    return rapport
   })
 }

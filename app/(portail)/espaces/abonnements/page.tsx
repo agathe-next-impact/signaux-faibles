@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { lireLaSantéDesEspaces, listerLesAbonnements } from '@/lib/auth/appartenance'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
+import { SynchroDesAccès } from '@/components/synchro-acces'
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { désarchiverLOrganisationDepuisLeTableau } from '@/lib/portail/archivage-actions'
 import type { LigneDAbonnement } from '@/lib/base/situation'
@@ -120,6 +121,9 @@ export default async function Abonnements({
           </Link>
         </p>
       </header>
+
+      {/* L'import de la base Notion « Accès » dans Postgres (13 novembre 2026) : aperçu, puis écriture confirmée. */}
+      <SynchroDesAccès />
 
       {message ? (
         <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">

@@ -1,7 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Base } from '@/lib/base/client'
-import { appliquerImport, planifierImport, type LigneAccèsNotion } from '@/lib/base/import-acces'
+import {
+  appliquerImport,
+  DésactivationsAuDelàDeLAperçu,
+  planifierImport,
+  type LigneAccèsNotion,
+} from '@/lib/base/import-acces'
 import {
   espacesAvecLecteurs,
   lireLecteurActifParEmail,
@@ -231,6 +236,37 @@ describe('import et lectures sur une vraie base', () => {
     // Rejouer à l'identique ne change plus rien.
     const second = await importer(deuxClients.filter((l) => l.identifiant !== 'd'.repeat(32)))
     expect(second.lecteursDésactivés).toBe(0)
+  })
+
+  it('distingue les lecteurs créés des lecteurs mis à jour', async () => {
+    const premier = await importer(deuxClients)
+    expect(premier).toMatchObject({ lecteursCréés: premier.lecteurs, lecteursMisÀJour: 0 })
+    expect(premier.organisationsCréées).toBe(premier.organisations)
+    const second = await importer(deuxClients)
+    expect(second).toMatchObject({ lecteursCréés: 0, lecteursMisÀJour: premier.lecteurs, organisationsCréées: 0 })
+  })
+
+  it('à blanc, rend les comptes exacts et n’écrit rien', async () => {
+    await importer(deuxClients)
+    const avant = await db.select().from(lecteurs)
+    const plan = planifierImport([
+      ...deuxClients.filter((l) => l.identifiant !== 'd'.repeat(32)),
+      ligne({ identifiant: 'f'.repeat(32), email: 'nouveau@hermitage.fr', nom: 'Nouveau' }),
+    ])
+    const aperçu = await appliquerImport(db, plan, { àBlanc: true })
+    expect(aperçu).toMatchObject({ lecteursCréés: 1, lecteursDésactivés: 1 })
+    expect(await db.select().from(lecteurs)).toEqual(avant)
+  })
+
+  it('refuse d’écrire plus de désactivations que l’aperçu n’en annonçait, sans rien écrire', async () => {
+    await importer(deuxClients)
+    const avant = await db.select().from(lecteurs)
+    const plan = planifierImport(deuxClients.filter((l) => l.identifiant !== 'd'.repeat(32)))
+    await expect(appliquerImport(db, plan, { désactivationsAuPlus: 0 })).rejects.toBeInstanceOf(
+      DésactivationsAuDelàDeLAperçu,
+    )
+    expect(await db.select().from(lecteurs)).toEqual(avant)
+    await expect(appliquerImport(db, plan, { désactivationsAuPlus: 1 })).resolves.toMatchObject({ lecteursDésactivés: 1 })
   })
 
   it('crée les clients historiques abonnés et sous relecture', async () => {
