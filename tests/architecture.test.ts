@@ -973,11 +973,28 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('contrôlerLeDispositif')).toEqual(['app/api/veille/etat/route.ts', 'lib/portail/controle-du-soir.ts', 'lib/portail/gestion.ts'])
   })
 
-  it('lignesDAccèsPourImport n’est appelée que par la route d’import', () => {
-    expect(appelants('lignesDAccèsPourImport')).toEqual([
+  it('lignesDAccèsPourImport n’est appelée que par l’orchestration de l’import', () => {
+    expect(appelants('lignesDAccèsPourImport')).toEqual(['lib/notion/acces.ts', 'lib/portail/import-acces.ts'])
+    // Deux portes y mènent : la route sous le jeton, et le bouton de
+    // l'opératrice, dont l'action vérifie le privilège avant l'import.
+    expect(appelants('importerLesAccès')).toEqual([
       'app/api/veille/importer-acces/route.ts',
-      'lib/notion/acces.ts',
+      'lib/portail/import-acces-actions.ts',
+      'lib/portail/import-acces.ts',
     ])
+    // Hors de `scripts/importer-acces.ts`, le geste en ligne de commande.
+    expect(appelants('appliquerImport')).toEqual(['lib/base/import-acces.ts', 'lib/portail/import-acces.ts'])
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'importer-acces', 'route.ts'), 'utf8')
+    expect(route.indexOf('refuserSiNonAutorisé(')).toBeGreaterThan(0)
+    expect(route.indexOf('refuserSiNonAutorisé(')).toBeLessThan(route.indexOf('importerLesAccès('))
+    const action = readFileSync(join(process.cwd(), 'lib', 'portail', 'import-acces-actions.ts'), 'utf8')
+    const corps = action.slice(action.indexOf('export async function synchroniserLesAccès'))
+    expect(corps.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(corps.indexOf('exigerOpérateur()')).toBeLessThan(corps.indexOf('importerLesAccès('))
+    // L'import n'envoie rien : ni lien, ni courrier, ni brouillon.
+    for (const texte of [action, readFileSync(join(process.cwd(), 'lib', 'portail', 'import-acces.ts'), 'utf8')]) {
+      expect(texte).not.toMatch(/envoyerCourrier|envoyerLeLien|créerBrouillon|envoyerMessage/)
+    }
   })
 
   it('la copie de l’abonnement n’est écrite que par le webhook Stripe', () => {

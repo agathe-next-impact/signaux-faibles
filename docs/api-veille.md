@@ -388,6 +388,12 @@ copie la base Accès, plutôt qu'un poste où il faudrait les recopier.
   écrit. Sans `a-blanc`, l'import est écrit en une transaction. Réponse :
   comptes, slugs, libellés, lignes écartées désignées par empreinte ; jamais
   d'adresse ni d'identifiant d'accès. Refuse (409) une base Notion vide.
+  Depuis le 13 novembre 2026 : l'aperçu porte les comptes exacts (transaction
+  jouée puis annulée : `lecteursCréés`, `lecteursMisÀJour`,
+  `lecteursDésactivés`, `organisationsCréées`) ; refus 409 en
+  `SOURCE_ACCES=postgres`, 503 sans `DATABASE_URL`. La même logique sert le
+  bouton « Synchroniser les accès depuis Notion » de `/espaces/abonnements`
+  (`lib/portail/import-acces.ts`).
 
 ## Entrée en essai (18 octobre 2026)
 

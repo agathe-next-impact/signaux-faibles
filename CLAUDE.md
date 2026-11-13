@@ -412,7 +412,16 @@ Les lire avant toute session.
   seule exception, le contrôle du soir, qui vérifie la base Notion telle
   qu'elle est. `pnpm base:importer-acces` (rejouable, `--a-blanc` pour voir
   le plan) aligne Postgres sur Notion pendant la double lecture et désactive,
-  sans supprimer, qui a quitté Notion. L'opérateur (« Tous les espaces ») est
+  sans supprimer, qui a quitté Notion. Depuis le 13 novembre 2026, le même import
+  se lance aussi du tableau `/espaces/abonnements` (« Synchroniser les accès
+  depuis Notion », demande de l'opératrice) : aperçu d'abord (transaction jouée
+  puis annulée, comptes exacts : créés, mis à jour, désactivés, écartés), puis
+  « Confirmer et écrire », qui refuse si l'import désactiverait plus de lecteurs
+  que l'aperçu n'en annonçait ; action `lib/portail/import-acces-actions.ts`
+  (`exigerOpérateur` d'abord), seule orchestration `lib/portail/import-acces.ts`,
+  partagée avec `POST /api/veille/importer-acces`, refusée en
+  `SOURCE_ACCES=postgres` (Notion gelée : l'import désactiverait les lecteurs
+  créés par le portail) ; rien ne part, ni lien ni courrier. L'opérateur (« Tous les espaces ») est
   importé **sans client** : son privilège est global (16 octobre 2026).
   Sa ligne Notion garde un slug et un identifiant d'organisation, que la
   lecture Notion exige ; ni le lien d'accès (il mène toujours à `/espaces`) ni
