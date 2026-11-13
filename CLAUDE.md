@@ -946,6 +946,21 @@ les travaux non pris de la file et sort l'organisation du calendrier des tâches
 Notion (`suspendues` dans `POST /api/veille/calendrier`, consigne écrite dans les
 pages des lettres et de la revue) ; suspendre ferme aussi l'espace, écarter le
 laisse lisible ; aucun courrier ne part, décision de l'opératrice.
+**Archivage d'une organisation** (13 novembre 2026, demande de l'opératrice : des
+organisations et accès supprimés restaient au tableau des abonnements) : `archivée_le`
+était lu partout et écrit nulle part. Le bouton « Archiver l'organisation » de la fiche
+(`archiverLOrganisation`, `lib/base/organisations.ts` ; seule orchestration
+`lib/portail/archivage.ts` ; action `lib/portail/archivage-actions.ts`, `exigerOpérateur`
+d'abord) pose la date, désactive les lecteurs du client, abandonne les travaux non pris,
+refuse tant qu'un abonnement Stripe est ouvert, et n'efface rien ; la liste repliée
+« Organisations archivées », sous le tableau (`organisationsArchivées`, garde dans
+`listerLesAbonnements`), désarchive sans réactiver aucun lecteur. Une suppression dans le
+registre Payload archive par le crochet `afterDelete`. Le tableau des onboardings et le
+contrôle du soir laissent de côté les archivées ; une organisation sans lecteur actif, hors
+abonnement Stripe ouvert, passe dans le groupe « Sans lecteur actif » du tableau, et la
+fiche replie ses lecteurs inactifs sous « Accès révoqués ». Tant que Notion fait foi pour
+les accès, l'import rétablit un lecteur dont la ligne « Accès » reste active : la décocher
+aussi.
 **Suivi des onboardings** (1er novembre 2026, lot 1 de
 `docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
 portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une

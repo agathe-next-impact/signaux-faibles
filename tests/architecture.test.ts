@@ -1250,6 +1250,19 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // sa situation par la clé de cloisonnement, par le seul lecteur du portail.
     expect(appelants('tableauDesAbonnements')).toEqual(['lib/auth/appartenance.ts', 'lib/base/situation.ts'])
     expect(appelants('listerLesAbonnements')).toEqual(['app/(portail)/espaces/abonnements/page.tsx', 'lib/auth/appartenance.ts'])
+    // Les archivées (13 novembre 2026) traversent aussi les clients : même garde,
+    // plus le contrôle du soir, derrière le jeton ou le privilège.
+    expect(appelants('organisationsArchivées')).toEqual(['lib/auth/appartenance.ts', 'lib/base/organisations.ts', 'lib/portail/controle-du-soir.ts'])
+    // Archiver et désarchiver : la seule action de l'opératrice, privilège d'abord,
+    // et le crochet du registre Payload pour l'archivage.
+    expect(appelants('désarchiverLOrganisation')).toEqual(['lib/base/organisations.ts', 'lib/portail/archivage.ts'])
+    expect(appelants('archiverLOrganisation')).toEqual(['lib/base/organisations.ts', 'lib/portail/archivage.ts'])
+    const archivage = readFileSync(join(process.cwd(), 'lib', 'portail', 'archivage-actions.ts'), 'utf8')
+    for (const geste of ['await archiver(', 'await désarchiver(']) {
+      expect(archivage.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+      expect(archivage.indexOf('exigerOpérateur()')).toBeLessThan(archivage.indexOf(geste))
+    }
+    expect(appelants('archiver')).toEqual(['lib/portail/archivage-actions.ts', 'lib/portail/archivage.ts'])
     expect(appelants('lireSituationDAbonnement')).toEqual(['lib/base/situation.ts', 'lib/portail/situation.ts'])
     expect(appelants('situationDeLEspace')).toEqual(['app/(portail)/[slug]/abonnement/page.tsx', 'lib/portail/situation.ts'])
     // Les prescripteurs (24 octobre 2026) : même forme, la garde dans la

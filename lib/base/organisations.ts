@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
-import { abonnements, organisations, prescripteurs, travaux } from '@/lib/base/schema'
+import { abonnements, lecteurs, organisations, prescripteurs, travaux } from '@/lib/base/schema'
 import { dateDeParis, PARUTIONS_D_ESSAI_RECOMMANDÉE, type Offre } from '@/lib/domaine/parcours'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 
@@ -482,5 +482,105 @@ export async function aperçuAvantEnvoiDuRegistre(registre: string, db: Base = b
       .where(eq(organisations.registreNotion, clé))
       .limit(1)
     return ligne ? ligne.aperçu : null
+  })
+}
+
+/**
+ * L'archivage d'une organisation par l'opératrice (13 novembre 2026, à sa
+ * demande : « des organisations et accès supprimés sont encore présents en
+ * admin »). Avant lui, `archivée_le` était lu partout (tableau des abonnements,
+ * lecteurs, file, pilote) mais **écrit nulle part** : supprimer une ligne
+ * « Accès » dans Notion désactivait le lecteur à l'import suivant, sans jamais
+ * faire sortir l'organisation du tableau.
+ *
+ * Archiver ne supprime rien : `archivée_le` est posé, les lecteurs du client
+ * sont désactivés (l'opérateur global n'en est pas), les travaux non pris de la
+ * file abandonnés. Une organisation dont un abonnement Stripe est ouvert n'est
+ * pas archivée : il se résilie d'abord chez Stripe, seule source de vérité.
+ * Désarchiver retire la date et ne réactive aucun lecteur : chaque accès se
+ * rouvre un par un, sur la fiche.
+ */
+export type RésultatDArchivage =
+  | { readonly sorte: 'archivée'; readonly lecteursDésactivés: number; readonly travauxAbandonnés: number }
+  | { readonly sorte: 'désarchivée' }
+  | { readonly sorte: 'inconnue' }
+  | { readonly sorte: 'déjà-archivée' }
+  | { readonly sorte: 'pas-archivée' }
+  | { readonly sorte: 'abonnée-stripe' }
+
+export async function archiverLOrganisation(slug: string, db: Base = base(), maintenant: Date = new Date()): Promise<RésultatDArchivage> {
+  return protéger('archivage d’une organisation', () =>
+    db.transaction(async (tx) => {
+      const [organisation] = await tx
+        .select({ id: organisations.id, archivéeLe: organisations.archivéeLe })
+        .from(organisations)
+        .where(eq(organisations.slug, slug))
+        .for('update')
+        .limit(1)
+      if (!organisation) return { sorte: 'inconnue' } as const
+      if (organisation.archivéeLe) return { sorte: 'déjà-archivée' } as const
+      const ouverts = await tx
+        .select({ id: abonnements.id })
+        .from(abonnements)
+        .where(and(eq(abonnements.organisationId, organisation.id), inArray(abonnements.état, [...ÉTATS_STRIPE_OUVERTS])))
+        .limit(1)
+      if (ouverts.length > 0) return { sorte: 'abonnée-stripe' } as const
+
+      await tx.update(organisations).set({ archivéeLe: maintenant, modifiéeLe: maintenant }).where(eq(organisations.id, organisation.id))
+      const désactivés = await tx
+        .update(lecteurs)
+        .set({ actif: false })
+        .where(and(eq(lecteurs.organisationId, organisation.id), eq(lecteurs.actif, true), eq(lecteurs.tousLesEspaces, false)))
+        .returning({ id: lecteurs.id })
+      const abandonnés = await tx
+        .update(travaux)
+        .set({ état: 'abandonne' })
+        .where(and(eq(travaux.organisationId, organisation.id), inArray(travaux.état, ['a_faire', 'refuse'])))
+        .returning({ id: travaux.id })
+      return { sorte: 'archivée', lecteursDésactivés: désactivés.length, travauxAbandonnés: abandonnés.length } as const
+    }),
+  )
+}
+
+export async function désarchiverLOrganisation(slug: string, db: Base = base(), maintenant: Date = new Date()): Promise<RésultatDArchivage> {
+  return protéger('désarchivage d’une organisation', async () => {
+    const [organisation] = await db
+      .select({ id: organisations.id, archivéeLe: organisations.archivéeLe })
+      .from(organisations)
+      .where(eq(organisations.slug, slug))
+      .limit(1)
+    if (!organisation) return { sorte: 'inconnue' } as const
+    if (!organisation.archivéeLe) return { sorte: 'pas-archivée' } as const
+    await db.update(organisations).set({ archivéeLe: null, modifiéeLe: maintenant }).where(eq(organisations.id, organisation.id))
+    return { sorte: 'désarchivée' } as const
+  })
+}
+
+/**
+ * Le slug de l'organisation qui porte une clé de cloisonnement, pour le crochet
+ * `afterDelete` du registre Payload : une organisation supprimée dans `/admin`
+ * est archivée dans le portail, par le même chemin que le bouton. `null` si
+ * aucune ne la porte.
+ */
+export async function slugDuRegistre(clé: string, db: Base = base()): Promise<string | null> {
+  return protéger('lecture du slug d’un registre', async () => {
+    const [ligne] = await db
+      .select({ slug: organisations.slug })
+      .from(organisations)
+      .where(eq(organisations.registreNotion, clé.replaceAll('-', '').toLowerCase()))
+      .limit(1)
+    return ligne?.slug ?? null
+  })
+}
+
+/** Les organisations archivées, pour la section repliée du tableau de l'opératrice (seul appelant `listerLesAbonnements`). */
+export async function organisationsArchivées(db: Base = base()): Promise<{ slug: string; nom: string; archivéeLe: Date }[]> {
+  return protéger('lecture des organisations archivées', async () => {
+    const lignes = await db
+      .select({ slug: organisations.slug, nom: organisations.nom, archivéeLe: organisations.archivéeLe })
+      .from(organisations)
+      .where(sql`${organisations.archivéeLe} is not null`)
+      .orderBy(sql`${organisations.archivéeLe} desc`)
+    return lignes.flatMap((l) => (l.archivéeLe ? [{ slug: l.slug, nom: l.nom, archivéeLe: l.archivéeLe }] : []))
   })
 }

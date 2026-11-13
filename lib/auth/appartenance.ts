@@ -9,6 +9,7 @@ import { sourceAccès } from '@/lib/auth/source-acces'
 import { identifiantDeLaSession } from '@/lib/auth/session'
 import { baseConfigurée } from '@/lib/base/client'
 import { tableauDesAbonnements, type LigneDAbonnement } from '@/lib/base/situation'
+import { organisationsArchivées } from '@/lib/base/organisations'
 import { tableauDesPrescripteurs, type LigneDePrescripteur } from '@/lib/base/prescripteurs'
 import { créneauxCoworkPris, tableauDesOnboardings } from '@/lib/base/onboardings'
 import { débutDuMoisDeParis } from '@/lib/domaine/onboarding'
@@ -198,10 +199,13 @@ export async function exigerOpérateur(): Promise<Accès> {
 export async function listerLesAbonnements(): Promise<{
   readonly accès: Accès
   readonly lignes: LigneDAbonnement[] | null
+  /** Les organisations archivées (13 novembre 2026), hors du tableau, repliées sous lui. */
+  readonly archivées: { slug: string; nom: string; archivéeLe: Date }[] | null
 }> {
   const accès = await exigerOpérateur()
-  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null }
-  return { accès, lignes: await tableauDesAbonnements() }
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, lignes: null, archivées: null }
+  const [lignes, archivées] = await Promise.all([tableauDesAbonnements(), organisationsArchivées()])
+  return { accès, lignes, archivées }
 }
 
 /**
