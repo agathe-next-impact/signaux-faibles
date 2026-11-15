@@ -148,6 +148,23 @@ export function promptDeLaTâche(
 }
 
 /**
+ * La règle des réponses autonomes (15 novembre 2026, demande de l'opératrice :
+ * « l'onboarding automatisé doit répondre de façon autonome aux questions du
+ * référentiel »). La tâche tranche elle-même chaque point de validation et
+ * Q1 à Q3, raison écrite, au lieu de les laisser ouverts pour un humain ; elle
+ * répercute en place, sans jamais régénérer un référentiel. Partagée par les
+ * consignes `referentiels` et `sans-validation`.
+ */
+export const RÉPONSES_AUTONOMES: readonly string[] = [
+  '· RÉPONSES AUTONOMES. Personne ne répondra aux points de validation ni aux questions à poser au client : tu les tranches toi-même, tous, quelle que soit leur priorité, et tu ne t’arrêtes jamais pour une réponse humaine.',
+  '  – La réponse retenue est la « Valeur proposée », sauf si une source lue dans ce run la contredit. Pour un choix A, B ou C, retiens l’option (et l’ordre, s’il en faut un) que les sources soutiennent ; à défaut, celle qui garde le plus de familles suivies et ne déclasse aucun FORT. Un objectif de veille, Q1, Q2 ou Q3 en hypothèse se tranche de la même façon.',
+  '  – Écris dans « Valeur corrigée » : « [Tranché par l’onboarding autonome, JJ/MM/AAAA] <la réponse>. Raison : <une ou deux phrases, avec la source> ». « Répondu par » : « Onboarding autonome (portail) » ; « Répondu le » : aujourd’hui. Ne touche ni « Statut source » ni « Écarté » : une réponse autonome n’est pas une confirmation du client.',
+  '  – Puis répercute, comme le §2 le prévoit, pour cette seule organisation. Une réponse égale à la valeur proposée ne réécrit rien : renseigne « Répercuté dans » (« valeur proposée retenue, aucune réécriture »). Une réponse qui diffère réécrit en place la seule section concernée (fiche ou référentiel), jamais tout le document : la structure du §6 reste intacte, la version mineure monte et le journal des versions reçoit une ligne. Ne régénère jamais un référentiel.',
+  '  – Sur la ligne du registre et dans le §7 de la fiche, remplace le marqueur « [hypothèse] » des objectifs de veille et de Q1 à Q3 par « [tranché par l’onboarding autonome, JJ/MM/AAAA] », texte inchangé si la réponse est la valeur proposée. « Questions à poser au client » reste tel quel, comme trace pour l’opératrice.',
+  '  – Liste dans la notification et dans « Dernier lancement manuel » les points tranchés et ceux qui ont fait réécrire une section.',
+]
+
+/**
  * Le texte de chaque consigne du portail (lot 6). Elles ne changent aucune règle
  * de fond des pages : elles disent ce que l'opératrice a décidé depuis son
  * tableau (décision du 2 novembre 2026 : l'onboarding se fait entièrement depuis
@@ -159,9 +176,10 @@ export function texteDeLaConsigne(consigne: ConsigneDeTâche): string {
     case 'referentiels':
       return [
         'CONSIGNE DU PORTAIL : RÉFÉRENTIELS, ONBOARDING AUTONOME. Le portail a lancé l’onboarding de cette organisation de lui-même, dès la demande enregistrée (décision de l’opératrice du 15 novembre 2026 : toutes les étapes jusqu’à la production de la première lettre sont autonomes, sans validation humaine). Cette consigne complète la page pour ce lancement ; elle ne change aucune autre règle.',
-        '· Ne traite que le §3 (nouvelles demandes), et pour cette seule organisation : ni le §1, ni le §2, ni le §2bis, ni aucune autre ligne.',
+        '· Ne traite que le §3 (nouvelles demandes), et pour cette seule organisation : ni le §1, ni le §2bis, ni aucune autre ligne ; du §2, seulement la répercussion de tes propres réponses (RÉPONSES AUTONOMES ci-dessous).',
         '· Retrouve sa ligne du registre par son nom ou son domaine, même si la vue « Nouvelles demandes » ne la remonte pas. Si elle est au statut « 1 · Demande reçue » et que « ▶ Générer les référentiels (A) » n’est pas cochée, coche-la : ce lancement en est l’ordre.',
-        '· Les points de validation se créent comme le §3.7 le prévoit, comme trace : personne ne les attend. Un objectif de veille vide se formule en hypothèse, comme la page le prévoit, et la première lettre partira sur cette hypothèse. N’écris jamais dans « Valeur corrigée ».',
+        '· Les points de validation se créent comme le §3.7 le prévoit. Un objectif de veille vide se formule d’abord en hypothèse, comme la page le prévoit.',
+        ...RÉPONSES_AUTONOMES,
         '· Les gardes du §3.0 restent des arrêts (collision, dispositif existant) : rapporte leur motif au portail et arrête-toi ; c’est la seule décision que tu laisses à un humain.',
         '· Ne lance pas la première lettre toi-même : le portail l’enchaîne à la fin de ce run, s’il réussit.',
       ].join('\n')
@@ -169,8 +187,9 @@ export function texteDeLaConsigne(consigne: ConsigneDeTâche): string {
       return [
         'CONSIGNE DU PORTAIL : PREMIÈRE LETTRE SANS VALIDATION. Le portail enchaîne les référentiels et la première lettre sans validation entre les deux (décisions de l’opératrice du 2 et du 15 novembre 2026 : l’onboarding est autonome jusqu’à la production de la première lettre). Cette consigne complète l’étape 0 du prompt pour ce lancement ; elle ne change aucune autre règle.',
         '· SÉLECTION. Retrouve la ligne de cette organisation dans le registre par son slug (ou son nom), même si la vue « Premières lettres à produire » ne la remonte pas. Si elle est au statut « 2 · Référentiels générés — à valider », passe-la au statut « 3 · Référentiels validés » ; coche « ▶ Produire la première lettre (B) » si elle ne l’est pas. Ne traite aucune autre ligne.',
-        '· PORTE. Pour ce lancement, la porte de l’étape 0 se réduit à ceci : les deux URL de référentiel (Écosystème, Concurrentiel) sont renseignées sur la ligne et les deux pages s’ouvrent. Un « [hypothèse] » dans Q1, Q2 ou Q3, un point « 1 · Scoring » sans « Valeur corrigée » ou sans « Répercuté dans » ne bloquent pas : les hypothèses des référentiels font foi pour cette lettre, et les points restent ouverts, comme trace, listés dans la notification. Tu n’écris jamais dans « Valeur corrigée ». Si une URL manque, ne repasse pas la ligne au statut 2 : rapporte le motif au portail et arrête-toi.',
+        '· PORTE. Pour ce lancement, la porte de l’étape 0 se réduit à ceci : les deux URL de référentiel (Écosystème, Concurrentiel) sont renseignées sur la ligne et les deux pages s’ouvrent. Un « [hypothèse] » dans Q1, Q2 ou Q3, un point « 1 · Scoring » sans « Valeur corrigée » ou sans « Répercuté dans » ne bloquent pas : avant la collecte, tranche toi-même chaque point resté sans « Valeur corrigée » (référentiels produits avant le 15 novembre 2026), selon la règle RÉPONSES AUTONOMES ci-dessous, puis la lettre part sur ces réponses. Si une URL manque, ne repasse pas la ligne au statut 2 : rapporte le motif au portail et arrête-toi.',
         '· La garde d’idempotence reste entière : une édition existante pour cette organisation, et tu ne produis rien.',
+        ...RÉPONSES_AUTONOMES,
         '· Les lettres restent au statut « Brouillon » dans « Éditions de veille » : l’opératrice les lit dans l’espace et les envoie depuis son tableau, et le portail les passera au statut « Envoyé ». Ne dépose aucun brouillon Gmail adressé au client, et n’appelle pas /api/acces/ouvrir : le lien d’accès part du portail à l’ouverture de l’espace.',
         '· Le reste de l’étape s’applique tel qu’écrit : entrée en essai par /api/veille/organisations, ligne « Accès » cochée « Actif » puis /api/veille/importer-acces, outils stratégiques pour toute organisation (coche la case « Outils stratégiques » si elle ne l’est pas, puis pas s1 à s8 : drapeau, grille validée, étiquettes, synthèse initiale, amorçage trimestriel s4bis, espace réorganisé, fiche de veille, contrôle ; décision de l’opératrice du 10 novembre 2026), notification [Relecture] à agathe@signauxfaibles.io.',
       ].join('\n')

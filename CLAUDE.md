@@ -1045,7 +1045,7 @@ passage quotidien (`rattraperLesOnboardings`, sept jours au plus). Consigne
 porte réduite aux deux URL de référentiel, une URL manquante en motif). Restent des
 arrêts : un motif rapporté (gardes du §3.0), le budget, un second échec, Cowork, et
 tout ce qui suit la première lettre (« Envoyer les lettres », « Ouvrir l'espace »),
-qui sont des envois au client. `ONBOARDING_AUTONOME=non` rend le lot 6.
+qui sont des envois au client. `ONBOARDING_AUTONOME=non` rend le lot 6. **Réponses autonomes** (même jour, §16.1) : la tâche tranche elle-même chaque point de validation et Q1 à Q3 (`RÉPONSES_AUTONOMES`, `scripts/taches/pointeurs.ts`), raison écrite dans « Valeur corrigée » sous `[Tranché par l'onboarding autonome, date]`, « Statut source » inchangé, répercussion en place, jamais de référentiel régénéré.
 **Aperçu avant envoi** (1er novembre 2026, décision de l'opératrice : « je veux
 toujours prévisualiser dans l'espace avant tout envoi, et gérer depuis
 l'admin »). Réglage Postgres `organisations.apercu_avant_envoi` (migration

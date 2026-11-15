@@ -165,10 +165,13 @@ describe('les consignes du portail (lot 6)', () => {
     const sansValidation = promptDeLaTâche('premiere-lettre', 'cci-cantal', false, [], { sorte: 'sans-validation' })
     expect(sansValidation.startsWith(`${POINTEURS['premiere-lettre'].texte}\n\nLimite-toi à l'organisation cci-cantal.\n\nCONSIGNE DU PORTAIL : PREMIÈRE LETTRE SANS VALIDATION.`)).toBe(true)
     expect(sansValidation).toContain('passe-la au statut « 3 · Référentiels validés »')
-    expect(sansValidation).toContain('Tu n’écris jamais dans « Valeur corrigée »')
+    // 15 novembre 2026 : la tâche tranche elle-même les points restés ouverts, raison écrite.
+    expect(sansValidation).not.toContain('Tu n’écris jamais dans « Valeur corrigée »')
+    expect(sansValidation).toContain('tranche toi-même chaque point resté sans « Valeur corrigée »')
+    expect(sansValidation).toContain('RÉPONSES AUTONOMES.')
     // Lot 7 : la ligne se retrouve hors de la vue, et la porte ne bloque plus sur les hypothèses.
     expect(sansValidation).toContain('même si la vue « Premières lettres à produire » ne la remonte pas')
-    expect(sansValidation).toContain('ne bloquent pas : les hypothèses des référentiels font foi')
+    expect(sansValidation).toContain('ne bloquent pas : avant la collecte')
     expect(sansValidation).toContain('ne repasse pas la ligne au statut 2')
 
     const référentiels = promptDeLaTâche('balayage', 'cci-cantal', false, [], { sorte: 'referentiels' })
@@ -176,6 +179,12 @@ describe('les consignes du portail (lot 6)', () => {
     expect(référentiels).toContain('Ne traite que le §3 (nouvelles demandes), et pour cette seule organisation')
     expect(référentiels).toContain('coche-la')
     expect(référentiels).toContain('Les gardes du §3.0 restent des arrêts')
+    // Réponses autonomes : chaque point est tranché, raison écrite, répercuté en place.
+    expect(référentiels).not.toContain('N’écris jamais dans « Valeur corrigée »')
+    expect(référentiels).toContain('[Tranché par l’onboarding autonome, JJ/MM/AAAA]')
+    expect(référentiels).toContain('Ne régénère jamais un référentiel.')
+    expect(référentiels).toContain('Ne touche ni « Statut source » ni « Écarté »')
+    expect(référentiels).toContain('tu ne t’arrêtes jamais pour une réponse humaine')
     expect(sansValidation).toContain('Ne dépose aucun brouillon Gmail adressé au client')
     expect(sansValidation).toContain('n’appelle pas /api/acces/ouvrir')
 
