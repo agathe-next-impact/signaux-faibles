@@ -961,6 +961,19 @@ abonnement Stripe ouvert, passe dans le groupe « Sans lecteur actif » du table
 fiche replie ses lecteurs inactifs sous « Accès révoqués ». Tant que Notion fait foi pour
 les accès, l'import rétablit un lecteur dont la ligne « Accès » reste active : la décocher
 aussi.
+**Écarts de statut avec le registre** (15 novembre 2026) : le portail ne lit pas le
+registre, donc le cron du soir ne peut pas comparer ; la tâche qui vient de le lire
+**donne** ses lignes (slug, statut) à `POST /api/veille/etat`, qui les compare aux
+organisations de Postgres (`lib/portail/ecarts-de-statut.ts`, pure ;
+`étatsDesOrganisations`, seule lecture : état et archivage) et rend
+`statut-ecartee-registre` (« 0 · Écartée » au registre, encore en service au portail),
+`statut-ecartee-portail`, `statut-archivee-portail` (archivée, mais le registre la montre
+en service : l'archivage ne sort pas l'organisation du calendrier des tâches, elles
+continuent de lui produire des lettres), `organisation-absente-du-portail` (statut 4 à 6)
+et `statut-registre-illisible`. Ces défauts ne sont jamais filtrés par la mise à l'écart
+des archivées. Rien n'est gardé ni écrit ; une suspension, une organisation de test ou une
+organisation non donnée ne sont pas des écarts ; un contrôle qui n'a pas pu avoir lieu
+(`SOURCE_ACCES=notion`, base absente) le dit dans `statuts`. Le cron (`GET`) ne compare rien.
 **Suivi des onboardings** (1er novembre 2026, lot 1 de
 `docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
 portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une

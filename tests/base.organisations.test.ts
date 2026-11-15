@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
-import { fixerJ0, ouvrirEnEssai, réglerLeParcours, slugsHorsService } from '@/lib/base/organisations'
+import { fixerJ0, ouvrirEnEssai, réglerLeParcours, slugsHorsService, étatsDesOrganisations } from '@/lib/base/organisations'
 import { abonnements, lecteurs, organisations, travaux } from '@/lib/base/schema'
 import { baseEnMémoire } from './aide/base-en-memoire'
 
@@ -293,5 +293,21 @@ describe('décisions de l’opératrice : suspendre, écarter, réactiver', () =
       état: 'test',
     })
     expect((await réglerLeParcours('nulle-part', { sorte: 'décision', décision: 'suspendre' }, db, LE_31)).sorte).toBe('inconnue')
+  })
+
+  it('étatsDesOrganisations rend l’état de chaque slug connu et s’il est archivé, sans rien dire des inconnus', async () => {
+    await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: REGISTRE }, db)
+    await ouvrirEnEssai({ slug: 'autre', nom: 'Autre', registreNotion: AUTRE }, db)
+    await ouvrirEnEssai({ slug: 'vieille', nom: 'Vieille', registreNotion: 'c'.repeat(32) }, db)
+    await réglerLeParcours('acme', { sorte: 'décision', décision: 'ecarter' }, db, LE_31)
+    await db.update(organisations).set({ archivéeLe: LE_31 }).where(eq(organisations.slug, 'vieille'))
+    expect(await étatsDesOrganisations(['acme', 'autre', 'vieille', 'inconnue'], db)).toEqual(
+      new Map([
+        ['acme', { état: 'ecartee', archivée: false }],
+        ['autre', { état: 'essai', archivée: false }],
+        ['vieille', { état: 'essai', archivée: true }],
+      ]),
+    )
+    expect(await étatsDesOrganisations([], db)).toEqual(new Map())
   })
 })

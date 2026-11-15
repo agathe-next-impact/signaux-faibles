@@ -32,6 +32,11 @@ export type CodeDeDéfaut =
   | 'étiquettes-manquantes'
   | 'onboarding-sans-nouvelles'
   | 'onboarding-immobile'
+  | 'statut-ecartee-registre'
+  | 'statut-ecartee-portail'
+  | 'statut-archivee-portail'
+  | 'organisation-absente-du-portail'
+  | 'statut-registre-illisible'
 
 export type Défaut = {
   readonly slug: string

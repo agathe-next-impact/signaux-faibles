@@ -469,6 +469,26 @@ export async function slugsHorsService(slugs: readonly string[], db: Base = base
 }
 
 /**
+ * L'état de chaque organisation que donnent les slugs, et si elle est archivée,
+ * pour le contrôle des écarts de statut avec le registre (15 novembre 2026). Un
+ * slug inconnu est simplement absent du résultat ; une archivée y figure, c'est
+ * précisément ce que le contrôle doit voir. Aucune écriture.
+ */
+export async function étatsDesOrganisations(
+  slugs: readonly string[],
+  db: Base = base(),
+): Promise<Map<string, { readonly état: string; readonly archivée: boolean }>> {
+  if (slugs.length === 0) return new Map()
+  return protéger('lecture de l’état des organisations', async () => {
+    const lignes = await db
+      .select({ slug: organisations.slug, état: organisations.état, archivéeLe: organisations.archivéeLe })
+      .from(organisations)
+      .where(inArray(organisations.slug, [...slugs]))
+    return new Map(lignes.map((l) => [l.slug, { état: l.état, archivée: l.archivéeLe !== null }] as const))
+  })
+}
+
+/**
  * L'aperçu avant envoi d'une organisation, par sa clé de cloisonnement
  * (1er novembre 2026). `null` si aucune organisation ne porte cette clé :
  * l'appelant (`lib/portail/apercu.ts`) tient alors l'aperçu.

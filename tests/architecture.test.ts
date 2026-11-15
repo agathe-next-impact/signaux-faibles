@@ -973,6 +973,20 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('contrôlerLeDispositif')).toEqual(['app/api/veille/etat/route.ts', 'lib/portail/controle-du-soir.ts', 'lib/portail/gestion.ts'])
   })
 
+  it('les écarts de statut avec le registre : une lecture, un appelant, une comparaison pure, le jeton avant le corps', () => {
+    // Le portail ne lit jamais le registre : la tâche donne ses lignes au POST
+    // de la route du soir (15 novembre 2026). Rien n'en est gardé, rien n'est
+    // écrit : la seule lecture est celle des états des organisations.
+    expect(appelants('étatsDesOrganisations')).toEqual(['lib/base/organisations.ts', 'lib/portail/controle-du-soir.ts'])
+    expect(appelants('contrôlerLesStatuts')).toEqual(['lib/portail/controle-du-soir.ts', 'lib/portail/ecarts-de-statut.ts'])
+    const comparaison = readFileSync(join(process.cwd(), 'lib', 'portail', 'ecarts-de-statut.ts'), 'utf8')
+    expect(comparaison).not.toMatch(/from '@\/lib\/(base|notion|documents|payload|auth)/)
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'etat', 'route.ts'), 'utf8')
+    const post = route.slice(route.indexOf('export async function POST'))
+    expect(post.indexOf('refuserSiNonAutorisé(requête')).toBeGreaterThan(0)
+    expect(post.indexOf('refuserSiNonAutorisé(requête')).toBeLessThan(post.indexOf('requête.json()'))
+  })
+
   it('lignesDAccèsPourImport n’est appelée que par l’orchestration de l’import', () => {
     expect(appelants('lignesDAccèsPourImport')).toEqual(['lib/notion/acces.ts', 'lib/portail/import-acces.ts'])
     // Deux portes y mènent : la route sous le jeton, et le bouton de
