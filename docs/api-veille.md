@@ -967,6 +967,15 @@ période.
 
 ### `PATCH /api/veille/syntheses` : publier ou retirer une période (lot 11, 28 octobre 2026)
 
+**Depuis le 15 novembre 2026, publication automatique** (`PUBLICATION_AUTOMATIQUE`,
+facultative, `non` rend le circuit décrit plus bas) : `POST /api/veille/syntheses`
+écrit la synthèse acceptée **déjà publiée** (réponse `état: "publie"`), sauf si
+l'opératrice avait retiré la période (`état: "retire"`, elle reste retirée). Le
+passage quotidien (`/api/veille/parcours`, champ `publication` de sa réponse)
+publie ce qui reste en proposition, jamais une période retirée. Ce geste ne sert
+donc plus qu'à retirer, à republier une période retirée, ou à remettre en
+proposition.
+
 `{ "slug": "mastora", "periode": "2026-11", "etat": "publie" }`, `etat` parmi
 `publie`, `retire` et `propose`. Change l'état de publication de **tous** les
 éléments et positions non archivés de la période, dans une transaction. C'est
@@ -1412,7 +1421,11 @@ au BODACC (quarante secondes au plus, n.d. au-delà), rattache les faits
 étiquetés du trimestre, reprend les comptes publiés du benchmark du trimestre
 (du précédent à défaut), et enregistre les mesures en proposition. Un trimestre
 en cours se mesure jusqu'à aujourd'hui. Rejouable tant que la période n'est pas
-publiée ; `période-publiée` (409) ensuite, la retirer d'abord.
+publiée ; `période-publiée` (409) ensuite, la retirer d'abord. Depuis le 15 novembre 2026,
+sous la publication automatique (`PUBLICATION_AUTOMATIQUE` différente de `non`),
+les mesures sont enregistrées **publiées** (`état` dans la réponse), une période
+publiée se re-mesure et reste publiée, et une période retirée reste retirée ; le
+passage quotidien publie les périodes encore en proposition.
 
 `etat` (`publie`, `retire`, `propose`) : le geste de l'opératrice. Rien n'est
 montré au client avant `publie` ; `aucune` (404) sans mesure pour la période.

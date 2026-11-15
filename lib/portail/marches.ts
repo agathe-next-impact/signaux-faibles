@@ -31,7 +31,8 @@ import {
   type VueDesMarchés,
 } from '@/lib/domaine/marches'
 import { périodesDuCycle, type LigneDeBenchmark, type Refus } from '@/lib/domaine/strategie'
-import { bornée, organisationDuRegistre } from '@/lib/portail/strategie'
+import { attendUnePublication } from '@/lib/domaine/publication-automatique'
+import { bornée, organisationDuRegistre, publicationAutomatique } from '@/lib/portail/strategie'
 import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS, lireLesAchatsPublics, SECTIONS_D_ACTIVITÉ } from '@/lib/registres'
 
 /**
@@ -46,7 +47,9 @@ import { compterLesAnnonces, compterLesEntreprises, FAMILLES_ENTRANTS, lireLesAc
  *     BODACC, marchés publics attribués (DECP) sur les codes CPV du segment,
  *     faits étiquetés de la période, comptes publiés lus par le benchmark du
  *     trimestre ; aucun chiffre ne vient d'un modèle ni du client ;
- *   · rien n'est montré au client avant que l'opératrice publie la période ;
+ *   · depuis le 15 novembre 2026, les mesures sont publiées dès leur calcul
+ *     (`PUBLICATION_AUTOMATIQUE`, `non` rend la relecture d'avant, où rien
+ *     n'était montré au client avant que l'opératrice publie la période) ;
  *   · l'écran lit les seules mesures publiées, par le registre de la session
  *     (règle 2), dans une lecture bornée, sans lecture Notion ni appel aux
  *     registres.
@@ -245,12 +248,20 @@ async function compterUnSegment(
 }
 
 export type RésultatDesMesures =
-  | { readonly sorte: 'enregistrées'; readonly période: string; readonly version: number; readonly mesures: number; readonly archivées: number; readonly vue: VueDesMarchés | null }
+  | {
+      readonly sorte: 'enregistrées'
+      readonly période: string
+      readonly version: number
+      readonly mesures: number
+      readonly archivées: number
+      readonly état: ÉtatDesMesures
+      readonly vue: VueDesMarchés | null
+    }
   | { readonly sorte: 'période-invalide' | 'période-publiée' | 'segments-absents' | 'organisation-inconnue' | 'hors-pilote' }
 
 /**
- * Calcule et enregistre, en proposition, les mesures d'un trimestre sur la
- * dernière version des segments. Les comptes s'arrêtent à la fin du trimestre,
+ * Calcule et enregistre les mesures d'un trimestre sur la dernière version des
+ * segments : publiées sous la publication automatique, proposées sans elle. Les comptes s'arrêtent à la fin du trimestre,
  * ou à aujourd'hui pour un trimestre en cours ; les comptes publiés des
  * concurrents présents sont ceux que le benchmark de ce trimestre a déjà lus
  * (celui du trimestre précédent à défaut), sans nouvel appel.
@@ -308,21 +319,39 @@ export async function mesurerLesMarchésDuPilote(
     sirenDeLOrganisation: elle,
   })
   const écrit = await remplacerLesMesures(
-    { organisationId, période: entrée.période, segmentsVersion: enregistrés.version, mesures: mesures.map((m) => ({ clé: m.clé, valeur: { ...m } })) },
+    {
+      organisationId,
+      période: entrée.période,
+      segmentsVersion: enregistrés.version,
+      mesures: mesures.map((m) => ({ clé: m.clé, valeur: { ...m } })),
+      publicationAutomatique: publicationAutomatique(),
+    },
     db,
     new Date(maintenant()),
   )
   if (écrit.sorte !== 'enregistrées') return écrit
   const toutes = await mesuresVivantes({ organisationId }, db)
   const jusquÀ = versLesMesures(toutes).filter((p) => p.période <= entrée.période)
-  return { sorte: 'enregistrées', période: entrée.période, version: enregistrés.version, mesures: écrit.mesures, archivées: écrit.archivées, vue: vueDesMarchés(jusquÀ) }
+  return {
+    sorte: 'enregistrées',
+    période: entrée.période,
+    version: enregistrés.version,
+    mesures: écrit.mesures,
+    archivées: écrit.archivées,
+    état: écrit.état,
+    vue: vueDesMarchés(jusquÀ),
+  }
 }
 
 export type PublicationDesMesures =
   | { readonly sorte: 'réglée'; readonly période: string; readonly état: ÉtatDesMesures; readonly mesures: number }
   | { readonly sorte: 'aucune' | 'organisation-inconnue' | 'hors-pilote' }
 
-/** Le geste de l'opératrice après relecture : rien n'est montré au client avant lui. */
+/**
+ * Le geste de l'opératrice : publier, retirer ou remettre en proposition une
+ * période. Sous la publication automatique, il ne sert plus qu'à retirer, ou à
+ * republier une période retirée.
+ */
 export async function publierLesMarchésDuPilote(entrée: { readonly slug: string; readonly période: string; readonly état: ÉtatDesMesures }, db?: Base): Promise<PublicationDesMesures> {
   const pilote = await piloteDe(entrée.slug, db)
   if (pilote.sorte !== 'pilote') return pilote
@@ -333,8 +362,10 @@ export async function publierLesMarchésDuPilote(entrée: { readonly slug: strin
 /**
  * La mesure qui suit un dépôt, sans qu'aucune tâche ait à la demander : un arbre
  * de segments qui vient d'être enregistré mesure le trimestre en cours, la
- * synthèse d'un trimestre mesure ce trimestre. Toujours en proposition ; une
- * période publiée, une organisation sans arbre ou hors pilote ne mesurent rien.
+ * synthèse d'un trimestre mesure ce trimestre. Publiée sous la publication
+ * automatique (une période publiée est alors re-mesurée), proposée sans elle
+ * (une période publiée n'est alors pas touchée) ; une organisation sans arbre
+ * ou hors pilote ne mesure rien.
  * Appelée dans `after()` : elle ne lève jamais, la réponse du dépôt est partie.
  */
 export async function mesurerÀLaSuite(
@@ -352,6 +383,29 @@ export async function mesurerÀLaSuite(
     console.error(`[veille/marches] ${entrée.slug} ${période} : mesure à la suite d’un dépôt impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
     return 'échec'
   }
+}
+
+/**
+ * Le rattrapage du passage quotidien (15 novembre 2026), comme pour les
+ * synthèses : sous la publication automatique, une période mesurée encore en
+ * proposition est publiée, jamais une période dont une mesure est retirée.
+ * Rend les périodes publiées, `slug:période`.
+ */
+export async function publierLesMarchésEnAttente(db?: Base): Promise<string[]> {
+  if (!publicationAutomatique()) return []
+  const états = new Map<string, { slug: string; période: string; états: string[] }>()
+  for (const l of await périodesMesuréesDuPilote(db)) {
+    const clé = `${l.slug}:${l.période}`
+    const avant = états.get(clé) ?? { slug: l.slug, période: l.période, états: [] }
+    états.set(clé, { ...avant, états: [...avant.états, l.état] })
+  }
+  const publiées: string[] = []
+  for (const [clé, p] of états) {
+    if (!attendUnePublication(p.états)) continue
+    const r = await publierLesMarchésDuPilote({ slug: p.slug, période: p.période, état: 'publie' }, db)
+    if (r.sorte === 'réglée') publiées.push(clé)
+  }
+  return publiées
 }
 
 /**

@@ -295,9 +295,11 @@ Organisation visée : $ARGUMENTS
      seulement avec sa source publique, codes CPV pour l'achat public, entités
      et familles de la grille). **Aucun chiffre de marché** : ce que rien
      n'établit s'omet. `POST /api/veille/marches` ; le portail mesure seul le
-     trimestre en cours, en proposition : n'appelle ni `mesurer` ni `etat`.
-   Aucun de ces pas ne bloque la lettre ; rien n'en va au client avant que
-   l'opératrice ne publie les deux synthèses et la fiche. **Contrôle de fin
+     trimestre en cours et publie la mesure : n'appelle ni `mesurer` ni `etat`.
+   Aucun de ces pas ne bloque la lettre ; depuis le 15 novembre 2026, le
+   portail publie lui-même les deux synthèses et les mesures qu'il accepte
+   (publication automatique), seule la fiche attend la publication de
+   l'opératrice. **Contrôle de fin
    d'étape (s8)** : `GET /api/veille/grille?slug=<slug>` rend `"état": "lue"` et
    `validéeLe` posé, `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-MM>`,
    `GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>` et
