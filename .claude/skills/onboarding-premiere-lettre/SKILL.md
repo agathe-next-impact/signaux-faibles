@@ -116,10 +116,10 @@ Organisation visée : $ARGUMENTS
    d'idempotence (aucune édition existante pour cette organisation), porte
    **réduite** (15 novembre 2026, prime sur la page : les deux URL de
    référentiel renseignées et ouvertes, veilles déterminées ; un « [hypothèse] »
-   dans Q1 à Q3 ou un point « 1 · Scoring » non répercuté ne bloque pas, les
-   hypothèses des référentiels font foi et les points restent ouverts, comme
-   trace, listés dans la notification ; jamais d'écriture dans « Valeur
-   corrigée » ; une URL manquante se rapporte en motif, sans repasser la ligne
+   dans Q1 à Q3 ou un point « 1 · Scoring » non répercuté ne bloque pas :
+   avant la collecte, tranche toi-même chaque point resté sans « Valeur
+   corrigée », selon la règle des réponses autonomes de
+   `/onboarding-referentiels` (étape 8) ; une URL manquante se rapporte en motif, sans repasser la ligne
    au statut 2),
    collecte refaite intégralement, éditions n°1 en **brouillon Gmail adressé au
    client** — jamais envoyées, mises en forme **et déposées** par le portail

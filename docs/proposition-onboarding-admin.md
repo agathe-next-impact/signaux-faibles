@@ -641,3 +641,37 @@ encore trois décisions humaines avant la première lettre ; les consignes du
 portail les remplacent pour les runs de l'API, et les commandes Cowork disent
 que leur règle prime. Amender la page pour qu'elle dise la même chose est
 recommandé.
+
+### 16.1 Réponses autonomes aux questions du référentiel (15 novembre 2026)
+
+Demande de l'opératrice, le même jour, pendant le premier onboarding autonome
+(Cluster Aquitaine Robotics) : « l'onboarding automatisé doit répondre de façon
+autonome aux questions du référentiel ». Le run des référentiels avait créé huit
+points de validation et huit « Questions à poser au client », laissés ouverts
+comme trace, et Q1 à Q3 en « [hypothèse] » ; la première lettre partait sur ces
+hypothèses, sans que personne ne tranche jamais.
+
+Règle `RÉPONSES_AUTONOMES` (`scripts/taches/pointeurs.ts`), dans les consignes
+`referentiels` et `sans-validation` (pour les points restés ouverts avant ce
+jour) et dans `/onboarding-referentiels` (étape 8) :
+
+- la tâche tranche **chaque** point, toutes priorités, et les objectifs de
+  veille et Q1 à Q3 restés en hypothèse : la valeur proposée, sauf si une
+  source lue dans le run la contredit ; pour un choix A, B ou C, l'option que
+  les sources soutiennent, à défaut celle qui garde le plus de familles suivies ;
+- « Valeur corrigée » porte `[Tranché par l'onboarding autonome, JJ/MM/AAAA]`,
+  la réponse et sa raison ; « Répondu par » : « Onboarding autonome
+  (portail) » ; « Statut source » et « Écarté » ne changent pas : une réponse
+  autonome n'est pas une confirmation du client, et la revue mensuelle peut la
+  remettre en cause ;
+- la répercussion se fait **en place** : une réponse égale à la valeur proposée
+  ne réécrit rien ; une réponse qui diffère réécrit la seule section concernée,
+  version mineure et ligne de journal. Un référentiel n'est jamais régénéré ;
+- « Questions à poser au client » reste tel quel, comme trace pour l'opératrice.
+
+Appliqué à la main le même jour à Aquitaine Robotics, sans régénérer ses
+référentiels : sauvegarde préalable des deux référentiels v1.0 et de la page
+organisation (pages « Sauvegarde du 15/11/2026 avant réponses autonomes »), huit
+réponses écrites (toutes égales à la valeur proposée), marqueurs de Q1 à Q3 et
+des objectifs remplacés sur la ligne et dans la fiche, fiche passée en v1.1 ;
+référentiels v1.0 inchangés.

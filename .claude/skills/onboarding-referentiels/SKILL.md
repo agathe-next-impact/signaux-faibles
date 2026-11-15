@@ -155,10 +155,28 @@ Organisation visée : $ARGUMENTS
    suivante en clair. **Aucune réponse n'est attendue** (décision de
    l'opératrice du 15 novembre 2026 : l'onboarding est autonome jusqu'à la
    production de la première lettre ; cette règle prime sur la page Notion) :
-   les points de validation restent ouverts, comme trace, et l'étape suivante
-   est « lancer `/onboarding-premiere-lettre <nom>` dans une session neuve ».
-   `/onboarding-repercussion` ne sert plus qu'à appliquer après coup une
-   réponse que le client aurait donnée.
+   l'étape suivante est « lancer `/onboarding-premiere-lettre <nom>` dans une
+   session neuve ». `/onboarding-repercussion` ne sert plus qu'à appliquer
+   après coup une réponse que le client aurait donnée.
 
-Tu ne lances ni le §1, ni le §2, ni la première lettre. Aucun jeton à
+8. **Réponses autonomes** (15 novembre 2026, demande de l'opératrice ; prime
+   sur la page Notion), avant la notification : tu tranches toi-même chaque
+   point de validation créé, toutes priorités, et les objectifs de veille et
+   Q1 à Q3 restés en hypothèse. La réponse est la « Valeur proposée », sauf si
+   une source lue dans ce run la contredit ; pour un choix A, B ou C, l'option
+   que les sources soutiennent, à défaut celle qui garde le plus de familles
+   suivies. « Valeur corrigée » : `[Tranché par l'onboarding autonome,
+   JJ/MM/AAAA] <réponse>. Raison : <une ou deux phrases, avec la source>` ;
+   « Répondu par » : « Onboarding autonome (portail) » ; « Répondu le » :
+   aujourd'hui ; « Statut source » et « Écarté » inchangés. Répercussion en
+   place : une réponse égale à la valeur proposée ne réécrit rien (« Répercuté
+   dans » : valeur proposée retenue, aucune réécriture) ; une réponse qui
+   diffère réécrit la seule section concernée, version mineure et ligne de
+   journal, sans jamais régénérer un référentiel ni toucher à la structure du
+   §6. Le marqueur « [hypothèse] » de la ligne et du §7 de la fiche devient
+   « [tranché par l'onboarding autonome, JJ/MM/AAAA] ». Texte complet : règle
+   `RÉPONSES_AUTONOMES` de `scripts/taches/pointeurs.ts`.
+
+Tu ne lances ni le §1, ni le reste du §2 (seulement la répercussion de tes
+propres réponses), ni la première lettre. Aucun jeton à
 manipuler : n'en écris jamais dans une commande.
