@@ -1179,14 +1179,16 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     // Lot 3 : la demande passe la porte avant l'écriture, derrière la garde ;
     // l'adresse du lecteur final n'est nommée que par le domaine, la base et le harnais.
     expect(appelants('enregistrerUneDemande')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
-    expect(appelants('enregistrerLaDemande')).toEqual(['lib/portail/onboarding-actions.ts', 'lib/portail/onboarding.ts'])
+    expect(appelants('enregistrerLaDemande')).toEqual(['lib/portail/onboarding.ts'])
+    // Lot 7 : l'action enregistre puis lance, par la seule orchestration.
+    expect(appelants('enregistrerPuisLancer')).toEqual(['lib/portail/onboarding-actions.ts', 'lib/portail/onboarding.ts'])
     expect(appelants('demandeÀTransmettre')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
     expect(appelants('effacerLesDemandesAnciennes')).toEqual(['lib/base/onboardings.ts', 'lib/portail/onboarding.ts'])
     expect(appelants('créneauxCoworkPris')).toEqual(['lib/auth/appartenance.ts', 'lib/base/onboardings.ts'])
     expect(appelants('lireLeFormulaireDeDemande')).toEqual(['app/(portail)/espaces/onboardings/nouveau/page.tsx', 'lib/auth/appartenance.ts'])
     const formulaire = action.slice(action.indexOf('export async function enregistrerUneDemandeDOnboarding'))
     expect(formulaire.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
-    expect(formulaire.indexOf('exigerOpérateur()')).toBeLessThan(formulaire.indexOf('enregistrerLaDemande('))
+    expect(formulaire.indexOf('exigerOpérateur()')).toBeLessThan(formulaire.indexOf('enregistrerPuisLancer('))
     const enregistrer = orchestration.slice(orchestration.indexOf('export async function enregistrerLaDemande'))
     expect(enregistrer.indexOf('contrôlerLaDemande(')).toBeGreaterThan(0)
     expect(enregistrer.indexOf('contrôlerLaDemande(')).toBeLessThan(enregistrer.indexOf('enregistrerUneDemande('))

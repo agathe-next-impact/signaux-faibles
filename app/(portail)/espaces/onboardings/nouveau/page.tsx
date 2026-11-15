@@ -12,9 +12,10 @@ export const metadata: Metadata = { title: 'Nouvelle demande — signauxfaibles'
 /**
  * La demande d'onboarding enregistrée par l'opératrice (lot 3 de
  * `docs/proposition-onboarding-admin.md`, 1er novembre 2026), à la place de
- * `/onboarding-demande` pour l'API. Rien n'est lancé à l'envoi (décision 4) :
- * la demande apparaît sur `/espaces/onboardings` avec le bouton « Générer les
- * référentiels ». Objectifs et lecteur final sont gardés en base jusqu'à ce que
+ * `/onboarding-demande` pour l'API. Depuis le lot 7 (15 novembre 2026), l'envoi
+ * lance l'onboarding de l'API, autonome jusqu'à la première lettre (la décision
+ * 4, « rien n'est lancé à l'envoi », est levée) ; la demande apparaît sur
+ * `/espaces/onboardings` avec l'issue du lancement. Objectifs et lecteur final sont gardés en base jusqu'à ce que
  * la tâche rapporte la ligne du registre, trente jours au plus (décision 1).
  * Garde dans `lireLeFormulaireDeDemande`, avant toute lecture.
  */

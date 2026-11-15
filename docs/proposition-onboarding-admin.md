@@ -577,3 +577,67 @@ fin d'un run sache quoi enchaîner. La publication n'est pas un run d'onboarding
   du lot 4 : le portail envoie le lien, sans tâche d'activation.
 - Les commandes Cowork (`/onboarding-*`) restent utilisables ; elles suivent
   leurs propres règles.
+
+## 16. Lot 7 (15 novembre 2026) : l'onboarding autonome jusqu'à la première lettre
+
+Demande de l'opératrice : « toutes les étapes de l'onboarding jusqu'à la
+production de la première lettre doivent être totalement autonomes, sans étape
+avec validation humaine ». Le lot 6 avait supprimé la validation des
+référentiels, mais il restait, avant la première lettre, cinq endroits où le
+parcours de l'API attendait quelqu'un :
+
+| Où | Ce qui attendait un humain | Ce que fait le lot 7 |
+|---|---|---|
+| Formulaire `/espaces/onboardings/nouveau` | le clic « Lancer l'onboarding » après l'enregistrement (décision 4 du lot 3) | l'enregistrement lance aussitôt (`enregistrerPuisLancer`) ; la décision 4 est levée |
+| Balayage lancé du portail | aucune consigne : la tâche lisait la vue « Nouvelles demandes » et pouvait traiter d'autres lignes, ou attendre la case ▶ A | consigne `referentiels` : §3 seul, cette organisation seule, case ▶ A cochée par la tâche, aucune validation attendue |
+| Fin du balayage | l'enchaînement exigeait le statut 2 **rapporté** : un rapport oublié laissait le bouton « Produire la première lettre » à cliquer | l'enchaînement suit le run réussi, statut rapporté ou non |
+| Étape 0 de la première lettre | la vue « Premières lettres à produire » ne remonte pas une ligne au statut 2, et la porte (« [hypothèse] » dans Q1 à Q3, point 1 · Scoring non répercuté) renvoyait au statut 2, donc à `/onboarding-repercussion` | consigne `sans-validation` renforcée : ligne retrouvée par son slug, statut 3 et case ▶ B posés par la tâche, porte réduite aux deux URL de référentiel ; une URL manquante se rapporte en motif, sans retour au statut 2 |
+| Échec d'un run | le bouton « Relancer » | une relance automatique, une seule par tâche, jamais pour un échec qui a consommé 90 % du plafond |
+
+Plus un **rattrapage** au passage quotidien (`GET /api/veille/parcours`,
+`rattraperLesOnboardings`) : ce qui n'a pas suivi (GitHub qui refuse le
+déclenchement, portail injoignable à la fin d'un run) est repris par la même
+décision. Un onboarding sans nouvelle depuis plus de sept jours n'est pas
+réveillé : le contrôle du soir le signale déjà (`onboarding-immobile`).
+
+**La décision est une fonction pure**, `suiteAutomatique`
+(`lib/domaine/onboarding.ts`), appelée par la seule orchestration
+`lancerLaSuiteAutomatique` (`lib/portail/onboarding.ts`) à trois moments :
+l'enregistrement de la demande, la fin de chaque run lancé du portail, le
+passage quotidien. Elle passe ensuite par le chemin des gestes de
+l'opératrice : réservation avant l'appel, budget du mois
+(`ONBOARDING_BUDGET_MENSUEL_USD`), refus d'un second run en cours. Les runs
+qu'elle lance portent le nom « enchaînement du portail », « relance
+automatique du portail » ou « rattrapage du portail ».
+
+**Ce qui reste un arrêt, exprès** :
+
+- un **motif** rapporté par la tâche : les gardes du §3.0 (collision, dispositif
+  existant sous un autre nom, qui demande de choisir entre deux profils), la
+  ligne d'un autre exécuteur, une URL de référentiel manquante. Relancer
+  reproduirait l'arrêt, et ces cas demandent un jugement ;
+- le **budget** du mois atteint, et un second échec de suite de la même tâche ;
+- un onboarding **Cowork** : ses commandes se tapent dans une session, le
+  portail ne les lance pas. Les commandes sont alignées sur la même règle
+  (`/onboarding-referentiels` renvoie à `/onboarding-premiere-lettre`, qui
+  passe seule le statut 2 au statut 3 avec la porte réduite) ;
+- **tout ce qui suit la première lettre**, qui n'est plus de la production :
+  « Envoyer les lettres » (premier courrier au client) et « Ouvrir l'espace et
+  activer la veille » (lien d'accès, J0 de l'essai). Ce sont des envois à un
+  client, irréversibles ; ils restent des gestes de l'opératrice, avec l'aperçu
+  avant envoi.
+
+**Interrupteur** : `ONBOARDING_AUTONOME` (facultative) ; `non` coupe le
+lancement à l'enregistrement, la relance, le rattrapage et l'enchaînement sans
+statut rapporté, et rend le comportement du lot 6.
+
+**Moteur Trigger.dev** (après la bascule `SOURCE_DOCUMENTS=payload`) : la même
+décision lance le run complet `onboarding` dès l'enregistrement, et le relance
+une fois après un échec.
+
+**La page Notion n'est pas modifiée par ce lot** (le portail n'écrit jamais
+dans Notion). Ses textes « Le cycle » et « Le principe de conception » décrivent
+encore trois décisions humaines avant la première lettre ; les consignes du
+portail les remplacent pour les runs de l'API, et les commandes Cowork disent
+que leur règle prime. Amender la page pour qu'elle dise la même chose est
+recommandé.

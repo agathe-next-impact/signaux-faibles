@@ -198,7 +198,7 @@ export const MESSAGES_DE_LANCEMENT: Readonly<Record<IssueDuLancement | IssueDeLO
   'en-cours': 'Un run est déjà en cours pour cet onboarding : rien n’a été lancé.',
   cowork: 'Onboarding confié à Cowork : il se lance par les commandes /onboarding-* dans Claude Code, pas depuis le portail.',
   'budget-atteint': 'Budget du mois atteint (ONBOARDING_BUDGET_MENSUEL_USD) : le plafond de ce run ne tient pas dans ce qui reste. Rien n’a été lancé.',
-  enregistree: 'Demande enregistrée. Rien n’est parti : le lancement se fait d’ici, quand la demande est prête.',
+  enregistree: 'Demande enregistrée. Un onboarding de l’API part de lui-même, jusqu’à la première lettre ; s’il n’a pas pu partir, le passage quotidien le reprend, et le bouton reste ici. Un onboarding Cowork se lance par sa commande.',
   'hors-registre': 'L’organisation n’est pas au registre Payload sous ce slug : la créer dans /admin (ou par le formulaire de demande), puis relancer.',
   'échec-moteur': 'Trigger.dev n’a pas accepté le run : rien n’a tourné. Vérifier TRIGGER_SECRET_KEY et le projet Trigger.dev, puis recommencer.',
   'échec-github': 'GitHub a refusé le déclenchement ou n’a pas répondu : rien n’a tourné. Vérifier le jeton (permission « Actions ») et la branche, puis recommencer.',

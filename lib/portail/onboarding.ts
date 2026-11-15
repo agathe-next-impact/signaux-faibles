@@ -44,6 +44,10 @@ import {
   type DécisionDeBudget,
   ÉDITIONS_PAR_PUBLICATION_MAX,
   écrireUneConsigne,
+  lireLAutonomie,
+  OPÉRATRICE_AUTOMATIQUE,
+  suiteAutomatique,
+  type SuiteAutomatique,
   type ÉtapeCalculée,
   type ÉtatDeRun,
 } from '@/lib/domaine/onboarding'
@@ -109,14 +113,16 @@ export async function recevoirUnDébut(
 }
 
 /**
- * La fin d'un run, puis ce qui suit de lui-même (lot 6, 2 novembre 2026 :
- * l'onboarding se fait entièrement depuis l'admin, sans confirmation) :
- * - un run de référentiels réussi, lancé du portail, enchaîne la première
- *   lettre, sans validation entre les deux ;
+ * La fin d'un run, puis ce qui suit de lui-même (lot 6, 2 novembre 2026 ;
+ * lot 7, 15 novembre 2026 : l'onboarding est autonome jusqu'à la première
+ * lettre) :
  * - un run d'activation réussi fait partir le lien d'accès à chaque lecteur
- *   actif, par le portail.
- * Une suite qui échoue n'annule pas la conclusion : elle est journalisée, et le
- * geste reste à l'écran pour la relancer à la main.
+ *   actif, par le portail ;
+ * - tout autre run lancé du portail passe par `lancerLaSuiteAutomatique` :
+ *   des référentiels réussis enchaînent la première lettre, sans validation
+ *   entre les deux, et un premier échec est relancé une fois.
+ * Une suite qui échoue n'annule pas la conclusion : elle est journalisée, le
+ * rattrapage du passage quotidien la reprend, et le geste reste à l'écran.
  */
 export async function recevoirUneFin(
   entrée: { readonly slug: string; readonly runId: string; readonly issue: 'reussi' | 'echec'; readonly coûtUsd: number | null },
@@ -124,25 +130,107 @@ export async function recevoirUneFin(
 ): Promise<'conclu' | 'déjà-conclu' | 'inconnu'> {
   const conclusion = await conclureUnRunDOnboarding({ ...entrée, maintenant })
   if (conclusion.sorte !== 'conclu') return conclusion.sorte
-  if (conclusion.état === 'reussi' && conclusion.lancéParLePortail) {
-    try {
-      if (conclusion.tâche === 'balayage' && conclusion.consigne === null) {
-        const issue = await lancerDepuisLePortail({ slug: entrée.slug, geste: 'premiere-lettre', opératrice: OPÉRATRICE_DE_L_ENCHAÎNEMENT }, maintenant)
-        console.info(`[onboarding] ${entrée.slug} : référentiels générés, première lettre enchaînée, ${issue}.`)
-      } else if (conclusion.tâche === 'balayage' && conclusion.consigne === 'activation') {
+  if (!conclusion.lancéParLePortail) return 'conclu'
+  try {
+    if (conclusion.tâche === 'balayage' && conclusion.consigne === 'activation') {
+      if (conclusion.état === 'reussi') {
         const { envoyerLesLiensDeLOrganisation } = await import('@/lib/portail/ouverture')
         const issue = await envoyerLesLiensDeLOrganisation({ slug: entrée.slug, déclencheur: 'onboarding', origine: null })
         console.info(`[onboarding] ${entrée.slug} : veille activée, ouverture de l’espace, ${issue}.`)
       }
-    } catch (erreur) {
-      console.error(`[onboarding] ${entrée.slug} : suite du run non faite (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    } else if (conclusion.état === 'reussi' || conclusion.état === 'echec') {
+      const suite = await lancerLaSuiteAutomatique({ slug: entrée.slug }, maintenant)
+      if (suite.sorte === 'lancée') console.info(`[onboarding] ${entrée.slug} : ${conclusion.tâche} ${conclusion.état}, suite automatique (${suite.motif}, ${suite.geste}), ${suite.issue}.`)
     }
+  } catch (erreur) {
+    console.error(`[onboarding] ${entrée.slug} : suite du run non faite (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
   }
   return 'conclu'
 }
 
 /** Le nom porté par le run de première lettre que le portail enchaîne seul, au journal comme à l'écran. */
-export const OPÉRATRICE_DE_L_ENCHAÎNEMENT = 'enchaînement du portail'
+export const OPÉRATRICE_DE_L_ENCHAÎNEMENT = OPÉRATRICE_AUTOMATIQUE.enchaînement
+
+/** `ONBOARDING_AUTONOME`, lue à chaque appel comme le budget : `non` coupe ce que le lot 7 ajoute. */
+export function onboardingAutonome(): boolean {
+  return lireLAutonomie(process.env['ONBOARDING_AUTONOME'])
+}
+
+export type IssueDeLaSuite =
+  | { readonly sorte: 'lancée'; readonly geste: Extract<SuiteAutomatique, { sorte: 'lancer' }>['geste']; readonly motif: Extract<SuiteAutomatique, { sorte: 'lancer' }>['motif']; readonly issue: IssueDuLancement }
+  | { readonly sorte: 'aucune'; readonly raison: Extract<SuiteAutomatique, { sorte: 'aucune' }>['raison'] | 'inconnu' | 'indisponible' }
+
+/**
+ * Ce que le portail lance de lui-même pour un onboarding de l'API (lot 7) :
+ * la décision est `suiteAutomatique`, pure ; ici, la lecture, puis le même
+ * chemin que les gestes de l'opératrice (réservation avant l'appel, budget,
+ * run en cours refusé). Commun à l'enregistrement de la demande, à la fin d'un
+ * run et au rattrapage du passage quotidien. Le geste n'est pas revérifié
+ * contre l'écran : c'est la décision qui le donne, et la réservation refuse
+ * toujours un second run en cours.
+ */
+export async function lancerLaSuiteAutomatique(entrée: { readonly slug: string; readonly opératrice?: string }, maintenant: Date = new Date()): Promise<IssueDeLaSuite> {
+  const moteur = moteurDesOnboardings()
+  if (moteur === 'trigger' ? !déclencheurConfiguré() : configurationGithub() === null) return { sorte: 'aucune', raison: 'indisponible' }
+  const lu = await onboardingDUnSlug(entrée.slug)
+  if (!lu) return { sorte: 'aucune', raison: 'inconnu' }
+  const vue = vueDUnOnboarding(lu, maintenant)
+  const suite = suiteAutomatique(
+    {
+      étape: vue.étape.étape,
+      exécuteur: lu.exécuteur,
+      motifDeBlocage: lu.motifDeBlocage,
+      crééLe: lu.crééLe,
+      runs: lu.runs,
+      moteur,
+      autonome: onboardingAutonome(),
+    },
+    maintenant,
+  )
+  if (suite.sorte === 'aucune') return suite
+  const opératrice = entrée.opératrice ?? (suite.motif === 'relance' ? OPÉRATRICE_AUTOMATIQUE.relance : suite.motif === 'enchaînement' ? OPÉRATRICE_AUTOMATIQUE.enchaînement : OPÉRATRICE_AUTOMATIQUE.rattrapage)
+  let issue: IssueDuLancement
+  if (suite.geste === 'onboarding') {
+    issue = await lancerParLeMoteur({ slug: entrée.slug, geste: 'automatique', opératrice, origine: 'portail' }, maintenant)
+  } else {
+    const github = configurationGithub()
+    if (!github) return { sorte: 'aucune', raison: 'indisponible' }
+    issue = await réserverPuisDéclencher(
+      suite.geste === 'premiere-lettre'
+        ? { github, slug: entrée.slug, tâche: 'premiere-lettre', consigne: 'sans-validation', opératrice }
+        : { github, slug: entrée.slug, tâche: 'balayage', consigne: 'referentiels', opératrice },
+      maintenant,
+    )
+  }
+  return { sorte: 'lancée', geste: suite.geste, motif: suite.motif, issue }
+}
+
+/**
+ * Le rattrapage du passage quotidien (lot 7) : chaque onboarding de l'API dont
+ * la suite n'a pas eu lieu (déclenchement refusé par GitHub, portail
+ * injoignable à la fin d'un run, demande enregistrée avant ce lot) est repris
+ * par la même décision. Un onboarding sans nouvelle depuis plus d'une semaine
+ * n'est pas réveillé : le contrôle du soir le signale.
+ */
+export async function rattraperLesOnboardings(maintenant: Date = new Date()): Promise<{ readonly lancés: number; readonly examinés: number }> {
+  if (!onboardingAutonome()) return { lancés: 0, examinés: 0 }
+  let lancés = 0
+  let examinés = 0
+  for (const o of await onboardingsPourLeContrôle()) {
+    if (o.exécuteur !== 'api') continue
+    examinés++
+    try {
+      const suite = await lancerLaSuiteAutomatique({ slug: o.slug }, maintenant)
+      if (suite.sorte === 'lancée') {
+        console.info(`[onboarding] ${o.slug} : rattrapage (${suite.motif}, ${suite.geste}), ${suite.issue}.`)
+        if (suite.issue === 'lancé') lancés++
+      }
+    } catch (erreur) {
+      console.error(`[onboarding] ${o.slug} : rattrapage impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    }
+  }
+  return { lancés, examinés }
+}
 
 export function recevoirUnRapport(
   entrée: {
@@ -290,7 +378,9 @@ export async function lancerDepuisLePortail(
   // Le run complet du moteur ne se lance pas par GitHub.
   if (tâche === 'onboarding') return 'geste-périmé'
   // Lot 6 : la première lettre part toujours sans attendre la validation.
-  return réserverPuisDéclencher({ github, slug: entrée.slug, tâche, consigne: tâche === 'premiere-lettre' ? 'sans-validation' : null, opératrice: entrée.opératrice }, maintenant)
+  // Lot 7 : les référentiels lancés du portail portent leur consigne, pour que
+  // le balayage ne traite que cette organisation et n'attende aucune validation.
+  return réserverPuisDéclencher({ github, slug: entrée.slug, tâche, consigne: tâche === 'premiere-lettre' ? 'sans-validation' : 'referentiels', opératrice: entrée.opératrice }, maintenant)
 }
 
 /**
@@ -407,7 +497,7 @@ const registre = () => import('@/lib/payload/registre-onboarding')
  * crochet relance (`CONTEXTE_LANCÉ_PAR_LE_PORTAIL`).
  */
 async function lancerParLeMoteur(
-  entrée: { readonly slug: string; readonly geste: Geste | 'depuis-le-registre'; readonly opératrice: string; readonly origine: 'portail' | 'registre' },
+  entrée: { readonly slug: string; readonly geste: Geste | 'depuis-le-registre' | 'automatique'; readonly opératrice: string; readonly origine: 'portail' | 'registre' },
   maintenant: Date,
 ): Promise<IssueDuLancement> {
   if (!déclencheurConfiguré()) return 'indisponible'
@@ -421,8 +511,8 @@ async function lancerParLeMoteur(
   const vue = vueDUnOnboarding(lu, maintenant)
   if (vue.geste.sorte === 'ouvrir') return 'geste-périmé'
   if (vue.geste.sorte !== 'geste') return issueSansGeste(vue.geste)
-  // Le crochet accepte le geste de l'étape, quel qu'il soit ; le bouton, le sien seulement.
-  if (entrée.geste !== 'depuis-le-registre' && vue.geste.geste !== entrée.geste) return 'geste-périmé'
+  // Le crochet et la suite automatique (lot 7) acceptent le geste de l'étape, quel qu'il soit ; le bouton, le sien seulement.
+  if (entrée.geste !== 'depuis-le-registre' && entrée.geste !== 'automatique' && vue.geste.geste !== entrée.geste) return 'geste-périmé'
 
   const réservation = await réserverUnLancement({
     slug: entrée.slug,
@@ -484,7 +574,8 @@ export type IssueDeLaDemande =
 /**
  * La porte puis l'écriture : `contrôlerLaDemande` avant `enregistrerUneDemande`
  * (`tests/architecture.test.ts` tient l'ordre). L'appelant a vérifié le
- * privilège. Rien n'est lancé : le geste « Générer les référentiels » suit.
+ * privilège. Rien n'est lancé ici : l'action lance ensuite la suite
+ * automatique (lot 7), `enregistrerPuisLancer`.
  */
 export async function enregistrerLaDemande(
   entrée: {
@@ -526,3 +617,24 @@ export function effacerLesDemandesExpirées(maintenant: Date = new Date()): Prom
   return effacerLesDemandesAnciennes(maintenant)
 }
 
+
+/**
+ * Lot 7 (15 novembre 2026) : la demande enregistrée lance aussitôt
+ * l'onboarding, sans second geste. Un refus (budget, jeton absent, GitHub en
+ * échec) laisse la demande enregistrée : le rattrapage du passage quotidien la
+ * reprend, et le bouton reste à l'écran.
+ */
+export async function enregistrerPuisLancer(
+  entrée: Parameters<typeof enregistrerLaDemande>[0],
+  maintenant: Date = new Date(),
+): Promise<IssueDeLaDemande & { readonly lancement?: IssueDuLancement | 'non-lancé' }> {
+  const issue = await enregistrerLaDemande(entrée, maintenant)
+  if (issue.sorte !== 'enregistrée') return issue
+  try {
+    const suite = await lancerLaSuiteAutomatique({ slug: issue.slug, opératrice: entrée.opératrice }, maintenant)
+    return { ...issue, lancement: suite.sorte === 'lancée' ? suite.issue : suite.raison === 'indisponible' ? 'indisponible' : 'non-lancé' }
+  } catch (erreur) {
+    console.error(`[onboarding] ${issue.slug} : lancement à la demande impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    return { ...issue, lancement: 'non-lancé' }
+  }
+}

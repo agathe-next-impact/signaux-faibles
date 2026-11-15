@@ -3,7 +3,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { exigerOpérateur } from '@/lib/auth/appartenance'
 import type { ChampDeLaDemande, Geste } from '@/lib/domaine/onboarding'
-import { enregistrerLaDemande, lancerDepuisLePortail, type IssueDuLancement } from '@/lib/portail/onboarding'
+import { enregistrerPuisLancer, lancerDepuisLePortail, type IssueDuLancement } from '@/lib/portail/onboarding'
 
 /**
  * Le geste de l'opératrice sur un onboarding (lot 2 de
@@ -67,9 +67,12 @@ const lire = (données: FormData, clé: string, max: number) => {
 
 /**
  * L'envoi du formulaire `/espaces/onboardings/nouveau` : la garde d'abord, puis
- * la porte et l'écriture (`enregistrerLaDemande`). Une demande enregistrée mène
- * à la liste, où le geste « Générer les référentiels » attend (décision 4) ; un
- * refus rend les valeurs saisies au formulaire, jamais par l'URL.
+ * la porte et l'écriture (`enregistrerLaDemande`), puis, depuis le lot 7
+ * (15 novembre 2026, onboarding autonome jusqu'à la première lettre), le
+ * lancement aussitôt (`enregistrerPuisLancer`) : la décision 4 du lot 3, « rien
+ * n'est lancé à l'envoi », est levée. Une demande enregistrée mène à la liste,
+ * avec l'issue du lancement ; un refus rend les valeurs saisies au formulaire,
+ * jamais par l'URL.
  */
 export async function enregistrerUneDemandeDOnboarding(_avant: ÉtatDuFormulaire, données: FormData): Promise<ÉtatDuFormulaire> {
   const accès = await exigerOpérateur()
@@ -82,14 +85,14 @@ export async function enregistrerUneDemandeDOnboarding(_avant: ÉtatDuFormulaire
     lecteurEmail: lire(données, 'lecteurEmail', 640),
     exécuteur: lire(données, 'executeur', 10),
   }
-  let issue: Awaited<ReturnType<typeof enregistrerLaDemande>>
+  let issue: Awaited<ReturnType<typeof enregistrerPuisLancer>>
   try {
-    issue = await enregistrerLaDemande({ champs: { ...valeurs }, opératrice: accès.nom })
+    issue = await enregistrerPuisLancer({ champs: { ...valeurs }, opératrice: accès.nom })
   } catch (erreur) {
     console.error(`[onboarding] demande impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
     return { état: 'échec', valeurs }
   }
-  console.info(`[onboarding] ${accès.nom} : demande, ${issue.sorte}${issue.sorte === 'enregistrée' ? ` (${issue.slug})` : ''}.`)
+  console.info(`[onboarding] ${accès.nom} : demande, ${issue.sorte}${issue.sorte === 'enregistrée' ? ` (${issue.slug}, lancement ${issue.lancement ?? 'non-lancé'})` : ''}.`)
   switch (issue.sorte) {
     case 'invalide':
       return { état: 'invalide', champs: issue.champs, valeurs }
@@ -97,7 +100,9 @@ export async function enregistrerUneDemandeDOnboarding(_avant: ÉtatDuFormulaire
       return { état: 'doublon', par: issue.par, slug: issue.slug, où: issue.où, valeurs }
     case 'créneaux-cowork':
       return { état: 'créneaux-cowork', pris: issue.pris, valeurs }
-    case 'enregistrée':
-      redirect(`/espaces/onboardings?demande=enregistree&slug=${encodeURIComponent(issue.slug)}#${encodeURIComponent(issue.slug)}`)
+    case 'enregistrée': {
+      const lancement = issue.lancement && issue.lancement !== 'non-lancé' ? `&lancement=${encodeURIComponent(issue.lancement)}` : ''
+      redirect(`/espaces/onboardings?demande=enregistree${lancement}&slug=${encodeURIComponent(issue.slug)}#${encodeURIComponent(issue.slug)}`)
+    }
   }
 }

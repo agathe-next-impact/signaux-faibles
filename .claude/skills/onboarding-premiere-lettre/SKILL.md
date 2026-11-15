@@ -105,11 +105,22 @@ Organisation visée : $ARGUMENTS
 
 4. **Coche « ▶ Produire la première lettre (B) »** sur cette ligne si elle ne
    l'est pas : l'étape 0 ne traite alors que les lignes cochées, donc celle-ci
-   seulement.
+   seulement. **Onboarding sans validation** (décisions de l'opératrice du
+   2 et du 15 novembre 2026 : toutes les étapes jusqu'à la production de la
+   première lettre sont autonomes) : si la ligne est au statut « 2 ·
+   Référentiels générés — à valider », passe-la au statut « 3 · Référentiels
+   validés » toi-même, sans attendre les points de validation ni lancer
+   `/onboarding-repercussion`. Cette règle prime sur la page Notion.
 
 5. **Exécute le prompt, étape par étape**, sans en sauter : garde
    d'idempotence (aucune édition existante pour cette organisation), porte
-   (Q1–Q3 sans « [hypothèse] », veilles déterminées, priorité 1 répercutée),
+   **réduite** (15 novembre 2026, prime sur la page : les deux URL de
+   référentiel renseignées et ouvertes, veilles déterminées ; un « [hypothèse] »
+   dans Q1 à Q3 ou un point « 1 · Scoring » non répercuté ne bloque pas, les
+   hypothèses des référentiels font foi et les points restent ouverts, comme
+   trace, listés dans la notification ; jamais d'écriture dans « Valeur
+   corrigée » ; une URL manquante se rapporte en motif, sans repasser la ligne
+   au statut 2),
    collecte refaite intégralement, éditions n°1 en **brouillon Gmail adressé au
    client** — jamais envoyées, mises en forme **et déposées** par le portail
    (`POST /api/veille/courriel`, `sorte: "lettre"`, après le lint, avec

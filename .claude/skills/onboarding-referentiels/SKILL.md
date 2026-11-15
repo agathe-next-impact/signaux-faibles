@@ -152,8 +152,13 @@ Organisation visée : $ARGUMENTS
    référentiels (A) » et écris le résultat dans « Dernier lancement manuel ».
 
 7. **Notification et compte rendu** : ceux que prévoit le §3.8, puis l'étape
-   suivante en clair — réponses du relecteur et du client attendues, puis
-   `/onboarding-repercussion <nom>`.
+   suivante en clair. **Aucune réponse n'est attendue** (décision de
+   l'opératrice du 15 novembre 2026 : l'onboarding est autonome jusqu'à la
+   production de la première lettre ; cette règle prime sur la page Notion) :
+   les points de validation restent ouverts, comme trace, et l'étape suivante
+   est « lancer `/onboarding-premiere-lettre <nom>` dans une session neuve ».
+   `/onboarding-repercussion` ne sert plus qu'à appliquer après coup une
+   réponse que le client aurait donnée.
 
 Tu ne lances ni le §1, ni le §2, ni la première lettre. Aucun jeton à
 manipuler : n'en écris jamais dans une commande.

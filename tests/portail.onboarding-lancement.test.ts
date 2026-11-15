@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { OnboardingLu } from '@/lib/base/onboardings'
+import type { OnboardingLu, RunLu } from '@/lib/base/onboardings'
 
 const base = vi.hoisted(() => ({
   onboardingDUnSlug: vi.fn(),
@@ -9,6 +9,7 @@ const base = vi.hoisted(() => ({
   conclureUnRunDOnboarding: vi.fn(),
   rapporterUnOnboarding: vi.fn(),
   onboardingsPourLeContrôle: vi.fn(),
+  enregistrerUneDemande: vi.fn(),
 }))
 const github = vi.hoisted(() => ({ configurationGithub: vi.fn(), déclencherLeWorkflow: vi.fn() }))
 vi.mock('@/lib/base/onboardings', () => base)
@@ -17,7 +18,7 @@ vi.mock('@/lib/github/workflow', () => github)
 const ouverture = vi.hoisted(() => ({ envoyerLesLiensDeLOrganisation: vi.fn() }))
 vi.mock('@/lib/portail/ouverture', () => ouverture)
 
-const { déclencherLaPublication, lancerDepuisLePortail, lancerLOuverture, recevoirUneFin, OPÉRATRICE_DE_L_ENCHAÎNEMENT } = await import('@/lib/portail/onboarding')
+const { déclencherLaPublication, enregistrerPuisLancer, lancerDepuisLePortail, lancerLOuverture, rattraperLesOnboardings, recevoirUneFin, OPÉRATRICE_DE_L_ENCHAÎNEMENT } = await import('@/lib/portail/onboarding')
 
 const MAINTENANT = new Date('2026-11-01T12:00:00Z')
 const RUN = '0b6f2a6e-1c1e-4c4e-9a2a-0d6f5b1e2c3d'
@@ -118,30 +119,117 @@ describe('l’enchaînement, l’ouverture et la publication depuis l’admin (l
     github.déclencherLeWorkflow.mockResolvedValue({ sorte: 'déclenché', runGithub: 9, lien: null })
   }
 
+  const runLu = (plus: Partial<RunLu> = {}): RunLu => ({
+    id: RUN,
+    tâche: 'balayage',
+    état: 'reussi',
+    runGithub: 9,
+    lien: null,
+    runTrigger: null,
+    plafondUsd: 30,
+    coûtUsd: 12,
+    début: MAINTENANT,
+    fin: MAINTENANT,
+    crééLe: MAINTENANT,
+    codeHttp: null,
+    lancéPar: 'Agathe',
+    consigne: 'referentiels',
+    ...plus,
+  })
+
   it('un run de référentiels réussi, lancé du portail, enchaîne la première lettre sans validation', async () => {
     lancé()
-    base.conclureUnRunDOnboarding.mockResolvedValue({ sorte: 'conclu', état: 'reussi', tâche: 'balayage', consigne: null, lancéParLePortail: true })
-    base.onboardingDUnSlug.mockResolvedValue(onboarding({ statutRapporté: 2 }))
+    base.conclureUnRunDOnboarding.mockResolvedValue({ sorte: 'conclu', état: 'reussi', tâche: 'balayage', consigne: 'referentiels', lancéParLePortail: true })
+    base.onboardingDUnSlug.mockResolvedValue(onboarding({ statutRapporté: 2, runs: [runLu()] }))
     vi.spyOn(console, 'info').mockImplementation(() => {})
     expect(await recevoirUneFin({ slug: 'mastora', runId: RUN, issue: 'reussi', coûtUsd: 12 }, MAINTENANT)).toBe('conclu')
     expect(base.réserverUnLancement).toHaveBeenCalledWith(expect.objectContaining({ tâche: 'premiere_lettre', consigne: 'sans-validation', opératrice: OPÉRATRICE_DE_L_ENCHAÎNEMENT }))
     expect(github.déclencherLeWorkflow).toHaveBeenCalledWith(CONF, expect.objectContaining({ tache: 'premiere-lettre', consigne: 'sans-validation' }))
   })
 
-  it('rien ne s’enchaîne après un échec, un blocage ou un run lancé à la main dans GitHub', async () => {
-    for (const conclusion of [
-      { sorte: 'conclu', état: 'echec', tâche: 'balayage', consigne: null, lancéParLePortail: true },
-      { sorte: 'conclu', état: 'bloque', tâche: 'balayage', consigne: null, lancéParLePortail: true },
-      { sorte: 'conclu', état: 'reussi', tâche: 'balayage', consigne: null, lancéParLePortail: false },
-      { sorte: 'conclu', état: 'reussi', tâche: 'premiere_lettre', consigne: 'sans-validation', lancéParLePortail: true },
-    ]) {
+  it('lot 7 : l’enchaînement ne dépend plus du statut rapporté', async () => {
+    lancé()
+    base.conclureUnRunDOnboarding.mockResolvedValue({ sorte: 'conclu', état: 'reussi', tâche: 'balayage', consigne: 'referentiels', lancéParLePortail: true })
+    // La tâche n'a pas rapporté le statut 2 : l'étape reste « demande ».
+    base.onboardingDUnSlug.mockResolvedValue(onboarding({ statutRapporté: 1, runs: [runLu()] }))
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    expect(await recevoirUneFin({ slug: 'mastora', runId: RUN, issue: 'reussi', coûtUsd: 12 }, MAINTENANT)).toBe('conclu')
+    expect(github.déclencherLeWorkflow).toHaveBeenCalledWith(CONF, expect.objectContaining({ tache: 'premiere-lettre', consigne: 'sans-validation' }))
+    // Avec ONBOARDING_AUTONOME=non, l'enchaînement du lot 6 seul : il attend le statut 2.
+    vi.clearAllMocks()
+    github.configurationGithub.mockReturnValue(CONF)
+    vi.stubEnv('ONBOARDING_AUTONOME', 'non')
+    base.conclureUnRunDOnboarding.mockResolvedValue({ sorte: 'conclu', état: 'reussi', tâche: 'balayage', consigne: 'referentiels', lancéParLePortail: true })
+    base.onboardingDUnSlug.mockResolvedValue(onboarding({ statutRapporté: 1, runs: [runLu()] }))
+    await recevoirUneFin({ slug: 'mastora', runId: RUN, issue: 'reussi', coûtUsd: 12 }, MAINTENANT)
+    expect(base.réserverUnLancement).not.toHaveBeenCalled()
+  })
+
+  it('lot 7 : un premier échec est relancé une fois, avec sa consigne ; un second ne l’est pas', async () => {
+    lancé()
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    base.conclureUnRunDOnboarding.mockResolvedValue({ sorte: 'conclu', état: 'echec', tâche: 'premiere_lettre', consigne: 'sans-validation', lancéParLePortail: true })
+    base.onboardingDUnSlug.mockResolvedValueOnce(
+      onboarding({ statutRapporté: 2, runs: [runLu({ tâche: 'premiere_lettre', état: 'echec', consigne: 'sans-validation', plafondUsd: 40, coûtUsd: 8 }), runLu()] }),
+    )
+    await recevoirUneFin({ slug: 'mastora', runId: RUN, issue: 'echec', coûtUsd: 8 }, MAINTENANT)
+    expect(base.réserverUnLancement).toHaveBeenCalledWith(expect.objectContaining({ tâche: 'premiere_lettre', consigne: 'sans-validation', opératrice: 'relance automatique du portail' }))
+    base.réserverUnLancement.mockClear()
+    const échec = runLu({ tâche: 'premiere_lettre', état: 'echec', consigne: 'sans-validation', plafondUsd: 40, coûtUsd: 8 })
+    base.onboardingDUnSlug.mockResolvedValueOnce(onboarding({ statutRapporté: 2, runs: [échec, échec, runLu()] }))
+    await recevoirUneFin({ slug: 'mastora', runId: RUN, issue: 'echec', coûtUsd: 8 }, MAINTENANT)
+    expect(base.réserverUnLancement).not.toHaveBeenCalled()
+  })
+
+  it('rien ne suit un blocage, un run lancé à la main, un échec au plafond ou une première lettre produite', async () => {
+    for (const [conclusion, lu] of [
+      // Un blocage (motif d'une garde) n'est même pas relu : il attend un humain.
+      [{ sorte: 'conclu', état: 'bloque', tâche: 'balayage', consigne: 'referentiels', lancéParLePortail: true }, null],
+      // Un run lancé à la main dans GitHub n'est même pas relu.
+      [{ sorte: 'conclu', état: 'reussi', tâche: 'balayage', consigne: null, lancéParLePortail: false }, null],
+      [{ sorte: 'conclu', état: 'echec', tâche: 'balayage', consigne: 'referentiels', lancéParLePortail: true }, onboarding({ statutRapporté: 1, runs: [runLu({ état: 'echec', coûtUsd: 29.5 })] })],
+      [
+        { sorte: 'conclu', état: 'reussi', tâche: 'premiere_lettre', consigne: 'sans-validation', lancéParLePortail: true },
+        onboarding({ statutRapporté: 4, organisation: { nom: 'Mastora', état: 'essai', activéeLe: null, essaiOuvertLe: MAINTENANT }, runs: [runLu({ tâche: 'premiere_lettre', consigne: 'sans-validation' })] }),
+      ],
+    ] as const) {
       base.conclureUnRunDOnboarding.mockResolvedValueOnce(conclusion)
+      if (lu) base.onboardingDUnSlug.mockResolvedValueOnce(lu)
       expect(await recevoirUneFin({ slug: 'mastora', runId: RUN, issue: 'reussi', coûtUsd: 1 }, MAINTENANT)).toBe('conclu')
     }
     base.conclureUnRunDOnboarding.mockResolvedValueOnce({ sorte: 'déjà-conclu' })
     expect(await recevoirUneFin({ slug: 'mastora', runId: RUN, issue: 'reussi', coûtUsd: 1 }, MAINTENANT)).toBe('déjà-conclu')
     expect(base.réserverUnLancement).not.toHaveBeenCalled()
     expect(ouverture.envoyerLesLiensDeLOrganisation).not.toHaveBeenCalled()
+    expect(base.onboardingDUnSlug).toHaveBeenCalledTimes(2)
+  })
+
+  it('lot 7 : la demande enregistrée lance les référentiels aussitôt, avec leur consigne', async () => {
+    lancé()
+    base.enregistrerUneDemande.mockResolvedValue({ sorte: 'enregistrée', onboardingId: 'o-1' })
+    base.onboardingDUnSlug.mockResolvedValue(onboarding({ statutRapporté: null, runs: [] }))
+    const issue = await enregistrerPuisLancer({ champs: { nom: 'Mastora', site: 'mastora.fr' }, opératrice: 'Agathe' }, MAINTENANT)
+    expect(issue).toEqual({ sorte: 'enregistrée', onboardingId: 'o-1', slug: 'mastora', lancement: 'lancé' })
+    expect(base.réserverUnLancement).toHaveBeenCalledWith(expect.objectContaining({ tâche: 'balayage', consigne: 'referentiels', opératrice: 'Agathe', plafondUsd: 30 }))
+    expect(github.déclencherLeWorkflow).toHaveBeenCalledWith(CONF, { tache: 'balayage', organisation: 'mastora', lancement: RUN, consigne: 'referentiels' })
+  })
+
+  it('lot 7 : une demande Cowork est enregistrée sans rien lancer', async () => {
+    base.enregistrerUneDemande.mockResolvedValue({ sorte: 'enregistrée', onboardingId: 'o-1' })
+    base.onboardingDUnSlug.mockResolvedValue(onboarding({ exécuteur: 'cowork', statutRapporté: null, runs: [] }))
+    const issue = await enregistrerPuisLancer({ champs: { nom: 'Mastora', site: 'mastora.fr', exécuteur: 'cowork' }, opératrice: 'Agathe' }, MAINTENANT)
+    expect(issue).toEqual({ sorte: 'enregistrée', onboardingId: 'o-1', slug: 'mastora', lancement: 'non-lancé' })
+    expect(base.réserverUnLancement).not.toHaveBeenCalled()
+  })
+
+  it('lot 7 : le rattrapage reprend une demande jamais lancée, et laisse Cowork', async () => {
+    lancé()
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    const jamaisLancée = onboarding({ slug: 'mastora', statutRapporté: 1, runs: [] })
+    base.onboardingsPourLeContrôle.mockResolvedValue([jamaisLancée, onboarding({ slug: 'cowork-sa', exécuteur: 'cowork', statutRapporté: 1 })])
+    base.onboardingDUnSlug.mockResolvedValue(jamaisLancée)
+    expect(await rattraperLesOnboardings(MAINTENANT)).toEqual({ lancés: 1, examinés: 1 })
+    expect(base.réserverUnLancement).toHaveBeenCalledWith(expect.objectContaining({ slug: 'mastora', tâche: 'balayage', consigne: 'referentiels', opératrice: 'rattrapage du portail' }))
   })
 
   it('l’activation réussie fait partir le lien d’accès par le portail', async () => {

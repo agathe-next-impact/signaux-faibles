@@ -128,7 +128,8 @@ Si la page est inaccessible ou ne contient pas de section « SYNTHÈSE STRATÉGI
  * révision des règles de classement de l'étape 4ter, 26 octobre 2026) ; pour la
  * rétrospective seulement, les périodes, dans l'ordre (31 octobre 2026) ; et,
  * depuis le 2 novembre 2026 (lot 6 de `docs/proposition-onboarding-admin.md`),
- * la consigne du portail, quand l'opératrice a lancé le run depuis son tableau.
+ * la consigne du portail, quand l'opératrice a lancé le run depuis son tableau,
+ * ou que le portail l'a lancé de lui-même (lot 7, 15 novembre 2026).
  */
 export function promptDeLaTâche(
   tâche: Tâche,
@@ -155,10 +156,21 @@ export function promptDeLaTâche(
  */
 export function texteDeLaConsigne(consigne: ConsigneDeTâche): string {
   switch (consigne.sorte) {
+    case 'referentiels':
+      return [
+        'CONSIGNE DU PORTAIL : RÉFÉRENTIELS, ONBOARDING AUTONOME. Le portail a lancé l’onboarding de cette organisation de lui-même, dès la demande enregistrée (décision de l’opératrice du 15 novembre 2026 : toutes les étapes jusqu’à la production de la première lettre sont autonomes, sans validation humaine). Cette consigne complète la page pour ce lancement ; elle ne change aucune autre règle.',
+        '· Ne traite que le §3 (nouvelles demandes), et pour cette seule organisation : ni le §1, ni le §2, ni le §2bis, ni aucune autre ligne.',
+        '· Retrouve sa ligne du registre par son nom ou son domaine, même si la vue « Nouvelles demandes » ne la remonte pas. Si elle est au statut « 1 · Demande reçue » et que « ▶ Générer les référentiels (A) » n’est pas cochée, coche-la : ce lancement en est l’ordre.',
+        '· Les points de validation se créent comme le §3.7 le prévoit, comme trace : personne ne les attend. Un objectif de veille vide se formule en hypothèse, comme la page le prévoit, et la première lettre partira sur cette hypothèse. N’écris jamais dans « Valeur corrigée ».',
+        '· Les gardes du §3.0 restent des arrêts (collision, dispositif existant) : rapporte leur motif au portail et arrête-toi ; c’est la seule décision que tu laisses à un humain.',
+        '· Ne lance pas la première lettre toi-même : le portail l’enchaîne à la fin de ce run, s’il réussit.',
+      ].join('\n')
     case 'sans-validation':
       return [
-        'CONSIGNE DU PORTAIL : PREMIÈRE LETTRE SANS VALIDATION. L’opératrice a lancé l’onboarding depuis son tableau, qui enchaîne les référentiels et la première lettre sans validation entre les deux (décision du 2 novembre 2026).',
-        '· Si la ligne de l’organisation est au statut « 2 · Référentiels générés — à valider », passe-la au statut « 3 · Référentiels validés » avant la porte du prompt, sans attendre les points de validation. Ils restent ouverts, comme trace ; tu n’écris jamais dans « Valeur corrigée ». Les hypothèses des référentiels font foi pour cette lettre.',
+        'CONSIGNE DU PORTAIL : PREMIÈRE LETTRE SANS VALIDATION. Le portail enchaîne les référentiels et la première lettre sans validation entre les deux (décisions de l’opératrice du 2 et du 15 novembre 2026 : l’onboarding est autonome jusqu’à la production de la première lettre). Cette consigne complète l’étape 0 du prompt pour ce lancement ; elle ne change aucune autre règle.',
+        '· SÉLECTION. Retrouve la ligne de cette organisation dans le registre par son slug (ou son nom), même si la vue « Premières lettres à produire » ne la remonte pas. Si elle est au statut « 2 · Référentiels générés — à valider », passe-la au statut « 3 · Référentiels validés » ; coche « ▶ Produire la première lettre (B) » si elle ne l’est pas. Ne traite aucune autre ligne.',
+        '· PORTE. Pour ce lancement, la porte de l’étape 0 se réduit à ceci : les deux URL de référentiel (Écosystème, Concurrentiel) sont renseignées sur la ligne et les deux pages s’ouvrent. Un « [hypothèse] » dans Q1, Q2 ou Q3, un point « 1 · Scoring » sans « Valeur corrigée » ou sans « Répercuté dans » ne bloquent pas : les hypothèses des référentiels font foi pour cette lettre, et les points restent ouverts, comme trace, listés dans la notification. Tu n’écris jamais dans « Valeur corrigée ». Si une URL manque, ne repasse pas la ligne au statut 2 : rapporte le motif au portail et arrête-toi.',
+        '· La garde d’idempotence reste entière : une édition existante pour cette organisation, et tu ne produis rien.',
         '· Les lettres restent au statut « Brouillon » dans « Éditions de veille » : l’opératrice les lit dans l’espace et les envoie depuis son tableau, et le portail les passera au statut « Envoyé ». Ne dépose aucun brouillon Gmail adressé au client, et n’appelle pas /api/acces/ouvrir : le lien d’accès part du portail à l’ouverture de l’espace.',
         '· Le reste de l’étape s’applique tel qu’écrit : entrée en essai par /api/veille/organisations, ligne « Accès » cochée « Actif » puis /api/veille/importer-acces, outils stratégiques pour toute organisation (coche la case « Outils stratégiques » si elle ne l’est pas, puis pas s1 à s8 : drapeau, grille validée, étiquettes, synthèse initiale, amorçage trimestriel s4bis, espace réorganisé, fiche de veille, contrôle ; décision de l’opératrice du 10 novembre 2026), notification [Relecture] à agathe@signauxfaibles.io.',
       ].join('\n')

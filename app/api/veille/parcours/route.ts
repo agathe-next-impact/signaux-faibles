@@ -4,7 +4,7 @@ import { baseConfigurée } from '@/lib/base/client'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { env } from '@/lib/env'
 import { planifierLaFile } from '@/lib/portail/file'
-import { effacerLesDemandesExpirées } from '@/lib/portail/onboarding'
+import { effacerLesDemandesExpirées, rattraperLesOnboardings } from '@/lib/portail/onboarding'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { préparerLesRappelsDeRenouvellement } from '@/lib/portail/courriers-abonnement'
 import { envoyerLesCourriersDeParcours } from '@/lib/portail/parcours-courriers'
@@ -66,7 +66,14 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       console.error(`[veille/parcours] demandes d'onboarding non effacées : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
       return null
     })
-    return NextResponse.json({ état: 'passé', ...rapport, renouvellements, prospection, file, demandesEffacées })
+    // Lot 7 (15 novembre 2026) : l'onboarding de l'API est autonome jusqu'à la
+    // première lettre ; ce qui n'a pas suivi (déclenchement refusé, fin d'un run
+    // non rapportée) est repris ici, par la même décision que la fin d'un run.
+    const onboardings = await rattraperLesOnboardings().catch((erreur: unknown) => {
+      console.error(`[veille/parcours] onboardings non rattrapés : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return null
+    })
+    return NextResponse.json({ état: 'passé', ...rapport, renouvellements, prospection, file, demandesEffacées, onboardings })
   } catch (erreur) {
     // L'erreur sort de lib/base sans donnée : seulement un code.
     console.error(`[veille/parcours] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

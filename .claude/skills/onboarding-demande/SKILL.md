@@ -97,7 +97,10 @@ Demande reçue : $ARGUMENTS
 5. **Compte rendu, court** : le lien de la ligne, les valeurs écrites, les
    créneaux Cowork pris cette semaine (n sur 2), et l'étape suivante en clair
    selon l'exécuteur : Cowork, ou vide si un créneau reste et qu'Agathe le
-   choisit, « lancer `/onboarding-referentiels <nom>` » ; API, « lancer le
-   workflow GitHub « Tâches planifiées (API Claude) », tâche `balayage`,
-   organisation = <nom> ».
+   choisit, « lancer `/onboarding-referentiels <nom>` » ; API, « enregistrer la
+   demande sur `/espaces/onboardings/nouveau` (même nom, même site) : le portail
+   retrouve cette ligne et enchaîne seul les référentiels puis la première
+   lettre, sans validation (15 novembre 2026) ; à défaut, lancer le workflow
+   GitHub « Tâches planifiées (API Claude) », tâche `balayage`, organisation =
+   <nom> ».
    Aucun jeton à manipuler : n'en écris jamais dans une commande.

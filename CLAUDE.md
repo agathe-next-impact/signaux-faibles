@@ -1030,6 +1030,22 @@ aux tâches une **consigne** (`sans-validation`, `activation`,
 `publication:<id>,…` ; entrée `consigne` du workflow, `--consigne` du harnais,
 `lireUneConsigne`, texte dans `texteDeLaConsigne`), gardée sur le run
 (`onboarding_runs.consigne`, migration 0023).
+**Onboarding autonome jusqu'à la première lettre** (15 novembre 2026, lot 7, §16
+de la proposition ; demande de l'opératrice : aucune étape avec validation humaine
+avant la première lettre) : l'enregistrement de la demande lance l'onboarding
+(`enregistrerPuisLancer`, la décision 4 du lot 3 est levée) ; la suite de chaque
+run lancé du portail est décidée par la fonction pure `suiteAutomatique`
+(`lib/domaine/onboarding.ts`) et lancée par la seule `lancerLaSuiteAutomatique`
+(`lib/portail/onboarding.ts`), par le chemin des gestes (réservation, budget) :
+référentiels réussis vers première lettre, statut rapporté ou non ; un premier
+échec relancé une fois (jamais au-delà de 90 % du plafond) ; rattrapage au
+passage quotidien (`rattraperLesOnboardings`, sept jours au plus). Consigne
+`referentiels` (§3 seul, cette organisation, ▶ A cochée par la tâche) et
+`sans-validation` renforcée (ligne retrouvée hors de la vue, statut 3 et ▶ B posés,
+porte réduite aux deux URL de référentiel, une URL manquante en motif). Restent des
+arrêts : un motif rapporté (gardes du §3.0), le budget, un second échec, Cowork, et
+tout ce qui suit la première lettre (« Envoyer les lettres », « Ouvrir l'espace »),
+qui sont des envois au client. `ONBOARDING_AUTONOME=non` rend le lot 6.
 **Aperçu avant envoi** (1er novembre 2026, décision de l'opératrice : « je veux
 toujours prévisualiser dans l'espace avant tout envoi, et gérer depuis
 l'admin »). Réglage Postgres `organisations.apercu_avant_envoi` (migration
