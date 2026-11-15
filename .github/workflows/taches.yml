@@ -51,7 +51,7 @@ on:
         type: string
         default: ''
       consigne:
-        description: Posée par le portail (sans-validation, activation, publication:<id>,…) quand l'opératrice agit depuis son tableau ; à laisser vide à la main
+        description: Posée par le portail (referentiels, sans-validation, activation, publication:<id>,…) quand l'opératrice agit depuis son tableau ou que l'onboarding avance seul ; à laisser vide à la main
         required: false
         type: string
         default: ''

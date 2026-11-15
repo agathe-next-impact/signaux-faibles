@@ -1308,6 +1308,17 @@ du mode `notion`, que le harnais lit comme « suivi impossible ».
 Une fois : un run conclu ne se réécrit pas, un run que la tâche a dit bloqué le
 reste. 404 si le run n'est pas celui de ce slug.
 
+Depuis le 15 novembre 2026 (lot 7 de `docs/proposition-onboarding-admin.md`,
+onboarding autonome jusqu'à la première lettre), la fin d'un run lancé du
+portail décide aussi de la suite, par `suiteAutomatique`
+(`lib/domaine/onboarding.ts`) : des référentiels réussis enchaînent la première
+lettre (consigne `sans-validation`), statut rapporté ou non ; un premier échec
+est relancé une fois, sauf s'il a consommé 90 % de son plafond ; un blocage, un
+refus de budget, un run lancé à la main et un onboarding Cowork ne suivent
+rien. La réponse ne change pas : la suite se fait après la conclusion, et son
+échec n'est que journalisé. `GET /api/veille/parcours` rend en plus
+`onboardings: { lancés, examinés }`, le rattrapage de ce qui n'a pas suivi.
+
 ```json
 { "evenement": "rapport", "slug": "mastora", "statut": 2,
   "registre": "aaaabbbbccccddddeeeeffff00005555", "motif": "…", "nom": "…", "site": "https://…" }

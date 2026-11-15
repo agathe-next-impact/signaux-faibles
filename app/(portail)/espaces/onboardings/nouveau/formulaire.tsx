@@ -109,7 +109,7 @@ export function FormulaireDeDemande({
           <input type="hidden" name="executeur" value="api" />
           <p className="text-label text-ardoise">
             L’organisation est créée au registre Payload, au statut « prospect », avec le lecteur final en contact. Le moteur fait le
-            référentiel puis la première lettre en un seul run, lancé depuis la liste.
+            référentiel puis la première lettre en un seul run, lancé dès l’enregistrement, sans validation.
           </p>
           {erreur('exécuteur')}
         </div>
@@ -117,7 +117,7 @@ export function FormulaireDeDemande({
         <fieldset className="flex flex-col gap-2">
           <legend className="text-corps text-ardoise">Exécuteur</legend>
           <label className="flex items-center gap-2 text-encre">
-            <input type="radio" name="executeur" value="api" defaultChecked={valeurs?.exécuteur !== 'cowork'} /> API (lancé depuis le portail)
+            <input type="radio" name="executeur" value="api" defaultChecked={valeurs?.exécuteur !== 'cowork'} /> API (lancé dès l’enregistrement, jusqu’à la première lettre, sans validation)
           </label>
           <label className={`flex items-center gap-2 ${coworkPlein ? 'text-ardoise' : 'text-encre'}`}>
             <input type="radio" name="executeur" value="cowork" defaultChecked={valeurs?.exécuteur === 'cowork'} disabled={coworkPlein} /> Cowork (commande

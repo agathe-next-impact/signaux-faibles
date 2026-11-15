@@ -165,7 +165,17 @@ describe('les consignes du portail (lot 6)', () => {
     const sansValidation = promptDeLaTâche('premiere-lettre', 'cci-cantal', false, [], { sorte: 'sans-validation' })
     expect(sansValidation.startsWith(`${POINTEURS['premiere-lettre'].texte}\n\nLimite-toi à l'organisation cci-cantal.\n\nCONSIGNE DU PORTAIL : PREMIÈRE LETTRE SANS VALIDATION.`)).toBe(true)
     expect(sansValidation).toContain('passe-la au statut « 3 · Référentiels validés »')
-    expect(sansValidation).toContain('tu n’écris jamais dans « Valeur corrigée »')
+    expect(sansValidation).toContain('Tu n’écris jamais dans « Valeur corrigée »')
+    // Lot 7 : la ligne se retrouve hors de la vue, et la porte ne bloque plus sur les hypothèses.
+    expect(sansValidation).toContain('même si la vue « Premières lettres à produire » ne la remonte pas')
+    expect(sansValidation).toContain('ne bloquent pas : les hypothèses des référentiels font foi')
+    expect(sansValidation).toContain('ne repasse pas la ligne au statut 2')
+
+    const référentiels = promptDeLaTâche('balayage', 'cci-cantal', false, [], { sorte: 'referentiels' })
+    expect(référentiels).toContain('CONSIGNE DU PORTAIL : RÉFÉRENTIELS, ONBOARDING AUTONOME.')
+    expect(référentiels).toContain('Ne traite que le §3 (nouvelles demandes), et pour cette seule organisation')
+    expect(référentiels).toContain('coche-la')
+    expect(référentiels).toContain('Les gardes du §3.0 restent des arrêts')
     expect(sansValidation).toContain('Ne dépose aucun brouillon Gmail adressé au client')
     expect(sansValidation).toContain('n’appelle pas /api/acces/ouvrir')
 

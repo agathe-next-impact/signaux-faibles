@@ -526,6 +526,7 @@ export function lundiDeParis(instant: Date): string {
  * portail.
  */
 export type ConsigneDeTâche =
+  | { readonly sorte: 'referentiels' }
   | { readonly sorte: 'sans-validation' }
   | { readonly sorte: 'activation' }
   | { readonly sorte: 'publication'; readonly éditions: readonly string[] }
@@ -537,11 +538,11 @@ export function écrireUneConsigne(consigne: ConsigneDeTâche): string {
   return consigne.sorte === 'publication' ? `publication:${consigne.éditions.join(',')}` : consigne.sorte
 }
 
-/** `null` pour une valeur vide ; `'illisible'` pour toute autre valeur que les trois formes. */
+/** `null` pour une valeur vide ; `'illisible'` pour toute autre valeur que les quatre formes. */
 export function lireUneConsigne(valeur: string | null | undefined): ConsigneDeTâche | null | 'illisible' {
   const v = (valeur ?? '').trim()
   if (v === '') return null
-  if (v === 'sans-validation' || v === 'activation') return { sorte: v }
+  if (v === 'referentiels' || v === 'sans-validation' || v === 'activation') return { sorte: v }
   const publication = /^publication:([0-9a-f]{32}(?:,[0-9a-f]{32})*)$/.exec(v)
   if (!publication) return 'illisible'
   const éditions = [...new Set(publication[1]!.split(','))]
@@ -550,7 +551,165 @@ export function lireUneConsigne(valeur: string | null | undefined): ConsigneDeT�
 
 /** La tâche du workflow qui porte chaque consigne : une consigne ailleurs est refusée par le harnais. */
 export const TÂCHE_DE_LA_CONSIGNE: Readonly<Record<ConsigneDeTâche['sorte'], 'premiere-lettre' | 'balayage' | 'reconciliation'>> = {
+  referentiels: 'balayage',
   'sans-validation': 'premiere-lettre',
   activation: 'balayage',
   publication: 'reconciliation',
+}
+
+// ── L'onboarding autonome (lot 7, 15 novembre 2026) ──────────────────────────
+
+/**
+ * Demande de l'opératrice du 15 novembre 2026 : « toutes les étapes de
+ * l'onboarding jusqu'à la production de la première lettre doivent être
+ * totalement autonomes, sans étape avec validation humaine ». Le portail
+ * décide donc lui-même de la suite d'un onboarding de l'API, à trois moments :
+ * à l'enregistrement de la demande, à la fin de chaque run, et au passage
+ * quotidien (rattrapage). La décision est ici, pure ; l'orchestration est dans
+ * `lib/portail/onboarding.ts` (`lancerLaSuiteAutomatique`).
+ *
+ * Ce qui reste un arrêt, et le reste exprès : un motif rapporté par la tâche
+ * (une garde de la page Notion : doublon, dispositif existant, ligne d'un autre
+ * exécuteur), un refus de budget, un onboarding Cowork, un second échec de
+ * suite de la même tâche, et tout ce qui suit la première lettre (l'envoi au
+ * client et l'ouverture de l'espace, qui ne sont pas des productions).
+ */
+
+/** Une seule relance automatique par tâche : au second échec de suite, la cause n'est plus passagère. */
+export const RELANCES_AUTOMATIQUES_MAX = 1
+
+/**
+ * Un échec qui a consommé presque tout le plafond du run est un dépassement de
+ * budget, pas une panne passagère : le relancer referait la même dépense.
+ */
+export const PART_DU_PLAFOND_SANS_RELANCE = 0.9
+
+/** Au-delà d'une semaine sans nouvelle, le rattrapage ne réveille pas un onboarding : il est signalé `onboarding-immobile`. */
+export const JOURS_DE_RATTRAPAGE = JOURS_D_IMMOBILITÉ
+
+/** Le nom porté par les runs que le portail lance de lui-même, au journal comme à l'écran. */
+export const OPÉRATRICE_AUTOMATIQUE = {
+  enchaînement: 'enchaînement du portail',
+  relance: 'relance automatique du portail',
+  rattrapage: 'rattrapage du portail',
+} as const
+
+/**
+ * `ONBOARDING_AUTONOME` (facultative) : `non` coupe le lancement à la demande,
+ * la relance et le rattrapage, et ne garde que l'enchaînement du lot 6 (une
+ * première lettre après des référentiels réussis et rapportés). Absente, vide
+ * ou toute autre valeur : autonome.
+ */
+export function lireLAutonomie(valeur: string | undefined): boolean {
+  return (valeur ?? '').trim().toLowerCase() !== 'non'
+}
+
+export type RunDeLaSuite = RunVu & {
+  readonly tâche: TâcheEnregistrée
+  readonly consigne: ConsigneDeTâche['sorte'] | null
+  readonly lancéPar: string | null
+  readonly coûtUsd: number | null
+  readonly plafondUsd: number | null
+}
+
+export type GesteAutomatique = 'referentiels' | 'premiere-lettre' | 'onboarding'
+
+export type SuiteAutomatique =
+  | {
+      readonly sorte: 'lancer'
+      /** La tâche à lancer, et pourquoi : la demande, l'enchaînement après les référentiels, ou la relance d'un échec. */
+      readonly geste: GesteAutomatique
+      readonly motif: 'demande' | 'enchaînement' | 'relance'
+    }
+  | {
+      readonly sorte: 'aucune'
+      readonly raison:
+        | 'désactivé'
+        | 'cowork'
+        | 'motif'
+        | 'en-cours'
+        | 'budget'
+        | 'bloqué'
+        | 'relances-épuisées'
+        | 'plafond-consommé'
+        | 'lancé-à-la-main'
+        | 'ancien'
+        | 'produite'
+        | 'rien-à-faire'
+    }
+
+const estEnCours = (run: RunVu, maintenant: Date) => {
+  const montré = étatMontré(run, maintenant)
+  return montré === 'demande' || montré === 'lance' || montré === 'en_cours'
+}
+
+/** Combien de runs de suite, depuis le plus récent, sont des échecs de cette tâche. */
+function échecsDeSuite(runs: readonly RunDeLaSuite[], tâche: TâcheEnregistrée): number {
+  let n = 0
+  for (const r of runs) {
+    if (r.tâche !== tâche) break
+    if (r.état !== 'echec') break
+    n++
+  }
+  return n
+}
+
+/**
+ * La suite d'un onboarding, décidée sans personne. `runs` va du plus récent au
+ * plus ancien, comme `OnboardingLu.runs`. Une première lettre déjà produite
+ * (étape « en essai » ou au-delà) clôt la décision : la suite appartient à
+ * l'envoi, qui reste un geste de l'opératrice.
+ */
+export function suiteAutomatique(
+  entrée: {
+    readonly étape: ÉtapeDOnboarding
+    readonly exécuteur: 'api' | 'cowork'
+    readonly motifDeBlocage: string | null
+    readonly crééLe: Date
+    readonly runs: readonly RunDeLaSuite[]
+    readonly moteur: Moteur
+    readonly autonome: boolean
+  },
+  maintenant: Date,
+): SuiteAutomatique {
+  if (rang(entrée.étape) >= rang('en_essai')) return { sorte: 'aucune', raison: 'produite' }
+  if (entrée.exécuteur === 'cowork') return { sorte: 'aucune', raison: 'cowork' }
+  if (entrée.motifDeBlocage) return { sorte: 'aucune', raison: 'motif' }
+  const dernier = entrée.runs[0] ?? null
+  if (dernier && estEnCours(dernier, maintenant)) return { sorte: 'aucune', raison: 'en-cours' }
+
+  const récent = (dernier?.fin ?? dernier?.crééLe ?? entrée.crééLe).getTime() >= maintenant.getTime() - JOURS_DE_RATTRAPAGE * 24 * 60 * 60 * 1000
+
+  // L'enchaînement du lot 6, qui vaut même sans autonomie : des référentiels
+  // réussis, lancés du portail. Avec l'autonomie, il ne dépend plus du statut
+  // rapporté : une tâche qui a oublié de rapporter le statut 2 n'arrête plus
+  // l'onboarding (la consigne `sans-validation` retrouve la ligne elle-même).
+  if (dernier && dernier.état === 'reussi' && dernier.tâche === 'balayage' && dernier.lancéPar !== null && (dernier.consigne === null || dernier.consigne === 'referentiels') && entrée.moteur === 'github') {
+    if (!récent) return { sorte: 'aucune', raison: 'ancien' }
+    if (entrée.étape === 'demande' && !entrée.autonome) return { sorte: 'aucune', raison: 'désactivé' }
+    return { sorte: 'lancer', geste: 'premiere-lettre', motif: 'enchaînement' }
+  }
+  if (!entrée.autonome) return { sorte: 'aucune', raison: 'désactivé' }
+  if (!récent) return { sorte: 'aucune', raison: 'ancien' }
+
+  if (!dernier) {
+    if (entrée.étape !== 'demande') return { sorte: 'aucune', raison: 'rien-à-faire' }
+    return { sorte: 'lancer', geste: entrée.moteur === 'trigger' ? 'onboarding' : 'referentiels', motif: 'demande' }
+  }
+  if (dernier.état === 'refuse') return { sorte: 'aucune', raison: 'budget' }
+  if (dernier.état === 'bloque') return { sorte: 'aucune', raison: 'bloqué' }
+  if (dernier.état !== 'echec' && étatMontré(dernier, maintenant) !== 'sans_nouvelles') return { sorte: 'aucune', raison: 'rien-à-faire' }
+  // Un run muet depuis trois heures n'est pas relancé : il tourne peut-être
+  // encore, et deux runs sur la même ligne du registre se marcheraient dessus.
+  if (dernier.état !== 'echec') return { sorte: 'aucune', raison: 'en-cours' }
+  if (dernier.lancéPar === null) return { sorte: 'aucune', raison: 'lancé-à-la-main' }
+  if (dernier.coûtUsd !== null && dernier.plafondUsd !== null && dernier.plafondUsd > 0 && dernier.coûtUsd >= dernier.plafondUsd * PART_DU_PLAFOND_SANS_RELANCE) {
+    return { sorte: 'aucune', raison: 'plafond-consommé' }
+  }
+  if (échecsDeSuite(entrée.runs, dernier.tâche) > RELANCES_AUTOMATIQUES_MAX) return { sorte: 'aucune', raison: 'relances-épuisées' }
+  if (dernier.tâche === 'onboarding') return { sorte: 'lancer', geste: 'onboarding', motif: 'relance' }
+  if (dernier.tâche === 'premiere_lettre') return { sorte: 'lancer', geste: 'premiere-lettre', motif: 'relance' }
+  // Un balayage d'activation ne se relance jamais d'ici : il suit la publication.
+  if (dernier.consigne !== null && dernier.consigne !== 'referentiels') return { sorte: 'aucune', raison: 'rien-à-faire' }
+  return { sorte: 'lancer', geste: 'referentiels', motif: 'relance' }
 }

@@ -23,6 +23,9 @@ import {
   lireUneConsigne,
   TÂCHE_DE_LA_CONSIGNE,
   écrireUneConsigne,
+  lireLAutonomie,
+  suiteAutomatique,
+  type RunDeLaSuite,
 } from '@/lib/domaine/onboarding'
 
 const sans = { statutRapporté: null, organisation: null, lecteursActifs: 0, dernierLienEnvoyéLe: null }
@@ -283,7 +286,7 @@ describe('le geste avec le moteur (lot 5)', () => {
 describe('les consignes du portail aux tâches (lot 6)', () => {
   const id = '40cfe829ce7181f183d9c46c4777ce00'
   it('s’écrivent et se relisent à l’identique, et rien d’autre ne passe', () => {
-    for (const c of [{ sorte: 'sans-validation' }, { sorte: 'activation' }, { sorte: 'publication', éditions: [id, '40cfe829ce71811d919bf29c8c10eecd'] }] as const) {
+    for (const c of [{ sorte: 'referentiels' }, { sorte: 'sans-validation' }, { sorte: 'activation' }, { sorte: 'publication', éditions: [id, '40cfe829ce71811d919bf29c8c10eecd'] }] as const) {
       expect(lireUneConsigne(écrireUneConsigne(c))).toEqual(c)
     }
     expect(lireUneConsigne('')).toBeNull()
@@ -296,6 +299,82 @@ describe('les consignes du portail aux tâches (lot 6)', () => {
     expect(lireUneConsigne(`publication:${id},${id}`)).toEqual({ sorte: 'publication', éditions: [id] })
   })
   it('chaque consigne a sa tâche', () => {
-    expect(TÂCHE_DE_LA_CONSIGNE).toEqual({ 'sans-validation': 'premiere-lettre', activation: 'balayage', publication: 'reconciliation' })
+    expect(TÂCHE_DE_LA_CONSIGNE).toEqual({ referentiels: 'balayage', 'sans-validation': 'premiere-lettre', activation: 'balayage', publication: 'reconciliation' })
+  })
+})
+
+describe('l’onboarding autonome jusqu’à la première lettre (lot 7)', () => {
+  const maintenant = jour('2026-11-15T10:00:00Z')
+  const run = (plus: Partial<RunDeLaSuite> = {}): RunDeLaSuite => ({
+    tâche: 'balayage',
+    état: 'reussi',
+    début: maintenant,
+    fin: maintenant,
+    crééLe: maintenant,
+    consigne: 'referentiels',
+    lancéPar: 'Agathe',
+    coûtUsd: 10,
+    plafondUsd: 30,
+    ...plus,
+  })
+  const base = { étape: 'demande' as const, exécuteur: 'api' as const, motifDeBlocage: null, crééLe: maintenant, runs: [] as RunDeLaSuite[], moteur: 'github' as const, autonome: true }
+
+  it('une demande jamais lancée lance les référentiels, ou le run complet du moteur', () => {
+    expect(suiteAutomatique(base, maintenant)).toEqual({ sorte: 'lancer', geste: 'referentiels', motif: 'demande' })
+    expect(suiteAutomatique({ ...base, moteur: 'trigger' }, maintenant)).toEqual({ sorte: 'lancer', geste: 'onboarding', motif: 'demande' })
+  })
+
+  it('des référentiels réussis enchaînent la première lettre, statut rapporté ou non', () => {
+    for (const étape of ['demande', 'referentiels_generes', 'referentiels_valides'] as const) {
+      expect(suiteAutomatique({ ...base, étape, runs: [run()] }, maintenant)).toEqual({ sorte: 'lancer', geste: 'premiere-lettre', motif: 'enchaînement' })
+    }
+    // Les runs d'avant le lot 7 n'ont pas de consigne : ils enchaînent aussi.
+    expect(suiteAutomatique({ ...base, étape: 'referentiels_generes', runs: [run({ consigne: null })] }, maintenant).sorte).toBe('lancer')
+  })
+
+  it('un premier échec est relancé une fois, pas un second, ni un échec au plafond', () => {
+    const échec = run({ tâche: 'premiere_lettre', état: 'echec', consigne: 'sans-validation', plafondUsd: 40, coûtUsd: 12 })
+    expect(suiteAutomatique({ ...base, étape: 'referentiels_generes', runs: [échec, run()] }, maintenant)).toEqual({ sorte: 'lancer', geste: 'premiere-lettre', motif: 'relance' })
+    expect(suiteAutomatique({ ...base, étape: 'referentiels_generes', runs: [échec, échec, run()] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'relances-épuisées' })
+    expect(suiteAutomatique({ ...base, étape: 'referentiels_generes', runs: [{ ...échec, coûtUsd: 36 }] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'plafond-consommé' })
+    expect(suiteAutomatique({ ...base, runs: [run({ état: 'echec' })] }, maintenant)).toEqual({ sorte: 'lancer', geste: 'referentiels', motif: 'relance' })
+    // Un échec du run complet du moteur relance le run complet.
+    expect(suiteAutomatique({ ...base, moteur: 'trigger', runs: [run({ tâche: 'onboarding', état: 'echec', consigne: null, plafondUsd: 40 })] }, maintenant)).toEqual({ sorte: 'lancer', geste: 'onboarding', motif: 'relance' })
+  })
+
+  it('s’arrête sur ce qui attend un humain, ou qui n’est pas à lui', () => {
+    expect(suiteAutomatique({ ...base, motifDeBlocage: 'dispositif existant' }, maintenant)).toEqual({ sorte: 'aucune', raison: 'motif' })
+    expect(suiteAutomatique({ ...base, exécuteur: 'cowork' }, maintenant)).toEqual({ sorte: 'aucune', raison: 'cowork' })
+    expect(suiteAutomatique({ ...base, runs: [run({ état: 'refuse', fin: null })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'budget' })
+    expect(suiteAutomatique({ ...base, runs: [run({ état: 'bloque' })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'bloqué' })
+    expect(suiteAutomatique({ ...base, runs: [run({ état: 'en_cours', fin: null })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'en-cours' })
+    // Muet depuis trois heures : il tourne peut-être encore, on ne double pas.
+    const muet = run({ état: 'en_cours', fin: null, début: jour('2026-11-15T05:00:00Z'), crééLe: jour('2026-11-15T05:00:00Z') })
+    expect(suiteAutomatique({ ...base, runs: [muet] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'en-cours' })
+    expect(suiteAutomatique({ ...base, runs: [run({ état: 'echec', lancéPar: null })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'lancé-à-la-main' })
+    expect(suiteAutomatique({ ...base, runs: [run({ lancéPar: null })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'rien-à-faire' })
+    // La première lettre produite : la suite est l'envoi, qui reste un geste de l'opératrice.
+    for (const étape of ['en_essai', 'premiere_lettre_publiee', 'espace_ouvert'] as const) {
+      expect(suiteAutomatique({ ...base, étape, runs: [run({ tâche: 'premiere_lettre', état: 'echec' })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'produite' })
+    }
+    // Un balayage d'activation qui échoue ne se relance pas d'ici.
+    expect(suiteAutomatique({ ...base, runs: [run({ état: 'echec', consigne: 'activation' })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'rien-à-faire' })
+  })
+
+  it('ne réveille pas un onboarding sans nouvelle depuis plus d’une semaine', () => {
+    const ancien = jour('2026-11-01T10:00:00Z')
+    expect(suiteAutomatique({ ...base, crééLe: ancien }, maintenant)).toEqual({ sorte: 'aucune', raison: 'ancien' })
+    expect(suiteAutomatique({ ...base, runs: [run({ fin: ancien, crééLe: ancien })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'ancien' })
+  })
+
+  it('ONBOARDING_AUTONOME=non ne garde que l’enchaînement du lot 6', () => {
+    expect(lireLAutonomie(undefined)).toBe(true)
+    expect(lireLAutonomie('')).toBe(true)
+    expect(lireLAutonomie(' Non ')).toBe(false)
+    const coupé = { ...base, autonome: false }
+    expect(suiteAutomatique(coupé, maintenant)).toEqual({ sorte: 'aucune', raison: 'désactivé' })
+    expect(suiteAutomatique({ ...coupé, runs: [run()] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'désactivé' })
+    expect(suiteAutomatique({ ...coupé, étape: 'referentiels_generes', runs: [run()] }, maintenant)).toEqual({ sorte: 'lancer', geste: 'premiere-lettre', motif: 'enchaînement' })
+    expect(suiteAutomatique({ ...coupé, étape: 'referentiels_generes', runs: [run({ état: 'echec' })] }, maintenant)).toEqual({ sorte: 'aucune', raison: 'désactivé' })
   })
 })
