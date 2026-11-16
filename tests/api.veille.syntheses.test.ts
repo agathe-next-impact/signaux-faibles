@@ -185,10 +185,11 @@ describe('GET /api/veille/syntheses', () => {
   })
 
   it('rend la synthèse lue, texte compris', async () => {
-    strategie.lireLaSynthèseDuPilote.mockResolvedValue({ sorte: 'lue', période: '2026-11', grilleVersion: 1, éléments: [], positions: [], texte: 'Synthèse stratégique' })
+    strategie.lireLaSynthèseDuPilote.mockResolvedValue({ sorte: 'lue', période: '2026-11', grilleVersion: 1, publication: 'publiée', éléments: [], positions: [], texte: 'Synthèse stratégique' })
     const réponse = await lire('?slug=infralliance&periode=2026-11')
     expect(réponse.status).toBe(200)
-    expect(await réponse.json()).toMatchObject({ état: 'lue', organisation: 'infralliance', texte: 'Synthèse stratégique' })
+    // « état » dit que la lecture a abouti ; « publication » dit si le client voit la période.
+    expect(await réponse.json()).toMatchObject({ état: 'lue', publication: 'publiée', organisation: 'infralliance', texte: 'Synthèse stratégique' })
     expect(strategie.lireLaSynthèseDuPilote).toHaveBeenCalledWith({ slug: 'infralliance', période: '2026-11' })
   })
 

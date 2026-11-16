@@ -429,6 +429,9 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       expect(lue).toMatchObject({ sorte: 'lue', période: '2026-10', fenêtre: FENÊTRE, grilleVersion: 1, éléments: 11, positions: 3 })
       if (lue.sorte !== 'lue') return
       expect(lue.texte).toContain('Synthèse stratégique, infralliance, période 2026-10')
+      // Sans publication automatique, la période attend l'opératrice : la lecture et le texte le disent.
+      expect(lue.publication).toBe('proposée')
+      expect(lue.texte).toContain("grille v1. Proposée : rien n'est montré au client.")
       expect(lue.texte).toContain('- Socioculturel : trou, aucune famille ne couvre cette dimension')
       expect(lue.texte).toContain('- Technologique : aucun fait dans la fenêtre')
       expect(lue.texte).toContain('- Légal : Trois textes européens avancent au Conseil en octobre 2026. [1 fait : 2026-10-')
@@ -686,6 +689,12 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         // Publiée dès le dépôt : le client la lit sans geste de l'opératrice.
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', éléments: 11, positions: 3, état: 'publie' })
         expect((await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db))?.mois?.période).toBe('2026-10')
+        // Le texte de relecture ne dit plus « Proposée » d'une période que le client lit (16 novembre 2026).
+        const publiée = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+        expect(publiée).toMatchObject({ sorte: 'lue', publication: 'publiée' })
+        if (publiée.sorte !== 'lue') throw new Error('synthèse non lue')
+        expect(publiée.texte).toContain('grille v1. Publiée : le client la lit dans son espace.')
+        expect(publiée.texte).not.toContain('Proposée')
         expect((await tableauDesSynthèses(db))[0]?.périodes[0]?.état).toBe('publiée')
         // Réécrite, elle reste publiée.
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', archivés: 14, état: 'publie' })
@@ -695,6 +704,10 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', état: 'retire' })
         expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        const retirée = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+        expect(retirée).toMatchObject({ sorte: 'lue', publication: 'retirée' })
+        if (retirée.sorte !== 'lue') throw new Error('synthèse non lue')
+        expect(retirée.texte).toContain("Retirée par l'opératrice : rien n'est montré au client.")
         expect(await publierLesSynthèsesEnAttente(db)).toEqual([])
         expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
 

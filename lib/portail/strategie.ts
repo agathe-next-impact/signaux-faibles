@@ -83,6 +83,8 @@ import {
   messageDeRefus,
   normaliserTitre,
   rendreLaSynthèse,
+  étatDesLignes,
+  type ÉtatDeLaPériode,
   trousDuPestel,
   type CaseSwot,
   type Benchmark,
@@ -437,6 +439,8 @@ export type LectureDeLaSynthèse =
       readonly période: string
       readonly fenêtre: { readonly début: string; readonly fin: string }
       readonly grilleVersion: number
+      /** L'état de publication de la période, lu dans celui de ses lignes ; le texte dit le même. */
+      readonly publication: ÉtatDeLaPériode
       readonly éléments: number
       readonly positions: number
       readonly texte: string
@@ -464,11 +468,13 @@ export async function lireLaSynthèseDuPilote(
   const cités = [...lue.éléments.flatMap((é) => é.faits), ...lue.positions.flatMap((p) => p.faits)]
   const faits = await faitsConnus({ organisationId: organisation.id, ids: cités }, db)
   const fenêtre = premier ? { début: premier.fenêtreDébut, fin: premier.fenêtreFin } : { début: '', fin: '' }
+  const publication = étatDesLignes([...lue.éléments, ...lue.positions].map((ligne) => ligne.étatPublication))
   const texte = rendreLaSynthèse({
     organisation: entrée.slug,
     période: entrée.période,
     fenêtre,
     grilleVersion,
+    publication,
     grille: grille?.grille ?? { axesGroupes: [], familles: [], entités: [], partiesPrenantes: [] },
     éléments: lue.éléments,
     positions: lue.positions,
@@ -479,6 +485,7 @@ export async function lireLaSynthèseDuPilote(
     période: entrée.période,
     fenêtre,
     grilleVersion,
+    publication,
     éléments: lue.éléments.length,
     positions: lue.positions.length,
     texte,

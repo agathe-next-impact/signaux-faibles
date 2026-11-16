@@ -1055,11 +1055,51 @@ export type PositionÀRendre = {
   readonly référence?: string | null
 }
 
+/**
+ * L'état de publication d'une période, lu dans celui de ses lignes (éléments et
+ * positions). `mêlée` : une partie seulement des lignes est publiée, ce que les
+ * écrans du client ne lisent pas.
+ */
+export type ÉtatDeLaPériode = 'proposée' | 'publiée' | 'retirée' | 'mêlée'
+
+/** La règle, sur des comptes : tout publié, tout retiré, rien de l'un ni de l'autre, ou un mélange. */
+export function étatDeLaPériode(c: { readonly lignes: number; readonly publiées: number; readonly retirées: number }): ÉtatDeLaPériode {
+  if (c.publiées === c.lignes) return 'publiée'
+  if (c.retirées === c.lignes) return 'retirée'
+  if (c.publiées === 0 && c.retirées === 0) return 'proposée'
+  return 'mêlée'
+}
+
+/** La même règle, sur l'état de chaque ligne vivante d'une période ; une période sans ligne n'est pas publiée. */
+export function étatDesLignes(états: readonly string[]): ÉtatDeLaPériode {
+  if (états.length === 0) return 'proposée'
+  return étatDeLaPériode({
+    lignes: états.length,
+    publiées: états.filter((é) => é === 'publie').length,
+    retirées: états.filter((é) => é === 'retire').length,
+  })
+}
+
+/**
+ * Ce que le texte de relecture dit de la publication (16 novembre 2026). La
+ * phrase « Proposée : rien n'est montré au client » y était écrite en dur :
+ * depuis la publication automatique du 15 novembre, une synthèse qui passe la
+ * porte est publiée à l'écriture, et le texte affirmait le contraire.
+ */
+export const PHRASES_DE_PUBLICATION: Readonly<Record<ÉtatDeLaPériode, string>> = {
+  publiée: 'Publiée : le client la lit dans son espace.',
+  proposée: "Proposée : rien n'est montré au client.",
+  retirée: "Retirée par l'opératrice : rien n'est montré au client.",
+  mêlée: "Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client.",
+}
+
 export type SynthèseÀRendre = {
   readonly organisation: string
   readonly période: string
   readonly fenêtre: { readonly début: string; readonly fin: string }
   readonly grilleVersion: number
+  /** L'état réel de la période : le texte le dit, il ne le suppose pas. */
+  readonly publication: ÉtatDeLaPériode
   readonly grille: Grille
   readonly éléments: readonly ÉlémentÀRendre[]
   readonly positions: readonly PositionÀRendre[]
@@ -1137,7 +1177,7 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
   }
 
   lignes.push(`Synthèse stratégique, ${s.organisation}, période ${s.période}`)
-  lignes.push(`Fenêtre du ${s.fenêtre.début} au ${s.fenêtre.fin}, grille v${s.grilleVersion}. Proposée : rien n'est montré au client.`)
+  lignes.push(`Fenêtre du ${s.fenêtre.début} au ${s.fenêtre.fin}, grille v${s.grilleVersion}. ${PHRASES_DE_PUBLICATION[s.publication]}`)
 
   const pestel = s.éléments.filter((é) => é.outil === 'pestel')
   if (pestel.length > 0) {

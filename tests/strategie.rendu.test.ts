@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rendreLaSynthèse, type ÉlémentÀRendre, type PositionÀRendre } from '@/lib/domaine/strategie'
+import { étatDeLaPériode, étatDesLignes, PHRASES_DE_PUBLICATION, rendreLaSynthèse, type ÉlémentÀRendre, type ÉtatDeLaPériode, type PositionÀRendre } from '@/lib/domaine/strategie'
 
 const GRILLE = {
   axesGroupes: [
@@ -29,6 +29,7 @@ const rendu = rendreLaSynthèse({
   période: '2026-10',
   fenêtre: { début: '2026-07-20', fin: '2026-10-27' },
   grilleVersion: 1,
+  publication: 'proposée',
   grille: GRILLE,
   éléments: [
     élément({ id: 'w', outil: 'swot', clé: 'faiblesses', état: 'nouveau' }),
@@ -69,6 +70,7 @@ describe('rendreLaSynthèse', () => {
       période: '2026-10',
       fenêtre: { début: '2026-10-01', fin: '2026-10-31' },
       grilleVersion: 1,
+      publication: 'proposée',
       grille: GRILLE,
       éléments: [],
       positions: [
@@ -87,6 +89,50 @@ describe('rendreLaSynthèse', () => {
   })
 })
 
+describe('rendreLaSynthèse, état de publication', () => {
+  const rendre = (publication: ÉtatDeLaPériode) =>
+    rendreLaSynthèse({
+      organisation: 'mastora',
+      période: '2026-T4',
+      fenêtre: { début: '2026-08-03', fin: '2026-11-10' },
+      grilleVersion: 4,
+      publication,
+      grille: GRILLE,
+      éléments: [],
+      positions: [],
+      faits: new Map(),
+    }).split('\n')[1]
+
+  it('dit l’état réel de la période, jamais une formule fixe', () => {
+    expect(rendre('publiée')).toBe('Fenêtre du 2026-08-03 au 2026-11-10, grille v4. Publiée : le client la lit dans son espace.')
+    expect(rendre('proposée')).toBe("Fenêtre du 2026-08-03 au 2026-11-10, grille v4. Proposée : rien n'est montré au client.")
+    expect(rendre('retirée')).toBe("Fenêtre du 2026-08-03 au 2026-11-10, grille v4. Retirée par l'opératrice : rien n'est montré au client.")
+    expect(rendre('mêlée')).toBe("Fenêtre du 2026-08-03 au 2026-11-10, grille v4. Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client.")
+  })
+
+  it('seule une période entièrement publiée est dite lue par le client', () => {
+    for (const [état, phrase] of Object.entries(PHRASES_DE_PUBLICATION)) {
+      expect(phrase.includes('le client la lit'), état).toBe(état === 'publiée')
+      expect(phrase.includes("rien n'est montré au client"), état).toBe(état !== 'publiée')
+      expect(phrase).not.toContain('\u2014')
+    }
+  })
+
+  it('lit l’état dans celui des lignes', () => {
+    expect(étatDesLignes(['publie', 'publie'])).toBe('publiée')
+    expect(étatDesLignes(['propose', 'propose'])).toBe('proposée')
+    expect(étatDesLignes(['retire', 'retire'])).toBe('retirée')
+    // Une partie seulement publiée : les écrans du client ne lisent pas la période.
+    expect(étatDesLignes(['publie', 'propose'])).toBe('mêlée')
+    expect(étatDesLignes(['publie', 'retire'])).toBe('mêlée')
+    expect(étatDesLignes(['propose', 'retire'])).toBe('mêlée')
+    // Une période sans ligne n'est pas publiée.
+    expect(étatDesLignes([])).toBe('proposée')
+    expect(étatDeLaPériode({ lignes: 14, publiées: 14, retirées: 0 })).toBe('publiée')
+    expect(étatDeLaPériode({ lignes: 14, publiées: 0, retirées: 0 })).toBe('proposée')
+  })
+})
+
 describe('rendreLaSynthèse, benchmark', () => {
   it('écrit « n.d. » sans unité, et l’euro derrière un montant seulement', () => {
     const texte = rendreLaSynthèse({
@@ -94,6 +140,7 @@ describe('rendreLaSynthèse, benchmark', () => {
       période: '2026-T3',
       fenêtre: { début: '2026-07-22', fin: '2026-10-04' },
       grilleVersion: 1,
+      publication: 'proposée',
       grille: GRILLE,
       éléments: [
         élément({

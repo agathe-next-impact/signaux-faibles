@@ -1039,11 +1039,25 @@ d'une période non publiée sur `/espaces/syntheses/[slug]/[periode]`.
 ### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période
 
 `{ "état": "lue", "organisation", "période", "fenêtre", "grilleVersion",
-"éléments", "positions", "texte", "swot", "crans" }`. `texte` est la synthèse
-rendue pour le courriel « [Relecture] », à recopier telle quelle ; `swot` donne
-les éléments par leur `id` (que la `filiation` du mois suivant désigne) et
-`crans` les positions posées. `aucune` (200) si rien n'est enregistré pour la
-période.
+"publication", "éléments", "positions", "texte", "swot", "crans" }`. `texte` est
+la synthèse rendue pour le courriel « [Relecture] », à recopier telle quelle ;
+`swot` donne les éléments par leur `id` (que la `filiation` du mois suivant
+désigne) et `crans` les positions posées. `aucune` (200) si rien n'est enregistré
+pour la période.
+
+`état` dit seulement que la lecture a abouti. **`publication`** (16 novembre
+2026) dit si le client voit la période, d'après l'état de ses lignes :
+
+| `publication` | Sens | Ce que dit la deuxième ligne de `texte` |
+|---|---|---|
+| `publiée` | toutes les lignes sont publiées, le client lit la période | « Publiée : le client la lit dans son espace. » |
+| `proposée` | aucune ligne publiée ni retirée | « Proposée : rien n'est montré au client. » |
+| `retirée` | l'opératrice a retiré la période | « Retirée par l'opératrice : rien n'est montré au client. » |
+| `mêlée` | une partie seulement des lignes est publiée, ce que les écrans ne lisent pas | « Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client. » |
+
+Jusqu'au 16 novembre 2026, le texte portait « Proposée : rien n'est montré au
+client » quel que soit l'état : depuis la publication automatique du
+15 novembre, il affirmait le contraire de ce que le client voyait.
 
 ### `PATCH /api/veille/syntheses` : publier ou retirer une période (lot 11, 28 octobre 2026)
 
