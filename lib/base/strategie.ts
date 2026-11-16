@@ -4,6 +4,7 @@ import { protéger } from '@/lib/base/erreurs'
 import { faitsÉtiquetés, grilles, organisations, positions, élémentsSynthèse } from '@/lib/base/schema'
 import type { FaitÉtiqueté, Position, ÉlémentDeSynthèse } from '@/lib/base/schema'
 import type { SujetsDuMarché } from '@/lib/domaine/sujets-du-marche'
+import { étatÀLaProduction } from '@/lib/domaine/publication-automatique'
 import { empreinteDeLaGrille, type FaitConnu, type Grille, type ÉtiquetteValidée } from '@/lib/domaine/strategie'
 
 /**
@@ -475,7 +476,7 @@ export type PositionÀEnregistrer = {
 }
 
 export type RésultatDeSynthèse =
-  | { readonly sorte: 'enregistrée'; readonly éléments: number; readonly positions: number; readonly archivés: number }
+  | { readonly sorte: 'enregistrée'; readonly éléments: number; readonly positions: number; readonly archivés: number; readonly état: ÉtatDePublication }
   | { readonly sorte: 'hors-pilote' | 'grille-périmée' | 'fait-inconnu' | 'filiation-inconnue' }
   | { readonly sorte: 'référence-inconnue'; readonly référence: string }
 
@@ -493,6 +494,12 @@ export async function enregistrerLaSynthèse(
     readonly grilleVersion: number
     readonly éléments: readonly ÉlémentÀEnregistrer[]
     readonly positions: readonly PositionÀEnregistrer[]
+    /**
+     * Publication automatique (15 novembre 2026) : vrai, les lignes neuves sont
+     * publiées à l'écriture, sauf si la période remplacée était retirée.
+     * Absent ou faux, elles sont proposées et attendent le geste de l'opératrice.
+     */
+    readonly publicationAutomatique?: boolean
   },
   db: Base = base(),
   maintenant: Date = new Date(),
@@ -539,12 +546,16 @@ export async function enregistrerLaSynthèse(
         .update(élémentsSynthèse)
         .set({ archivéeLe: maintenant })
         .where(and(eq(élémentsSynthèse.organisationId, org), eq(élémentsSynthèse.période, entrée.période), isNull(élémentsSynthèse.archivéeLe)))
-        .returning({ id: élémentsSynthèse.id })
+        .returning({ id: élémentsSynthèse.id, état: élémentsSynthèse.étatPublication })
       const archivéesPositions = await tx
         .update(positions)
         .set({ archivéeLe: maintenant })
         .where(and(eq(positions.organisationId, org), eq(positions.période, entrée.période), isNull(positions.archivéeLe)))
-        .returning({ id: positions.id })
+        .returning({ id: positions.id, état: positions.étatPublication })
+      const état = étatÀLaProduction({
+        automatique: entrée.publicationAutomatique === true,
+        étatsRemplacés: [...archivésÉléments, ...archivéesPositions].map((l) => l.état),
+      })
 
       const parProvisoire = new Map<string, string>()
       if (entrée.éléments.length > 0) {
@@ -569,6 +580,7 @@ export async function enregistrerLaSynthèse(
               valeur: é.valeur ?? null,
               candidateRecommandation: é.candidateRecommandation ?? false,
               grilleVersion: entrée.grilleVersion,
+              étatPublication: état,
               crééLe: maintenant,
             })),
           )
@@ -599,6 +611,7 @@ export async function enregistrerLaSynthèse(
             origine: p.origine ?? 'faits',
             référence: p.origine === 'declaratif' ? (p.référence ?? null) : null,
             grilleVersion: entrée.grilleVersion,
+            étatPublication: état,
             crééLe: maintenant,
           })),
         )
@@ -608,6 +621,7 @@ export async function enregistrerLaSynthèse(
         éléments: entrée.éléments.length,
         positions: entrée.positions.length,
         archivés: archivésÉléments.length + archivéesPositions.length,
+        état,
       } as const
     }),
   )

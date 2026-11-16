@@ -2,6 +2,7 @@ import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { mesuresDeMarché, organisations, segmentsDeMarché } from '@/lib/base/schema'
+import { étatÀLaProduction } from '@/lib/domaine/publication-automatique'
 
 /**
  * Marchés et niches (12 novembre 2026) : seul écrivain et seul lecteur des
@@ -63,9 +64,11 @@ export async function posterLesSegments(
 const vivantes = (organisationId: string) => and(eq(mesuresDeMarché.organisationId, organisationId), isNull(mesuresDeMarché.archivéeLe))
 
 /**
- * Remplace les mesures d'une période, en proposition. Une période dont une
- * ligne est publiée n'est pas touchée : ce que le client lit ne change pas sous
- * ses yeux, la retirer d'abord.
+ * Remplace les mesures d'une période. Sans publication automatique, elles sont
+ * proposées, et une période dont une ligne est publiée n'est pas touchée : ce
+ * que le client lit ne change pas sous ses yeux, la retirer d'abord. Avec la
+ * publication automatique (15 novembre 2026), la nouvelle mesure remplace la
+ * publiée et est publiée à son tour ; une période retirée reste retirée.
  */
 export async function remplacerLesMesures(
   entrée: {
@@ -73,16 +76,25 @@ export async function remplacerLesMesures(
     readonly période: string
     readonly segmentsVersion: number
     readonly mesures: readonly { readonly clé: string; readonly valeur: Record<string, unknown> }[]
+    readonly publicationAutomatique?: boolean
   },
   db: Base = base(),
   maintenant: Date = new Date(),
-): Promise<{ readonly sorte: 'enregistrées'; readonly mesures: number; readonly archivées: number } | { readonly sorte: 'période-publiée' }> {
+): Promise<{ readonly sorte: 'enregistrées'; readonly mesures: number; readonly archivées: number; readonly état: ÉtatDesMesures } | { readonly sorte: 'période-publiée' }> {
   return protéger('enregistrement des mesures de marché', () =>
     db.transaction(async (tx) => {
+      const automatique = entrée.publicationAutomatique === true
       const période = and(vivantes(entrée.organisationId), eq(mesuresDeMarché.période, entrée.période))
-      const [publiée] = await tx.select({ id: mesuresDeMarché.id }).from(mesuresDeMarché).where(and(période, eq(mesuresDeMarché.étatPublication, 'publie'))).limit(1)
-      if (publiée) return { sorte: 'période-publiée' } as const
-      const archivées = await tx.update(mesuresDeMarché).set({ archivéeLe: maintenant }).where(période).returning({ id: mesuresDeMarché.id })
+      if (!automatique) {
+        const [publiée] = await tx.select({ id: mesuresDeMarché.id }).from(mesuresDeMarché).where(and(période, eq(mesuresDeMarché.étatPublication, 'publie'))).limit(1)
+        if (publiée) return { sorte: 'période-publiée' } as const
+      }
+      const archivées = await tx
+        .update(mesuresDeMarché)
+        .set({ archivéeLe: maintenant })
+        .where(période)
+        .returning({ id: mesuresDeMarché.id, état: mesuresDeMarché.étatPublication })
+      const état = étatÀLaProduction({ automatique, étatsRemplacés: archivées.map((l) => l.état) })
       if (entrée.mesures.length > 0) {
         await tx.insert(mesuresDeMarché).values(
           entrée.mesures.map((m) => ({
@@ -91,11 +103,12 @@ export async function remplacerLesMesures(
             clé: m.clé,
             segmentsVersion: entrée.segmentsVersion,
             valeur: m.valeur,
+            étatPublication: état,
             calculéeLe: maintenant,
           })),
         )
       }
-      return { sorte: 'enregistrées', mesures: entrée.mesures.length, archivées: archivées.length } as const
+      return { sorte: 'enregistrées', mesures: entrée.mesures.length, archivées: archivées.length, état } as const
     }),
   )
 }

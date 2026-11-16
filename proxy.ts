@@ -70,9 +70,11 @@ export function estUneAdressePayload(pathname: string): boolean {
  * préfixe ouvrirait aussi `/demonstration` ou l'espace d'un client dont le slug
  * commencerait par « demo ». `/exemple` et `/tarifs` sont les pages vitrines
  * (23 octobre 2026 ; `/offre` retirée le 7 novembre 2026, redirigée vers `/`) ; comme `/demo` et `/espaces`, elles masquent un slug
- * identique, qu'aucune organisation ne doit donc porter.
+ * identique, qu'aucune organisation ne doit donc porter. `/robots.txt`,
+ * `/sitemap.xml` et `/llms.txt` (16 novembre 2026) sont lus par les robots,
+ * sans session : avant, ils étaient redirigés vers « recevoir mon lien ».
  */
-const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/tarifs', ...Object.values(SLUGS_DE_DÉMONSTRATION).map((slug) => `/${slug}`)])
+const PUBLICS_EXACTS = new Set(['/', '/demo', '/exemple', '/tarifs', '/robots.txt', '/sitemap.xml', '/llms.txt', ...Object.values(SLUGS_DE_DÉMONSTRATION).map((slug) => `/${slug}`)])
 
 export function proxy(requête: NextRequest): NextResponse {
   const { pathname } = requête.nextUrl

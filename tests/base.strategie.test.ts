@@ -357,7 +357,7 @@ describe('outils stratégiques en base', () => {
         },
         db,
       )
-      expect(r).toEqual({ sorte: 'enregistrée', éléments: 6, positions: 3, archivés: 0 })
+      expect(r).toEqual({ sorte: 'enregistrée', éléments: 6, positions: 3, archivés: 0 , état: 'propose' })
 
       const lue = await lireLaSynthèse({ organisationId: infralliance, période: '2026-10' }, db)
       expect(lue.éléments).toHaveLength(6)

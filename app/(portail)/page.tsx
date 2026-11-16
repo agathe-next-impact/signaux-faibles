@@ -3,15 +3,17 @@ import { redirect } from 'next/navigation'
 import { AccueilVitrine } from '@/components/vitrine-accueil'
 import { identifiantDeLaSession } from '@/lib/auth/session'
 import { lireAccèsParIdentifiant } from '@/lib/auth/source-acces'
+import { métadonnéesDeVitrine } from '@/lib/vitrine/referencement'
 
-export const metadata: Metadata = {
-  title: 'signauxfaibles — votre veille, rédigée',
+export const metadata: Metadata = métadonnéesDeVitrine({
+  titre: 'Veille stratégique et concurrentielle hebdomadaire · signauxfaibles',
   description:
     'Une veille hebdomadaire rédigée pour votre organisation : écosystème et concurrence réunis dans une lettre courte, datée et sourcée.',
-  // Ce que voit un visiteur sans session est la vitrine : indexable, à la
-  // différence du reste du portail.
-  robots: { index: true, follow: true },
-}
+  chemin: '/',
+})
+// Ce que voit un visiteur sans session est la vitrine : indexable, à la
+// différence du reste du portail. Une session valide est redirigée avant
+// tout rendu, elle ne voit jamais ces métadonnées appliquées à son espace.
 
 /**
  * La racine oriente, et accueille.

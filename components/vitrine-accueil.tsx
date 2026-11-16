@@ -7,13 +7,23 @@ import {
 import { Case, Grille, LienFlèche } from '@/components/coquille'
 import { GraphiqueTempsDeVeille } from '@/components/graphiques-vitrine'
 import { Onglets } from '@/components/onglets'
-import { AppelFinal, ChiffresClés, CoquilleVitrine, ListeCarrée, Question, SectionVitrine, TêteDeSection } from '@/components/vitrine'
+import {
+  AppelFinal,
+  ChiffresClés,
+  CoquilleVitrine,
+  DonnéesStructurées,
+  ListeCarrée,
+  QuestionsFréquentes,
+  SectionVitrine,
+  TêteDeSection,
+} from '@/components/vitrine'
 import { HéroVidéo } from '@/components/vitrine-heros'
 import { CartesDeTarifs } from '@/components/vitrine-tarifs'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
 import { enEuros, HEURES_DE_PRISE_EN_MAIN, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
+import { graphe, nœudFAQ, nœudOrganisation, nœudService, nœudSite, type QuestionFréquente } from '@/lib/vitrine/referencement'
 import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
 
 /**
@@ -32,9 +42,38 @@ import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSem
  * (`docs/programme-lettre-unique.md`) : ses seuils viennent du validateur
  * (`LETTRE_UNIQUE`), pas d'un texte recopié.
  */
+/**
+ * Les questions de l'accueil, rendues par `QuestionsFréquentes` et posées
+ * telles quelles dans le `FAQPage` des données structurées.
+ */
+export const QUESTIONS_DE_L_ACCUEIL: readonly QuestionFréquente[] = [
+  {
+    question: 'Quand arrive la lettre ?',
+    réponse:
+      'Le même jour chaque semaine, par courriel, à chacun de vos lecteurs. Elle reste ensuite dans votre espace, avec toutes les précédentes.',
+  },
+  {
+    question: 'Comment se déroule l’essai ?',
+    réponse: `Il commence à votre première lettre publiée et dure ${PARUTIONS_D_ESSAI} parutions complètes. Aucun moyen de paiement n’est demandé pour le commencer.`,
+  },
+  {
+    question: 'Faut-il un mot de passe ?',
+    réponse:
+      'Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en saisissant son adresse sur la page de connexion.',
+  },
+  {
+    question: 'Puis-je résilier à tout moment ?',
+    réponse:
+      'Oui, en formule mensuelle, depuis « Mon abonnement » dans votre espace. Vos lettres restent lisibles jusqu’à la fin de la période déjà payée.',
+  },
+]
+
 export function AccueilVitrine() {
   return (
     <CoquilleVitrine courante="accueil">
+      <DonnéesStructurées
+        données={graphe([nœudOrganisation(), nœudSite(), nœudService(), nœudFAQ('/', QUESTIONS_DE_L_ACCUEIL)])}
+      />
       <HéroVidéo titre="La veille stratégique écrite pour votre seule organisation" />
 
       <section aria-labelledby="ce-que-vous-recevez" className="border-b border-gris-ligne">
@@ -137,24 +176,7 @@ export function AccueilVitrine() {
       </SectionVitrine>
 
       <SectionVitrine surtitre="Questions fréquentes" titre="Avant de demander une démo" disposition="côte">
-        <div className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-          <Question titre="Quand arrive la lettre ?">
-            Le même jour chaque semaine, par courriel, à chacun de vos lecteurs. Elle reste ensuite
-            dans votre espace, avec toutes les précédentes.
-          </Question>
-          <Question titre="Comment se déroule l’essai ?">
-            Il commence à votre première lettre publiée et dure {PARUTIONS_D_ESSAI} parutions
-            complètes. Aucun moyen de paiement n’est demandé pour le commencer.
-          </Question>
-          <Question titre="Faut-il un mot de passe ?">
-            Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en
-            saisissant son adresse sur la page de connexion.
-          </Question>
-          <Question titre="Puis-je résilier à tout moment ?">
-            Oui, en formule mensuelle, depuis « Mon abonnement » dans votre espace. Vos lettres
-            restent lisibles jusqu’à la fin de la période déjà payée.
-          </Question>
-        </div>
+        <QuestionsFréquentes questions={QUESTIONS_DE_L_ACCUEIL} étroite={false} />
       </SectionVitrine>
 
       <AppelFinal

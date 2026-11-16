@@ -223,7 +223,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
         (résultat.sorte === 'refusée' ? ` (${résultat.refus.length} refus)` : '') +
         '.',
     )
-    // La synthèse d'un trimestre mesure les marchés de ce trimestre, en proposition (12 novembre 2026).
+    // La synthèse d'un trimestre mesure les marchés de ce trimestre (12 novembre 2026), publiés sous la publication automatique.
     if (résultat.sorte === 'enregistrée' && periode.includes('-T')) after(() => mesurerÀLaSuite({ slug, période: periode }))
     return NextResponse.json({ état: résultat.sorte, ...résultat }, { status: STATUT[résultat.sorte] })
   } catch (erreur) {

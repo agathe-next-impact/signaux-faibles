@@ -381,6 +381,10 @@ export const SLUGS_RÉSERVÉS: ReadonlySet<string> = new Set([
   'espaces',
   'exemple',
   'hors-ligne',
+  // Les fichiers des robots (16 novembre 2026), servis par le portail.
+  'llms.txt',
+  'robots.txt',
+  'sitemap.xml',
   // Les organisations fictives des espaces de démonstration (7 novembre 2026).
   'atelier-passerelle',
   'lisiere-conseil',
