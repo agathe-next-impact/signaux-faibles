@@ -1,7 +1,7 @@
 import { after, NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { baseConfigurée } from '@/lib/base/client'
-import type { SynthèseProposée } from '@/lib/domaine/strategie'
+import type { IndicateurDeScénario, SynthèseProposée } from '@/lib/domaine/strategie'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { mesurerÀLaSuite } from '@/lib/portail/marches'
 import {
@@ -120,7 +120,26 @@ const demande = z.object({
         z.object({
           titre: texte(200),
           enonce: texte(1000),
-          indicateurs: z.array(z.object({ famille: z.number().int().min(1).max(99), signal: texte(300) })).max(8),
+          indicateurs: z
+            .array(
+              z.object({
+                famille: z.number().int().min(1).max(99),
+                // La veille de la famille et la règle de comptage (16 novembre 2026) : la porte du domaine juge leurs valeurs.
+                veille: texte(20).nullish(),
+                signal: texte(300),
+                regle: z
+                  .object({
+                    cadre: texte(30).nullish(),
+                    entites: z.array(texte(200)).max(10).nullish(),
+                    mouvement: texte(30).nullish(),
+                    exigence: texte(20).nullish(),
+                    seuil: z.number(),
+                    sens: texte(20).nullish(),
+                  })
+                  .nullish(),
+              }),
+            )
+            .max(8),
           faits: ids,
         }),
       )
@@ -173,7 +192,31 @@ function versLeDomaine(s: z.infer<typeof demande>['synthese']): SynthèsePropos�
       origine: p.origine ?? 'faits',
       référence: p.reference ?? null,
     })),
-    scénarios: (s.scenarios ?? []).map((x) => ({ titre: x.titre, énoncé: x.enonce, indicateurs: x.indicateurs, faits: x.faits })),
+    scénarios: (s.scenarios ?? []).map((x) => ({
+      titre: x.titre,
+      énoncé: x.enonce,
+      indicateurs: x.indicateurs.map(
+        (i) =>
+          ({
+            famille: i.famille,
+            ...(i.veille ? { veille: i.veille } : {}),
+            signal: i.signal,
+            ...(i.regle
+              ? {
+                  règle: {
+                    ...(i.regle.cadre ? { cadre: i.regle.cadre } : {}),
+                    ...(i.regle.entites && i.regle.entites.length > 0 ? { entités: i.regle.entites } : {}),
+                    ...(i.regle.mouvement ? { mouvement: i.regle.mouvement } : {}),
+                    exigence: i.regle.exigence ?? 'tout',
+                    seuil: i.regle.seuil,
+                    sens: i.regle.sens ?? 'apparition',
+                  },
+                }
+              : {}),
+          }) as IndicateurDeScénario,
+      ),
+      faits: x.faits,
+    })),
     interprétations: (s.interpretations ?? []).map((i) => ({ outil: i.outil, énoncé: i.enonce })),
   }
 }

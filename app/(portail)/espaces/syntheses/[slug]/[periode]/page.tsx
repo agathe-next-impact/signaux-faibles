@@ -5,10 +5,23 @@ import { lireUneSynthèseÀRelire } from '@/lib/auth/appartenance'
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Logo } from '@/components/marque'
 import { Panneau } from '@/components/coquille'
-import { BORNES, LIBELLÉS_PESTEL, type Pestel } from '@/lib/domaine/strategie'
+import {
+  ANSOFF,
+  BORNES,
+  EXIGENCES_D_INDICATEUR,
+  FORCES_PORTER,
+  LIBELLÉS_ANSOFF,
+  LIBELLÉS_PESTEL,
+  LIBELLÉS_PORTER,
+  PESTEL,
+  règleEnClair,
+  VEILLES,
+  type IndicateurDeScénario,
+  type Pestel,
+} from '@/lib/domaine/strategie'
 import { libelléDePériode } from '@/lib/domaine/strategie-vues'
 import { publierUnePériode } from '@/lib/portail/publication'
-import { modifierUnÉnoncéDeSynthèse } from '@/lib/portail/relecture'
+import { modifierUnIndicateurDeSynthèse, modifierUnÉnoncéDeSynthèse } from '@/lib/portail/relecture'
 import type { ÉlémentÀRelire } from '@/lib/portail/strategie'
 
 export const metadata: Metadata = { title: 'Relire une synthèse — signauxfaibles' }
@@ -18,7 +31,8 @@ export const metadata: Metadata = { title: 'Relire une synthèse — signauxfaib
  *
  * L'opératrice y retouche le texte de chaque élément : énoncés de la SWOT, de
  * la TOWS et de l'option retenue, lignes PESTEL, scénarios et leur titre,
- * interprétations du trimestre. Les faits cités, les cases, les crans de la
+ * interprétations du trimestre ; depuis le 16 novembre 2026, la veille et la
+ * règle de comptage de chaque indicateur d'un scénario. Les faits cités, les cases, les crans de la
  * carte et de Mendelow ne se changent pas ici : ils viennent de la porte, et
  * les corriger demande de re-poster la synthèse. Une période dont une ligne est
  * publiée se lit seulement : la retirer d'abord, depuis l'écran des synthèses.
@@ -29,8 +43,9 @@ export const metadata: Metadata = { title: 'Relire une synthèse — signauxfaib
 export const instant = false
 
 const MESSAGES: Record<string, string> = {
-  modifié: 'Énoncé enregistré.',
-  refusé: 'Énoncé refusé, rien n’a changé',
+  modifié: 'Modification enregistrée.',
+  refusé: 'Modification refusée, rien n’a changé',
+  'grille-absente': 'Aucune grille en vigueur : la règle d’un indicateur ne peut pas être contrôlée.',
   'déjà-publiée': 'La période est publiée : la retirer d’abord pour la retoucher.',
   introuvable: 'Élément introuvable dans cette période (synthèse re-postée entre-temps ?).',
   'sans-énoncé': 'Cet élément n’a pas d’énoncé à retoucher.',
@@ -214,6 +229,114 @@ function Élément({
           <p className="text-encre">{élément.énoncé}</p>
         </>
       )}
+      {élément.indicateurs.map((ind, rang) => (
+        <Indicateur key={`${rang}-${ind.signal}`} indicateur={ind} rang={rang} élément={élément.id} slug={slug} période={période} modifiable={modifiable} />
+      ))}
     </article>
+  )
+}
+
+const champ = 'border border-gris-ligne px-2 py-1 text-encre'
+const LIBELLÉS_D_EXIGENCE = { tout: 'tout fait', fort: 'signal fort seulement', rupture: 'rupture seulement' } as const
+
+/**
+ * Un indicateur de scénario : son signal, qui ne se retouche pas ici, puis la
+ * veille de sa famille et la règle que le portail applique aux faits étiquetés.
+ * Un seuil vide rend l'indicateur au comptage large de sa famille.
+ */
+function Indicateur({
+  indicateur,
+  rang,
+  élément,
+  slug,
+  période,
+  modifiable,
+}: {
+  indicateur: IndicateurDeScénario
+  rang: number
+  élément: string
+  slug: string
+  période: string
+  modifiable: boolean
+}) {
+  const règle = indicateur.règle ?? null
+  const résumé = `Indicateur ${rang + 1} · famille ${indicateur.famille}${indicateur.veille ? ` (${indicateur.veille})` : ''} · ${règle ? règleEnClair(règle) : 'comptage large'}`
+  return (
+    <div className="flex flex-col gap-2 border-t border-gris-ligne pt-3">
+      <p className="label-mono text-ardoise">{résumé}</p>
+      <p className="text-sm text-encre">{indicateur.signal}</p>
+      {modifiable ? (
+        <form action={modifierUnIndicateurDeSynthèse} className="flex flex-wrap items-end gap-3">
+          <input type="hidden" name="slug" value={slug} />
+          <input type="hidden" name="periode" value={période} />
+          <input type="hidden" name="element" value={élément} />
+          <input type="hidden" name="rang" value={rang} />
+          <label className="flex flex-col gap-1">
+            <span className="label-mono text-ardoise">veille de la famille</span>
+            <select name="veille" defaultValue={indicateur.veille ?? ''} className={champ}>
+              <option value="">non précisée</option>
+              {VEILLES.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="label-mono text-ardoise">seuil (1 à {BORNES.seuilDIndicateurMax}, vide : comptage large)</span>
+            <input name="seuil" type="number" min={1} max={BORNES.seuilDIndicateurMax} defaultValue={règle?.seuil ?? ''} className={`${champ} w-full`} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="label-mono text-ardoise">sens</span>
+            <select name="sens" defaultValue={règle?.sens ?? 'apparition'} className={champ}>
+              <option value="apparition">les faits apparaissent (seuil en faits)</option>
+              <option value="absence">les faits manquent (seuil en semaines)</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="label-mono text-ardoise">exigence</span>
+            <select name="exigence" defaultValue={règle?.exigence ?? 'tout'} className={champ}>
+              {EXIGENCES_D_INDICATEUR.map((e) => (
+                <option key={e} value={e}>
+                  {LIBELLÉS_D_EXIGENCE[e]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="label-mono text-ardoise">cadre</span>
+            <select name="cadre" defaultValue={règle?.cadre ?? ''} className={champ}>
+              <option value="">tous</option>
+              {PESTEL.map((c) => (
+                <option key={c} value={c}>
+                  {LIBELLÉS_PESTEL[c]}
+                </option>
+              ))}
+              {FORCES_PORTER.map((c) => (
+                <option key={c} value={c}>
+                  {LIBELLÉS_PORTER[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="label-mono text-ardoise">mouvement</span>
+            <select name="mouvement" defaultValue={règle?.mouvement ?? ''} className={champ}>
+              <option value="">tous</option>
+              {ANSOFF.map((m) => (
+                <option key={m} value={m}>
+                  {LIBELLÉS_ANSOFF[m]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-[16rem] flex-1 flex-col gap-1">
+            <span className="label-mono text-ardoise">entités de la grille, séparées par « ; » ({BORNES.entitésDIndicateurMax} au plus)</span>
+            <input name="entites" defaultValue={(règle?.entités ?? []).join(' ; ')} maxLength={700} className={`${champ} w-full`} />
+          </label>
+          <BoutonEnvoi className="rounded-douce border border-encre px-3 py-1 text-label font-medium text-encre">Enregistrer la règle</BoutonEnvoi>
+        </form>
+      ) : null}
+    </div>
   )
 }

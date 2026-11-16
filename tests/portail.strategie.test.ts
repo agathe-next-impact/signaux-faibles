@@ -34,6 +34,8 @@ const {
   tableauDesSynthèses,
   synthèseDeLEspace,
   synthèseÀRelire,
+  trajectoireDeLEspace,
+  modifierLIndicateurDuPilote,
   modifierLÉnoncéDuPilote,
   recalculerLeBenchmarkDuPilote,
   recevoirLaGrille,
@@ -466,8 +468,8 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
     const trimestre = (): Parameters<typeof recevoirLaSynthèse>[0]['synthèse'] => {
       const base = octobre()
       const indicateurs = [
-        { famille: 1, signal: 'Vote du Conseil sur le règlement cloud et IA' },
-        { famille: 2, signal: 'Nomination à la DGE' },
+        { famille: 1, veille: 'ecosysteme' as const, signal: 'Vote du Conseil sur le règlement cloud et IA', règle: { exigence: 'tout' as const, seuil: 1, sens: 'apparition' as const } },
+        { famille: 2, veille: 'ecosysteme' as const, signal: 'Nomination à la DGE' },
       ]
       return {
         ...base,
@@ -780,6 +782,63 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         vi.stubEnv('SOURCE_ACCES', 'double')
         expect(await réglerLEspace({ slug: 'infralliance', actif: false }, db)).toBe('réglé')
         expect(await concurrentsDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
+    it('trajectoire des scénarios : règle retouchée avant publication, faits comptés depuis le dépôt, rien hors de l’espace', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      try {
+        const f = registres()
+        await recevoirLaSynthèse(
+          { slug: 'infralliance', période: '2026-T4', fenêtre: FENÊTRE, synthèse: trimestre(), cycle: { départements: ['75', '92'], texte: 'centre de données' } },
+          db,
+          { f: f as unknown as typeof fetch, attente: async () => {} },
+        )
+        const lue = await synthèseÀRelire({ slug: 'infralliance', période: '2026-T4' }, db)
+        const scénario = lue.sorte === 'lue' ? lue.éléments.find((é) => é.clé === 'scenario-1') : undefined
+        expect(scénario?.indicateurs).toHaveLength(2)
+        expect(scénario?.indicateurs[0]).toMatchObject({ famille: 1, veille: 'ecosysteme', règle: { seuil: 1 } })
+
+        // La règle du second indicateur : refusée hors grille, écrite sinon, à sa place seulement.
+        const retouche = (règle: Parameters<typeof modifierLIndicateurDuPilote>[0]['règle'], rang = 1) =>
+          modifierLIndicateurDuPilote({ slug: 'infralliance', période: '2026-T4', élément: scénario!.id, rang, veille: 'ecosysteme', règle }, db)
+        const refus = await retouche({ seuil: 2, entités: ['Inconnue SA'] })
+        expect(refus.sorte === 'refusé' && refus.refus.map((r) => r.code)).toEqual(['entité-hors-grille'])
+        expect((await retouche({ seuil: 12 })).sorte).toBe('refusé')
+        expect(await retouche({ seuil: 2 }, 5)).toEqual({ sorte: 'introuvable' })
+        expect(await retouche({ seuil: 2, sens: 'absence', exigence: 'tout' })).toEqual({ sorte: 'modifié' })
+        const après = await synthèseÀRelire({ slug: 'infralliance', période: '2026-T4' }, db)
+        const relu = après.sorte === 'lue' ? après.éléments.find((é) => é.id === scénario!.id) : undefined
+        expect(relu?.indicateurs[1]).toEqual({ famille: 2, veille: 'ecosysteme', signal: 'Nomination à la DGE', règle: { seuil: 2, sens: 'absence', exigence: 'tout' } })
+        expect(relu?.indicateurs[0]).toEqual(scénario?.indicateurs[0])
+        expect(relu?.titre).toBe('Scénario 1')
+
+        // Rien avant la publication, rien hors de l'espace réorganisé.
+        const loin = '2099-06-15'
+        expect(await trajectoireDeLEspace({ registre: REGISTRE, fin: loin }, db)).toBeNull()
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-T4', état: 'publie' }, db)
+        expect(await trajectoireDeLEspace({ registre: REGISTRE, fin: loin }, db)).toBeNull()
+        expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
+        expect((await retouche({ seuil: 3 })).sorte).toBe('déjà-publiée')
+
+        // Les faits d'octobre ont fondé les scénarios : ils ne comptent pas, la fenêtre s'ouvre au lendemain du dépôt.
+        const t = await trajectoireDeLEspace({ registre: avecTirets(REGISTRE), fin: loin }, db)
+        expect(t?.scénarios).toHaveLength(3)
+        expect(t?.semaines).toHaveLength(13)
+        expect((t?.début ?? '') > DATE_OCTOBRE).toBe(true)
+        expect(t?.scénarios[0]?.indicateurs.map((i) => [i.état, i.compte])).toEqual([['eteint', 0], ['allume', 13]])
+        expect(t?.scénarios[1]?.indicateurs.map((i) => i.état)).toEqual(['eteint', 'large'])
+        // Aucune lettre depuis le dépôt : aucune semaine, rien d'allumé.
+        const sansLettre = await trajectoireDeLEspace({ registre: REGISTRE, fin: DATE_OCTOBRE }, db)
+        expect(sansLettre?.semaines).toEqual([])
+        expect(sansLettre?.scénarios[0]?.allumés).toBe(0)
+
+        expect(await trajectoireDeLEspace({ registre: AUTRE_REGISTRE, fin: loin }, db)).toBeNull()
+        vi.stubEnv('SOURCE_ACCES', 'notion')
+        expect(await trajectoireDeLEspace({ registre: REGISTRE, fin: loin }, db)).toBeNull()
       } finally {
         vi.unstubAllEnvs()
       }

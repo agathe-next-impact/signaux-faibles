@@ -955,7 +955,7 @@ porte en plus : les cinq forces, toutes (`outil: "forces"`, `sujet` parmi
 3 `intense`, `tendance` `hausse`, `stable` ou `baisse` ; une force qu'aucune
 famille ne porte est `nonSuivi: true`, cran nul, sans fait ni tendance) ; trois
 `scenarios` `{ titre, enonce (400 caractères au plus), indicateurs: 2 à 4
-{ famille, signal }, faits }` ; deux `interpretations` au plus
+{ famille, veille, signal, regle }, faits }` (détail ci-dessous) ; deux `interpretations` au plus
 `{ outil: "indice_cycle" | "benchmark", enonce }`. Le corps peut porter
 `"cycle": { "departements": ["06", "34"], "texte": "formation commerciale" }`
 (1 à 12 départements, deux chiffres, 2A, 2B ou 97x ; texte de 3 à 80
@@ -1005,11 +1005,34 @@ Codes de refus de la porte : `pestel-incomplet`, `trou-avec-faits`,
 `hors-période`, `grille-périmée`, `vocabulaire-interdit`, `longueur`,
 `doublon`, `étiquette-inconnue` ; au trimestre `forces-incomplètes`,
 `tendance-manquante`, `non-suivi-manquant`, `non-suivi-injustifié`,
-`scénarios-hors-bornes`, `indicateurs-hors-bornes`, `famille-inconnue`, et
+`scénarios-hors-bornes`, `indicateurs-hors-bornes`, `famille-inconnue`,
+`famille-ambiguë`, `règle-hors-bornes`, `entité-hors-grille`, et
 pour `cycle` `départements-hors-bornes`, `département-invalide`,
 `texte-hors-bornes` ; pour la matrice GE `ge-incomplète`, `ge-sans-offres`. En
 avertissement seulement : `spécificité` (ni nom de la grille, ni chiffre, ni
 date) et `ge-absente` (revue annuelle, deux offres ou plus, pas de matrice).
+
+**Indicateurs d'un scénario** (16 novembre 2026, lot 2 des simulations de
+scénarios). Chaque indicateur porte `famille` (le numéro), `veille`
+(`ecosysteme` ou `concurrentiel` : une grille numérote ses familles par veille,
+et un numéro présent dans les deux est refusé sans elle, `famille-ambiguë`),
+`signal` (le texte lu par le client) et `regle`, ce que le portail compte dans
+les faits étiquetés de la famille pour dire le signal allumé :
+
+    "regle": { "seuil": 3, "sens": "apparition", "exigence": "fort",
+               "cadre": "rivalite", "entites": ["CISPE"], "mouvement": "diversification" }
+
+`seuil`, obligatoire, entier de 1 à 10 : le nombre de faits qui allume
+l'indicateur, ou, pour `sens: "absence"`, le nombre de semaines de suite sans
+fait (scénarios de statu quo). `sens` : `apparition` (défaut) ou `absence`.
+`exigence` : `tout` (défaut), `fort` ou `rupture`. Facultatifs : `cadre` (une
+dimension PESTEL ou une force de Porter), `entites` (1 à 5 noms de la grille,
+`entité-hors-grille` sinon), `mouvement` (un mouvement d'Ansoff). Sans `regle`,
+l'indicateur compte tous les faits de sa famille, sans seuil, et l'écran le dit
+« comptage large ». Le portail compte les faits parus depuis le dépôt des
+scénarios, treize semaines au plus, et montre le résultat sur « Scénarios » ;
+aucune probabilité n'est calculée. L'opératrice retouche la veille et la règle
+d'une période non publiée sur `/espaces/syntheses/[slug]/[periode]`.
 
 ### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période
 

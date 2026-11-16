@@ -774,6 +774,49 @@ export async function modifierUnÉnoncé(
 }
 
 /**
+ * Remplace un indicateur d'un scénario avant sa publication (16 novembre 2026,
+ * lot 2 des simulations) : la veille de sa famille et sa règle de comptage,
+ * rangées dans `références`. Mêmes conditions que `modifierUnÉnoncé` : aucune
+ * ligne publiée dans la période. Le signal, l'énoncé et les faits ne bougent
+ * pas. L'indicateur a passé `contrôlerUnIndicateur` avant d'arriver ici.
+ */
+export async function modifierUnIndicateur(
+  entrée: { readonly organisationId: string; readonly période: string; readonly élémentId: string; readonly rang: number; readonly indicateur: Record<string, unknown> },
+  db: Base = base(),
+): Promise<{ readonly sorte: 'modifié' } | { readonly sorte: 'introuvable' | 'déjà-publiée' }> {
+  if (!estUuid(entrée.élémentId)) return { sorte: 'introuvable' }
+  return protéger('modification d’un indicateur de scénario', () =>
+    db.transaction(async (tx) => {
+      const vivantes = (table: typeof élémentsSynthèse | typeof positions) =>
+        and(eq(table.organisationId, entrée.organisationId), eq(table.période, entrée.période), isNull(table.archivéeLe))
+      const [élément] = await tx
+        .select({ id: élémentsSynthèse.id, outil: élémentsSynthèse.outil, références: élémentsSynthèse.références })
+        .from(élémentsSynthèse)
+        .where(and(vivantes(élémentsSynthèse), eq(élémentsSynthèse.id, entrée.élémentId)))
+        .limit(1)
+      const indicateurs = élément && Array.isArray(élément.références['indicateurs']) ? (élément.références['indicateurs'] as unknown[]) : null
+      if (!élément || élément.outil !== 'scenario' || !indicateurs || entrée.rang < 0 || entrée.rang >= indicateurs.length) return { sorte: 'introuvable' } as const
+      const [publiéÉlément] = await tx
+        .select({ id: élémentsSynthèse.id })
+        .from(élémentsSynthèse)
+        .where(and(vivantes(élémentsSynthèse), eq(élémentsSynthèse.étatPublication, 'publie')))
+        .limit(1)
+      const [publiéePosition] = await tx
+        .select({ id: positions.id })
+        .from(positions)
+        .where(and(vivantes(positions), eq(positions.étatPublication, 'publie')))
+        .limit(1)
+      if (publiéÉlément || publiéePosition) return { sorte: 'déjà-publiée' } as const
+      await tx
+        .update(élémentsSynthèse)
+        .set({ références: { ...élément.références, indicateurs: indicateurs.map((i, rang) => (rang === entrée.rang ? entrée.indicateur : i)) } })
+        .where(eq(élémentsSynthèse.id, élément.id))
+      return { sorte: 'modifié' } as const
+    }),
+  )
+}
+
+/**
  * Remplace les chiffres du benchmark d'un trimestre déjà enregistré, sans
  * reposter la synthèse (10 novembre 2026). Une grille reclassée change ce que le
  * benchmark compare, et le portail ne le calculait qu'au dépôt : reposter aurait
