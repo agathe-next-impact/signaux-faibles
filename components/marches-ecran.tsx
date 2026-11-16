@@ -1,11 +1,15 @@
 import { Case, Grille } from '@/components/coquille'
+import { SimulationDesMarchés } from '@/components/marches-simulation'
 import {
   LIBELLÉS_DE_NIVEAU,
   LIBELLÉS_DE_VERDICT,
   RÈGLES_DE_VERDICT,
+  arbreDeDécision,
+  distancesDeBascule,
   lectureDuSegment,
   matriceDeDécision,
   montantCourt,
+  type ArbreDeDécision,
   type CaseDeDécision,
   type LigneDeMarché,
   type VueDesMarchés,
@@ -25,8 +29,8 @@ function cibles(l: LigneDeMarché): string | null {
   return `${l.ciblesPlafonnées ? 'plus de ' : ''}${nombre(l.cibles)} ${quoi}`
 }
 
-function potentiel(l: LigneDeMarché): string | null {
-  if (!l.potentiel) return null
+function potentiel(l: LigneDeMarché): string {
+  if (!l.potentiel) return 'non chiffré'
   return l.potentiel.bas === l.potentiel.haut ? montantCourt(l.potentiel.haut) : `${montantCourt(l.potentiel.bas)} à ${montantCourt(l.potentiel.haut)}`
 }
 
@@ -73,6 +77,7 @@ function CaseDeLaMatrice({ c, faitsMax }: { c: CaseDeDécision; faitsMax: number
                   {s.libellé}
                 </a>
                 <span className="label-mono shrink-0 text-ardoise">
+                  {s.potentiel !== null ? `${montantCourt(s.potentiel)} · ` : ''}
                   {s.faits} fait{s.faits > 1 ? 's' : ''}
                 </span>
               </div>
@@ -94,8 +99,9 @@ function CaseDeLaMatrice({ c, faitsMax }: { c: CaseDeDécision; faitsMax: number
   )
 }
 
-function Fiche({ l }: { l: LigneDeMarché }) {
-  const lecture = lectureDuSegment(l)
+function Fiche({ l, lignes, arbre }: { l: LigneDeMarché; lignes: readonly LigneDeMarché[]; arbre: ArbreDeDécision }) {
+  const lecture = lectureDuSegment(l, arbre)
+  const bascules = distancesDeBascule(l, lignes)
   const chiffres = [
     { intitulé: 'Cibles', valeur: cibles(l) },
     { intitulé: 'Potentiel par an', valeur: potentiel(l) },
@@ -110,6 +116,16 @@ function Fiche({ l }: { l: LigneDeMarché }) {
       </p>
       <h3 className="font-titre text-h3 font-bold text-encre">{l.libellé}</h3>
       <p className="text-encre">{lecture.raison}</p>
+      {bascules.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <p className="label-mono text-ardoise">ce qui ferait basculer le verdict</p>
+          <ul className="flex flex-col gap-1 text-sm text-encre">
+            {bascules.map((b) => (
+              <li key={b.levier}>{b.phrase}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {chiffres.length > 0 ? (
         <dl className="flex flex-col gap-3">
           {chiffres.map((c) => (
@@ -138,8 +154,9 @@ function Fiche({ l }: { l: LigneDeMarché }) {
   )
 }
 
-export function ÉcranDesMarchés({ vue }: { vue: VueDesMarchés & { readonly nonPublié: boolean } }) {
+export function ÉcranDesMarchés({ vue, si }: { vue: VueDesMarchés & { readonly nonPublié: boolean }; si?: string | null }) {
   const matrice = matriceDeDécision(vue.lignes)
+  const arbre = arbreDeDécision(vue.lignes)
   const parClé = new Map(vue.lignes.map((l) => [l.clé, l]))
   // Les fiches suivent la matrice : par verdict, puis du segment le plus actif au moins actif.
   const segments = matrice.cases.flatMap((c) => c.segments.map((x) => parClé.get(x.clé))).filter((l): l is LigneDeMarché => l !== undefined)
@@ -154,7 +171,7 @@ export function ÉcranDesMarchés({ vue }: { vue: VueDesMarchés & { readonly no
       <section className="mt-8 flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-titre text-h2 font-bold text-encre">Où porter l’effort</h2>
-          <p className="label-mono text-ardoise">Activité de la veille × concurrence · outil en test</p>
+          <p className="label-mono text-ardoise">Activité de la veille × concurrence × potentiel · outil en test</p>
         </div>
         <Grille colonnes={2} étiquette="Matrice de décision des marchés et des niches">
           {matrice.cases.map((c) => (
@@ -162,8 +179,8 @@ export function ÉcranDesMarchés({ vue }: { vue: VueDesMarchés & { readonly no
           ))}
         </Grille>
         <p className="max-w-[68ch] text-sm text-ardoise">
-          Chaque offre et chaque niche est rangée par règle, sur deux mesures du trimestre : les faits que la veille y rattache et les concurrents suivis qui y sont présents. La barre donne le nombre
-          de faits. C’est une aide à la décision, pas une recommandation rédigée.
+          Chaque offre et chaque niche est rangée par règle, sur trois mesures du trimestre : les faits que la veille y rattache, les concurrents suivis qui y sont présents et la part de son potentiel
+          dans celui de l’arbre. Dans une case, le plus gros potentiel vient d’abord. La barre donne le nombre de faits. C’est une aide à la décision, pas une recommandation rédigée.
         </p>
       </section>
 
@@ -171,10 +188,12 @@ export function ÉcranDesMarchés({ vue }: { vue: VueDesMarchés & { readonly no
         <h2 className="font-titre text-h2 font-bold text-encre">Segment par segment</h2>
         <Grille colonnes={2} étiquette="Fiches des marchés et des niches">
           {segments.map((l) => (
-            <Fiche key={l.clé} l={l} />
+            <Fiche key={l.clé} l={l} lignes={vue.lignes} arbre={arbre} />
           ))}
         </Grille>
       </section>
+
+      {segments.length > 0 ? <SimulationDesMarchés lignes={vue.lignes} initial={si ?? null} /> : null}
 
       {vue.disparus.length > 0 ? (
         <section className="mt-12 flex flex-col gap-4">

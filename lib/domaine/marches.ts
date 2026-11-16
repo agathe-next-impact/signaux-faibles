@@ -1,3 +1,4 @@
+import { montantCourt } from '@/lib/domaine/marches-decision'
 import { BORNES, empreinte, normaliserTitre, VEILLES, type Grille, type Refus, type Veille } from '@/lib/domaine/strategie'
 
 /**
@@ -704,85 +705,12 @@ export function vueDesMarchés(périodes: readonly { readonly période: string; 
   }
 }
 
-// ── La décision : un verdict par segment, par règle ─────────────────────────
-
-/** Au moins autant de faits dans le trimestre : l'activité de la veille est soutenue. */
-export const SEUIL_D_ACTIVITÉ_SOUTENUE = 10
-/** Au moins autant de concurrents suivis sur le segment : la concurrence est dense. */
-export const SEUIL_DE_CONCURRENCE_DENSE = 4
-
-export type VerdictDeSegment = 'pousser' | 'disputer' | 'surveiller' | 'ecarter'
-
-/** Dans l'ordre de lecture de la matrice : soutenu puis calme, concurrence limitée puis dense. */
-export const VERDICTS: readonly VerdictDeSegment[] = ['pousser', 'disputer', 'surveiller', 'ecarter']
-
-export const LIBELLÉS_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = {
-  pousser: 'à pousser',
-  disputer: 'à disputer',
-  surveiller: 'à surveiller',
-  ecarter: 'à écarter',
-}
-
-/** La règle de chaque verdict, telle que l'écran l'affiche sous son titre. */
-export const RÈGLES_DE_VERDICT: Readonly<Record<VerdictDeSegment, string>> = {
-  pousser: `Activité soutenue (${SEUIL_D_ACTIVITÉ_SOUTENUE} faits ou plus), moins de ${SEUIL_DE_CONCURRENCE_DENSE} concurrents suivis`,
-  disputer: `Activité soutenue, ${SEUIL_DE_CONCURRENCE_DENSE} concurrents suivis ou plus`,
-  surveiller: `Activité calme, ou concurrence non mesurée`,
-  ecarter: `Activité calme et concurrence dense, ou segment en recul`,
-}
-
-export type LectureDeSegment = {
-  readonly verdict: VerdictDeSegment
-  /** La situation du segment, en une phrase : son activité, puis sa concurrence. */
-  readonly raison: string
-}
-
-const pluriel = (n: number, mot: string) => `${n.toLocaleString('fr-FR')} ${mot}${n > 1 ? 's' : ''}`
-
-/**
- * Le verdict d'un segment, par règle et jamais par un modèle : deux mesures du
- * trimestre, l'activité de la veille (faits rattachés) et la concurrence
- * (concurrents suivis présents), croisées en quatre cases. Un segment éteint ou
- * en régression est écarté quelle que soit sa case ; une concurrence non
- * mesurée ne conclut jamais mieux que « à surveiller ». La phrase décrit la
- * situation avec les mots de la règle, les chiffres entre parenthèses.
- */
-export function lectureDuSegment(l: LigneDeMarché): LectureDeSegment {
-  if (l.état === 'eteint') return { verdict: 'ecarter', raison: 'Le segment s’est éteint : ni fait ni cible depuis deux trimestres.' }
-  const soutenue = l.faits >= SEUIL_D_ACTIVITÉ_SOUTENUE
-  const forts = l.faitsForts > 0 ? `, dont ${l.faitsForts} ${l.faitsForts > 1 ? 'signaux forts' : 'signal fort'}` : ''
-  const activité =
-    l.faits === 0 ? 'Aucun fait relevé par la veille ce trimestre' : `${soutenue ? 'Activité soutenue' : 'Peu d’activité'} ce trimestre (${pluriel(l.faits, 'fait')}${forts})`
-  const début = l.état === 'en_regression' ? `En recul depuis deux trimestres. ${activité}` : activité
-  if (l.présents === null) return { verdict: l.état === 'en_regression' ? 'ecarter' : 'surveiller', raison: `${début} ; la concurrence n’y est pas encore mesurée.` }
-  const n = l.présents.length
-  const dense = n >= SEUIL_DE_CONCURRENCE_DENSE
-  const présence = n === 0 ? 'aucun concurrent suivi n’y est présent' : `${pluriel(n, 'concurrent')} suivi${n > 1 ? 's' : ''} y ${n > 1 ? 'sont présents' : 'est présent'}`
-  const concurrence = dense ? `sur un segment disputé : ${présence}` : `et peu de concurrence : ${présence}`
-  const verdict: VerdictDeSegment = l.état === 'en_regression' ? 'ecarter' : soutenue ? (dense ? 'disputer' : 'pousser') : dense ? 'ecarter' : 'surveiller'
-  return { verdict, raison: `${début} ${concurrence}.` }
-}
-
-export type CaseDeDécision = {
-  readonly verdict: VerdictDeSegment
-  /** Les segments de la case, du plus actif au moins actif. */
-  readonly segments: readonly { readonly clé: string; readonly libellé: string; readonly niveau: NiveauDeSegment; readonly faits: number }[]
-}
-
-/** La matrice de décision : les offres et les niches rangées par verdict, le marché entier à part. */
-export function matriceDeDécision(lignes: readonly LigneDeMarché[]): { readonly cases: readonly CaseDeDécision[]; readonly faitsMax: number } {
-  const classées = lignes.filter((l) => l.niveau !== 'marche').map((l) => ({ l, verdict: lectureDuSegment(l).verdict }))
-  return {
-    cases: VERDICTS.map((verdict) => ({
-      verdict,
-      segments: classées
-        .filter((c) => c.verdict === verdict)
-        .map(({ l }) => ({ clé: l.clé, libellé: l.libellé, niveau: l.niveau, faits: l.faits }))
-        .sort((a, b) => b.faits - a.faits),
-    })),
-    faitsMax: Math.max(0, ...classées.map((c) => c.l.faits)),
-  }
-}
+// ── La décision ──────────────────────────────────────────────────────────────
+//
+// Le verdict par segment, la matrice et la simulation « et si » vivent dans
+// `lib/domaine/marches-decision.ts`, sans dépendance d'exécution, pour qu'un
+// composant client puisse les appeler. Ils sont réexportés ici.
+export * from '@/lib/domaine/marches-decision'
 
 /** Les bornes d'un trimestre `AAAA-Tn`, en dates du calendrier. */
 export function fenêtreDuTrimestre(période: string): { readonly début: string; readonly fin: string } | null {
@@ -834,13 +762,4 @@ export function périodesDeMarchés(
         }),
     }))
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
-}
-
-/** Un montant en euros, arrondi pour être lu : « 1,2 M€ », « 340 k€ ». */
-export function montantCourt(euros: number): string {
-  const f = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: n < 10 ? 1 : 0 })
-  if (euros >= 1_000_000_000) return `${f(euros / 1_000_000_000)} Md€`
-  if (euros >= 1_000_000) return `${f(euros / 1_000_000)} M€`
-  if (euros >= 1_000) return `${f(euros / 1_000)} k€`
-  return `${f(euros)} €`
 }
