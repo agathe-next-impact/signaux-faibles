@@ -1055,11 +1055,47 @@ export type PositionÀRendre = {
   readonly référence?: string | null
 }
 
+/**
+ * L'état de publication d'une période entière, dans les mots de l'API
+ * (`etat` du `PATCH`, `état` du `POST`). Publication et retrait portent sur la
+ * période : `partielle` dit qu'une partie seulement de ses lignes est publiée,
+ * ce que les écrans de synthèse du client ne lisent pas.
+ */
+export type PublicationDeLaPériode = 'publie' | 'propose' | 'retire' | 'partielle'
+
+/**
+ * L'état d'une période d'après le compte de ses lignes vivantes (éléments et
+ * positions). Seule règle du portail sur ce point : le tableau de l'opératrice,
+ * le texte de relecture et `GET /api/veille/syntheses` la lisent ici. Une
+ * période sans ligne n'est pas publiée.
+ */
+export function publicationDeLaPériode(c: { readonly lignes: number; readonly publiées: number; readonly retirées: number }): PublicationDeLaPériode {
+  if (c.publiées === 0 && c.retirées === 0) return 'propose'
+  if (c.publiées === c.lignes) return 'publie'
+  if (c.retirées === c.lignes) return 'retire'
+  return 'partielle'
+}
+
+/**
+ * Ce que le texte de relecture dit de l'état de la période (16 novembre 2026).
+ * La phrase était fixe, « Proposée : rien n'est montré au client. », et mentait
+ * depuis la publication automatique du 15 novembre : une synthèse publiée à
+ * l'écriture se lisait comme invisible dans le courriel « [Relecture] ».
+ */
+const PHRASES_DE_PUBLICATION: Readonly<Record<PublicationDeLaPériode, string>> = {
+  publie: 'Publiée : visible du client dans son espace.',
+  propose: "Proposée : rien n'est montré au client.",
+  retire: "Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau.",
+  partielle: 'Publiée en partie : les écrans de synthèse du client ne lisent pas cette période tant que toutes ses lignes ne sont pas publiées.',
+}
+
 export type SynthèseÀRendre = {
   readonly organisation: string
   readonly période: string
   readonly fenêtre: { readonly début: string; readonly fin: string }
   readonly grilleVersion: number
+  /** L'état réel de la période, lu dans ses lignes par l'appelant : jamais deviné ici. */
+  readonly publication: PublicationDeLaPériode
   readonly grille: Grille
   readonly éléments: readonly ÉlémentÀRendre[]
   readonly positions: readonly PositionÀRendre[]
@@ -1091,9 +1127,10 @@ const LIBELLÉS_CRANS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * La synthèse d'une période en texte brut, pour le courriel « [Relecture] » de
- * la revue (étape 3.3) : l'opératrice la relit avant que quoi que ce soit ne
- * soit montré à un client. Chaque élément porte ses faits datés ; un trou du
- * PESTEL est dit comme trou, jamais comme absence de nouvelles.
+ * la revue (étape 3.3). Sa deuxième ligne dit l'état de publication réel de la
+ * période (`publication`) : sous la publication automatique, l'opératrice relit
+ * une synthèse que le client voit déjà. Chaque élément porte ses faits datés ;
+ * un trou du PESTEL est dit comme trou, jamais comme absence de nouvelles.
  */
 const nd = (x: unknown) => (typeof x === 'number' ? x.toLocaleString('fr-FR') : 'n.d.')
 /** Un montant en euros, ou « n.d. » sans unité : « n.d. € » se lisait comme un montant. */
@@ -1137,7 +1174,7 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
   }
 
   lignes.push(`Synthèse stratégique, ${s.organisation}, période ${s.période}`)
-  lignes.push(`Fenêtre du ${s.fenêtre.début} au ${s.fenêtre.fin}, grille v${s.grilleVersion}. Proposée : rien n'est montré au client.`)
+  lignes.push(`Fenêtre du ${s.fenêtre.début} au ${s.fenêtre.fin}, grille v${s.grilleVersion}. ${PHRASES_DE_PUBLICATION[s.publication]}`)
 
   const pestel = s.éléments.filter((é) => é.outil === 'pestel')
   if (pestel.length > 0) {

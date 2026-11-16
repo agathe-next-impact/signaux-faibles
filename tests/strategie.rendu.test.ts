@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rendreLaSynthèse, type ÉlémentÀRendre, type PositionÀRendre } from '@/lib/domaine/strategie'
+import { publicationDeLaPériode, rendreLaSynthèse, type PublicationDeLaPériode, type ÉlémentÀRendre, type PositionÀRendre } from '@/lib/domaine/strategie'
 
 const GRILLE = {
   axesGroupes: [
@@ -29,6 +29,7 @@ const rendu = rendreLaSynthèse({
   période: '2026-10',
   fenêtre: { début: '2026-07-20', fin: '2026-10-27' },
   grilleVersion: 1,
+  publication: 'propose',
   grille: GRILLE,
   éléments: [
     élément({ id: 'w', outil: 'swot', clé: 'faiblesses', état: 'nouveau' }),
@@ -69,6 +70,7 @@ describe('rendreLaSynthèse', () => {
       période: '2026-10',
       fenêtre: { début: '2026-10-01', fin: '2026-10-31' },
       grilleVersion: 1,
+      publication: 'propose',
       grille: GRILLE,
       éléments: [],
       positions: [
@@ -87,6 +89,54 @@ describe('rendreLaSynthèse', () => {
   })
 })
 
+describe('rendreLaSynthèse, état de publication', () => {
+  const texteEn = (publication: PublicationDeLaPériode) =>
+    rendreLaSynthèse({
+      organisation: 'cci-cantal',
+      période: '2026-T4',
+      fenêtre: { début: '2026-10-01', fin: '2026-11-16' },
+      grilleVersion: 3,
+      publication,
+      grille: GRILLE,
+      éléments: [],
+      positions: [],
+      faits: new Map(),
+    }).split('\n')[1]
+
+  it('dit l’état réel de la période sur sa deuxième ligne, dans les quatre cas', () => {
+    expect(texteEn('publie')).toBe('Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Publiée : visible du client dans son espace.')
+    expect(texteEn('propose')).toBe("Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Proposée : rien n'est montré au client.")
+    expect(texteEn('retire')).toBe("Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau.")
+    expect(texteEn('partielle')).toBe(
+      'Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Publiée en partie : les écrans de synthèse du client ne lisent pas cette période tant que toutes ses lignes ne sont pas publiées.',
+    )
+  })
+
+  it('ne dit jamais « rien n’est montré » d’une période publiée, ni « visible » d’une période qui ne l’est pas', () => {
+    expect(texteEn('publie')).not.toContain('Proposée')
+    expect(texteEn('publie')).not.toContain("rien n'est montré")
+    for (const état of ['propose', 'retire', 'partielle'] as const) expect(texteEn(état)).not.toContain('visible du client')
+  })
+})
+
+describe('publicationDeLaPériode', () => {
+  it('déduit l’état de la période entière du compte de ses lignes', () => {
+    expect(publicationDeLaPériode({ lignes: 14, publiées: 14, retirées: 0 })).toBe('publie')
+    expect(publicationDeLaPériode({ lignes: 14, publiées: 0, retirées: 0 })).toBe('propose')
+    expect(publicationDeLaPériode({ lignes: 14, publiées: 0, retirées: 14 })).toBe('retire')
+  })
+
+  it('une période publiée ou retirée en partie est « partielle », jamais publiée', () => {
+    expect(publicationDeLaPériode({ lignes: 14, publiées: 13, retirées: 0 })).toBe('partielle')
+    expect(publicationDeLaPériode({ lignes: 14, publiées: 13, retirées: 1 })).toBe('partielle')
+    expect(publicationDeLaPériode({ lignes: 14, publiées: 0, retirées: 3 })).toBe('partielle')
+  })
+
+  it('une période sans ligne n’est pas publiée', () => {
+    expect(publicationDeLaPériode({ lignes: 0, publiées: 0, retirées: 0 })).toBe('propose')
+  })
+})
+
 describe('rendreLaSynthèse, benchmark', () => {
   it('écrit « n.d. » sans unité, et l’euro derrière un montant seulement', () => {
     const texte = rendreLaSynthèse({
@@ -94,6 +144,7 @@ describe('rendreLaSynthèse, benchmark', () => {
       période: '2026-T3',
       fenêtre: { début: '2026-07-22', fin: '2026-10-04' },
       grilleVersion: 1,
+      publication: 'propose',
       grille: GRILLE,
       éléments: [
         élément({

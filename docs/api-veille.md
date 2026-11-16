@@ -892,7 +892,9 @@ grille en vigueur : PESTEL, SWOT, TOWS, positions sur la carte des groupes
 stratégiques et sur la matrice de Mendelow. Postée par la revue mensuelle
 (page « Tâche — Revue mensuelle des référentiels », section « SYNTHÈSE
 STRATÉGIQUE », entre l'étape 2 et l'étape 3), relue par l'opératrice dans le
-courriel « [Relecture] » ; **rien n'est montré au client pendant le pilote**.
+courriel « [Relecture] » ; rien n'était montré au client pendant le pilote, et
+depuis le 15 novembre 2026 une synthèse acceptée est publiée à l'écriture (voir
+`PATCH` plus bas) : le texte de relecture dit l'état réel de la période.
 Postgres garde les énoncés (240 caractères au plus, exception bornée de
 `CLAUDE.md`) et les crans, jamais un texte de lettre. Plan :
 `docs/plan-outils-strategiques.md`, lot 6. Depuis le 28 octobre 2026, la même
@@ -1039,11 +1041,33 @@ d'une période non publiée sur `/espaces/syntheses/[slug]/[periode]`.
 ### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période
 
 `{ "état": "lue", "organisation", "période", "fenêtre", "grilleVersion",
-"éléments", "positions", "texte", "swot", "crans" }`. `texte` est la synthèse
-rendue pour le courriel « [Relecture] », à recopier telle quelle ; `swot` donne
-les éléments par leur `id` (que la `filiation` du mois suivant désigne) et
-`crans` les positions posées. `aucune` (200) si rien n'est enregistré pour la
-période.
+"éléments", "positions", "publication", "texte", "swot", "crans" }`. `texte` est
+la synthèse rendue pour le courriel « [Relecture] », à recopier telle quelle ;
+`swot` donne les éléments par leur `id` (que la `filiation` du mois suivant
+désigne) et `crans` les positions posées. `aucune` (200) si rien n'est
+enregistré pour la période.
+
+**État de publication** (16 novembre 2026). `publication` dit l'état réel de la
+période, lu dans ses lignes vivantes (éléments et positions) au moment de la
+lecture, dans les mots du `PATCH` : ne pas le déduire du texte, ni de
+`PUBLICATION_AUTOMATIQUE`.
+
+| `publication` | Ce que voit le client | Deuxième ligne de `texte`, après la fenêtre et la grille |
+|---|---|---|
+| `publie` | la période, dans son espace (les écrans montrent la dernière période entièrement publiée) | « Publiée : visible du client dans son espace. » |
+| `propose` | rien | « Proposée : rien n'est montré au client. » |
+| `retire` | rien, et une réécriture la laisse retirée | « Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau. » |
+| `partielle` | rien sur les écrans de synthèse (une partie seulement des lignes est publiée, ou retirée) | « Publiée en partie : les écrans de synthèse du client ne lisent pas cette période tant que toutes ses lignes ne sont pas publiées. » |
+
+Avant cette date, la deuxième ligne disait toujours « Proposée : rien n'est
+montré au client. », y compris d'une période que la publication automatique
+venait de publier (constaté sur `cci-cantal`, `2026-T4` : `POST` répondait
+`état: "publie"`, la lecture suivante disait « Proposée »). `état` reste l'issue
+de la lecture (`lue`, `aucune`, `hors-pilote`) : l'état de publication a son
+champ, comme sur `GET /api/veille/fiche`. Aucun geste du portail ne produit
+aujourd'hui `partielle` (il écrit, publie et retire une période entière, dans
+une transaction) ; si elle apparaît, un `PATCH` (`publie` ou `retire`) remet la
+période dans un seul état.
 
 ### `PATCH /api/veille/syntheses` : publier ou retirer une période (lot 11, 28 octobre 2026)
 

@@ -1,3 +1,4 @@
+import { eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Base } from '@/lib/base/client'
 import { ouvrirEnEssai } from '@/lib/base/organisations'
@@ -46,6 +47,7 @@ const {
 } = await import('@/lib/portail/strategie')
 const { construireDocument } = await import('@/lib/domaine/document')
 const { lireLaSynthèse, organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
+const { élémentsSynthèse } = await import('@/lib/base/schema')
 
 const REGISTRE = '1f2fe829ce71802a9c3bd1f4e8a7b6c5'
 const AUTRE_REGISTRE = '2f2fe829ce71802a9c3bd1f4e8a7b6c5'
@@ -429,6 +431,9 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       expect(lue).toMatchObject({ sorte: 'lue', période: '2026-10', fenêtre: FENÊTRE, grilleVersion: 1, éléments: 11, positions: 3 })
       if (lue.sorte !== 'lue') return
       expect(lue.texte).toContain('Synthèse stratégique, infralliance, période 2026-10')
+      // Sans publication automatique, la période attend l'opératrice, et le texte comme le champ le disent.
+      expect(lue.publication).toBe('propose')
+      expect(lue.texte).toContain("grille v1. Proposée : rien n'est montré au client.")
       expect(lue.texte).toContain('- Socioculturel : trou, aucune famille ne couvre cette dimension')
       expect(lue.texte).toContain('- Technologique : aucun fait dans la fenêtre')
       expect(lue.texte).toContain('- Légal : Trois textes européens avancent au Conseil en octobre 2026. [1 fait : 2026-10-')
@@ -673,6 +678,38 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)
         expect(await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)).toMatchObject({ sorte: 'retirée' })
         expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
+    it('la lecture de relecture dit l’état réel de la période : publiée au dépôt, retirée, proposée, publiée en partie', async () => {
+      const lire = async () => {
+        const lue = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+        if (lue.sorte !== 'lue') throw new Error(`lecture ${lue.sorte}`)
+        return { publication: lue.publication, phrase: lue.texte.split('\n')[1]!.replace(/^.*grille v1\. /, '') }
+      }
+      vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'oui')
+      try {
+        // Le cas constaté le 16 novembre 2026 (cci-cantal, 2026-T4) : `POST` répond « publie », la lecture disait « Proposée ».
+        expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', état: 'publie' })
+        expect(await lire()).toEqual({ publication: 'publie', phrase: 'Publiée : visible du client dans son espace.' })
+
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)
+        expect(await lire()).toEqual({ publication: 'retire', phrase: "Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau." })
+        // Réécrite, une période retirée reste retirée, et la lecture ne la dit pas publiée parce que le réglage publie.
+        expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', état: 'retire' })
+        expect((await lire()).publication).toBe('retire')
+
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'propose' }, db)
+        expect(await lire()).toEqual({ publication: 'propose', phrase: "Proposée : rien n'est montré au client." })
+
+        // Une seule ligne publiée : les écrans de synthèse ne lisent pas la période, et la lecture ne la dit pas visible.
+        const [une] = await db.select({ id: élémentsSynthèse.id }).from(élémentsSynthèse).where(isNull(élémentsSynthèse.archivéeLe)).limit(1)
+        await db.update(élémentsSynthèse).set({ étatPublication: 'publie' }).where(eq(élémentsSynthèse.id, une!.id))
+        const partielle = await lire()
+        expect(partielle.publication).toBe('partielle')
+        expect(partielle.phrase).toMatch(/^Publiée en partie : /)
       } finally {
         vi.unstubAllEnvs()
       }

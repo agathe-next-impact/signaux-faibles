@@ -74,8 +74,9 @@ Organisation visée : $ARGUMENTS
      `GET /api/veille/syntheses?slug=<slug>&periode=<mois de la première lettre,
      AAAA-MM>` : si l'un répond `hors-pilote` ou `aucune`, ou si la grille n'a pas
      `validéeLe`, n'ouvre rien, dis ce qui manque et renvoie à `/onboarding-outils
-     <nom>`. Une synthèse ou une fiche « proposée » ne retient pas l'ouverture :
-     dis seulement qu'il reste à l'opératrice de les publier.
+     <nom>`. Une synthèse ou une fiche « proposée » (`"publication": "propose"`
+     dans la réponse, jamais déduit du texte) ne retient pas l'ouverture : dis
+     seulement qu'il reste à l'opératrice de les publier.
      L'**amorçage trimestriel** (`GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>`
      du trimestre de la première lettre) ne retient pas l'ouverture non plus :
      s'il répond `aucune`, dis que les écrans « Forces du marché », « Scénarios »
