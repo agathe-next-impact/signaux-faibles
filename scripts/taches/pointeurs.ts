@@ -114,7 +114,7 @@ Ouvre dans Notion la page « Tâche — Revue mensuelle des référentiels (prom
 
 Pour une période passée, l'« aujourd'hui » de la section est la veille de la première parution publiée qui suit la période (le dernier jour de la période si aucune ne la suit), et « demain » le jour de cette parution. Une période « AAAA-MM » est une synthèse mensuelle (S.2 à S.6) ; une période « AAAA-Tn » est la synthèse de ce trimestre (S.7), sur sa propre fenêtre, faite après la synthèse mensuelle de son dernier mois si celle-ci est aussi désignée. Si la grille répond « hors-pilote » en S.0, arrête-toi.
 
-À la fin, envoie un seul courriel à agathe@signauxfaibles.io, objet « [Relecture] Synthèses rétrospectives, <organisation> : <périodes> », qui recopie TELS QUELS les textes rendus en S.6 et S.7, dans l'ordre des périodes, avec les avertissements et les refus, puis celui de la fiche si S.8 en a enregistré une. Rien n'est publié : l'opératrice publie après relecture.
+À la fin, envoie un seul courriel à agathe@signauxfaibles.io, objet « [Relecture] Synthèses rétrospectives, <organisation> : <périodes> », qui recopie TELS QUELS les textes rendus en S.6 et S.7, dans l'ordre des périodes, avec les avertissements et les refus, puis celui de la fiche si S.8 en a enregistré une. Rien n'est publié par toi : le portail publie lui-même les synthèses qu'il accepte (publication automatique), l'opératrice relit ce courriel et retire au besoin, et la fiche attend sa publication.
 
 Cette page est la seule source de vérité de la section. N'exécute aucune autre étape de la page : si ce message et la page divergent, c'est la page qui fait foi.
 

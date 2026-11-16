@@ -12,6 +12,7 @@ import {
 } from '@/lib/domaine/strategie-vues'
 import type { MarchésDUneOrganisation, PériodeDeMarchés } from '@/lib/domaine/marches'
 import { publierLesMarchés, publierUnePériode } from '@/lib/portail/publication'
+import { publicationAutomatique } from '@/lib/portail/strategie'
 
 export const metadata: Metadata = { title: 'Synthèses stratégiques — signauxfaibles' }
 
@@ -74,6 +75,7 @@ export default async function Synthèses({
   searchParams: Promise<{ synthese?: string | string[]; marches?: string | string[]; slug?: string | string[]; periode?: string | string[] }>
 }) {
   const { accès, organisations, marchés } = await listerLesSynthèses()
+  const automatique = publicationAutomatique()
   const paramètres = await searchParams
   const résultat =
     typeof paramètres.synthese === 'string'
@@ -91,10 +93,9 @@ export default async function Synthèses({
         <p className="label-mono text-rose-texte">accès opérateur · {accès.nom}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">Synthèses stratégiques</h1>
         <p className="text-ardoise">
-          Une période n’est montrée au client qu’une fois publiée en entier, après relecture du courriel « [Relecture] » ;
-          « Relire et modifier » permet d’en retoucher les énoncés avant. Publier la rend visible à ses lecteurs dès leur
-          prochaine visite, sur les écrans de l’espace qui lisent la synthèse (Acteurs, Forces du marché, PESTEL,
-          Diagnostic, Scénarios, Options ou Recommandations, Indicateurs) ; retirer la leur cache aussitôt.{' '}
+          {automatique
+            ? 'Publication automatique : une synthèse mensuelle ou trimestrielle qui passe la porte est publiée dès son dépôt, et ses lecteurs la voient à leur prochaine visite, sur les écrans de l’espace qui lisent la synthèse (Acteurs, Forces du marché, PESTEL, Diagnostic, Scénarios, Options ou Recommandations, Indicateurs). « Retirer » la leur cache aussitôt, et une période retirée reste retirée même réécrite, jusqu’à « Publier » ; pour retoucher les énoncés d’une période, la retirer, la retoucher par « Relire et modifier », puis la publier.'
+            : 'Une période n’est montrée au client qu’une fois publiée en entier, après relecture du courriel « [Relecture] » ; « Relire et modifier » permet d’en retoucher les énoncés avant. Publier la rend visible à ses lecteurs dès leur prochaine visite, sur les écrans de l’espace qui lisent la synthèse (Acteurs, Forces du marché, PESTEL, Diagnostic, Scénarios, Options ou Recommandations, Indicateurs) ; retirer la leur cache aussitôt.'}{' '}
           <Link href="/espaces" className="text-encre underline underline-offset-2">
             Choisir un espace
           </Link>
@@ -132,7 +133,7 @@ export default async function Synthèses({
         </>
       )}
 
-      {marchés && marchés.length > 0 ? <Marchés organisations={marchés} /> : null}
+      {marchés && marchés.length > 0 ? <Marchés organisations={marchés} automatique={automatique} /> : null}
     </main>
   )
 }
@@ -207,17 +208,25 @@ function Organisation({ organisation: o }: { organisation: SynthèsesDUneOrganis
  * par le portail ; l'opératrice les relit dans l'espace, où sa session voit les
  * mesures proposées sous un bandeau, puis publie ici.
  */
-function Marchés({ organisations }: { organisations: readonly MarchésDUneOrganisation[] }) {
+function Marchés({ organisations, automatique }: { organisations: readonly MarchésDUneOrganisation[]; automatique: boolean }) {
   return (
     <section id="marches" aria-labelledby="titre-marches" className="flex flex-col gap-4">
       <h2 id="titre-marches" className="font-titre text-h2 font-bold text-encre">
         Marchés et niches
       </h2>
-      <p className="text-ardoise">
-        Les mesures d’un trimestre sont calculées par le portail et restent proposées jusqu’à votre publication. « Relire
-        dans l’espace » les montre telles que le client les verra. Une période publiée ne se recalcule pas : la retirer
-        d’abord.
-      </p>
+      {automatique ? (
+        <p className="text-ardoise">
+          Publication automatique : les mesures d’un trimestre sont calculées par le portail et publiées aussitôt, et une
+          nouvelle mesure du même trimestre remplace la publiée. « Retirer » les cache au client ; une période retirée
+          reste retirée même re-mesurée, jusqu’à « Publier ».
+        </p>
+      ) : (
+        <p className="text-ardoise">
+          Les mesures d’un trimestre sont calculées par le portail et restent proposées jusqu’à votre publication. « Relire
+          dans l’espace » les montre telles que le client les verra. Une période publiée ne se recalcule pas : la retirer
+          d’abord.
+        </p>
+      )}
       <div className="overflow-x-auto border border-gris-ligne">
         <table className="w-full border-collapse text-corps">
           <thead>
