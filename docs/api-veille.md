@@ -509,6 +509,21 @@ l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
   (état hors `essai` et `abonnee`), 409 `parutions-invalides` (plus de
   restantes que de parutions), 400 `date-invalide`.
 
+**Placer à une étape** (16 novembre 2026) : `{ "slug", "action": "placer", "etape": … }`
+met l'organisation à l'étape nommée **cette semaine**, sans date ni compte de
+parutions à fournir. `etape` vaut `essai-1` à `essai-8` (une parution complète de
+l'essai), `derniere` (la dernière parution complète, quel que soit leur nombre),
+`tronquee` (la parution réduite à « L'essentiel ») ou `suspendue` (essai terminé).
+Le portail calcule le J0 qui produit cette étape (`j0PourLaCible`,
+`lib/domaine/placement.ts`, fonction pure dont la propriété est testée : l'étape
+obtenue est l'étape demandée, pour un à huit parutions) et passe l'organisation à
+l'état `essai`. 200 `placée` avec `j0` et `étape` (le libellé de l'étape) ; 409
+`pas-en-essai` (état hors `essai` et `abonnee`), 409 `abonnée-stripe`, 409
+`accès-offert` (l'offre `gratuite` n'a pas de fin d'essai), 409 `cible-invalide`
+avec `parutions` (l'étape dépasse l'essai de l'organisation), 400 si `etape` est
+mal formée. C'est le geste « Placer à une étape » de la fiche, et celui des gestes
+en série du tableau ; `parcours` reste pour dater une entrée future.
+
 404 `inconnue` pour un slug absent. Un espace réduit à « L'essentiel » ou
 suspendu par le calendrier retrouve la lecture complète si le décalage le
 ramène dans l'essai. Un courrier de fin d'essai déjà parti ne repart pas : le

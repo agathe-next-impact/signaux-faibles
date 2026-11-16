@@ -974,6 +974,41 @@ et `statut-registre-illisible`. Ces défauts ne sont jamais filtrés par la mise
 des archivées. Rien n'est gardé ni écrit ; une suspension, une organisation de test ou une
 organisation non donnée ne sont pas des écarts ; un contrôle qui n'a pas pu avoir lieu
 (`SOURCE_ACCES=notion`, base absente) le dit dans `statuts`. Le cron (`GET`) ne compare rien.
+**Admin simplifiée : placer, voir ce qui vient, agir en série** (16 novembre 2026,
+demande de l'opératrice : gérer abonnements, essais et veille sans calculer J0 ; trois lots).
+L'étape reste **calculée, jamais stockée** ; `lib/domaine/placement.ts` (pur, garde
+d'architecture) fait l'inverse d'`étapeDuParcours` : l'opératrice nomme une étape
+(`essai-n`, `derniere`, `tronquee`, `suspendue`), `j0PourLaCible` rend le J0 qui la produit
+cette semaine (propriété testée pour un à huit parutions), `réglerLeParcours` l'écrit (sorte
+`placer` ; mêmes gardes que la mise en parcours, plus `accès-offert` ; `PATCH
+/api/veille/organisations`, `action: placer`). Le même module dit **ce qui vient**
+(`prochaineÉchéance`, en rejouant `étapeDuParcours` semaine après semaine ;
+`semaineDuParcours`, les courriers de parcours dus cette semaine et les changements de
+lundi, par les règles du passage quotidien ; `suiteDuHorsParcours`, ce qu'attend un essai
+sans J0) et **pourquoi un geste est impossible** (`refusDuPlacement`, `refusDeProlonger` :
+le geste reste montré, grisé, avec sa raison). **Tableau** (`/espaces/abonnements`) : colonne
+« échéance » qui ordonne chaque groupe, bandeau « Cette semaine », et gestes **en série**
+(une case par ligne, puis placer, prolonger ou régler la relecture) : l'effet est montré
+organisation par organisation avant de confirmer (`aperçuDeLaSérie`), puis
+`appliquerEnSérie` (`lib/portail/reglages.ts`, `exigerOpérateur` une fois avant la première
+écriture, une transaction par organisation, cinquante au plus, retour qui nomme les refus) ;
+la décision du 31 octobre (« des données seulement » au tableau) est levée pour ces seuls
+gestes. **Fiche** (`/espaces/abonnements/[slug]`) : un résumé en tête (étape, échéance,
+lecteurs, santé) et huit sections au lieu de onze, « Parcours » (« Placer à une étape » avec
+aperçu avant confirmation, réglages par date sous « Réglages avancés »), « Veille
+hebdomadaire », « Accès et envois », « Lecteurs », « Cycle de vie » (offre, suspendre,
+écarter, archiver), « Outils stratégiques » (pilote, grille, fiche de veille), « Courriers »,
+« Onboarding » (en tête tant qu'il est en cours) ; les anciennes ancres (`#abonnement`,
+`#decision`, `#pilote`…) mènent toujours à leur contenu (`Section`, `anciens`). Rendu dans
+`components/gestion-operatrice.tsx` et `components/serie-operatrice.tsx`, qui ne lisent rien.
+**Veille hebdomadaire** : les veilles déclarées au portail (jour, heure, cadence, dernier
+numéro, prochaine parution calculée par `parutionsÀPlanifier`) ; `réglerLaVeille`
+(`lib/portail/gestion-actions.ts`, privilège d'abord) ne règle qu'une veille **existante**,
+sans toucher au libellé ni au numéro ; une organisation produite par les tâches Notion n'en a
+pas, son calendrier reste au registre. Le réglage « relecture » (`relecture_requise`) ne
+détourne que les **lettres envoyées par le portail** (`lib/portail/parution.ts`,
+`envoi-des-lettres.ts`), plus les courriers d'essai, brouillons depuis le 23 octobre : son
+libellé le dit désormais.
 **Suivi des onboardings** (1er novembre 2026, lot 1 de
 `docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
 portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une

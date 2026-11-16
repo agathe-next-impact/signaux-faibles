@@ -973,6 +973,36 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('contrôlerLeDispositif')).toEqual(['app/api/veille/etat/route.ts', 'lib/portail/controle-du-soir.ts', 'lib/portail/gestion.ts'])
   })
 
+  it('le placement par étape et les gestes en série : une règle pure, le privilège avant toute écriture', () => {
+    // L'opératrice nomme une étape, la fonction pure rend J0 (16 novembre
+    // 2026) : elle ne lit ni base ni Notion, et se teste comme une propriété.
+    const placement = readFileSync(join(process.cwd(), 'lib', 'domaine', 'placement.ts'), 'utf8')
+    expect(placement).not.toMatch(/from '@\/lib\/(base|notion|documents|payload|auth|portail)/)
+    // La série règle plusieurs organisations : la garde une fois, avant la première écriture.
+    const réglages = readFileSync(join(process.cwd(), 'lib', 'portail', 'reglages.ts'), 'utf8')
+    const série = réglages.slice(réglages.indexOf('export async function appliquerEnSérie'))
+    expect(série.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(série.indexOf('exigerOpérateur()')).toBeLessThan(série.indexOf('réglerLeParcours('))
+    // La veille : seule une veille déclarée se règle de la fiche, derrière le privilège.
+    expect(appelants('déclarerLaVeille')).toEqual([
+      'app/api/veille/veilles/route.ts',
+      'lib/base/veilles.ts',
+      'lib/payload/portail.ts',
+      'lib/portail/gestion-actions.ts',
+    ])
+    const gestes = readFileSync(join(process.cwd(), 'lib', 'portail', 'gestion-actions.ts'), 'utf8')
+    const veille = gestes.slice(gestes.indexOf('export async function réglerLaVeille'))
+    expect(veille.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(veille.indexOf('exigerOpérateur()')).toBeLessThan(veille.indexOf('listerLesVeilles('))
+    expect(veille.indexOf('listerLesVeilles(')).toBeLessThan(veille.indexOf('déclarerLaVeille('))
+    // Les composants de la fiche et du tableau ne lisent rien : la page, gardée, leur passe ses lectures.
+    for (const composant of ['gestion-operatrice.tsx', 'serie-operatrice.tsx']) {
+      const source = readFileSync(join(process.cwd(), 'components', composant), 'utf8')
+      expect(source, composant).not.toMatch(/from '@\/lib\/auth\//)
+      expect(source, composant).not.toMatch(/import \{[^}]*\} from '@\/lib\/base\/(?!situation'|veilles')/)
+    }
+  })
+
   it('les écarts de statut avec le registre : une lecture, un appelant, une comparaison pure, le jeton avant le corps', () => {
     // Le portail ne lit jamais le registre : la tâche donne ses lignes au POST
     // de la route du soir (15 novembre 2026). Rien n'en est gardé, rien n'est

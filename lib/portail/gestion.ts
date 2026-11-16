@@ -1,6 +1,7 @@
 import { courriersRécents } from '@/lib/base/courriers'
 import { onboardingDUnSlug } from '@/lib/base/onboardings'
 import { lecteursÀGérer, organisationÀGérer, type LecteurÀGérer, type OrganisationÀGérer } from '@/lib/base/gestion'
+import { listerLesVeilles, type VeilleListée } from '@/lib/base/veilles'
 import type { Défaut } from '@/lib/portail/etat'
 import { contrôlerLeDispositif } from '@/lib/portail/controle-du-soir'
 import { lireLaFicheDuPilote, type LectureDeLaFiche } from '@/lib/portail/fiche-veille'
@@ -72,6 +73,12 @@ export type GestionDUneOrganisation = {
    * brouillon Gmail, ou si Payload n'a pas répondu.
    */
   readonly lettresÀPublier: readonly LettreÀPublier[] | null
+  /**
+   * Les veilles déclarées au portail (16 novembre 2026) : jour, heure, cadence
+   * et numéro courant, d'où la file planifie. Vide pour une organisation dont
+   * les lettres sont produites par les tâches Notion, qui suivent le registre.
+   */
+  readonly veilles: readonly VeilleListée[]
 }
 
 export const JOURS_DU_JOURNAL = 30
@@ -81,7 +88,7 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
   const organisation = await organisationÀGérer(slug)
   if (!organisation) return null
   const depuis = new Date(maintenant.getTime() - JOURS_DU_JOURNAL * 24 * 60 * 60 * 1000)
-  const [lecteurs, grille, fiche, courriers, onboarding, lettresÀPublier] = await Promise.all([
+  const [lecteurs, grille, fiche, courriers, onboarding, lettresÀPublier, veilles] = await Promise.all([
     lecteursÀGérer(organisation.id),
     lireLaGrilleDuPilote({ slug }),
     lireLaFicheDuPilote({ slug }),
@@ -91,6 +98,7 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
       console.warn(`[gestion] ${slug} : lettres à publier non lues (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
       return null
     }),
+    listerLesVeilles(slug),
   ])
   return {
     organisation,
@@ -101,5 +109,6 @@ export async function gestionDUneOrganisation(slug: string, maintenant: Date = n
     courriers: courriers.filter((c) => c.slug === slug),
     onboarding: onboarding ? vueDUnOnboarding(onboarding, maintenant) : null,
     lettresÀPublier,
+    veilles,
   }
 }

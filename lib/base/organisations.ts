@@ -2,7 +2,8 @@ import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { abonnements, lecteurs, organisations, prescripteurs, travaux } from '@/lib/base/schema'
-import { dateDeParis, PARUTIONS_D_ESSAI_RECOMMANDÉE, type Offre } from '@/lib/domaine/parcours'
+import { dateDeParis, libelléDÉtape, PARUTIONS_D_ESSAI_RECOMMANDÉE, type Offre } from '@/lib/domaine/parcours'
+import { j0PourLaCible, lireUneCible, refusDuPlacement, étapeDeLaCible } from '@/lib/domaine/placement'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
 
 /**
@@ -251,6 +252,8 @@ export type Réglage =
   | { readonly sorte: 'offre'; readonly offre: Offre }
   | { readonly sorte: 'parutions'; readonly parutions: number }
   | { readonly sorte: 'parcours'; readonly prochaineLettre: string; readonly restantes: number }
+  /** Placer à une étape nommée (16 novembre 2026) : `essai-2`, `derniere`, `tronquee`, `suspendue`. */
+  | { readonly sorte: 'placer'; readonly cible: string }
   | { readonly sorte: 'décision'; readonly décision: Décision }
 
 /**
@@ -275,6 +278,9 @@ export type RésultatDuRéglage =
   | { readonly sorte: 'offre-posée'; readonly offre: Offre; readonly état: string }
   | { readonly sorte: 'parutions-réglées'; readonly parutions: number }
   | { readonly sorte: 'mis-en-parcours'; readonly j0: string; readonly parutions: number; readonly restantes: number }
+  | { readonly sorte: 'placée'; readonly j0: string; readonly étape: string }
+  | { readonly sorte: 'accès-offert' }
+  | { readonly sorte: 'cible-invalide'; readonly parutions: number }
   | { readonly sorte: 'inconnue' }
   | { readonly sorte: 'pas-en-essai'; readonly état: string }
   | { readonly sorte: 'sans-j0' }
@@ -305,6 +311,7 @@ export async function réglerLeParcours(
           activéeLe: organisations.activéeLe,
           essaiOuvertLe: organisations.essaiOuvertLe,
           parutionsDEssai: organisations.parutionsDEssai,
+          offre: organisations.offre,
         })
         .from(organisations)
         .where(eq(organisations.slug, slug))
@@ -362,6 +369,33 @@ export async function réglerLeParcours(
           .set({ parutionsDEssai: réglage.parutions, modifiéeLe: maintenant })
           .where(eq(organisations.id, organisation.id))
         return { sorte: 'parutions-réglées', parutions: réglage.parutions } as const
+      }
+
+      // Placer à une étape nommée (16 novembre 2026) : l'opératrice dit l'étape,
+      // la fonction pure rend le J0 qui la produit cette semaine. Mêmes gardes
+      // que la mise en parcours, plus l'accès offert, que J0 ne change pas.
+      if (réglage.sorte === 'placer') {
+        const lus = await tx
+          .select({ état: abonnements.état })
+          .from(abonnements)
+          .where(eq(abonnements.organisationId, organisation.id))
+        const refus = refusDuPlacement(organisation, lus.some((a) => ÉTATS_STRIPE_OUVERTS.has(a.état)))
+        if (refus === 'pas-en-essai') return { sorte: 'pas-en-essai', état: organisation.état } as const
+        if (refus) return { sorte: refus } as const
+        const parutions = organisation.parutionsDEssai
+        const cible = lireUneCible(réglage.cible, parutions)
+        if (!cible) return { sorte: 'cible-invalide', parutions } as const
+        const j0 = j0PourLaCible(cible, parutions, dateDeParis(maintenant))
+        await tx
+          .update(organisations)
+          .set({
+            état: 'essai',
+            activéeLe: j0,
+            essaiOuvertLe: organisation.essaiOuvertLe ?? maintenant,
+            modifiéeLe: maintenant,
+          })
+          .where(eq(organisations.id, organisation.id))
+        return { sorte: 'placée', j0: dateDeParis(j0), étape: libelléDÉtape(étapeDeLaCible(cible, parutions)) } as const
       }
 
       if (réglage.sorte === 'parcours') {

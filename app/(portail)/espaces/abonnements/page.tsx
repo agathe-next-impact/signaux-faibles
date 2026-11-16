@@ -10,7 +10,19 @@ import { désarchiverLOrganisationDepuisLeTableau } from '@/lib/portail/archivag
 import type { LigneDAbonnement } from '@/lib/base/situation'
 import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
+import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type EntréeDuParcours, type Étape } from '@/lib/domaine/parcours'
+import {
+  aperçuDeLaSérie,
+  cléDeLot,
+  libelléDeLot,
+  lireUnLot,
+  LOTS_PROPOSÉS,
+  prochaineÉchéance,
+  semaineDuParcours,
+  type Échéance,
+} from '@/lib/domaine/placement'
+import { champ, bouton } from '@/components/gestion-operatrice'
+import { AperçuDeSérie, CetteSemaine, RetourDeSérie } from '@/components/serie-operatrice'
 import { grouperParStatut, statutDAbonnement } from '@/lib/domaine/statut-d-abonnement'
 import type { SantéDesEspaces } from '@/lib/portail/gestion'
 
@@ -48,12 +60,27 @@ export const metadata: Metadata = { title: 'Abonnements — signauxfaibles' }
  * Stripe ouvert ; une organisation archivée (bouton de sa fiche) quitte le
  * tableau pour la liste repliée « Organisations archivées », d'où elle se
  * désarchive.
+ *
+ * Depuis le 16 novembre 2026 (demande de l'opératrice : gérer les essais plus
+ * simplement), le tableau dit **ce qui vient** : une colonne « échéance » (le
+ * prochain lundi où le calendrier change l'étape, `prochaineÉchéance`), qui
+ * ordonne chaque groupe, et un bandeau « Cette semaine » (`semaineDuParcours` :
+ * les courriers de parcours dus et les changements de lundi). Et il **agit en
+ * série** : une case par ligne, un geste (placer à une étape, prolonger, régler
+ * la relecture), son effet montré organisation par organisation avant de
+ * confirmer (`aperçuDeLaSérie`), puis `appliquerEnSérie`. La décision du
+ * 31 octobre (« des données seulement » dans le tableau) est levée pour ces
+ * seuls gestes de parcours ; tout le reste se règle toujours sur la fiche.
  */
 export const instant = false
 
 const MESSAGES: Record<string, string> = {
   prolongé: 'Essai prolongé : J0 est décalé.',
-  'relecture-réglée': 'Relecture des courriers réglée.',
+  'relecture-réglée': 'Destinataire des lettres envoyées par le portail réglé.',
+  placée: 'Organisation placée à l’étape choisie.',
+  'accès-offert': 'Accès offert : pas de fin d’essai, rien à placer.',
+  'cible-invalide': 'Cette étape n’existe pas dans son essai.',
+  'décision-impossible': 'Décision impossible depuis cet état.',
   inconnue: 'Organisation inconnue.',
   'pas-en-essai': 'Cette organisation n’est pas en essai : rien à prolonger.',
   'sans-j0': 'J0 n’est pas encore posé : rien à prolonger.',
@@ -70,20 +97,35 @@ const MESSAGES: Record<string, string> = {
   'pas-archivée': 'Cette organisation n’est pas archivée : rien à faire.',
 }
 
-const COLONNES = ['organisation', 'santé', 'état', 'étape', 'j0', 'offre', 'stripe', 'lecteurs', 'courriers'] as const
+const COLONNES = ['', 'organisation', 'santé', 'étape', 'échéance', 'j0', 'offre', 'stripe', 'lecteurs'] as const
 
-/** Le lundi de la semaine prochaine, valeur par défaut du champ « prochaine lettre ». */
-function lundiProchain(aujourdHui: string): string {
-  const date = new Date(`${aujourdHui}T00:00:00Z`)
-  const jour = date.getUTCDay() || 7
-  date.setUTCDate(date.getUTCDate() + (8 - jour))
-  return date.toISOString().slice(0, 10)
+/** L'identifiant du formulaire des gestes en série : les cases des lignes s'y rattachent par `form`. */
+const FORMULAIRE_DE_SÉRIE = 'serie'
+
+type Élément = { readonly ligne: LigneDAbonnement; readonly étape: Étape; readonly échéance: Échéance | null }
+
+function jourLong(dateISO: string): string {
+  return dateLongueDeParis(new Date(`${dateISO}T12:00:00Z`))
+}
+
+function chaînes(valeur: string | string[] | undefined): string[] {
+  return valeur === undefined ? [] : Array.isArray(valeur) ? valeur : [valeur]
 }
 
 export default async function Abonnements({
   searchParams,
 }: {
-  searchParams: Promise<{ reglage?: string | string[]; slug?: string | string[] }>
+  searchParams: Promise<{
+    reglage?: string | string[]
+    slug?: string | string[]
+    /** Le geste en série dont l'opératrice veut voir l'effet, et les organisations cochées. */
+    lot?: string | string[]
+    o?: string | string[]
+    /** Le retour d'une série appliquée : le geste, les organisations réglées, les refusées avec leur code. */
+    serie?: string | string[]
+    ok?: string | string[]
+    ko?: string | string[]
+  }>
 }) {
   const { accès, lignes, archivées } = await listerLesAbonnements()
   // La santé arrive en flux, cellule par cellule : le contrôle des espaces
@@ -96,11 +138,30 @@ export default async function Abonnements({
   const message = réglage ? MESSAGES[réglage] : undefined
   const aujourdHui = aujourdHuiÀParis()
   // L'étape est calculée une fois par ligne : elle donne le groupe et la
-  // colonne « étape », qui ne peuvent donc pas se contredire.
-  const groupes = grouperParStatut(
-    (lignes ?? []).map((ligne) => ({ ligne, étape: étapeDeLaLigne(ligne, aujourdHui) })),
-    ({ ligne, étape }) => statutDAbonnement(étape, ligne.état, ligne.lecteursActifs),
-  )
+  // colonne « étape », qui ne peuvent donc pas se contredire. Dans chaque
+  // groupe, ce qui change le plus tôt d'abord, puis le nom (tri stable).
+  const éléments: Élément[] = (lignes ?? [])
+    .map((ligne) => {
+      const entrée = entréeDeLaLigne(ligne, aujourdHui)
+      return { ligne, étape: étapeDuParcours(entrée), échéance: prochaineÉchéance(entrée) }
+    })
+    .sort((a, b) => (a.échéance?.le ?? '9999').localeCompare(b.échéance?.le ?? '9999'))
+  const groupes = grouperParStatut(éléments, ({ ligne, étape }) => statutDAbonnement(étape, ligne.état, ligne.lecteursActifs))
+  const semaine = semaineDuParcours(lignes ?? [], aujourdHui)
+
+  // Le geste en série en aperçu : rien n'est écrit tant qu'il n'est pas confirmé.
+  const lot = lireUnLot(typeof paramètres.lot === 'string' ? paramètres.lot : undefined)
+  const cochées = new Set(chaînes(paramètres.o))
+  const aperçu = lot ? aperçuDeLaSérie(lot, (lignes ?? []).filter((l) => cochées.has(l.slug)), aujourdHui) : null
+  const série = lireUnLot(typeof paramètres.serie === 'string' ? paramètres.serie : undefined)
+  const réglées = (typeof paramètres.ok === 'string' ? paramètres.ok : '').split(',').filter(Boolean)
+  const refusées = (typeof paramètres.ko === 'string' ? paramètres.ko : '')
+    .split(',')
+    .filter(Boolean)
+    .map((paire) => {
+      const [slug, code] = paire.split(':')
+      return { slug: slug ?? '', code: code ?? '' }
+    })
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-8 px-6 py-12">
@@ -109,9 +170,9 @@ export default async function Abonnements({
         <p className="label-mono text-rose-texte">accès opérateur · {accès.nom}</p>
         <h1 className="font-titre text-h1 font-bold text-encre">Abonnements</h1>
         <p className="text-ardoise">
-          Une ligne par organisation, groupées par statut d’abonnement. L’étape est calculée comme dans l’espace du client ;
-          les réglages se font sur la fiche de chaque organisation (« Gérer »), et
-          l’abonnement chez Stripe.{' '}
+          Une ligne par organisation, groupées par statut d’abonnement, ce qui change le plus tôt en tête de chaque groupe.
+          L’étape est calculée comme dans l’espace du client. Cochez des organisations pour les placer à une étape ou prolonger
+          leur essai d’un seul geste ; le reste se règle sur la fiche de chacune (« Gérer »), et l’abonnement chez Stripe.{' '}
           <Link href="/espaces" className="text-encre underline underline-offset-2">
             Choisir un espace
           </Link>
@@ -132,6 +193,12 @@ export default async function Abonnements({
         </p>
       ) : null}
 
+      {série ? <RetourDeSérie libellé={libelléDeLot(série)} réglées={réglées} refusées={refusées} messages={MESSAGES} /> : null}
+
+      {lignes && lignes.length > 0 ? <CetteSemaine semaine={semaine} /> : null}
+
+      {lot && aperçu ? <AperçuDeSérie lot={cléDeLot(lot)} libellé={libelléDeLot(lot)} effets={aperçu} /> : null}
+
       {lignes === null ? (
         <Panneau ton="rose">
           <p className="text-encre">
@@ -142,6 +209,23 @@ export default async function Abonnements({
       ) : lignes.length === 0 ? (
         <p className="text-ardoise">Aucune organisation en base.</p>
       ) : (
+        <>
+        <form id={FORMULAIRE_DE_SÉRIE} method="get" action="/espaces/abonnements" className="flex flex-wrap items-end gap-3">
+          <label className="label-mono flex flex-col gap-1 text-ardoise">
+            pour les organisations cochées
+            <select name="lot" defaultValue={lot ? cléDeLot(lot) : 'placer:tronquee'} className={champ}>
+              {LOTS_PROPOSÉS.map((proposé) => (
+                <option key={proposé.clé} value={proposé.clé}>
+                  {proposé.libellé}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className={bouton}>
+            Voir l’effet
+          </button>
+          <p className="text-ardoise">Rien n’est écrit avant la confirmation.</p>
+        </form>
         <div className="overflow-x-auto border border-gris-ligne">
           <table className="w-full border-collapse text-corps">
             <thead>
@@ -149,7 +233,7 @@ export default async function Abonnements({
                 {COLONNES.map(
                   (entête) => (
                     <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
-                      {entête}
+                      {entête === '' ? <span className="sr-only">choisir</span> : entête}
                     </th>
                   ),
                 )}
@@ -170,13 +254,14 @@ export default async function Abonnements({
                     </span>
                   </th>
                 </tr>
-                {groupe.éléments.map(({ ligne, étape }) => (
-                  <Ligne key={ligne.slug} ligne={ligne} étape={étape} santé={santé} />
+                {groupe.éléments.map(({ ligne, étape, échéance }) => (
+                  <Ligne key={ligne.slug} ligne={ligne} étape={étape} échéance={échéance} santé={santé} cochée={cochées.has(ligne.slug)} />
                 ))}
               </tbody>
             ))}
           </table>
         </div>
+        </>
       )}
 
       {archivées && archivées.length > 0 ? <Archivées archivées={archivées} /> : null}
@@ -190,9 +275,9 @@ const LIBELLÉS_D_OFFRE: Record<LigneDAbonnement['offre'], string> = {
   gratuite: 'accès offert',
 }
 
-/** L'étape d'une ligne, par la même fonction que l'espace du client. */
-function étapeDeLaLigne(ligne: LigneDAbonnement, aujourdHui: string): Étape {
-  return étapeDuParcours({
+/** Ce que le parcours lit d'une ligne : l'étape en sort par la même fonction que l'espace du client. */
+function entréeDeLaLigne(ligne: LigneDAbonnement, aujourdHui: string): EntréeDuParcours {
+  return {
     organisation: {
       état: ligne.état,
       activéeLe: ligne.activéeLe,
@@ -201,27 +286,43 @@ function étapeDeLaLigne(ligne: LigneDAbonnement, aujourdHui: string): Étape {
     },
     abonnement: ligne.abonnement,
     aujourdHui,
-  })
+  }
 }
 
 /**
- * Une ligne du tableau : des données seulement, et le lien « Gérer » pour seul
- * geste (31 octobre 2026, décision de l'opératrice). Les réglages du parcours
- * vivent sur la fiche de l'organisation, section « Abonnement ».
+ * Une ligne du tableau : sa case pour les gestes en série, ses données, et le
+ * lien « Gérer ». Les autres réglages vivent sur la fiche de l'organisation.
  */
 function Ligne({
   ligne,
   étape,
+  échéance,
   santé,
+  cochée,
 }: {
   ligne: LigneDAbonnement
   étape: Étape
+  échéance: Échéance | null
   santé: Promise<SantéDesEspaces | null>
+  cochée: boolean
 }) {
   const auPlafond = ligne.lecteursActifs >= LECTEURS_ACTIFS_MAX
+  // Un essai sans J0 n'est pas une panne : il attend sa première lettre publiée (la fiche dit la suite en entier).
+  const enAttenteDeJ0 = étape.étape === 'hors-parcours' && ligne.état === 'essai' && ligne.activéeLe === null
 
   return (
     <tr className="border-b border-gris-ligne align-top">
+      <td className="px-4 py-3">
+        <input
+          type="checkbox"
+          name="o"
+          value={ligne.slug}
+          form={FORMULAIRE_DE_SÉRIE}
+          defaultChecked={cochée}
+          aria-label={`Choisir ${ligne.nom}`}
+          className="size-4 accent-encre"
+        />
+      </td>
       <td className="px-4 py-3">
         <p className="text-encre">{ligne.nom}</p>
         <p className="label-mono text-ardoise">{ligne.slug}</p>
@@ -234,8 +335,26 @@ function Ligne({
           <SantéDeLaLigne slug={ligne.slug} santé={santé} />
         </Suspense>
       </td>
-      <td className="label-mono px-4 py-3 text-ardoise">{ligne.état}</td>
-      <td className="label-mono px-4 py-3 text-ardoise">{libelléDÉtape(étape)}</td>
+      <td className="label-mono px-4 py-3 text-ardoise">
+        {libelléDÉtape(étape)}
+        {enAttenteDeJ0 ? (
+          <>
+            <br />
+            j0 à la première lettre publiée
+          </>
+        ) : null}
+      </td>
+      <td className="label-mono px-4 py-3 text-ardoise">
+        {échéance ? (
+          <>
+            {libelléDÉtape(échéance.étape)}
+            <br />
+            le {jourLong(échéance.le)}
+          </>
+        ) : (
+          '·'
+        )}
+      </td>
       <td className="label-mono px-4 py-3 text-ardoise">
         {ligne.activéeLe ? dateLongueDeParis(ligne.activéeLe) : '·'}
         {ligne.essaiOuvertLe && !ligne.activéeLe ? (
@@ -256,7 +375,6 @@ function Ligne({
       <td className={`label-mono px-4 py-3 ${auPlafond ? 'text-rose-texte' : 'text-ardoise'}`}>
         {ligne.lecteursActifs} sur {LECTEURS_ACTIFS_MAX}
       </td>
-      <td className="label-mono px-4 py-3 text-ardoise">{ligne.relectureRequise ? 'à la relecture' : 'au client'}</td>
     </tr>
   )
 }

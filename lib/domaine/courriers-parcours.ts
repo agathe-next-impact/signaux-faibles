@@ -30,6 +30,14 @@ import { composerCourriel, corpsDeParagraphes, dateDuJour, racineDuPortail, type
 
 export type SorteDeParcours = 'essai_rappel_j7' | 'essai_derniere_parution' | 'essai_tronquee' | 'essai_suspendu'
 
+/** Le nom d'un courrier de parcours, tel que l'opératrice le lit au journal et dans les aperçus. */
+export const LIBELLÉS_DES_COURRIERS_DE_PARCOURS: Record<SorteDeParcours, string> = {
+  essai_rappel_j7: 'rappel J+7',
+  essai_derniere_parution: 'dernière parution complète',
+  essai_tronquee: 'parution réduite',
+  essai_suspendu: 'espace suspendu',
+}
+
 export function courrierDuParcours(
   étape: Étape,
   /** Vrai la première semaine de suspension, et elle seule : un essai suspendu depuis des mois ne reçoit rien. */

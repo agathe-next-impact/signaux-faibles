@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { exigerOpérateur } from '@/lib/auth/appartenance'
 import { changerActivation, créerLecteur, révoquerLecteurParId } from '@/lib/base/ecriture-lecteurs'
 import { adresseDUnLecteur, lecteursÀGérer, organisationÀGérer } from '@/lib/base/gestion'
+import { déclarerLaVeille, listerLesVeilles } from '@/lib/base/veilles'
 import { empreinte, origineDe } from '@/lib/portail/debit'
 import { envoyerLesLettresÀPublier } from '@/lib/portail/envoi-des-lettres'
 import { publierLaFicheDuPilote } from '@/lib/portail/fiche-veille'
@@ -405,4 +406,54 @@ export async function envoyerLesLettres(données: FormData): Promise<void> {
       ? `/espaces/abonnements/${encodeURIComponent(slug)}?onboarding=${encodeURIComponent(code)}&section=onboarding#onboarding`
       : `/espaces/onboardings?lancement=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}#${encodeURIComponent(slug)}`,
   )
+}
+
+const VEILLE = z.object({
+  type: z.string().regex(/^[a-z_]+$/),
+  jour: z.coerce.number().int().min(1).max(7),
+  heure: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  cadence: z.enum(['hebdomadaire', 'bimensuelle', 'mensuelle']),
+})
+
+/**
+ * Le jour, l'heure et la cadence d'une veille déjà déclarée (16 novembre 2026,
+ * lot 3) : ce que `POST /api/veille/veilles` règle pour les tâches, depuis la
+ * fiche. Seule une veille existante se règle ici ; en déclarer une demande son
+ * numéro courant, semé depuis les éditions, et reste le geste de la route. Le
+ * libellé et le numéro ne changent pas ; la file planifie les parutions
+ * suivantes sur ce calendrier, un travail déjà posé garde son échéance.
+ */
+export async function réglerLaVeille(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const lue = VEILLE.safeParse({
+    type: données.get('type'),
+    jour: données.get('jour'),
+    heure: données.get('heure'),
+    cadence: données.get('cadence'),
+  })
+  if (!lue.success) notFound()
+  const accès = await exigerOpérateur()
+
+  let code: string
+  try {
+    const existante = (await listerLesVeilles(slug)).find((v) => v.type === lue.data.type)
+    if (!existante) {
+      code = 'veille-inconnue'
+    } else {
+      const résultat = await déclarerLaVeille({
+        slug,
+        type: existante.type,
+        libellé: existante.libellé,
+        jourParution: lue.data.jour,
+        heureParution: lue.data.heure,
+        cadence: lue.data.cadence,
+      })
+      code = résultat.sorte === 'organisation-inconnue' ? 'veille-inconnue' : 'veille-réglée'
+    }
+  } catch (erreur) {
+    console.error(`[gestion] ${slug} : veille non réglée (${messageDe(erreur)}).`)
+    code = 'échec'
+  }
+  console.info(`[gestion] ${accès.nom} : ${slug}, veille ${lue.data.type}, ${code}.`)
+  retour(slug, code, 'veille')
 }
