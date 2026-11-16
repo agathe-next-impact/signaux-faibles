@@ -2,13 +2,14 @@ import type { LigneDeMarché, NiveauDeSegment } from '@/lib/domaine/marches'
 
 /**
  * La décision sur les marchés et les niches : un verdict par segment, par
- * règle, la matrice qui les range, et la simulation « et si » (16 novembre
- * 2026, lot 1 des simulations de scénarios).
+ * règle, la matrice qui les range, et la distance au basculement de chaque
+ * verdict (16 novembre 2026, lot 1 des simulations de scénarios). La section
+ * « Et si » de l'écran, où le lecteur posait ses hypothèses, a été retirée le
+ * même jour à la demande de l'opératrice : la règle rejouée sous hypothèse ne
+ * sert plus qu'à calculer cette distance.
  *
- * Ce fichier n'importe que des types : un composant client peut l'appeler sans
- * embarquer le reste du domaine. Tout y est pur. Rien n'est lu, rien n'est
- * stocké : une hypothèse vit dans l'adresse de la page, et un verdict simulé
- * s'affiche toujours à côté du verdict mesuré, jamais à sa place.
+ * Ce fichier n'importe que des types. Tout y est pur. Rien n'est lu, rien
+ * n'est stocké.
  */
 
 /** Un montant en euros, arrondi pour être lu : « 1,2 M€ », « 340 k€ ». */
@@ -168,7 +169,7 @@ export function matriceDeDécision(lignes: readonly LigneDeMarché[]): { readonl
   }
 }
 
-// ── « Et si » : la sensibilité de la règle ───────────────────────────────────
+// ── La sensibilité de la règle ───────────────────────────────────
 //
 // Une hypothèse déplace une mesure d'un segment ; la règle est rejouée telle
 // quelle. Les seuils ne se règlent pas : les rendre réglables ferait dire à
@@ -186,8 +187,6 @@ export type HypothèsesDeSegment = {
 }
 
 export const BORNES_DES_HYPOTHÈSES = { faitsMax: 200, concurrentsMax: 40, dépenseMin: 25, dépenseMax: 400 } as const
-
-export type Hypothèses = Readonly<Record<string, HypothèsesDeSegment>>
 
 const entier = (x: unknown, min: number, max: number): number | undefined => (typeof x === 'number' && Number.isInteger(x) && x >= min && x <= max ? x : undefined)
 
@@ -224,11 +223,6 @@ export function simulerLaLigne(l: LigneDeMarché, hypothèses: HypothèsesDeSegm
     h.dépense !== undefined && l.potentiel ? { ...l.potentiel, bas: Math.round((l.potentiel.bas * h.dépense) / 100), haut: Math.round((l.potentiel.haut * h.dépense) / 100) } : l.potentiel
   const état = h.recul ? 'en_regression' : l.état === 'eteint' && faits > 0 ? 'stable' : l.état
   return { ...l, faits, faitsForts: Math.min(l.faitsForts, faits), présents, potentiel, état }
-}
-
-/** Toutes les lignes, chacune sous ses hypothèses ; une clé inconnue est ignorée. */
-export function simulerLesLignes(lignes: readonly LigneDeMarché[], hypothèses: Hypothèses): LigneDeMarché[] {
-  return lignes.map((l) => (hypothèses[l.clé] ? simulerLaLigne(l, hypothèses[l.clé]!) : l))
 }
 
 export type Bascule = {
@@ -288,47 +282,4 @@ export function distancesDeBascule(l: LigneDeMarché, lignes: readonly LigneDeMa
     bascules.push({ levier: 'potentiel', écart: null, verdict, phrase: `Potentiel à ${POUR_CENT_MARGINAL} % de l’arbre ou plus : ${LIBELLÉS_DE_VERDICT[verdict]}` })
   }
   return bascules
-}
-
-// ── Les hypothèses dans l'adresse ────────────────────────────────────────────
-//
-// `?si=seminaires:f12,c3;niche_rse:r` : des clés de segment et des nombres,
-// rien d'autre. À la lecture, tout est revalidé contre les lignes de l'espace :
-// une clé inconnue ou un levier hors bornes est ignoré, sans erreur.
-
-const LEVIERS = { f: 'faits', c: 'concurrents', d: 'dépense' } as const
-
-export function écrireLesHypothèses(hypothèses: Hypothèses): string {
-  return Object.entries(hypothèses)
-    .map(([clé, brut]) => {
-      const h = bornerLesHypothèses(brut)
-      const parts = [
-        h.faits !== undefined ? `f${h.faits}` : null,
-        h.concurrents !== undefined ? `c${h.concurrents}` : null,
-        h.dépense !== undefined ? `d${h.dépense}` : null,
-        h.recul ? 'r' : null,
-      ].filter((p): p is string => p !== null)
-      return parts.length > 0 ? `${clé}:${parts.join(',')}` : null
-    })
-    .filter((s): s is string => s !== null)
-    .join(';')
-}
-
-export function lireLesHypothèses(texte: string | null | undefined, lignes: readonly LigneDeMarché[]): Hypothèses {
-  if (!texte || texte.length > 2000) return {}
-  const connues = new Set(lignes.filter((l) => l.niveau !== 'marche').map((l) => l.clé))
-  const hypothèses: Record<string, HypothèsesDeSegment> = {}
-  for (const morceau of texte.split(';')) {
-    const [clé, leviers, ...reste] = morceau.split(':')
-    if (!clé || !leviers || reste.length > 0 || !connues.has(clé)) continue
-    const brut: { faits?: number; concurrents?: number; dépense?: number; recul?: boolean } = {}
-    for (const levier of leviers.split(',')) {
-      if (levier === 'r') brut.recul = true
-      const lu = /^([fcd])(\d{1,3})$/.exec(levier)
-      if (lu) brut[LEVIERS[lu[1] as keyof typeof LEVIERS]] = Number(lu[2])
-    }
-    const h = bornerLesHypothèses(brut)
-    if (!sansHypothèse(h)) hypothèses[clé] = h
-  }
-  return hypothèses
 }

@@ -433,8 +433,8 @@ describe('l’état d’un segment', () => {
     ])
   })
 
-  it('« et si » : la règle rejouée sous hypothèses, la distance au basculement, l’adresse revalidée', async () => {
-    const { simulerLaLigne, simulerLesLignes, distancesDeBascule, lireLesHypothèses, écrireLesHypothèses, arbreDeDécision } = await import('@/lib/domaine/marches-decision')
+  it('la règle rejouée sous hypothèse et la distance au basculement', async () => {
+    const { simulerLaLigne, distancesDeBascule, arbreDeDécision } = await import('@/lib/domaine/marches-decision')
     const l = (plus: Partial<MesureDeSegment>, état: 'apparu' | 'eteint' = 'apparu') => ({ ...m(plus), état, tendance: null, modifié: false, ouverte: false })
     const a = l({ clé: 'a', faits: 7, faitsForts: 3, présents: ['A', 'B'] })
     const nonMesuré = l({ clé: 'b', faits: 50, présents: null })
@@ -457,7 +457,7 @@ describe('l’état d’un segment', () => {
     // La dépense déplace le potentiel, donc la part de l'arbre.
     const chiffré = l({ clé: 'c', potentiel: { bas: 100, haut: 200, origine: 'calcul' } })
     expect(simulerLaLigne(chiffré, { dépense: 150 }).potentiel).toEqual({ bas: 150, haut: 300, origine: 'calcul' })
-    expect(arbreDeDécision(simulerLesLignes([chiffré], { c: { dépense: 50 }, inconnue: { faits: 3 } }))).toEqual({ potentielTotal: 100 })
+    expect(arbreDeDécision([simulerLaLigne(chiffré, { dépense: 50 })])).toEqual({ potentielTotal: 100 })
     // Un segment éteint auquel on suppose des faits redevient lisible.
     expect(lectureDuSegment(simulerLaLigne(l({ faits: 0, présents: [] }, 'eteint'), { faits: 12 })).verdict).toBe('pousser')
 
@@ -473,15 +473,6 @@ describe('l’état d’un segment', () => {
     const retenu = l({ clé: 'petit', faits: 30, présents: [], potentiel: { bas: 1, haut: 4, origine: 'calcul' } })
     const arbre = [l({ clé: 'gros', potentiel: { bas: 1, haut: 96, origine: 'calcul' } }), retenu]
     expect(distancesDeBascule(retenu, arbre).at(-1)).toEqual({ levier: 'potentiel', écart: null, verdict: 'pousser', phrase: 'Potentiel à 5 % de l’arbre ou plus : à pousser' })
-
-    // L'adresse : des clés de segment et des nombres, revalidés contre les lignes.
-    const hypothèses = { a: { faits: 12, concurrents: 3, recul: true, dépense: 150 }, b: { concurrents: 0 } }
-    expect(écrireLesHypothèses(hypothèses)).toBe('a:f12,c3,d150,r;b:c0')
-    expect(lireLesHypothèses('a:f12,c3,d150,r;b:c0', lignes)).toEqual(hypothèses)
-    expect(lireLesHypothèses('inconnue:f3;marche:f3;a:f9999;a:x;b:c41;<script>:f1;a:f3:c2', lignes)).toEqual({})
-    expect(lireLesHypothèses('a:f3;' + 'x'.repeat(2000), lignes)).toEqual({})
-    expect(lireLesHypothèses(null, lignes)).toEqual({})
-    expect(écrireLesHypothèses({ a: { dépense: 100 }, b: {} })).toBe('')
   })
 
   it('les bornes d’un trimestre et un montant lisible', () => {

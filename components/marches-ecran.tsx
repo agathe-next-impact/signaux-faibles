@@ -1,5 +1,4 @@
 import { Case, Grille } from '@/components/coquille'
-import { SimulationDesMarchés } from '@/components/marches-simulation'
 import {
   LIBELLÉS_DE_NIVEAU,
   LIBELLÉS_DE_VERDICT,
@@ -154,7 +153,7 @@ function Fiche({ l, lignes, arbre }: { l: LigneDeMarché; lignes: readonly Ligne
   )
 }
 
-export function ÉcranDesMarchés({ vue, si }: { vue: VueDesMarchés & { readonly nonPublié: boolean }; si?: string | null }) {
+export function ÉcranDesMarchés({ vue }: { vue: VueDesMarchés & { readonly nonPublié: boolean } }) {
   const matrice = matriceDeDécision(vue.lignes)
   const arbre = arbreDeDécision(vue.lignes)
   const parClé = new Map(vue.lignes.map((l) => [l.clé, l]))
@@ -192,8 +191,6 @@ export function ÉcranDesMarchés({ vue, si }: { vue: VueDesMarchés & { readonl
           ))}
         </Grille>
       </section>
-
-      {segments.length > 0 ? <SimulationDesMarchés lignes={vue.lignes} initial={si ?? null} /> : null}
 
       {vue.disparus.length > 0 ? (
         <section className="mt-12 flex flex-col gap-4">

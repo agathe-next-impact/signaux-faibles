@@ -34,7 +34,6 @@ const {
   tableauDesSynthèses,
   synthèseDeLEspace,
   synthèseÀRelire,
-  trajectoireDeLEspace,
   modifierLIndicateurDuPilote,
   modifierLÉnoncéDuPilote,
   recalculerLeBenchmarkDuPilote,
@@ -816,29 +815,9 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         expect(relu?.indicateurs[0]).toEqual(scénario?.indicateurs[0])
         expect(relu?.titre).toBe('Scénario 1')
 
-        // Rien avant la publication, rien hors de l'espace réorganisé.
-        const loin = '2099-06-15'
-        expect(await trajectoireDeLEspace({ registre: REGISTRE, fin: loin }, db)).toBeNull()
+        // Une période publiée ne se retouche plus.
         await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-T4', état: 'publie' }, db)
-        expect(await trajectoireDeLEspace({ registre: REGISTRE, fin: loin }, db)).toBeNull()
-        expect(await réglerLEspace({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
         expect((await retouche({ seuil: 3 })).sorte).toBe('déjà-publiée')
-
-        // Les faits d'octobre ont fondé les scénarios : ils ne comptent pas, la fenêtre s'ouvre au lendemain du dépôt.
-        const t = await trajectoireDeLEspace({ registre: avecTirets(REGISTRE), fin: loin }, db)
-        expect(t?.scénarios).toHaveLength(3)
-        expect(t?.semaines).toHaveLength(13)
-        expect((t?.début ?? '') > DATE_OCTOBRE).toBe(true)
-        expect(t?.scénarios[0]?.indicateurs.map((i) => [i.état, i.compte])).toEqual([['eteint', 0], ['allume', 13]])
-        expect(t?.scénarios[1]?.indicateurs.map((i) => i.état)).toEqual(['eteint', 'large'])
-        // Aucune lettre depuis le dépôt : aucune semaine, rien d'allumé.
-        const sansLettre = await trajectoireDeLEspace({ registre: REGISTRE, fin: DATE_OCTOBRE }, db)
-        expect(sansLettre?.semaines).toEqual([])
-        expect(sansLettre?.scénarios[0]?.allumés).toBe(0)
-
-        expect(await trajectoireDeLEspace({ registre: AUTRE_REGISTRE, fin: loin }, db)).toBeNull()
-        vi.stubEnv('SOURCE_ACCES', 'notion')
-        expect(await trajectoireDeLEspace({ registre: REGISTRE, fin: loin }, db)).toBeNull()
       } finally {
         vi.unstubAllEnvs()
       }

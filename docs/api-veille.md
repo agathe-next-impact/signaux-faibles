@@ -1029,9 +1029,11 @@ fait (scénarios de statu quo). `sens` : `apparition` (défaut) ou `absence`.
 dimension PESTEL ou une force de Porter), `entites` (1 à 5 noms de la grille,
 `entité-hors-grille` sinon), `mouvement` (un mouvement d'Ansoff). Sans `regle`,
 l'indicateur compte tous les faits de sa famille, sans seuil, et l'écran le dit
-« comptage large ». Le portail compte les faits parus depuis le dépôt des
-scénarios, treize semaines au plus, et montre le résultat sur « Scénarios » ;
-aucune probabilité n'est calculée. L'opératrice retouche la veille et la règle
+« comptage large ». Le portail sait compter les faits parus depuis le dépôt des
+scénarios, treize semaines au plus (`trajectoireDesScénarios`) ; la section
+« Où en sont les signaux » qui montrait ce compte sur « Scénarios » a été
+retirée le 16 novembre 2026 à la demande de l'opératrice, et aucun écran ne
+l'affiche. Aucune probabilité n'est calculée. L'opératrice retouche la veille et la règle
 d'une période non publiée sur `/espaces/syntheses/[slug]/[periode]`.
 
 ### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période

@@ -160,8 +160,7 @@ recopie ; sans lui, l'écran dit « entreprises et établissements au registre �
 ### Le potentiel dans le verdict et « Et si » (16 novembre 2026)
 
 Lot 1 des simulations de scénarios, à la demande de l'opératrice. Deux changements, tous deux en règle pure
-(`lib/domaine/marches-decision.ts`, que `lib/domaine/marches.ts` réexporte ; le fichier n'importe que des types,
-pour qu'un composant client puisse le charger).
+(`lib/domaine/marches-decision.ts`, que `lib/domaine/marches.ts` réexporte ; le fichier n'importe que des types).
 
 **Le potentiel chiffré entre dans le verdict.** La part d'un segment est son potentiel haut rapporté à la somme
 des potentiels hauts des offres de l'arbre (`arbreDeDécision`, `partDuPotentiel`). Sous 5 % de l'arbre
@@ -172,14 +171,10 @@ chiffré » et la règle d'avant s'applique. Dans chaque case, les segments sont
 par faits. Chaque fiche porte « ce qui ferait basculer le verdict » (`distancesDeBascule` : faits manquants,
 concurrents en plus ou en moins, mesure de la concurrence, potentiel).
 
-**« Et si ».** Sous les fiches, le lecteur pose une hypothèse sur un segment (faits du trimestre, nombre de
-concurrents présents, dépense par cible en pourcentage de l'hypothèse de l'arbre, recul depuis deux
-trimestres) et voit le verdict que la même règle rendrait, à côté du verdict mesuré, jamais à sa place
-(`simulerLesLignes`, `components/marches-simulation.tsx`, seul composant client de l'écran). Les seuils ne
-changent pas : c'est la sensibilité d'une règle, pas une prévision. Rien n'est enregistré : les hypothèses
-tiennent dans l'adresse (`?si=cle:f12,c3,d150,r;cle2:c0`, `écrireLesHypothèses`, `lireLesHypothèses`), bornées
-(`BORNES_DES_HYPOTHÈSES`) et revalidées contre les segments de la vue, une clé inconnue étant ignorée. La page
-ne lit rien de plus : mêmes mesures publiées, aucune écriture, aucun appel aux registres.
+**« Et si », retiré le jour même.** La section où le lecteur posait une hypothèse sur un segment et voyait
+le verdict simulé à côté du mesuré a été retirée le 16 novembre 2026, à la demande de l'opératrice, avec son
+composant client et le paramètre `?si=` de l'adresse, désormais ignoré. La règle rejouée sous hypothèse
+(`simulerLaLigne`) ne sert plus qu'à calculer la distance au basculement de chaque fiche.
 
 ## 4. Pilote Konica Minolta France
 

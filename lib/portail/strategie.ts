@@ -1351,51 +1351,6 @@ export async function indicateursDeLEspace(entrée: { readonly registre: string 
 }
 
 /**
- * La trajectoire des scénarios du dernier trimestre **publié** (16 novembre
- * 2026, lot 2 des simulations) : les faits étiquetés parus depuis le dépôt des
- * scénarios, comptés contre la règle de chaque indicateur. Postgres seul, par
- * le registre de la session (règle 2) : aucun corps de lettre n'est relu.
- * `fin` est la date de la dernière lettre publiée, que l'écran a en main.
- * `null` hors de l'espace réorganisé, sans scénario publié, ou dans le doute.
- */
-export async function trajectoireDeLEspace(entrée: { readonly registre: string; readonly fin: string }, db?: Base): Promise<Trajectoire | null> {
-  return bornée('lecture de la trajectoire des scénarios', async () => {
-    const organisation = await organisationDuRegistre(entrée.registre, db)
-    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
-    const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
-    const posés = trimestre?.éléments.filter((é) => é.outil === 'scenario') ?? []
-    if (!trimestre || posés.length === 0) return null
-    // Le lendemain du dépôt : les faits d'avant ont fondé les scénarios, ils ne les confirment pas.
-    const dépôt = new Date(Math.max(...posés.map((é) => é.crééLe.getTime())))
-    dépôt.setUTCDate(dépôt.getUTCDate() + 1)
-    const début = dépôt.toISOString().slice(0, 10)
-    const [lignes, grille] = await Promise.all([
-      début <= entrée.fin ? faitsDeLaFenêtre({ organisationId: organisation.id, début, fin: entrée.fin }, db) : [],
-      lireLaGrille(organisation.id, db),
-    ])
-    return trajectoireDesScénarios(
-      vueDesScénarios(trimestre.éléments),
-      lignes.map((l) => ({
-        date: l.dateFait,
-        dateÉdition: l.dateÉdition,
-        édition: l.éditionNotion,
-        source: l.sourceUrl,
-        famille: l.familleÉdition,
-        axe: l.numéroAxe,
-        pestel: l.pestel,
-        porter: l.forcePorter,
-        ansoff: l.ansoff,
-        entité: l.entité,
-        impact: l.impact,
-        rupture: l.rupture,
-      })),
-      { début, fin: entrée.fin },
-      grille?.grille ?? null,
-    )
-  })
-}
-
-/**
  * Ce que la simulation lit de la veille (16 novembre 2026, lot 3b) : la grille,
  * les faits étiquetés des six derniers mois et les crans des forces du dernier
  * trimestre publié. Des étiquettes et des comptes, aucun corps de lettre. Sans

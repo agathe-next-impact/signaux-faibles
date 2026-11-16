@@ -15,14 +15,14 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
  * courte par segment, son verdict, la phrase de chiffres qui le fonde et trois
  * chiffres au plus. Les hypothèses et les sources restent repliées. Aucune
  * lecture Notion, aucun appel aux registres depuis l'écran. Depuis le
- * 16 novembre 2026, le potentiel entre dans le verdict (part de l'arbre) et la
- * section « Et si » rejoue la règle sous hypothèses, portées par `?si=` dans
- * l'adresse, revalidées contre les lignes de l'espace, jamais stockées. Seulement pour un
+ * 16 novembre 2026, le potentiel entre dans le verdict (part de l'arbre) et
+ * chaque fiche dit ce qui ferait basculer son verdict ; la section « Et si »,
+ * ajoutée puis retirée le même jour à la demande de l'opératrice, n'existe
+ * plus, et l'écran n'a plus de composant client. Seulement pour un
  * espace réorganisé : ailleurs, 404 avant toute lecture.
  */
-export default async function Marchés({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ si?: string | string[] }> }) {
+export default async function Marchés({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const { si } = await searchParams
   const accès = await exigerLectureComplète(slug)
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
@@ -32,7 +32,7 @@ export default async function Marchés({ params, searchParams }: { params: Promi
   return (
     <>
       <EntêteÉcran surtitre="le marché" titre="Marchés et niches" état={vue ? `trimestre ${libelléDePériode(vue.période)}` : undefined} />
-      {vue ? <ÉcranDesMarchés vue={vue} si={typeof si === 'string' ? si : null} /> : <p className="mt-6 text-ardoise">Les mesures de vos marchés ne sont pas encore publiées. Elles paraissent avec la revue de chaque trimestre.</p>}
+      {vue ? <ÉcranDesMarchés vue={vue} /> : <p className="mt-6 text-ardoise">Les mesures de vos marchés ne sont pas encore publiées. Elles paraissent avec la revue de chaque trimestre.</p>}
       <div className="mt-12 flex flex-col gap-2">
         <p>
           <LienFlèche href={`/${accès.slug}/concurrents`}>Voir {espace?.marché.écran.toLowerCase() ?? 'les concurrents'}</LienFlèche>
