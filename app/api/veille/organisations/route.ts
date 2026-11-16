@@ -123,6 +123,11 @@ const réglage = z.discriminatedUnion('action', [
     restantes: z.number().int().min(1).max(8),
   }),
   z.object({ slug: z.string().trim().min(1), action: z.literal('decision'), decision: z.enum(['suspendre', 'ecarter', 'reactiver']) }),
+  z.object({
+    slug: z.string().trim().min(1),
+    action: z.literal('placer'),
+    etape: z.string().regex(/^(?:essai-[1-8]|derniere|tronquee|suspendue)$/),
+  }),
 ])
 
 const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
@@ -132,6 +137,9 @@ const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
   'offre-posée': 200,
   'parutions-réglées': 200,
   'mis-en-parcours': 200,
+  placée: 200,
+  'accès-offert': 409,
+  'cible-invalide': 409,
   inconnue: 404,
   'pas-en-essai': 409,
   'sans-j0': 409,
@@ -280,6 +288,8 @@ function enRéglage(demande: z.infer<typeof réglage>): Réglage {
       return { sorte: 'parcours', prochaineLettre: demande.prochaineLettre, restantes: demande.restantes }
     case 'decision':
       return { sorte: 'décision', décision: demande.decision }
+    case 'placer':
+      return { sorte: 'placer', cible: demande.etape }
   }
 }
 
@@ -295,6 +305,10 @@ function journalDuRéglage(résultat: RésultatDuRéglage): string {
       return `offre ${résultat.offre}, état ${résultat.état}`
     case 'mis-en-parcours':
       return `J0 ${résultat.j0}, ${résultat.restantes} parution(s) complète(s) restante(s) sur ${résultat.parutions}`
+    case 'placée':
+      return `placée à « ${résultat.étape} », J0 ${résultat.j0}`
+    case 'cible-invalide':
+      return `refusé, étape hors de l'essai (${résultat.parutions} parution(s) complète(s))`
     case 'pas-en-essai':
       return `refusé, état ${résultat.état}`
     case 'au-delà-d-aujourdhui':

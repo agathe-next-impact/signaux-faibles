@@ -47,6 +47,11 @@ export const PARUTIONS_D_ESSAI = 2
  */
 export const PARUTIONS_D_ESSAI_RECOMMANDÉE = 4
 
+/** Un abonnement Stripe ouvert (`trialing`, `active`, `past_due`) : il l'emporte sur le calendrier. */
+export function abonnementOuvert(abonnement: { readonly état: string } | null): boolean {
+  return abonnement !== null && ÉTATS_ABONNÉS.has(abonnement.état)
+}
+
 export type ÉtatOrganisation = 'demande' | 'generation' | 'essai' | 'abonnee' | 'suspendue' | 'ecartee' | 'test'
 
 /** L'offre posée par l'opératrice (19 octobre 2026) : standard, tarif fondateur, ou accès offert. */

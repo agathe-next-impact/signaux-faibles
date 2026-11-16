@@ -212,6 +212,28 @@ describe('PATCH /api/veille/organisations', () => {
     expect(organisations.réglerLeParcours).not.toHaveBeenCalled()
   })
 
+  it('placer : une étape nommée, et les refus en 409', async () => {
+    organisations.réglerLeParcours.mockResolvedValueOnce({ sorte: 'placée', j0: '2026-10-26', étape: 'fin d’essai · l’essentiel seul' })
+    const placée = await régler({ slug: 'heritech', action: 'placer', etape: 'tronquee' })
+    expect(placée.status).toBe(200)
+    expect(await placée.json()).toEqual({ état: 'placée', j0: '2026-10-26', étape: 'fin d’essai · l’essentiel seul' })
+    expect(organisations.réglerLeParcours).toHaveBeenCalledWith('heritech', { sorte: 'placer', cible: 'tronquee' })
+
+    organisations.réglerLeParcours.mockResolvedValueOnce({ sorte: 'cible-invalide', parutions: 2 })
+    const hors = await régler({ slug: 'heritech', action: 'placer', etape: 'essai-4' })
+    expect(hors.status).toBe(409)
+    expect(await hors.json()).toEqual({ état: 'cible-invalide', parutions: 2 })
+    organisations.réglerLeParcours.mockResolvedValueOnce({ sorte: 'accès-offert' })
+    expect((await régler({ slug: 'heritech', action: 'placer', etape: 'derniere' })).status).toBe(409)
+
+    // Une étape mal nommée n'atteint pas la base.
+    organisations.réglerLeParcours.mockClear()
+    expect((await régler({ slug: 'heritech', action: 'placer', etape: 'abonnee' })).status).toBe(400)
+    expect((await régler({ slug: 'heritech', action: 'placer' })).status).toBe(400)
+    expect((await régler({ slug: 'heritech', action: 'placer', etape: 'tronquee' }, 'mauvais')).status).toBe(401)
+    expect(organisations.réglerLeParcours).not.toHaveBeenCalled()
+  })
+
   it('une erreur de base rend 502 sans détail', async () => {
     organisations.réglerLeParcours.mockRejectedValue(new Error('40001'))
     const réponse = await régler({ slug: 'acme', action: 'relecture', requise: false })

@@ -264,6 +264,46 @@ qui n'ont pas d'étiquettes. Avant la première, rien n'est dû. Une lettre dont
 tous les axes sont RAS n'a aucun fait à étiqueter et y figure à tort ; le
 message le dit.
 
+### `POST /api/veille/etat` : les écarts de statut avec le registre
+
+Le portail ne lit jamais le registre, donc le cron ne peut pas comparer le statut
+d'une organisation à celui de sa ligne. Depuis le 15 novembre 2026, la tâche qui
+vient de lire le registre le **donne** au portail, comme le calendrier reçoit les
+lignes de la vue « Veilles actives » :
+
+```json
+{ "registre": [ { "slug": "acme", "statut": "0 · Écartée" },
+                { "slug": "eclairion", "statut": "4 · Première lettre produite — à valider" } ] }
+```
+
+Cinq cents lignes au plus ; `statut` est le libellé Notion tel que lu, ou son
+chiffre seul (de 0 à 6). Le reste est celui du `GET` : mêmes contrôles, même
+courriel avec `?notifier=1`, même 502 sans détail technique. Rien n'est gardé et
+rien n'est écrit. Le jeton est vérifié avant la lecture du corps ; 400 `refusée`
+sur un corps illisible ou une ligne sans `slug` ou sans `statut`.
+
+Cinq défauts de plus, tous par slug :
+
+| Code | Ce qu'il dit | Geste |
+| --- | --- | --- |
+| `statut-ecartee-registre` | « 0 · Écartée » au registre, organisation encore en service au portail (`demande`, `generation`, `essai`, `abonnee`) | « écarter » (fiche, ou `PATCH /api/veille/organisations`, `action: decision`) ; résilier aussi dans Stripe si elle est abonnée |
+| `statut-ecartee-portail` | écartée au portail, registre à un autre statut | poser « 0 · Écartée » avec motif, ou réactiver |
+| `statut-archivee-portail` | archivée au portail (13 novembre 2026), registre à un autre statut que « 0 · Écartée » : l'archivage désactive les lecteurs et abandonne la file mais ne sort pas l'organisation du calendrier, les tâches continuent de lui produire des lettres | poser « 0 · Écartée » avec motif, ou désarchiver |
+| `organisation-absente-du-portail` | statut 4, 5 ou 6 au registre, aucune organisation de ce slug | entrée en essai (`POST /api/veille/organisations`, étape e1) |
+| `statut-registre-illisible` | le libellé ne commence pas par un chiffre de 0 à 6 | vérifier le libellé dans Notion |
+
+Ce qui n'est pas un écart : une archivée que le registre dit « 0 · Écartée »,
+une organisation suspendue au portail (le registre n'a
+pas d'équivalent, le calendrier la sort déjà des tâches), une organisation de
+test, une organisation que le portail connaît et que la tâche n'a pas donnée, un
+slug absent du portail avant le statut 4 (cours normal de l'onboarding).
+
+La réponse porte `statuts` : `null` quand personne n'a donné de lignes (le `GET`
+du cron), sinon `{ "lignes": n, "contrôlé": true }`, ou `"contrôlé": false` avec
+la `raison` quand la comparaison n'a pas pu avoir lieu (`SOURCE_ACCES=notion`,
+base absente ou injoignable). Un contrôle qui n'a pas eu lieu se dit : il ne
+vaut pas « aucun écart ».
+
 ## Variables d'environnement
 
 `CRON_SECRET` (nouveau, pour Vercel) et `RELECTEUR_EMAIL` (nouveau, facultatif ;
@@ -468,6 +508,21 @@ l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
   409 `abonnée-stripe` (un abonnement Stripe est ouvert), 409 `pas-en-essai`
   (état hors `essai` et `abonnee`), 409 `parutions-invalides` (plus de
   restantes que de parutions), 400 `date-invalide`.
+
+**Placer à une étape** (16 novembre 2026) : `{ "slug", "action": "placer", "etape": … }`
+met l'organisation à l'étape nommée **cette semaine**, sans date ni compte de
+parutions à fournir. `etape` vaut `essai-1` à `essai-8` (une parution complète de
+l'essai), `derniere` (la dernière parution complète, quel que soit leur nombre),
+`tronquee` (la parution réduite à « L'essentiel ») ou `suspendue` (essai terminé).
+Le portail calcule le J0 qui produit cette étape (`j0PourLaCible`,
+`lib/domaine/placement.ts`, fonction pure dont la propriété est testée : l'étape
+obtenue est l'étape demandée, pour un à huit parutions) et passe l'organisation à
+l'état `essai`. 200 `placée` avec `j0` et `étape` (le libellé de l'étape) ; 409
+`pas-en-essai` (état hors `essai` et `abonnee`), 409 `abonnée-stripe`, 409
+`accès-offert` (l'offre `gratuite` n'a pas de fin d'essai), 409 `cible-invalide`
+avec `parutions` (l'étape dépasse l'essai de l'organisation), 400 si `etape` est
+mal formée. C'est le geste « Placer à une étape » de la fiche, et celui des gestes
+en série du tableau ; `parcours` reste pour dater une entrée future.
 
 404 `inconnue` pour un slug absent. Un espace réduit à « L'essentiel » ou
 suspendu par le calendrier retrouve la lecture complète si le décalage le

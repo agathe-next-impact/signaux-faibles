@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import type { Base } from '@/lib/base/client'
-import { fixerJ0, ouvrirEnEssai, réglerLeParcours, slugsHorsService } from '@/lib/base/organisations'
+import { fixerJ0, ouvrirEnEssai, réglerLeParcours, slugsHorsService, étatsDesOrganisations } from '@/lib/base/organisations'
 import { abonnements, lecteurs, organisations, travaux } from '@/lib/base/schema'
+import { libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
 import { baseEnMémoire } from './aide/base-en-memoire'
 
 const REGISTRE = 'aaaabbbbccccddddeeeeffff00005555'
@@ -237,6 +238,73 @@ describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
     await db.update(organisations).set({ état: 'ecartee' }).where(eq(organisations.slug, 'ess'))
     expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'pas-en-essai', état: 'ecartee' })
   })
+
+  it('place à une étape nommée : J0 calculé pour la semaine en cours, et l’étape obtenue est celle demandée', async () => {
+    // Le lundi 19 octobre 2026, deux parutions complètes (le défaut).
+    const étapeDe = async (slug: string) => {
+      const o = await lire(slug)
+      return libelléDÉtape(
+        étapeDuParcours({
+          organisation: { état: o.état, activéeLe: o.activéeLe, offre: o.offre, parutionsDEssai: o.parutionsDEssai },
+          abonnement: null,
+          aujourdHui: '2026-10-19',
+        }),
+      )
+    }
+    // Un client historique devient un essai à la parution réduite.
+    expect(await réglerLeParcours('hist', { sorte: 'placer', cible: 'tronquee' }, db, MAINTENANT)).toEqual({
+      sorte: 'placée',
+      j0: '2026-10-05',
+      étape: 'fin d’essai · l’essentiel seul',
+    })
+    expect(await lire('hist')).toMatchObject({ état: 'essai', essaiOuvertLe: MAINTENANT })
+    expect((await lire('hist')).activéeLe?.toISOString()).toBe('2026-10-05T06:00:00.000Z')
+    expect(await étapeDe('hist')).toBe('fin d’essai · l’essentiel seul')
+
+    for (const [cible, j0, étape] of [
+      ['essai-1', '2026-10-19', 'essai · parution 1 sur 2'],
+      ['derniere', '2026-10-12', 'essai · parution 2 sur 2'],
+      ['suspendue', '2026-09-28', 'suspendue · essai terminé'],
+    ] as const) {
+      expect(await réglerLeParcours('ess', { sorte: 'placer', cible }, db, MAINTENANT)).toEqual({ sorte: 'placée', j0, étape })
+      expect(await étapeDe('ess')).toBe(étape)
+    }
+
+    // « derniere » suit le nombre de parutions de l'organisation.
+    await réglerLeParcours('ess', { sorte: 'parutions', parutions: 4 }, db, MAINTENANT)
+    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'derniere' }, db, MAINTENANT)).toEqual({
+      sorte: 'placée',
+      j0: '2026-09-28',
+      étape: 'essai · parution 4 sur 4',
+    })
+  })
+
+  it('refuse de placer une étape hors de l’essai, un abonné Stripe, un accès offert, une organisation écartée, sans rien écrire', async () => {
+    const avant = (await lire('ess')).activéeLe
+    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'essai-3' }, db, MAINTENANT)).toEqual({ sorte: 'cible-invalide', parutions: 2 })
+    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'n-importe-quoi' }, db, MAINTENANT)).toEqual({ sorte: 'cible-invalide', parutions: 2 })
+    expect(await réglerLeParcours('personne', { sorte: 'placer', cible: 'tronquee' }, db, MAINTENANT)).toEqual({ sorte: 'inconnue' })
+
+    const [o] = await db.select({ id: organisations.id }).from(organisations).where(eq(organisations.slug, 'hist'))
+    await db.insert(abonnements).values({
+      organisationId: o!.id,
+      clientStripe: 'cus_2',
+      abonnementStripe: 'sub_2',
+      état: 'past_due',
+      dernierÉvénement: 'e2',
+      événementLe: MAINTENANT,
+      dernierType: 'customer.subscription.updated',
+    })
+    expect(await réglerLeParcours('hist', { sorte: 'placer', cible: 'tronquee' }, db, MAINTENANT)).toEqual({ sorte: 'abonnée-stripe' })
+    expect((await lire('hist')).état).toBe('abonnee')
+
+    await réglerLeParcours('ess', { sorte: 'offre', offre: 'gratuite' }, db, MAINTENANT)
+    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'tronquee' }, db, MAINTENANT)).toEqual({ sorte: 'accès-offert' })
+    await réglerLeParcours('ess', { sorte: 'offre', offre: 'standard' }, db, MAINTENANT)
+    await db.update(organisations).set({ état: 'ecartee' }).where(eq(organisations.slug, 'ess'))
+    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'tronquee' }, db, MAINTENANT)).toEqual({ sorte: 'pas-en-essai', état: 'ecartee' })
+    expect((await lire('ess')).activéeLe).toEqual(avant)
+  })
 })
 
 describe('décisions de l’opératrice : suspendre, écarter, réactiver', () => {
@@ -293,5 +361,21 @@ describe('décisions de l’opératrice : suspendre, écarter, réactiver', () =
       état: 'test',
     })
     expect((await réglerLeParcours('nulle-part', { sorte: 'décision', décision: 'suspendre' }, db, LE_31)).sorte).toBe('inconnue')
+  })
+
+  it('étatsDesOrganisations rend l’état de chaque slug connu et s’il est archivé, sans rien dire des inconnus', async () => {
+    await ouvrirEnEssai({ slug: 'acme', nom: 'Acme', registreNotion: REGISTRE }, db)
+    await ouvrirEnEssai({ slug: 'autre', nom: 'Autre', registreNotion: AUTRE }, db)
+    await ouvrirEnEssai({ slug: 'vieille', nom: 'Vieille', registreNotion: 'c'.repeat(32) }, db)
+    await réglerLeParcours('acme', { sorte: 'décision', décision: 'ecarter' }, db, LE_31)
+    await db.update(organisations).set({ archivéeLe: LE_31 }).where(eq(organisations.slug, 'vieille'))
+    expect(await étatsDesOrganisations(['acme', 'autre', 'vieille', 'inconnue'], db)).toEqual(
+      new Map([
+        ['acme', { état: 'ecartee', archivée: false }],
+        ['autre', { état: 'essai', archivée: false }],
+        ['vieille', { état: 'essai', archivée: true }],
+      ]),
+    )
+    expect(await étatsDesOrganisations([], db)).toEqual(new Map())
   })
 })

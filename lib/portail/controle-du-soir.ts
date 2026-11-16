@@ -1,8 +1,8 @@
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
-import { organisationsArchivées } from '@/lib/base/organisations'
 import { courriersDeParcoursEnSouffrance, type SorteCourrier } from '@/lib/base/courriers'
 import { migrationsEnAttente } from '@/lib/base/migrer'
+import { organisationsArchivées, étatsDesOrganisations } from '@/lib/base/organisations'
 import { sonderLaBase } from '@/lib/base/ecriture-lecteurs'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { lignesDAccèsPourContrôle } from '@/lib/notion/acces'
@@ -16,6 +16,7 @@ import {
   type EspaceContrôlé,
   type ÉtatDuDispositif,
 } from '@/lib/portail/etat'
+import { contrôlerLesStatuts, type LigneDuRegistre } from '@/lib/portail/ecarts-de-statut'
 import { alertesDesOnboardings } from '@/lib/portail/onboarding'
 import { contrôlerLÉtiquetage } from '@/lib/portail/strategie'
 import { CONTRAT_DE_FORME_DEPUIS, contrôlerLaLettre, type Rapport } from '@/lib/portail/lint'
@@ -29,6 +30,18 @@ export type ÉtatDesAccès = {
 }
 
 /**
+ * Ce qu'a fait la comparaison des statuts du registre (15 novembre 2026) :
+ * `null` quand personne n'a donné de lignes, sinon le nombre de lignes reçues
+ * et si elles ont pu être comparées. Un contrôle qui n'a pas eu lieu se dit :
+ * il ne se prend pas pour un registre sans écart.
+ */
+export type ÉtatDesStatuts = {
+  readonly lignes: number
+  readonly contrôlé: boolean
+  readonly raison?: string
+}
+
+/**
  * Le contrôle des espaces clients, sorti de `GET /api/veille/etat` le
  * 31 octobre 2026 pour que la colonne « santé » du tableau de l'opératrice le
  * lise tel quel : la route le notifie le soir, l'écran le montre. Pour chaque
@@ -39,7 +52,9 @@ export type ÉtatDesAccès = {
  * « Accès », une par organisation sur « Éditions », un corps de note par
  * organisation. Toutes cachées. N'écrit rien et n'envoie rien.
  */
-export async function contrôlerLeDispositif(): Promise<{ readonly état: ÉtatDuDispositif; readonly accès: ÉtatDesAccès }> {
+export async function contrôlerLeDispositif(
+  options: { readonly registre?: readonly LigneDuRegistre[] } = {},
+): Promise<{ readonly état: ÉtatDuDispositif; readonly accès: ÉtatDesAccès; readonly statuts: ÉtatDesStatuts | null }> {
   const { parSlug, sansSlug, opérateurs } = regrouperParSlug(await lignesDAccèsPourContrôle())
   const espaces: EspaceContrôlé[] = []
   const lettresParRegistre = new Map<string, Awaited<ReturnType<typeof listerÉditionsPubliées>>>()
@@ -165,6 +180,35 @@ export async function contrôlerLeDispositif(): Promise<{ readonly état: ÉtatD
     }
   }
 
+  // Les écarts de statut avec le registre (15 novembre 2026) : le portail ne
+  // lit pas le registre, la tâche lui donne les lignes qu'elle vient de lire
+  // (`POST /api/veille/etat`). Sans lignes données, rien n'est comparé, et le
+  // GET du cron ne le prétend pas.
+  const défautsDeStatuts: Défaut[] = []
+  let statuts: ÉtatDesStatuts | null = null
+  if (options.registre) {
+    const lignes = options.registre.length
+    if (source === 'notion' || !sonde?.joignable) {
+      statuts = {
+        lignes,
+        contrôlé: false,
+        raison:
+          source === 'notion'
+            ? 'SOURCE_ACCES vaut notion : Postgres n’est pas ouvert, les états du portail ne sont pas lus.'
+            : 'la base ne répond pas : les états du portail ne sont pas lus.',
+      }
+    } else {
+      try {
+        const slugs = [...new Set(options.registre.map((l) => l.slug.trim().toLowerCase()).filter(Boolean))]
+        défautsDeStatuts.push(...contrôlerLesStatuts(options.registre, await étatsDesOrganisations(slugs)))
+        statuts = { lignes, contrôlé: true }
+      } catch (erreur) {
+        statuts = { lignes, contrôlé: false, raison: 'les états du portail sont illisibles.' }
+        console.warn(`[veille/etat] états des organisations illisibles : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      }
+    }
+  }
+
   const état: ÉtatDuDispositif = {
     date: aujourdHuiÀParis(),
     espaces,
@@ -174,12 +218,15 @@ export async function contrôlerLeDispositif(): Promise<{ readonly état: ÉtatD
       ...défautsDeBase,
       ...défautsDeMigrations,
       ...[...défautsDeCourriers, ...défautsDÉtiquetage, ...défautsDOnboarding].filter((d) => !archivées.has(d.slug)),
+      // Jamais filtrés : « archivée au portail, encore en service au registre »
+      // est précisément un écart de statut sur une organisation archivée.
+      ...défautsDeStatuts,
     ],
     lignesSansSlug: sansSlug,
     opérateursActifs: opérateurs.filter((l) => l.actif).length,
   }
 
-  return { état, accès }
+  return { état, accès, statuts }
 }
 
 /**
