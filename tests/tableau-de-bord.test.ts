@@ -81,6 +81,7 @@ describe('casesDuTableauDeBord', () => {
     const cases = casesDuTableauDeBord(DONNÉES)
     expect(cases.map((c) => c.href)).toEqual([
       '/hermitage/lettres',
+      '/hermitage/veille/calendrier',
       '/hermitage/concurrents',
       '/hermitage/acteurs',
       '/hermitage/forces',
@@ -93,7 +94,6 @@ describe('casesDuTableauDeBord', () => {
       '/hermitage/veille/themes',
       '/hermitage/veille/sources',
       '/hermitage/veille/corpus',
-      '/hermitage/veille/calendrier',
       '/hermitage/perimetre',
       '/hermitage/archives',
     ])
@@ -154,7 +154,7 @@ describe('les rubriques', () => {
       ['Le marché', ['Concurrents', 'Acteurs', 'Forces du marché']],
       ['L’environnement', ['Les axes', 'PESTEL']],
       ['Stratégie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
-      ['Votre veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Calendrier', 'Périmètre', 'Archives']],
+      ['Votre veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Périmètre', 'Archives']],
     ])
     // Plus d'écran de rubrique (31 octobre 2026) : chaque écran de la carte porte sa propre adresse.
     expect(cartes[0]!.écrans[0]).toEqual({ écran: 'Concurrents', valeur: '36 suivis', href: '/hermitage/concurrents' })
