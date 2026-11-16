@@ -12,6 +12,11 @@ export async function GET(_requête: Request, { params }: { params: Promise<{ or
   const courriel = courrielDeDémonstration(organisation, veille)
   if (!courriel) return new Response('Introuvable', { status: 404 })
   return new Response(courriel.html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=3600' },
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=300, s-maxage=3600',
+      // Le document encadré par la page de la lettre : jamais indexé seul (16 novembre 2026).
+      'X-Robots-Tag': 'noindex, follow',
+    },
   })
 }
