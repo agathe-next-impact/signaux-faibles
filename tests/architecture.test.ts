@@ -540,7 +540,6 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/pestel/page.tsx',
       'app/(portail)/[slug]/recommandations/page.tsx',
       'app/(portail)/[slug]/scenarios/page.tsx',
-      'app/(portail)/[slug]/simulation/page.tsx',
       'app/(portail)/[slug]/veille/calendrier/page.tsx',
       'app/(portail)/[slug]/veille/corpus/[entite]/page.tsx',
       'app/(portail)/[slug]/veille/corpus/page.tsx',
@@ -576,87 +575,34 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       join('veille', 'themes', '[axe]', 'page.tsx'),
       // Marchés et niches (12 novembre 2026).
       join('marches', 'page.tsx'),
-      // Simulation (16 novembre 2026).
-      join('simulation', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|présentationDeLEntité|marchésDeLEspace|simulationDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|présentationDeLEntité|marchésDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
     }
   })
 
   /**
-   * Simulation (16 novembre 2026, lot 3b des simulations de scénarios) : la
-   * table d'effets ne s'écrit que par `lib/base/simulation.ts`, depuis la seule
-   * orchestration `lib/portail/simulation.ts`, qui passe la porte
-   * `contrôlerLaTableDEffets` avant d'écrire. Elle n'est jamais publiée d'office.
-   * L'écran ne lit que la table publiée, bornée, sans corps de lettre ni appel
-   * aux registres ; le domaine du jeu n'importe que des types, pour le client.
+   * Simulation (16 novembre 2026) : l'écran et son code ont été retirés le jour
+   * même, à la demande de l'opératrice. La table `tables_d_effets` reste en
+   * base et dans le schéma ; plus rien ne doit la lire ni l'écrire.
    */
-  it('simulation : un écrivain, la porte avant l’écriture, jamais publiée d’office, une lecture bornée', () => {
-    const lire = (...chemin: string[]) => readFileSync(join(process.cwd(), ...chemin), 'utf8')
+  it('simulation retirée : la table d’effets n’a plus ni lecteur ni écrivain', () => {
     const nommées: string[] = []
     const parcourir = (dossier: string) => {
       for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
         const chemin = join(dossier, entrée.name)
         if (entrée.isDirectory()) {
           if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
-        } else if (/\.tsx?$/.test(entrée.name) && /\btablesDEffets\b/.test(readFileSync(chemin, 'utf8'))) nommées.push(relatif(chemin))
+        } else if (/\.tsx?$/.test(entrée.name) && /\btablesDEffets\b/.test(readFileSync(chemin, 'utf8'))) nommées.push(chemin)
       }
     }
-    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) parcourir(join(process.cwd(), racine))
-    expect(nommées.sort()).toEqual(['lib/base/schema.ts', 'lib/base/simulation.ts'])
-    for (const nom of ['enregistrerLaTableDEffets', 'réglerLaTableDEffets', 'tableDEffetsDeLOrganisation', 'versionsDeLaTableDEffets', 'tablesDEffetsDuPilote']) {
-      expect(appelants(nom), nom).toEqual(['lib/base/simulation.ts', 'lib/portail/simulation.ts'])
-    }
-    // Le rail ne demande que des états, par la lecture mémoïsée de l'espace.
-    expect(appelants('étatDeLaSimulation')).toEqual(['lib/base/simulation.ts', 'lib/portail/strategie.ts'])
-    for (const nom of ['recevoirLaTableDEffets', 'lireLaTableDuPilote']) {
-      expect(appelants(nom), nom).toEqual(['app/api/veille/simulation/route.ts', 'lib/portail/simulation.ts'])
-    }
-    expect(appelants('publierLaTableDuPilote')).toEqual(['app/api/veille/simulation/route.ts', 'lib/portail/publication.ts', 'lib/portail/simulation.ts'])
-    expect(appelants('tableauDesSimulations')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/simulation.ts'])
-    expect(appelants('simulationDeLEspace')).toEqual(['app/(portail)/[slug]/simulation/page.tsx', 'lib/portail/simulation.ts'])
-    expect(appelants('marchésPourLaSimulation')).toEqual(['lib/portail/marches.ts', 'lib/portail/simulation.ts'])
-    for (const nom of ['veilleDeLaSimulation', 'grillePourLaSimulation']) expect(appelants(nom), nom).toEqual(['lib/portail/simulation.ts', 'lib/portail/strategie.ts'])
-
-    const garde = lire('lib', 'auth', 'appartenance.ts')
-    const liste = garde.slice(garde.indexOf('export async function listerLesSynthèses'))
-    expect(liste.indexOf('exigerOpérateur()')).toBeLessThan(liste.indexOf('tableauDesSimulations('))
-    const action = lire('lib', 'portail', 'publication.ts')
-    const geste = action.slice(action.indexOf('export async function publierLaTableDEffets'))
-    expect(geste.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
-    expect(geste.indexOf('exigerOpérateur()')).toBeLessThan(geste.indexOf('publierLaTableDuPilote('))
-
-    const source = lire('lib', 'portail', 'simulation.ts')
-    const recevoir = source.slice(source.indexOf('export async function recevoirLaTableDEffets'), source.indexOf('export type LectureDeLaTable'))
-    expect(recevoir.indexOf('contrôlerLaTableDEffets(')).toBeGreaterThan(0)
-    expect(recevoir.indexOf('contrôlerLaTableDEffets(')).toBeLessThan(recevoir.indexOf('enregistrerLaTableDEffets('))
-    const publier = source.slice(source.indexOf('export async function publierLaTableDuPilote'), source.indexOf('export type SimulationsDUneOrganisation'))
-    expect(publier.indexOf('contrôlerLaTableDEffets(')).toBeLessThan(publier.indexOf('réglerLaTableDEffets('))
-    const écran = source.slice(source.indexOf('export async function simulationDeLEspace'))
-    expect(écran.indexOf("bornée('")).toBeGreaterThan(0)
-    expect(écran).toContain('espaceRéorganisé')
-    expect(écran).toContain('entrée.aperçu === true')
-    expect(lire('app', '(portail)', '[slug]', 'simulation', 'page.tsx')).toContain('aperçu: accès.aperçu')
-    // Ni publication automatique, ni corps de lettre, ni registre, ni réseau.
-    expect(source).not.toMatch(/étatÀLaProduction|publicationAutomatique|lireBlocsDePage\(|lireÉditionDeTravail\(|listerÉditionsPubliées\(|compterLesEntreprises\(|fetch\(/)
-    expect(lire('lib', 'base', 'simulation.ts')).not.toMatch(/étatÀLaProduction|publication-automatique/)
-
-    // Le jeu se joue dans le navigateur : son domaine n'importe que des types, et l'écran ne lit rien.
-    const imports = [...lire('lib', 'domaine', 'simulation.ts').matchAll(/^import (type )?/gm)]
-    expect(imports.length).toBeGreaterThan(0)
-    expect(imports.every((m) => m[1] === 'type ')).toBe(true)
-    const client = lire('components', 'simulation-ecran.tsx')
-    expect(client.startsWith("'use client'")).toBe(true)
-    expect(client).not.toMatch(/@\/lib\/(base|portail|auth|notion)\/|fetch\(|localStorage|sessionStorage/)
-
-    // La route ne reçoit qu'une table et un geste : ni fréquence, ni état de départ, ni partie.
-    const route = lire('app', 'api', 'veille', 'simulation', 'route.ts')
-    expect(route.indexOf("refuserSiNonAutorisé(requête, 'simulation')")).toBeGreaterThan(0)
-    expect(route).not.toMatch(/observations|historique:|poids|graine/)
+    for (const dossier of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(dossier)) parcourir(dossier)
+    expect(nommées).toEqual([join('lib', 'base', 'schema.ts')])
+    expect(existsSync(join('app', '(portail)', '[slug]', 'simulation'))).toBe(false)
+    expect(existsSync(join('app', 'api', 'veille', 'simulation'))).toBe(false)
   })
 
   /**

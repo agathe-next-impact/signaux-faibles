@@ -1207,13 +1207,11 @@ export type LigneDeRunDOnboarding = typeof onboardingRuns.$inferSelect
 
 /**
  * Simulation (16 novembre 2026, lot 3b des simulations de scénarios) : la
- * **table d'effets** d'une organisation, des hypothèses bornées (engagements de
- * départ, actions, cartes d'événement, chacune avec sa référence), proposée par
- * la revue trimestrielle et jamais publiée d'office : l'opératrice la relit et
- * la publie. Extension bornée de la règle de Postgres (décision de l'opératrice
- * du 16 novembre 2026) : libellés de 60 caractères, références de 120, aucun
- * texte de lettre ni de référentiel. Une table re-postée est une version ; une
- * seule version est publiée à la fois. Les parties ne sont pas stockées.
+ * table d'effets d'une organisation. L'écran « Simulation » et tout son code
+ * ont été retirés le même jour, à la demande de l'opératrice. La table reste
+ * en base (migration 0028) et sa définition reste ici pour que le schéma
+ * Drizzle corresponde à la base, mais plus rien ne la lit ni ne l'écrit. La
+ * supprimer demande une migration, sur décision de l'opératrice.
  */
 export const tablesDEffets = pgTable(
   'tables_d_effets',
