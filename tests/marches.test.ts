@@ -394,6 +394,96 @@ describe('l’état d’un segment', () => {
     expect(matrice.faitsMax).toBe(20)
   })
 
+  it('le potentiel dans le verdict : une part de l’arbre, jamais un montant, et l’ordre dans la case', async () => {
+    const { arbreDeDécision, partDuPotentiel, SEUIL_DE_POTENTIEL_MARGINAL } = await import('@/lib/domaine/marches-decision')
+    const l = (plus: Partial<MesureDeSegment>) => ({ ...m(plus), état: 'apparu' as const, tendance: null, modifié: false, ouverte: false })
+    const p = (haut: number) => ({ bas: haut / 2, haut, origine: 'calcul' as const })
+    const lignes = [
+      l({ clé: 'marche', niveau: 'marche', parent: null, potentiel: { bas: 500_000, haut: 1_000_000, origine: 'somme' } }),
+      l({ clé: 'gros', faits: 12, présents: [], potentiel: p(960_000) }),
+      l({ clé: 'petit', faits: 30, présents: [], potentiel: p(40_000) }),
+      l({ clé: 'niche', niveau: 'niche', parent: 'gros', faits: 15, présents: [], potentiel: p(50_000) }),
+      l({ clé: 'sans', faits: 11, présents: [] }),
+    ]
+    const arbre = arbreDeDécision(lignes)
+    // La racine et les niches ne comptent pas deux fois : la somme des offres chiffrées.
+    expect(arbre).toEqual({ potentielTotal: 1_000_000 })
+    expect(SEUIL_DE_POTENTIEL_MARGINAL).toBe(0.05)
+    expect(partDuPotentiel(lignes[2]!, arbre)).toBe(0.04)
+    // 4 % de l'arbre : retenu à « à surveiller », malgré 30 faits et aucun concurrent.
+    expect(lectureDuSegment(lignes[2]!, arbre)).toEqual({
+      verdict: 'surveiller',
+      raison: 'Activité soutenue ce trimestre (30 faits) et peu de concurrence : aucun concurrent suivi n’y est présent. Potentiel marginal (20 k€ à 40 k€ par an, 4 % de l’arbre) : le segment reste à surveiller.',
+      retenu: true,
+    })
+    // 5 % exactement : le seuil n'est pas marginal.
+    expect(lectureDuSegment(lignes[3]!, arbre)).toMatchObject({ verdict: 'pousser', raison: expect.stringMatching(/Potentiel de 25 k€ à 50 k€ par an, 5 % de l’arbre\.$/) })
+    // Sans chiffre : la règle d'avant, sans pénalité ni mention.
+    expect(lectureDuSegment(lignes[4]!, arbre)).toEqual(lectureDuSegment(lignes[4]!))
+    // Sans arbre chiffré, personne n'est marginal.
+    expect(lectureDuSegment(lignes[2]!, { potentielTotal: null }).verdict).toBe('pousser')
+    // Un potentiel marginal ne sauve pas un segment écarté.
+    expect(lectureDuSegment({ ...lignes[2]!, faits: 2, présents: ['A', 'B', 'C', 'D'] }, arbre).verdict).toBe('ecarter')
+    const matrice = matriceDeDécision(lignes)
+    expect(matrice.cases.map((c) => [c.verdict, c.segments.map((x) => x.clé)])).toEqual([
+      ['pousser', ['gros', 'niche', 'sans']],
+      ['disputer', []],
+      ['surveiller', ['petit']],
+      ['ecarter', []],
+    ])
+  })
+
+  it('« et si » : la règle rejouée sous hypothèses, la distance au basculement, l’adresse revalidée', async () => {
+    const { simulerLaLigne, simulerLesLignes, distancesDeBascule, lireLesHypothèses, écrireLesHypothèses, arbreDeDécision } = await import('@/lib/domaine/marches-decision')
+    const l = (plus: Partial<MesureDeSegment>, état: 'apparu' | 'eteint' = 'apparu') => ({ ...m(plus), état, tendance: null, modifié: false, ouverte: false })
+    const a = l({ clé: 'a', faits: 7, faitsForts: 3, présents: ['A', 'B'] })
+    const nonMesuré = l({ clé: 'b', faits: 50, présents: null })
+    const lignes = [l({ clé: 'marche', niveau: 'marche', parent: null }), a, nonMesuré]
+
+    // Bascule exacte aux seuils : 9 et 10 faits, 3 et 4 concurrents.
+    const verdict = (h: Parameters<typeof simulerLaLigne>[1]) => lectureDuSegment(simulerLaLigne(a, h)).verdict
+    expect([verdict({ faits: 9 }), verdict({ faits: 10 })]).toEqual(['surveiller', 'pousser'])
+    expect([verdict({ faits: 10, concurrents: 3 }), verdict({ faits: 10, concurrents: 4 })]).toEqual(['pousser', 'disputer'])
+    expect(verdict({ faits: 10, recul: true })).toBe('ecarter')
+    // Les concurrents mesurés gardent leur nom, les supposés n'en ont pas ; les signaux forts ne dépassent pas les faits.
+    expect(simulerLaLigne(a, { concurrents: 3, faits: 2 })).toMatchObject({ présents: ['A', 'B', 'concurrent supposé 1'], faits: 2, faitsForts: 2 })
+    expect(simulerLaLigne(a, { concurrents: 1 }).présents).toEqual(['A'])
+    // Sans hypothèse, ou hors bornes : la ligne mesurée, la même.
+    expect(simulerLaLigne(a, {})).toBe(a)
+    expect(simulerLaLigne(a, { faits: -1, concurrents: 41, dépense: 1000 })).toBe(a)
+    // Une concurrence non mesurée ne conclut jamais mieux que « à surveiller », même à 50 faits ; la mesurer la libère.
+    expect(lectureDuSegment(nonMesuré).verdict).toBe('surveiller')
+    expect(lectureDuSegment(simulerLaLigne(nonMesuré, { concurrents: 0 })).verdict).toBe('pousser')
+    // La dépense déplace le potentiel, donc la part de l'arbre.
+    const chiffré = l({ clé: 'c', potentiel: { bas: 100, haut: 200, origine: 'calcul' } })
+    expect(simulerLaLigne(chiffré, { dépense: 150 }).potentiel).toEqual({ bas: 150, haut: 300, origine: 'calcul' })
+    expect(arbreDeDécision(simulerLesLignes([chiffré], { c: { dépense: 50 }, inconnue: { faits: 3 } }))).toEqual({ potentielTotal: 100 })
+    // Un segment éteint auquel on suppose des faits redevient lisible.
+    expect(lectureDuSegment(simulerLaLigne(l({ faits: 0, présents: [] }, 'eteint'), { faits: 12 })).verdict).toBe('pousser')
+
+    // La distance : la plus petite variation d'un seul levier, jamais impossible.
+    expect(distancesDeBascule(a, lignes)).toEqual([
+      { levier: 'faits', écart: 3, verdict: 'pousser', phrase: '3 faits de plus : à pousser' },
+      { levier: 'concurrents', écart: 2, verdict: 'ecarter', phrase: '2 concurrents de plus : à écarter' },
+    ])
+    expect(distancesDeBascule(nonMesuré, lignes)).toEqual([{ levier: 'mesure', écart: null, verdict: 'pousser', phrase: 'Concurrence mesurée, sans concurrent présent : à pousser' }])
+    const àZéro = l({ clé: 'z', faits: 0, présents: [] })
+    expect(distancesDeBascule(àZéro, [àZéro]).every((b) => b.écart === null || b.écart > 0)).toBe(true)
+    expect(distancesDeBascule(lignes[0]!, lignes)).toEqual([])
+    const retenu = l({ clé: 'petit', faits: 30, présents: [], potentiel: { bas: 1, haut: 4, origine: 'calcul' } })
+    const arbre = [l({ clé: 'gros', potentiel: { bas: 1, haut: 96, origine: 'calcul' } }), retenu]
+    expect(distancesDeBascule(retenu, arbre).at(-1)).toEqual({ levier: 'potentiel', écart: null, verdict: 'pousser', phrase: 'Potentiel à 5 % de l’arbre ou plus : à pousser' })
+
+    // L'adresse : des clés de segment et des nombres, revalidés contre les lignes.
+    const hypothèses = { a: { faits: 12, concurrents: 3, recul: true, dépense: 150 }, b: { concurrents: 0 } }
+    expect(écrireLesHypothèses(hypothèses)).toBe('a:f12,c3,d150,r;b:c0')
+    expect(lireLesHypothèses('a:f12,c3,d150,r;b:c0', lignes)).toEqual(hypothèses)
+    expect(lireLesHypothèses('inconnue:f3;marche:f3;a:f9999;a:x;b:c41;<script>:f1;a:f3:c2', lignes)).toEqual({})
+    expect(lireLesHypothèses('a:f3;' + 'x'.repeat(2000), lignes)).toEqual({})
+    expect(lireLesHypothèses(null, lignes)).toEqual({})
+    expect(écrireLesHypothèses({ a: { dépense: 100 }, b: {} })).toBe('')
+  })
+
   it('les bornes d’un trimestre et un montant lisible', () => {
     expect(fenêtreDuTrimestre('2026-T4')).toEqual({ début: '2026-10-01', fin: '2026-12-31' })
     expect(fenêtreDuTrimestre('2026-T1')).toEqual({ début: '2026-01-01', fin: '2026-03-31' })

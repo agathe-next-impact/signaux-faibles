@@ -157,6 +157,30 @@ premiers concurrents ; hypothèses et sources repliées. Le nombre de cibles est
 recopie ; sans lui, l'écran dit « entreprises et établissements au registre ». Rendu dans
 `components/marches-ecran.tsx`.
 
+### Le potentiel dans le verdict et « Et si » (16 novembre 2026)
+
+Lot 1 des simulations de scénarios, à la demande de l'opératrice. Deux changements, tous deux en règle pure
+(`lib/domaine/marches-decision.ts`, que `lib/domaine/marches.ts` réexporte ; le fichier n'importe que des types,
+pour qu'un composant client puisse le charger).
+
+**Le potentiel chiffré entre dans le verdict.** La part d'un segment est son potentiel haut rapporté à la somme
+des potentiels hauts des offres de l'arbre (`arbreDeDécision`, `partDuPotentiel`). Sous 5 % de l'arbre
+(`SEUIL_DE_POTENTIEL_MARGINAL`), un segment que l'activité et la concurrence rangeraient « à pousser » ou
+« à disputer » reste « à surveiller », et la phrase de situation le dit (« Potentiel marginal (… par an, 3 % de
+l'arbre) : le segment reste à surveiller. »). Un potentiel non chiffré ne plafonne rien : l'écran dit « non
+chiffré » et la règle d'avant s'applique. Dans chaque case, les segments sont ordonnés par potentiel haut, puis
+par faits. Chaque fiche porte « ce qui ferait basculer le verdict » (`distancesDeBascule` : faits manquants,
+concurrents en plus ou en moins, mesure de la concurrence, potentiel).
+
+**« Et si ».** Sous les fiches, le lecteur pose une hypothèse sur un segment (faits du trimestre, nombre de
+concurrents présents, dépense par cible en pourcentage de l'hypothèse de l'arbre, recul depuis deux
+trimestres) et voit le verdict que la même règle rendrait, à côté du verdict mesuré, jamais à sa place
+(`simulerLesLignes`, `components/marches-simulation.tsx`, seul composant client de l'écran). Les seuils ne
+changent pas : c'est la sensibilité d'une règle, pas une prévision. Rien n'est enregistré : les hypothèses
+tiennent dans l'adresse (`?si=cle:f12,c3,d150,r;cle2:c0`, `écrireLesHypothèses`, `lireLesHypothèses`), bornées
+(`BORNES_DES_HYPOTHÈSES`) et revalidées contre les segments de la vue, une clé inconnue étant ignorée. La page
+ne lit rien de plus : mêmes mesures publiées, aucune écriture, aucun appel aux registres.
+
 ## 4. Pilote Konica Minolta France
 
 Dix-sept segments préparés (fichier `marches-et-niches/konica-segments.json`
