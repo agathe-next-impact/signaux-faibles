@@ -235,6 +235,25 @@ coût des tâches.
 Une exécution qui échoue ou atteint son plafond rend le job rouge, et GitHub
 prévient par courriel.
 
+### Le total du mois, dans le portail (16 novembre 2026)
+
+L'artefact ne vit que trente jours et ne s'additionne pas. En fin de run, le
+harnais poste donc la mesure au portail (`rapporterLeCoût`,
+`scripts/taches/couts.ts`, sur `POST /api/veille/couts`), pour **toute** tâche,
+récurrente ou lancée à la main, réussie ou non. L'opératrice lit le mois sur
+`/espaces/couts` : le total, par tâche, par organisation, puis run par run avec
+le lien du job. Le détail de la route et de la règle d'imputation par
+organisation est dans `docs/api-veille.md`, « Le coût des runs ».
+
+- Rapporter ne fait jamais échouer un run : un portail injoignable ou une
+  réponse inattendue s'écrivent au journal (`coût du run : non rapporté…`), et la
+  mesure reste dans l'artefact.
+- Un même job GitHub n'est compté qu'une fois ; une relance du job (tentative 2)
+  est un autre run, et sa dépense s'ajoute.
+- Un run arrêté avant la session (jeton Notion refusé, budget des onboardings
+  atteint) n'a rien dépensé et ne rapporte rien.
+- Le modèle ne peut ni écrire ni lire cette route : `appeler_portail` la refuse.
+
 ## Suivi des onboardings dans le portail (1er novembre 2026)
 
 Lot 1 de `docs/proposition-onboarding-admin.md`. Un run `balayage` ou

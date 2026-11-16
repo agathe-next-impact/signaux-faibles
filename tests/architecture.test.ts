@@ -913,6 +913,60 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(porte.indexOf('contrôlerUnÉnoncé(')).toBeLessThan(porte.indexOf('modifierUnÉnoncé('))
   })
 
+  /**
+   * Le coût des runs (16 novembre 2026, migration 0027) : la table n'a qu'un
+   * écrivain, `lib/base/couts.ts`, appelé par la seule orchestration
+   * `lib/portail/couts.ts` ; l'écriture ne vient que de la route du dispositif
+   * (jeton), la lecture qui traverse les clients que de la garde de
+   * l'appartenance, privilège vérifié avant. Et la tâche ne rapporte pas son
+   * propre coût : le harnais le fait, l'outil du modèle refuse la route.
+   */
+  it('le coût des runs : un écrivain, une route, une garde pour l’écran, et jamais la tâche elle-même', () => {
+    const tablesNommées: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && /\bcoûtsDesRuns\b/.test(readFileSync(chemin, 'utf8'))) tablesNommées.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) parcourir(join(process.cwd(), racine))
+    expect(tablesNommées.sort()).toEqual(['lib/base/couts.ts', 'lib/base/schema.ts'])
+    for (const nom of ['enregistrerUnCoût', 'coûtsEntre']) expect(appelants(nom), nom).toEqual(['lib/base/couts.ts', 'lib/portail/couts.ts'])
+    expect(appelants('recevoirUnCoût')).toEqual(['app/api/veille/couts/route.ts', 'lib/portail/couts.ts'])
+    expect(appelants('coûtsDuMois')).toEqual(['app/api/veille/couts/route.ts', 'lib/auth/appartenance.ts', 'lib/portail/couts.ts'])
+    expect(appelants('listerLesCoûts')).toEqual(['app/(portail)/espaces/couts/page.tsx', 'lib/auth/appartenance.ts'])
+
+    // Le privilège avant la lecture, dans la fonction.
+    const appartenance = readFileSync(join(process.cwd(), 'lib', 'auth', 'appartenance.ts'), 'utf8')
+    const lister = appartenance.slice(appartenance.indexOf('export async function listerLesCoûts'))
+    expect(lister.indexOf('exigerOpérateur()')).toBeGreaterThan(0)
+    expect(lister.indexOf('exigerOpérateur()')).toBeLessThan(lister.indexOf('coûtsDuMois('))
+
+    // Le jeton avant la base, à l'écriture comme à la lecture.
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'couts', 'route.ts'), 'utf8')
+    for (const méthode of ['export async function POST', 'export async function GET']) {
+      const corps = route.slice(route.indexOf(méthode))
+      expect(corps.indexOf('refuserSiNonAutorisé('), méthode).toBeGreaterThan(0)
+      expect(corps.indexOf('refuserSiNonAutorisé('), méthode).toBeLessThan(corps.indexOf('refuserSiBaseIndisponible('))
+    }
+    expect(route.indexOf('refuserSiNonAutorisé(')).toBeLessThan(route.indexOf('recevoirUnCoût('))
+
+    // Le harnais rapporte après avoir écrit la mesure ; l'outil du modèle refuse la route.
+    const exécuter = readFileSync(join(process.cwd(), 'scripts', 'taches', 'executer.ts'), 'utf8')
+    expect(exécuter.indexOf('rapporterLeCoût(configuration')).toBeGreaterThan(exécuter.indexOf("sorties.écrire('mesure.json', JSON.stringify(mesure"))
+    const outils = readFileSync(join(process.cwd(), 'scripts', 'taches', 'outils.ts'), 'utf8')
+    const appeler = outils.slice(outils.indexOf("'appeler_portail'"))
+    expect(appeler.indexOf('visLesCoûts(a.chemin)')).toBeGreaterThan(0)
+    expect(appeler.indexOf('visLesCoûts(a.chemin)')).toBeLessThan(appeler.indexOf('appelerLePortail(configuration, a.methode'))
+
+    // Les totaux se calculent sans base ni horloge.
+    const domaine = readFileSync(join(process.cwd(), 'lib', 'domaine', 'couts.ts'), 'utf8')
+    expect(domaine).not.toMatch(/from '@\/lib\/(base|portail|auth|notion)\//)
+    expect(domaine).not.toMatch(/new Date\(\)|Date\.now\(\)/)
+  })
+
   it('la file ne se lit à l’écran que par listerLaFile, gardée par le privilège opérateur', () => {
     expect(appelants('listerLaFile')).toEqual(['app/(portail)/espaces/file/page.tsx', 'lib/auth/appartenance.ts'])
     expect(appelants('lireLaFile')).toEqual(['app/api/veille/travaux/route.ts', 'lib/auth/appartenance.ts', 'lib/portail/file.ts'])

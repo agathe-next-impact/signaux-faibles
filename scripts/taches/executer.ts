@@ -39,6 +39,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { lireCompteDeServiceJSON } from '@/lib/email/gmail'
 import { contrôler } from './controle'
 import { décisionPour, dossierDesRéponsesPersistées, nomDOutilNotion, SERVEURS, SOUS_AGENT_COLLECTEUR, SOUS_AGENT_LECTEUR, type ContexteDeGarde } from './garde'
+import { rapporterLeCoût } from './couts'
 import { lireLaMesure, résuméDeLaMesure, type RéponseDuModèle, type RésultatBrut } from './mesure'
 import { décrireLaSonde, SERVEUR_NOTION, sonderLeServeurNotion } from './notion-mcp'
 import { annoncerLaFin, annoncerLeDébut, consigneDuSuivi, estUnOnboarding, lancementDuPortail, runDeGithub, type DemandeDuPortail } from './onboarding'
@@ -491,6 +492,8 @@ async function exécuterUneTâche(
   )
   const réussi = !échec && issue.résultat?.subtype === 'success'
   if (suivi) await annoncerLaFin(configuration, { slug: suivi.slug, runId: suivi.runId, réussi, coûtUsd: mesure.coûtTotalUsd })
+  // Le coût de tout run, récurrent ou non (16 novembre 2026) : le portail en tire le total du mois.
+  await rapporterLeCoût(configuration, mesure, runDeGithub())
   return réussi ? 0 : 1
 }
 

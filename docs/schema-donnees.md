@@ -269,6 +269,25 @@ Unicité de la place (`édition_notion`, `section`, `numéro_axe`, `rang`) parmi
 
 Une synthèse remplace la précédente de la même période (`enregistrerLaSynthèse`, archivage puis insertion, dans une transaction) ; `synthèsePrécédente` rend la dernière de même granularité (un mois suit un mois, un trimestre un trimestre), d'où la porte tire filiations et crans précédents.
 
+### `couts_des_runs` (créée le 16 novembre 2026, migration 0027)
+
+Ce que chaque run d'une tâche sur l'API a coûté, tel que le harnais le rapporte en fin de run (`POST /api/veille/couts`). Une ligne par run ; rien n'est mis à jour ensuite.
+
+| Colonne | Type | Notes |
+|---|---|---|
+| `tâche` | texte | `lettres`, `reconciliation`, `revue`, `balayage`, `premiere-lettre`, `etiquetage`, `retrospective` ; forme contrôlée, pas une énumération, pour qu'une tâche nouvelle n'exige pas une migration |
+| `organisation` | texte, nul | le slug visé par `--organisation` |
+| `organisations` | jsonb | les slugs que le run a traités ; c'est d'eux que vient l'imputation |
+| `issue` | texte | l'issue du SDK ; seule `success` est une réussite |
+| `coût_usd`, `plafond_usd` | numérique (10, 4) | `total_cost_usd` du SDK, et le plafond du run |
+| `durée_ms`, `tours` | entier, nuls | |
+| `par_modèle` | jsonb, nul | l'usage par modèle, pour relire un run ; écarté au-delà de 8 000 caractères |
+| `run_github`, `tentative`, `lien` | nuls hors de GitHub | unicité (`run_github`, `tentative`) quand le run GitHub est connu : un run n'est compté qu'une fois |
+| `origine` | texte | `harnais`, ou `onboarding` pour les lignes reprises de `onboarding_runs` par la migration |
+| `mesuré_le`, `reçu_le` | horodatage | le début du run, et l'arrivée de la mesure ; le mois d'un run est celui de `mesuré_le`, à Paris |
+
+Pas de clé vers `organisations` : un run peut nommer une organisation que le portail ne connaît pas encore (un onboarding avant l'étape B), et la dépense ne doit pas se perdre pour autant. Seul écrivain et seul lecteur `lib/base/couts.ts`, seule orchestration `lib/portail/couts.ts` ; les totaux sont calculés à la lecture (`totauxDuMois`, `lib/domaine/couts.ts`), jamais stockés.
+
 ### `sources` (palier 3)
 
 | Colonne | Type | Notes |

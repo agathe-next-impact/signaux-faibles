@@ -180,6 +180,10 @@ export default async function Abonnements({
           <Link href="/espaces/syntheses" className="text-encre underline underline-offset-2">
             Synthèses stratégiques
           </Link>
+          {' · '}
+          <Link href="/espaces/couts" className="text-encre underline underline-offset-2">
+            Coûts des tâches
+          </Link>
         </p>
       </header>
 
