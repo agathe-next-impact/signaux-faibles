@@ -21,7 +21,6 @@ import { gestionDUneOrganisation, santéDesEspaces, type GestionDUneOrganisation
 import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
 import type { SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 import { tableauDesMarchés } from '@/lib/portail/marches'
-import { tableauDesSimulations, type SimulationsDUneOrganisation } from '@/lib/portail/simulation'
 import type { MarchésDUneOrganisation } from '@/lib/domaine/marches'
 import type { ÉtatDeLaFile } from '@/lib/base/travaux'
 import { lectureDeLEspace, type Lecture } from '@/lib/portail/lecture'
@@ -225,13 +224,11 @@ export async function listerLesSynthèses(): Promise<{
   readonly organisations: SynthèsesDUneOrganisation[] | null
   /** Les périodes mesurées de « Marchés et niches », même garde, même écran (12 novembre 2026). */
   readonly marchés: MarchésDUneOrganisation[] | null
-  /** Les tables d'effets de la simulation, même garde, même écran (16 novembre 2026). */
-  readonly simulations: SimulationsDUneOrganisation[] | null
 }> {
   const accès = await exigerOpérateur()
-  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, organisations: null, marchés: null, simulations: null }
-  const [organisations, marchés, simulations] = await Promise.all([tableauDesSynthèses(), tableauDesMarchés(), tableauDesSimulations()])
-  return { accès, organisations, marchés, simulations }
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, organisations: null, marchés: null }
+  const [organisations, marchés] = await Promise.all([tableauDesSynthèses(), tableauDesMarchés()])
+  return { accès, organisations, marchés }
 }
 
 /**

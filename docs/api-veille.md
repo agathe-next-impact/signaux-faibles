@@ -1029,9 +1029,11 @@ fait (scénarios de statu quo). `sens` : `apparition` (défaut) ou `absence`.
 dimension PESTEL ou une force de Porter), `entites` (1 à 5 noms de la grille,
 `entité-hors-grille` sinon), `mouvement` (un mouvement d'Ansoff). Sans `regle`,
 l'indicateur compte tous les faits de sa famille, sans seuil, et l'écran le dit
-« comptage large ». Le portail compte les faits parus depuis le dépôt des
-scénarios, treize semaines au plus, et montre le résultat sur « Scénarios » ;
-aucune probabilité n'est calculée. L'opératrice retouche la veille et la règle
+« comptage large ». Le portail sait compter les faits parus depuis le dépôt des
+scénarios, treize semaines au plus (`trajectoireDesScénarios`) ; la section
+« Où en sont les signaux » qui montrait ce compte sur « Scénarios » a été
+retirée le 16 novembre 2026 à la demande de l'opératrice, et aucun écran ne
+l'affiche. Aucune probabilité n'est calculée. L'opératrice retouche la veille et la règle
 d'une période non publiée sur `/espaces/syntheses/[slug]/[periode]`.
 
 ### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période
@@ -1578,70 +1580,3 @@ passage quotidien publie les périodes encore en proposition.
 montré au client avant `publie` ; `aucune` (404) sans mesure pour la période.
 L'opératrice fait le même geste sur `/espaces/syntheses`, section « Marchés et
 niches ».
-
-## La simulation (16 novembre 2026)
-
-Lot 3b des simulations de scénarios. La **table d'effets** d'une organisation du
-pilote : ce que chaque action et chaque événement font bouger dans l'écran
-« Simulation » de l'espace. Des hypothèses seulement, écrites par la revue
-trimestrielle selon `docs/table-d-effets.md`, qui fait foi. Les fréquences des
-événements et l'état de départ sont comptés par le portail : la route ne les lit
-pas. Jeton `ACTIVATION_SECRET`.
-
-### `POST /api/veille/simulation` : poster la table
-
-```json
-{
-  "slug": "hermitage",
-  "engagements": [{ "segment": "seminaires", "cran": 2, "reference": "fiche de veille, niches" }],
-  "actions": [
-    {
-      "cle": "tester-retraites",
-      "libelle": "Tester une offre de retraites",
-      "geste": "tester",
-      "segment": "retraites",
-      "cout": 2,
-      "effets": { "marche": 2, "concurrence": -1 },
-      "condition": { "sur": "concurrents", "segment": "retraites", "comparaison": "au-moins", "valeur": 4 },
-      "effets_sous_condition": { "marche": 1, "concurrence": -3 },
-      "reference": "mesure 2026-T4, 5 concurrents présents"
-    },
-    { "cle": "allier-region", "libelle": "Convention avec la Région", "geste": "allier", "partie_prenante": "Région", "cout": 2, "effets": { "alliances": 8 }, "reference": "fiche de veille, sources" }
-  ],
-  "cartes": [
-    { "cle": "appel-a-projets", "libelle": "Un appel à projets s'ouvre", "famille": 3, "veille": "ecosysteme", "effets": { "alliances": 3 }, "reference": "famille 3, financement" },
-    { "cle": "rupture", "libelle": "Une rupture du secteur", "rupture": true, "effets": { "marche": -8 }, "reference": "faits marqués en rupture" }
-  ]
-}
-```
-
-| Réponse | Statut | Sens |
-| --- | --- | --- |
-| `créée` | 201 | Une version de plus, **proposée**. Jamais publiée d'office, publication automatique ou non. |
-| `inchangée` | 200 | La même table que la dernière version. |
-| `refusée` | 422 | `refus` (code, message, cible) et `message` de reprise : corriger et reposter la table entière. |
-| `arbre-absent`, `grille-absente` | 404 | L'arbre des marchés ou la grille manquent : la table ne peut pas être contrôlée. |
-| `organisation-inconnue` | 404 | |
-| `hors-pilote` | 200 | Une anomalie depuis le 10 novembre 2026 : la signaler. |
-
-Codes de refus : `table-hors-bornes`, `clé-invalide`, `doublon`, `longueur`,
-`référence-manquante`, `pilier-inconnu`, `effet-hors-bornes`,
-`condition-inconnue`, `geste-inconnu`, `coût-hors-bornes`, `segment-inconnu`,
-`partie-prenante-inconnue`, `étiquette-inconnue`, `carte-mal-formée`,
-`famille-inconnue`, `famille-ambiguë`, `cran-hors-bornes`.
-
-### `GET /api/veille/simulation?slug=<slug>` : relire
-
-Les versions et leur état, la dernière table, et `refus` : ce que la porte en
-dirait aujourd'hui (vide si elle est encore jouable).
-
-### `PATCH /api/veille/simulation` : publier ou retirer
-
-```json
-{ "slug": "hermitage", "version": 1, "etat": "publie" }
-```
-
-Le geste de l'opératrice, aussi sur `/espaces/syntheses`, section
-« Simulation ». Publier ouvre l'écran au client et retire la version publiée
-avant elle ; une version qui ne passe plus la porte est `refusée` (422).
-

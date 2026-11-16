@@ -97,8 +97,6 @@ import {
   type SynthèseProposée,
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
-import { étatDeLaSimulation } from '@/lib/base/simulation'
-import { SEMAINES_D_HISTORIQUE, type FaitDeSimulation } from '@/lib/domaine/simulation-veille'
 import { estLaDémonstration } from '@/lib/domaine/demonstration'
 import { lireLaPublicationAutomatique } from '@/lib/domaine/publication-automatique'
 import { sansAccent } from '@/lib/domaine/texte'
@@ -1175,8 +1173,6 @@ export type EspaceDeLOrganisation = {
   readonly concurrents: readonly string[]
   /** Les mots de l'écran « Concurrents » : ses concurrents, ou les entreprises de son territoire. */
   readonly marché: VocabulaireDuMarché
-  /** La simulation (16 novembre 2026) : une table d'effets est-elle publiée, une autre attend-elle la relecture ? */
-  readonly simulation?: { readonly publiée: boolean; readonly proposée: boolean }
 }
 
 const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, concurrents: [], marché: vocabulaireDuMarché(null) }
@@ -1201,12 +1197,11 @@ const espaceMémoïsé = cache(async (registre: string, db?: Base): Promise<Espa
     async () => {
       const organisation = await organisationDuRegistre(registre, db)
       if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return NON_RÉORGANISÉ
-      const [grille, simulation] = await Promise.all([lireLaGrille(organisation.id, db), étatDeLaSimulation(organisation.id, db)])
+      const grille = await lireLaGrille(organisation.id, db)
       return {
         réorganisé: true,
         concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [],
         marché: vocabulaireDuMarché(organisation.sujetsDuMarché),
-        simulation,
       }
     },
     DÉLAI_DES_ÉCRANS_STRATÉGIQUES_MS,
@@ -1348,95 +1343,6 @@ export async function indicateursDeLEspace(entrée: { readonly registre: string 
     const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
     return trimestre ? vueDesIndicateurs(trimestre.période, trimestre.éléments) : null
   })
-}
-
-/**
- * La trajectoire des scénarios du dernier trimestre **publié** (16 novembre
- * 2026, lot 2 des simulations) : les faits étiquetés parus depuis le dépôt des
- * scénarios, comptés contre la règle de chaque indicateur. Postgres seul, par
- * le registre de la session (règle 2) : aucun corps de lettre n'est relu.
- * `fin` est la date de la dernière lettre publiée, que l'écran a en main.
- * `null` hors de l'espace réorganisé, sans scénario publié, ou dans le doute.
- */
-export async function trajectoireDeLEspace(entrée: { readonly registre: string; readonly fin: string }, db?: Base): Promise<Trajectoire | null> {
-  return bornée('lecture de la trajectoire des scénarios', async () => {
-    const organisation = await organisationDuRegistre(entrée.registre, db)
-    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
-    const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
-    const posés = trimestre?.éléments.filter((é) => é.outil === 'scenario') ?? []
-    if (!trimestre || posés.length === 0) return null
-    // Le lendemain du dépôt : les faits d'avant ont fondé les scénarios, ils ne les confirment pas.
-    const dépôt = new Date(Math.max(...posés.map((é) => é.crééLe.getTime())))
-    dépôt.setUTCDate(dépôt.getUTCDate() + 1)
-    const début = dépôt.toISOString().slice(0, 10)
-    const [lignes, grille] = await Promise.all([
-      début <= entrée.fin ? faitsDeLaFenêtre({ organisationId: organisation.id, début, fin: entrée.fin }, db) : [],
-      lireLaGrille(organisation.id, db),
-    ])
-    return trajectoireDesScénarios(
-      vueDesScénarios(trimestre.éléments),
-      lignes.map((l) => ({
-        date: l.dateFait,
-        dateÉdition: l.dateÉdition,
-        édition: l.éditionNotion,
-        source: l.sourceUrl,
-        famille: l.familleÉdition,
-        axe: l.numéroAxe,
-        pestel: l.pestel,
-        porter: l.forcePorter,
-        ansoff: l.ansoff,
-        entité: l.entité,
-        impact: l.impact,
-        rupture: l.rupture,
-      })),
-      { début, fin: entrée.fin },
-      grille?.grille ?? null,
-    )
-  })
-}
-
-/**
- * Ce que la simulation lit de la veille (16 novembre 2026, lot 3b) : la grille,
- * les faits étiquetés des six derniers mois et les crans des forces du dernier
- * trimestre publié. Des étiquettes et des comptes, aucun corps de lettre. Sans
- * borne propre : son seul appelant, `simulationDeLEspace`, est borné.
- */
-export async function veilleDeLaSimulation(
-  entrée: { readonly organisationId: string; readonly fin: string },
-  db?: Base,
-): Promise<{ readonly grille: Grille | null; readonly faits: readonly FaitDeSimulation[]; readonly forces: readonly { readonly force: string; readonly cran: number }[] }> {
-  const d = new Date(`${entrée.fin}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - (SEMAINES_D_HISTORIQUE * 7 - 1))
-  const [grille, lignes, trimestre] = await Promise.all([
-    lireLaGrille(entrée.organisationId, db),
-    faitsDeLaFenêtre({ organisationId: entrée.organisationId, début: d.toISOString().slice(0, 10), fin: entrée.fin }, db),
-    dernièreSynthèsePubliée({ organisationId: entrée.organisationId, granularité: 'trimestre' }, db),
-  ])
-  return {
-    grille: grille?.grille ?? null,
-    faits: lignes.map((l) => ({
-      dateÉdition: l.dateÉdition,
-      date: l.dateFait,
-      édition: l.éditionNotion,
-      source: l.sourceUrl,
-      famille: l.familleÉdition,
-      axe: l.numéroAxe,
-      pestel: l.pestel,
-      porter: l.forcePorter,
-      impact: l.impact,
-      rupture: l.rupture,
-    })),
-    forces: trimestre ? vueDesForces(trimestre.positions).flatMap((f) => (f.cran === null ? [] : [{ force: f.force, cran: f.cran }])) : [],
-  }
-}
-
-/** La grille d'une organisation du pilote, pour la porte de la table d'effets. */
-export async function grillePourLaSimulation(entrée: { readonly slug: string }, db?: Base): Promise<{ readonly sorte: 'organisation-inconnue' | 'hors-pilote' | 'grille-absente' } | { readonly sorte: 'lue'; readonly organisationId: string; readonly grille: Grille }> {
-  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
-  if (!organisation) return { sorte: 'organisation-inconnue' }
-  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
-  const grille = await lireLaGrille(organisation.id, db)
-  return grille ? { sorte: 'lue', organisationId: organisation.id, grille: grille.grille } : { sorte: 'grille-absente' }
 }
 
 export type AxeLu = { readonly sorte: 'axe'; readonly vue: VueDeLAxe } | { readonly sorte: 'inconnu' }
