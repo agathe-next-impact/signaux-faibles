@@ -1403,6 +1403,75 @@ actifs, la date du dernier lien d'accès parti et les dix derniers runs. Aucune
 adresse.
 
 
+## Le coût des runs (16 novembre 2026)
+
+Chaque run d'une tâche sur l'API rapporte ce qu'il a coûté, une fois sa session
+finie : c'est le **harnais** qui poste (`scripts/taches/couts.ts`), jamais le
+modèle, dont l'outil `appeler_portail` refuse cette route. Le portail en tire le
+total du mois, par tâche et par organisation, sur `/espaces/couts`. Table
+`couts_des_runs` (migration 0027) ; ni adresse ni texte, des chiffres et des
+slugs.
+
+### `POST /api/veille/couts`
+
+```json
+{
+  "mesure": {
+    "tâche": "lettres", "organisation": null, "date": "2026-11-16T05:00:02.000Z",
+    "issue": "success", "duréeMs": 1820000, "tours": 212,
+    "coûtTotalUsd": 18.42, "plafondUsd": 60,
+    "parModèle": { "…": { "jetonsEntrée": 0, "coûtUsd": 0 } },
+    "organisationsTraitées": ["hermitage", "mastora"]
+  },
+  "run": { "id": 43828102333, "tentative": 1, "lien": "https://github.com/…/actions/runs/43828102333" }
+}
+```
+
+`mesure` est le contenu de `mesure.json` (les champs en trop sont ignorés) : le
+coût est `total_cost_usd` du SDK, le portail ne recalcule rien. `run` est le job
+GitHub, `null` hors de GitHub.
+
+| Réponse | Sens |
+|---|---|
+| 201 `enregistré` | la mesure est gardée |
+| 200 `déjà-enregistré` | ce run GitHub (identifiant et tentative) l'était déjà : rien n'est écrit, la dépense n'est pas doublée |
+| 400 `refusée` | corps invalide, `raison` le dit |
+| 401, 503 | jeton, base absente |
+| 502 `échec` | la base n'a pas répondu ; le détail va dans les journaux |
+
+`organisation` (l'argument `--organisation`) et `organisationsTraitées` (ce que
+le run a nommé au portail) acceptent un slug ou un nom : chaque valeur est
+ramenée à un slug, plutôt que de refuser la mesure. L'usage par modèle n'est
+gardé que s'il tient en 8 000 caractères.
+
+### `GET /api/veille/couts?mois=AAAA-MM`
+
+Les totaux d'un mois **de Paris** (le mois en cours sans paramètre) :
+
+```json
+{ "état": "lu", "mois": "2026-11", "runs": 14,
+  "totaux": {
+    "runs": 14, "échecs": 1, "coûtUsd": 212.4,
+    "parTâche": [{ "tâche": "lettres", "runs": 6, "échecs": 0, "coûtUsd": 131.2, "plafondUsd": 360, "duréeMs": 10800000 }],
+    "parOrganisation": [{ "slug": "mastora", "runs": 7, "exactUsd": 15.17, "estiméUsd": 16.4, "coûtUsd": 31.57 }],
+    "nonAttribuéUsd": 6.1, "répartiUsd": 131.2 },
+  "noms": { "mastora": "Mastora" } }
+```
+
+**Le coût par organisation est exact ou estimé.** Un run qui n'a traité qu'une
+organisation lui est imputé en entier (`exactUsd`). Un run qui en a traité
+plusieurs, comme les lettres du jour, n'est pas mesuré organisation par
+organisation : sa dépense est répartie à parts égales (`estiméUsd`), ce qui est
+une convention. Un run qui n'en nomme aucune reste dans `nonAttribuéUsd`. Un
+run sans réussite (plafond atteint, erreur) a dépensé quand même : il est compté.
+
+Ce que la table ne contient pas : les runs lancés depuis Cowork, qui consomment
+l'abonnement et ne sont pas mesurés ; les runs récurrents d'avant le
+16 novembre 2026, dont la mesure n'a vécu que dans l'artefact du job (seuls les
+runs d'onboarding, déjà suivis, ont été repris par la migration) ; les runs du
+moteur Trigger.dev, qui ne rapportent leur coût qu'au suivi des onboardings.
+
+
 ## Marchés et niches (12 novembre 2026)
 
 `docs/plan-marches-et-niches.md`. Pour les seules organisations du pilote des

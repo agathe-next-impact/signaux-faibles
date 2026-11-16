@@ -95,6 +95,15 @@ export function visLeSuivi(chemin: string): boolean {
   return seul.replace(/\/+$/, '') === CHEMIN_DU_SUIVI
 }
 
+/** La route du coût des runs : écrite par le harnais seul, en fin de run (`scripts/taches/couts.ts`). */
+export const CHEMIN_DES_COÛTS = '/api/veille/couts'
+
+/** Vrai si un chemin donné à `appeler_portail` vise la route des coûts : une tâche n'écrit ni ne lit sa propre dépense. */
+export function visLesCoûts(chemin: string): boolean {
+  const seul = chemin.trim().replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0] ?? ''
+  return seul.replace(/\/+$/, '') === CHEMIN_DES_COÛTS
+}
+
 export type RéponseDuPortail = { readonly statut: number; readonly corps: string }
 
 export async function appelerLePortail(
@@ -445,6 +454,7 @@ export function serveursDesOutils(configuration: ConfigurationDesOutils) {
         (a) =>
           protéger(async () => {
             if (visLeSuivi(a.chemin)) throw new Error('Refusé : le suivi de l’onboarding se rapporte par rapporter_onboarding, sur l’organisation du run seulement.')
+            if (visLesCoûts(a.chemin)) throw new Error('Refusé : le coût d’un run est rapporté par le harnais, en fin de run, jamais par la tâche.')
             const r = await appelerLePortail(configuration, a.methode, a.chemin, a.corps)
             if ('refus' in r) throw new Error(`Refusé : ${r.refus}`)
             return `statut : ${r.statut}\n\n${r.corps}`

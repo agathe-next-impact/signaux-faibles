@@ -15,6 +15,8 @@ import { créneauxCoworkPris, tableauDesOnboardings } from '@/lib/base/onboardin
 import { débutDuMoisDeParis } from '@/lib/domaine/onboarding'
 import { vueDuTableau, type TableauDesOnboardings } from '@/lib/portail/onboarding'
 import { lireLaFile } from '@/lib/portail/file'
+import { coûtsDuMois, type CoûtsDuMois } from '@/lib/portail/couts'
+import { estUnMois, moisDeParis } from '@/lib/domaine/couts'
 import { gestionDUneOrganisation, santéDesEspaces, type GestionDUneOrganisation, type SantéDesEspaces } from '@/lib/portail/gestion'
 import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
 import type { SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
@@ -338,6 +340,25 @@ export async function lireLaGestionDUneOrganisation(slug: string): Promise<{
 export async function lireLaSantéDesEspaces(): Promise<{ readonly accès: Accès; readonly santé: SantéDesEspaces | null }> {
   const accès = await exigerOpérateur()
   return { accès, santé: await santéDesEspaces() }
+}
+
+/**
+ * Le coût des tâches d'un mois, pour l'écran `/espaces/couts` (16 novembre
+ * 2026). La lecture traverse les clients (un total par organisation) : la
+ * garde est **dans** la fonction, comme pour le sélecteur, avant toute lecture,
+ * et `coûtsDuMois` n'a pas d'autre appelant à l'écran
+ * (`tests/architecture.test.ts`). Un mois mal formé vaut le mois en cours ;
+ * `coûts` vaut `null` quand Postgres n'est pas en service.
+ */
+export async function listerLesCoûts(moisDemandé?: string): Promise<{
+  readonly accès: Accès
+  readonly mois: string
+  readonly coûts: CoûtsDuMois | null
+}> {
+  const accès = await exigerOpérateur()
+  const mois = estUnMois(moisDemandé) ? moisDemandé : moisDeParis(new Date())
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, mois, coûts: null }
+  return { accès, mois, coûts: await coûtsDuMois(mois) }
 }
 
 export async function listerLaFile(): Promise<{

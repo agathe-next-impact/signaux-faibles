@@ -1147,6 +1147,61 @@ export const onboardingRuns = pgTable(
   ],
 )
 
+/**
+ * Ce qu'un run d'une tâche a coûté (16 novembre 2026, demande de l'opératrice :
+ * suivre le coût de toutes les tâches, pas des seuls onboardings).
+ *
+ * Jusqu'ici, le coût d'un run récurrent (lettres, revue, réconciliation) ne
+ * vivait que dans `mesure.json`, artefact GitHub gardé trente jours : aucun
+ * total du mois, aucun coût par organisation. Le harnais rapporte désormais la
+ * mesure de **chaque** run en fin d'exécution (`POST /api/veille/couts`),
+ * onboardings compris ; les runs d'onboarding d'avant sont repris de
+ * `onboarding_runs` par la migration 0027.
+ *
+ * Le coût est celui que le SDK rapporte (`total_cost_usd`), jamais recalculé.
+ * `organisations` porte les slugs que le run a traités : un run de lettres en
+ * traite plusieurs, et sa dépense n'est pas mesurée organisation par
+ * organisation ; l'écran la répartit à parts égales et le dit. Aucune donnée
+ * de lecteur, aucun texte de lettre : des chiffres et des slugs.
+ */
+export const coûtsDesRuns = pgTable(
+  'couts_des_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** `lettres`, `revue`, `reconciliation`, `balayage`, `premiere-lettre`… : une donnée, la liste des tâches évolue. */
+    tâche: text('tâche').notNull(),
+    /** L'organisation visée par `--organisation`, ou nul pour un run de tout le portefeuille. */
+    organisation: text('organisation'),
+    /** Les slugs traités par le run, triés. */
+    organisations: jsonb('organisations').$type<string[]>().notNull().default([]),
+    /** L'issue du SDK : `success`, `error_max_budget_usd`, `erreur`… */
+    issue: text('issue').notNull(),
+    coûtUsd: numeric('coût_usd', { precision: 10, scale: 4, mode: 'number' }).notNull(),
+    plafondUsd: numeric('plafond_usd', { precision: 10, scale: 4, mode: 'number' }),
+    duréeMs: integer('durée_ms'),
+    tours: integer('tours'),
+    /** L'usage par modèle tel que `mesure.json` le porte : jetons, cache, recherches, coût. */
+    parModèle: jsonb('par_modèle').$type<Record<string, unknown>>(),
+    /** `GITHUB_RUN_ID` et `GITHUB_RUN_ATTEMPT` ; nuls pour un run lancé hors de GitHub. */
+    runGithub: bigint('run_github', { mode: 'number' }),
+    tentative: smallint('tentative'),
+    lien: text('lien'),
+    /** `harnais` : rapporté par le run ; `onboarding` : repris de `onboarding_runs` (migration 0027). */
+    origine: text('origine').notNull().default('harnais'),
+    /** Le début du run : c'est lui qui range le run dans un mois de Paris. */
+    mesuréLe: horodatage('mesuré_le').notNull(),
+    reçuLe: horodatage('reçu_le').notNull().defaultNow(),
+  },
+  (table) => [
+    index('couts_des_runs_mesuré_le').on(table.mesuréLe),
+    uniqueIndex('couts_des_runs_github_unique').on(table.runGithub, table.tentative).where(sql`${table.runGithub} is not null`),
+    check('couts_des_runs_coût', sql`${table.coûtUsd} >= 0`),
+    check('couts_des_runs_tâche_forme', sql`${table.tâche} ~ '^[a-z][a-z_-]{1,39}$'`),
+    check('couts_des_runs_lien_forme', sql`${table.lien} is null or ${table.lien} ~ '^https://github[.]com/'`),
+    check('couts_des_runs_origine', sql`${table.origine} in ('harnais', 'onboarding')`),
+  ],
+)
+
 export type LigneDOnboarding = typeof onboardings.$inferSelect
 export type LigneDeRunDOnboarding = typeof onboardingRuns.$inferSelect
 

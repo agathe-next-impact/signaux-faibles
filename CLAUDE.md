@@ -961,6 +961,19 @@ abonnement Stripe ouvert, passe dans le groupe « Sans lecteur actif » du table
 fiche replie ses lecteurs inactifs sous « Accès révoqués ». Tant que Notion fait foi pour
 les accès, l'import rétablit un lecteur dont la ligne « Accès » reste active : la décocher
 aussi.
+**Coût des tâches, mois par mois** (16 novembre 2026, demande de l'opératrice) : `mesure.json` ne
+vivait que dans l'artefact du job ; le harnais poste désormais la mesure de **tout** run en fin de
+session (`rapporterLeCoût`, `scripts/taches/couts.ts`, `POST /api/veille/couts`), sans jamais faire
+échouer le run, et le modèle ne peut pas écrire son propre coût (`appeler_portail` refuse la route,
+`visLesCoûts`). Table `couts_des_runs` (migration 0027, qui reprend les runs d'onboarding déjà
+mesurés ; un job GitHub compté une fois, par identifiant et tentative), seul écrivain
+`lib/base/couts.ts`, seule orchestration `lib/portail/couts.ts`. L'opératrice lit le mois de Paris sur
+`/espaces/couts` (`listerLesCoûts`, garde dans la fonction ; lien depuis l'en-tête des abonnements) :
+total, par tâche, par organisation, run par run. Les totaux sont **calculés à la lecture, jamais
+stockés** (`totauxDuMois`, `lib/domaine/couts.ts`, pur) : un run à une organisation lui est imputé en
+entier, un run à plusieurs (les lettres du jour) est réparti à parts égales et l'écran le dit
+« estimé », un run qui n'en nomme aucune reste « non attribué ». Ni les runs Cowork ni ceux du moteur
+Trigger.dev n'y figurent ; garde d'architecture.
 **Écarts de statut avec le registre** (15 novembre 2026) : le portail ne lit pas le
 registre, donc le cron du soir ne peut pas comparer ; la tâche qui vient de le lire
 **donne** ses lignes (slug, statut) à `POST /api/veille/etat`, qui les compare aux
