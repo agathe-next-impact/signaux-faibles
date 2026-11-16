@@ -103,6 +103,8 @@ export const BORNES = {
   scénarios: 3,
   indicateursMin: 2,
   indicateursMax: 4,
+  seuilDIndicateurMax: 10,
+  entitésDIndicateurMax: 5,
 } as const
 
 // ── Refus ────────────────────────────────────────────────────────────────────
@@ -658,11 +660,96 @@ export type LettrePestelProposée = {
   readonly faits: readonly string[]
 }
 
+export const EXIGENCES_D_INDICATEUR = ['tout', 'fort', 'rupture'] as const
+export type ExigenceDIndicateur = (typeof EXIGENCES_D_INDICATEUR)[number]
+export const SENS_D_INDICATEUR = ['apparition', 'absence'] as const
+export type SensDIndicateur = (typeof SENS_D_INDICATEUR)[number]
+
+/**
+ * La règle de comptage d'un indicateur de scénario (16 novembre 2026, lot 2 des
+ * simulations de scénarios). Le signal reste un texte pour le lecteur ; la règle
+ * est ce que le code sait appliquer aux faits étiquetés de la famille. Elle est
+ * proposée par la revue trimestrielle, contrôlée ici, relue par l'opératrice.
+ *
+ * `seuil` : pour le sens `apparition`, le nombre de faits qui allume
+ * l'indicateur ; pour le sens `absence`, le nombre de semaines consécutives sans
+ * fait. Un à dix dans les deux cas.
+ */
+export type RègleDIndicateur = {
+  /** Une dimension PESTEL ou une force de Porter : seuls les faits qui la portent comptent. */
+  readonly cadre?: Pestel | ForcePorter | null
+  /** Un à cinq noms de la grille : seuls les faits qui nomment l'un d'eux comptent. */
+  readonly entités?: readonly string[] | null
+  readonly mouvement?: Ansoff | null
+  /** `tout` par défaut. */
+  readonly exigence?: ExigenceDIndicateur | null
+  readonly seuil: number
+  /** `apparition` par défaut ; `absence` sert les scénarios de statu quo. */
+  readonly sens?: SensDIndicateur | null
+}
+
+export type IndicateurDeScénario = {
+  readonly famille: number
+  /**
+   * La veille de la famille : une grille numérote ses familles par veille, le
+   * numéro seul peut en désigner deux. Absente des scénarios d'avant le
+   * 16 novembre 2026, où elle se déduit quand le numéro n'existe que dans une veille.
+   */
+  readonly veille?: Veille | null
+  readonly signal: string
+  /** Sans règle, l'indicateur compte toute la famille : « comptage large ». */
+  readonly règle?: RègleDIndicateur | null
+}
+
 export type ScénarioProposé = {
   readonly titre: string
   readonly énoncé: string
-  readonly indicateurs: readonly { readonly famille: number; readonly signal: string }[]
+  readonly indicateurs: readonly IndicateurDeScénario[]
   readonly faits: readonly string[]
+}
+
+/**
+ * La famille de la grille qu'un indicateur désigne. Sans veille, le numéro doit
+ * n'exister que dans une veille : sinon il est ambigu, et rien n'est deviné.
+ */
+export function familleDeLIndicateur(
+  grille: Pick<Grille, 'familles'>,
+  indicateur: Pick<IndicateurDeScénario, 'famille' | 'veille'>,
+): { readonly sorte: 'trouvée'; readonly famille: FamilleDeGrille } | { readonly sorte: 'inconnue' | 'ambiguë' } {
+  const candidates = grille.familles.filter((f) => f.numéro === indicateur.famille && (indicateur.veille == null || f.veille === indicateur.veille))
+  const [seule] = candidates
+  if (!seule) return { sorte: 'inconnue' }
+  return candidates.length > 1 ? { sorte: 'ambiguë' } : { sorte: 'trouvée', famille: seule }
+}
+
+/**
+ * La porte d'un indicateur : sa famille existe dans la grille et n'est pas
+ * ambiguë, sa règle est bien formée. Elle ne juge pas la pertinence de la
+ * règle, que seule la relecture peut dire.
+ */
+export function contrôlerUnIndicateur(indicateur: IndicateurDeScénario, grille: Pick<Grille, 'familles' | 'entités' | 'partiesPrenantes'>): readonly Refus[] {
+  const refus: Refus[] = []
+  const refuser = (code: string, message: string) => refus.push({ code, message })
+  if (indicateur.veille != null && !dans(VEILLES, indicateur.veille)) refuser('étiquette-inconnue', `veille « ${String(indicateur.veille)} » inconnue`)
+  const famille = familleDeLIndicateur(grille, indicateur)
+  if (famille.sorte === 'inconnue') {
+    refuser('famille-inconnue', `l’indicateur renvoie à la famille ${indicateur.famille}${indicateur.veille ? ` de la veille ${indicateur.veille}` : ''}, absente de la grille`)
+  } else if (famille.sorte === 'ambiguë') {
+    refuser('famille-ambiguë', `la grille porte deux familles ${indicateur.famille} : l’indicateur précise sa veille (${VEILLES.join(' ou ')})`)
+  }
+  const règle = indicateur.règle
+  if (règle == null) return refus
+  if (!Number.isInteger(règle.seuil) || règle.seuil < 1 || règle.seuil > BORNES.seuilDIndicateurMax) refuser('règle-hors-bornes', `seuil ${String(règle.seuil)} : un entier de 1 à ${BORNES.seuilDIndicateurMax}`)
+  if (règle.exigence != null && !dans(EXIGENCES_D_INDICATEUR, règle.exigence)) refuser('étiquette-inconnue', `exigence « ${String(règle.exigence)} » : attendu ${EXIGENCES_D_INDICATEUR.join(', ')}`)
+  if (règle.sens != null && !dans(SENS_D_INDICATEUR, règle.sens)) refuser('étiquette-inconnue', `sens « ${String(règle.sens)} » : attendu ${SENS_D_INDICATEUR.join(' ou ')}`)
+  if (règle.cadre != null && !dans(PESTEL, règle.cadre) && !dans(FORCES_PORTER, règle.cadre)) refuser('étiquette-inconnue', `cadre « ${String(règle.cadre)} » : une dimension PESTEL ou une force de Porter`)
+  if (règle.mouvement != null && !dans(ANSOFF, règle.mouvement)) refuser('étiquette-inconnue', `mouvement d’Ansoff « ${String(règle.mouvement)} » inconnu`)
+  if (règle.entités != null) {
+    if (règle.entités.length < 1 || règle.entités.length > BORNES.entitésDIndicateurMax) refuser('règle-hors-bornes', `${règle.entités.length} entité(s) : 1 à ${BORNES.entitésDIndicateurMax}, ou aucune`)
+    const connues = new Set([...grille.entités, ...grille.partiesPrenantes].map((e) => normaliserTitre(e.nom)))
+    for (const nom of règle.entités) if (!connues.has(normaliserTitre(nom))) refuser('entité-hors-grille', `« ${nom} » ne figure pas dans la grille`)
+  }
+  return refus
 }
 
 export type SynthèseProposée = {
@@ -905,13 +992,12 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
   const scénarios = synthèse.scénarios ?? []
   if (synthèse.mode === 'trimestriel' && scénarios.length !== BORNES.scénarios) refuser('scénarios-hors-bornes', `${scénarios.length} scénario(s) pour ${BORNES.scénarios}`)
   if (synthèse.mode !== 'trimestriel' && scénarios.length > 0) refuser('hors-période', 'les scénarios se bâtissent au trimestre')
-  const familles = new Set(contexte.grille.familles.map((f) => f.numéro))
   scénarios.forEach((s, i) => {
     const cible = `scénario ${i + 1}`
     vérifierÉnoncé(s.énoncé, cible, BORNES.scénarioMax)
     if (s.titre.trim().length === 0 || s.titre.length > BORNES.libelléMax * 2) refuser('longueur', 'titre vide ou trop long', cible)
     if (s.indicateurs.length < BORNES.indicateursMin || s.indicateurs.length > BORNES.indicateursMax) refuser('indicateurs-hors-bornes', `${s.indicateurs.length} indicateur(s) pour ${BORNES.indicateursMin} à ${BORNES.indicateursMax}`, cible)
-    for (const ind of s.indicateurs) if (!familles.has(ind.famille)) refuser('famille-inconnue', `l’indicateur renvoie à la famille ${ind.famille}, absente de la grille`, cible)
+    for (const ind of s.indicateurs) for (const r of contrôlerUnIndicateur(ind, contexte.grille)) refuser(r.code, r.message, cible)
     vérifierFaits(s.faits, cible)
   })
 
@@ -920,6 +1006,22 @@ export function contrôlerLaSynthèse(synthèse: SynthèseProposée, contexte: C
     vérifierÉnoncé(it.énoncé, it.outil)
   }
   return { refus, avertissements }
+}
+
+/**
+ * La règle d'un indicateur en une phrase, pour le lecteur comme pour la
+ * relecture : « 3 faits ou plus, signal fort seulement, qui nomment Aérolys ».
+ */
+export function règleEnClair(règle: RègleDIndicateur): string {
+  const filtres: string[] = []
+  if (règle.exigence === 'fort') filtres.push('au signal fort')
+  if (règle.exigence === 'rupture') filtres.push('marqués en rupture')
+  if (règle.cadre) filtres.push(`sous « ${dans(PESTEL, règle.cadre) ? LIBELLÉS_PESTEL[règle.cadre] : LIBELLÉS_PORTER[règle.cadre as ForcePorter]} »`)
+  if (règle.mouvement) filtres.push(`de ${LIBELLÉS_ANSOFF[règle.mouvement]}`)
+  if (règle.entités && règle.entités.length > 0) filtres.push(`qui nomment ${règle.entités.join(' ou ')}`)
+  const quoi = filtres.length > 0 ? ` ${filtres.join(', ')}` : ''
+  if (règle.sens === 'absence') return `aucun fait${quoi} pendant ${règle.seuil} semaine${règle.seuil > 1 ? 's' : ''} de suite`
+  return `${règle.seuil} fait${règle.seuil > 1 ? 's' : ''} ou plus${quoi}`
 }
 
 // ── Rendu de la synthèse, pour la relecture ──────────────────────────────────
@@ -1141,9 +1243,12 @@ export function rendreLaSynthèse(s: SynthèseÀRendre): string {
   if (scénarios.length > 0) {
     lignes.push('', 'Scénarios')
     for (const é of scénarios) {
-      const r = (é.références ?? {}) as { titre?: string; indicateurs?: { famille: number; signal: string }[] }
+      const r = (é.références ?? {}) as { titre?: string; indicateurs?: IndicateurDeScénario[] }
       lignes.push(`- ${r.titre ?? é.clé} : ${é.énoncé ?? ''}${faitsDe(é.faits)}`)
-      for (const ind of r.indicateurs ?? []) lignes.push(`  · indicateur, famille ${ind.famille} : ${ind.signal}`)
+      for (const ind of r.indicateurs ?? []) {
+        lignes.push(`  · indicateur, famille ${ind.famille}${ind.veille ? ` (${ind.veille})` : ''} : ${ind.signal}`)
+        lignes.push(`    règle : ${ind.règle ? règleEnClair(ind.règle) : 'aucune, comptage large de la famille'}`)
+      }
     }
   }
 

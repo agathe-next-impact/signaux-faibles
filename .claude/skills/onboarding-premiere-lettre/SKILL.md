@@ -275,7 +275,11 @@ Organisation visée : $ARGUMENTS
      référentiels » : les cinq forces (cran et tendance lus dans les faits
      étiquetés à la force ; `nonSuivi` pour une force de `forcesNonSuivies`),
      trois scénarios sur Q3 (2 à 4 indicateurs datables chacun, aucune
-     probabilité), et les deux interprétations des chiffres que rend `GET
+     probabilité) ; chaque indicateur porte `veille`, la veille de
+     sa famille, sans quoi un numéro présent dans les deux veilles est refusé
+     `famille-ambiguë`, et si possible `regle`, ce que le portail compte dans
+     les faits étiquetés : `docs/api-veille.md`, « Indicateurs d'un
+     scénario »), et les deux interprétations des chiffres que rend `GET
      /api/veille/calculs` (départements et premier texte d'activité de la famille
      « Nouveaux entrants », repris dans `"cycle"`). Aucun chiffre qui n'y figure
      pas. Pas de matrice GE : elle revient à la revue de janvier, et

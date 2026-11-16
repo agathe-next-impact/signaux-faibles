@@ -10,6 +10,7 @@ import {
   faitsParEntité,
   lireLaGrille,
   lireLaSynthèse,
+  modifierUnIndicateur,
   modifierUnÉnoncé,
   remplacerLeBenchmark,
   organisationPourLesOutils,
@@ -41,6 +42,7 @@ import {
   SEMAINES_D_ACTIVITÉ,
   vueDeLaChaleur,
   vueDeLAxe,
+  trajectoireDesScénarios,
   vueDesIndicateurs,
   vueDeLaCarte,
   vueDeLaFiche,
@@ -59,6 +61,7 @@ import {
   type VueDesIndicateurs,
   type ScénarioLu,
   type SynthèsesDUneOrganisation,
+  type Trajectoire,
   type SynthèseVue,
   type VueDesConcurrents,
   type VueDeLaCarte,
@@ -72,6 +75,7 @@ import {
   contrôlerLaSynthèse,
   contrôlerLesParamètresDuCycle,
   contrôlerLesÉtiquettes,
+  contrôlerUnIndicateur,
   contrôlerUnÉnoncé,
   empreinteDeLaGrille,
   faitsDeLaLettre,
@@ -85,8 +89,10 @@ import {
   type LigneDeBenchmark,
   type ForcePorter,
   type Grille,
+  type IndicateurDeScénario,
   type Pestel,
   type Refus,
+  type RègleDIndicateur,
   type ParamètresDuCycle,
   type SynthèseProposée,
   type ÉtiquetteProposée,
@@ -794,6 +800,8 @@ export type ÉlémentÀRelire = {
   readonly énoncé: string | null
   /** Le titre d'un scénario, sinon `null`. */
   readonly titre: string | null
+  /** Les indicateurs d'un scénario, avec leur veille et leur règle quand ils en portent ; vide ailleurs. */
+  readonly indicateurs: readonly IndicateurDeScénario[]
   readonly origine: string
   readonly candidate: boolean
   readonly faits: number
@@ -834,6 +842,7 @@ export async function synthèseÀRelire(entrée: { readonly slug: string; readon
       rang: é.rang,
       énoncé: é.énoncé,
       titre: é.outil === 'scenario' && typeof é.références['titre'] === 'string' ? é.références['titre'] : null,
+      indicateurs: é.outil === 'scenario' && Array.isArray(é.références['indicateurs']) ? (é.références['indicateurs'] as IndicateurDeScénario[]) : [],
       origine: é.origine,
       candidate: é.candidateRecommandation,
       faits: é.faits.length,
@@ -868,6 +877,44 @@ export async function modifierLÉnoncéDuPilote(
   if (refus.length > 0) return { sorte: 'refusé', refus }
   const r = await modifierUnÉnoncé({ organisationId: organisation.id, période: entrée.période, élémentId: élément.id, énoncé, titre }, db)
   return r.sorte === 'modifié' ? { sorte: 'modifié' } : r
+}
+
+/**
+ * Retouche un indicateur d'un scénario non publié (16 novembre 2026, lot 2 des
+ * simulations) : la veille de sa famille et sa règle de comptage, depuis la
+ * page de relecture de l'opératrice. Le pilote d'abord, la porte de
+ * l'indicateur sur la grille en vigueur ensuite, l'écriture en dernier. Une
+ * règle `null` rend l'indicateur au comptage large.
+ */
+export async function modifierLIndicateurDuPilote(
+  entrée: {
+    readonly slug: string
+    readonly période: string
+    readonly élément: string
+    readonly rang: number
+    readonly veille: string | null
+    readonly règle: RègleDIndicateur | null
+  },
+  db?: Base,
+): Promise<RésultatDeLaModification | { readonly sorte: 'grille-absente' }> {
+  const organisation = await organisationPourLesOutils({ slug: entrée.slug }, db)
+  if (!organisation) return { sorte: 'organisation-inconnue' }
+  if (!organisation.outilsStratégiques) return { sorte: 'hors-pilote' }
+  const [lue, grille] = await Promise.all([lireLaSynthèse({ organisationId: organisation.id, période: entrée.période }, db), lireLaGrille(organisation.id, db)])
+  if (!grille) return { sorte: 'grille-absente' }
+  const élément = lue.éléments.find((é) => é.id === entrée.élément && é.outil === 'scenario')
+  const indicateurs = élément && Array.isArray(élément.références['indicateurs']) ? (élément.références['indicateurs'] as IndicateurDeScénario[]) : []
+  const avant = indicateurs[entrée.rang]
+  if (!élément || !avant) return { sorte: 'introuvable' }
+  const indicateur = {
+    famille: avant.famille,
+    ...(entrée.veille ? { veille: entrée.veille } : {}),
+    signal: avant.signal,
+    ...(entrée.règle ? { règle: entrée.règle } : {}),
+  } as IndicateurDeScénario
+  const refus = contrôlerUnIndicateur(indicateur, grille.grille)
+  if (refus.length > 0) return { sorte: 'refusé', refus }
+  return modifierUnIndicateur({ organisationId: organisation.id, période: entrée.période, élémentId: élément.id, rang: entrée.rang, indicateur }, db)
 }
 
 /** Ce qu'un benchmark compare, en quatre chiffres : pour dire ce qu'un recalcul a changé. */
@@ -1295,6 +1342,51 @@ export async function indicateursDeLEspace(entrée: { readonly registre: string 
     if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
     const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
     return trimestre ? vueDesIndicateurs(trimestre.période, trimestre.éléments) : null
+  })
+}
+
+/**
+ * La trajectoire des scénarios du dernier trimestre **publié** (16 novembre
+ * 2026, lot 2 des simulations) : les faits étiquetés parus depuis le dépôt des
+ * scénarios, comptés contre la règle de chaque indicateur. Postgres seul, par
+ * le registre de la session (règle 2) : aucun corps de lettre n'est relu.
+ * `fin` est la date de la dernière lettre publiée, que l'écran a en main.
+ * `null` hors de l'espace réorganisé, sans scénario publié, ou dans le doute.
+ */
+export async function trajectoireDeLEspace(entrée: { readonly registre: string; readonly fin: string }, db?: Base): Promise<Trajectoire | null> {
+  return bornée('lecture de la trajectoire des scénarios', async () => {
+    const organisation = await organisationDuRegistre(entrée.registre, db)
+    if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return null
+    const trimestre = await dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db)
+    const posés = trimestre?.éléments.filter((é) => é.outil === 'scenario') ?? []
+    if (!trimestre || posés.length === 0) return null
+    // Le lendemain du dépôt : les faits d'avant ont fondé les scénarios, ils ne les confirment pas.
+    const dépôt = new Date(Math.max(...posés.map((é) => é.crééLe.getTime())))
+    dépôt.setUTCDate(dépôt.getUTCDate() + 1)
+    const début = dépôt.toISOString().slice(0, 10)
+    const [lignes, grille] = await Promise.all([
+      début <= entrée.fin ? faitsDeLaFenêtre({ organisationId: organisation.id, début, fin: entrée.fin }, db) : [],
+      lireLaGrille(organisation.id, db),
+    ])
+    return trajectoireDesScénarios(
+      vueDesScénarios(trimestre.éléments),
+      lignes.map((l) => ({
+        date: l.dateFait,
+        dateÉdition: l.dateÉdition,
+        édition: l.éditionNotion,
+        source: l.sourceUrl,
+        famille: l.familleÉdition,
+        axe: l.numéroAxe,
+        pestel: l.pestel,
+        porter: l.forcePorter,
+        ansoff: l.ansoff,
+        entité: l.entité,
+        impact: l.impact,
+        rupture: l.rupture,
+      })),
+      { début, fin: entrée.fin },
+      grille?.grille ?? null,
+    )
   })
 }
 

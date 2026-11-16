@@ -5,6 +5,10 @@ import {
   contrôlerLaGrille,
   contrôlerLaSynthèse,
   contrôlerLesÉtiquettes,
+  contrôlerUnIndicateur,
+  familleDeLIndicateur,
+  règleEnClair,
+  type IndicateurDeScénario,
   empreinteDeLaGrille,
   empreinteDeTitre,
   faitsDeLaLettre,
@@ -393,7 +397,7 @@ describe('la porte de la synthèse', () => {
         ? { outil: 'forces' as const, sujet, axe: 'intensite', cran: null, nonSuivi: true, faits: [] }
         : { outil: 'forces' as const, sujet, axe: 'intensite', cran: 2, tendance: 'hausse' as const, faits: ['f-cispe'] },
     )
-    const scénario = (n: number) => ({ titre: `Scénario ${n}`, énoncé: `La voix d’Infralliance pèse ${n} fois moins que celle de CISPE en 2027.`, indicateurs: [{ famille: 1, signal: 'loi de résilience en séance' }, { famille: 5, signal: 'création d’un collectif concurrent' }], faits: ['f-cispe'] })
+    const scénario = (n: number) => ({ titre: `Scénario ${n}`, énoncé: `La voix d’Infralliance pèse ${n} fois moins que celle de CISPE en 2027.`, indicateurs: [{ famille: 1, veille: 'ecosysteme' as const, signal: 'loi de résilience en séance' }, { famille: 5, signal: 'création d’un collectif concurrent' }], faits: ['f-cispe'] })
     const trimestre: SynthèseProposée = { ...SYNTHÈSE, mode: 'trimestriel', positions: [...SYNTHÈSE.positions, ...forces], scénarios: [1, 2, 3].map(scénario) }
     expect(contrôlerLaSynthèse(trimestre, contexte).refus).toEqual([])
 
@@ -404,13 +408,38 @@ describe('la porte de la synthèse', () => {
     expect(codes(contrôlerLaSynthèse({ ...trimestre, scénarios: [scénario(1)] }, contexte).refus)).toContain('scénarios-hors-bornes')
   })
 
+  it('un indicateur de scénario : famille ambiguë refusée sans veille, règle bornée, entités de la grille', () => {
+    const c = (ind: IndicateurDeScénario) => codes(contrôlerUnIndicateur(ind, GRILLE))
+    // La grille porte une famille 1 dans chaque veille : le numéro seul ne désigne rien.
+    expect(c({ famille: 1, signal: 's' })).toEqual(['famille-ambiguë'])
+    expect(c({ famille: 1, veille: 'concurrentiel', signal: 's' })).toEqual([])
+    // La famille 5 n'existe que dans une veille : elle se déduit.
+    expect(c({ famille: 5, signal: 's' })).toEqual([])
+    expect(familleDeLIndicateur(GRILLE, { famille: 5 })).toMatchObject({ sorte: 'trouvée', famille: { veille: 'concurrentiel' } })
+    expect(c({ famille: 5, veille: 'ecosysteme', signal: 's' })).toEqual(['famille-inconnue'])
+    expect(c({ famille: 9, signal: 's' })).toEqual(['famille-inconnue'])
+
+    const règle = { exigence: 'tout', seuil: 3, sens: 'apparition' } as const
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, cadre: 'nouveaux_entrants', entités: ['CISPE'], mouvement: 'diversification' } })).toEqual([])
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, seuil: 0 } })).toEqual(['règle-hors-bornes'])
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, seuil: 11 } })).toEqual(['règle-hors-bornes'])
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, seuil: 2.5 } })).toEqual(['règle-hors-bornes'])
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, entités: ['Inconnue SA'] } })).toEqual(['entité-hors-grille'])
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, entités: [] } })).toEqual(['règle-hors-bornes'])
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, cadre: 'meteo' as never } })).toEqual(['étiquette-inconnue'])
+    expect(c({ famille: 5, signal: 's', règle: { ...règle, sens: 'jamais' as never } })).toEqual(['étiquette-inconnue'])
+
+    expect(règleEnClair({ ...règle, exigence: 'fort', entités: ['CISPE'] })).toBe('3 faits ou plus au signal fort, qui nomment CISPE')
+    expect(règleEnClair({ seuil: 8, sens: 'absence', cadre: 'legal' })).toBe('aucun fait sous « Légal » pendant 8 semaines de suite')
+  })
+
   it('la matrice GE : une fois l’an (T4), au moins deux offres, chaque offre sur ses deux axes ; absente, elle est signalée', () => {
     const forces = (['rivalite', 'nouveaux_entrants', 'substituts', 'pouvoir_clients', 'pouvoir_fournisseurs'] as const).map((sujet) =>
       forcesNonSuivies(GRILLE).includes(sujet)
         ? { outil: 'forces' as const, sujet, axe: 'intensite', cran: null, nonSuivi: true, faits: [] }
         : { outil: 'forces' as const, sujet, axe: 'intensite', cran: 2, tendance: 'stable' as const, faits: ['f-cispe'] },
     )
-    const scénarios = [1, 2, 3].map((n) => ({ titre: `Scénario ${n}`, énoncé: `CISPE fixe ${n} des termes du règlement en 2027.`, indicateurs: [{ famille: 1, signal: 'loi en séance' }, { famille: 5, signal: 'nouveau collectif' }], faits: ['f-cispe'] }))
+    const scénarios = [1, 2, 3].map((n) => ({ titre: `Scénario ${n}`, énoncé: `CISPE fixe ${n} des termes du règlement en 2027.`, indicateurs: [{ famille: 1, veille: 'ecosysteme' as const, signal: 'loi en séance' }, { famille: 5, signal: 'nouveau collectif' }], faits: ['f-cispe'] }))
     const grille: Grille = { ...GRILLE, offres: ['Colloque annuel', 'Notes de position'] }
     const annuel = { ...contexte, grille, revueAnnuelle: true }
     const ge = (sujet: string, axe: string, cran: number) => ({ outil: 'ge' as const, sujet, axe, cran, faits: ['f-loi'] })

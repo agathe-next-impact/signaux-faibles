@@ -3,19 +3,23 @@ import {
   FORCES_PORTER,
   LIBELLÉS_PESTEL,
   LIBELLÉS_PORTER,
+  familleDeLIndicateur,
   nomDansLaGrille,
   normaliserTitre,
   normaliserUrl,
   PESTEL,
+  règleEnClair,
   trousDuPestel,
   type Benchmark,
   type CaseSwot,
   type FamilleDeGrille,
   type ForcePorter,
   type Grille,
+  type IndicateurDeScénario,
   type IndiceDeCycle,
   type LigneDeBenchmark,
   type Pestel,
+  type SensDIndicateur,
 } from '@/lib/domaine/strategie'
 import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
 import { enSlug } from '@/lib/domaine/slug'
@@ -506,16 +510,192 @@ export function vueDesForces(positions: readonly PositionLue[]): readonly ForceL
   })
 }
 
-export type ScénarioLu = { readonly titre: string; readonly énoncé: string; readonly indicateurs: readonly { readonly famille: number; readonly signal: string }[] }
+export type ScénarioLu = { readonly titre: string; readonly énoncé: string; readonly indicateurs: readonly IndicateurDeScénario[] }
 
 export function vueDesScénarios(éléments: readonly ÉlémentLu[]): readonly ScénarioLu[] {
   return éléments
     .filter((é) => é.outil === 'scenario')
     .sort((a, b) => a.clé.localeCompare(b.clé))
     .map((é) => {
-      const r = (é.références ?? {}) as { titre?: string; indicateurs?: { famille: number; signal: string }[] }
+      const r = (é.références ?? {}) as { titre?: string; indicateurs?: IndicateurDeScénario[] }
       return { titre: r.titre ?? é.clé, énoncé: é.énoncé ?? '', indicateurs: r.indicateurs ?? [] }
     })
+}
+
+// ── Trajectoire des scénarios (16 novembre 2026, lot 2 des simulations) ──────
+
+/** Treize semaines au plus : la revue suivante réécrit les scénarios, la série repart. */
+export const SEMAINES_DE_TRAJECTOIRE = 13
+
+/** Un fait étiqueté tel que la base le rend, réduit à ce que la trajectoire lit. Aucun texte de lettre. */
+export type FaitDeTrajectoire = {
+  readonly date: string
+  readonly dateÉdition: string
+  readonly édition: string
+  readonly source: string
+  readonly famille: string | null
+  readonly axe: number | null
+  readonly pestel: string | null
+  readonly porter: string | null
+  readonly ansoff: string | null
+  readonly entité: string | null
+  readonly impact: string
+  readonly rupture: boolean
+}
+
+/**
+ * `allume` : seuil atteint ; `approche` : la moitié du seuil au moins ;
+ * `eteint` ; `large` : indicateur sans règle, qui compte toute sa famille ;
+ * `non-compte` : famille absente de la grille ou ambiguë, rien n'est deviné.
+ */
+export type ÉtatDIndicateur = 'allume' | 'approche' | 'eteint' | 'large' | 'non-compte'
+
+export const LIBELLÉS_D_ÉTAT_D_INDICATEUR: Readonly<Record<ÉtatDIndicateur, string>> = {
+  allume: 'allumé',
+  approche: 'en approche',
+  eteint: 'éteint',
+  large: 'comptage large',
+  'non-compte': 'non compté',
+}
+
+export type FaitDeSignal = Pick<FaitDeTrajectoire, 'date' | 'dateÉdition' | 'édition' | 'source' | 'impact' | 'rupture'>
+
+export type IndicateurSuivi = {
+  readonly signal: string
+  readonly famille: number
+  /** Le nom court de la famille dans la grille, quand elle en porte un. */
+  readonly nomDeFamille: string | null
+  /** La règle en une phrase ; `null` sans règle. */
+  readonly règle: string | null
+  readonly sens: SensDIndicateur
+  readonly seuil: number | null
+  readonly état: ÉtatDIndicateur
+  /** Les faits qui passent la règle ; pour le sens `absence`, les semaines de suite sans fait. */
+  readonly compte: number
+  readonly semaines: readonly { readonly lundi: string; readonly faits: number }[]
+  /** Le lundi de la semaine où l'indicateur s'est allumé. */
+  readonly alluméLe: string | null
+  /** Les faits qui passent la règle, du plus récent au plus ancien. */
+  readonly faits: readonly FaitDeSignal[]
+}
+
+export type ScénarioSuivi = {
+  readonly lettre: string
+  readonly titre: string
+  readonly énoncé: string
+  readonly indicateurs: readonly IndicateurSuivi[]
+  /** Les indicateurs qui portent une règle et une famille reconnue : les seuls qui s'allument. */
+  readonly comptables: number
+  readonly allumés: number
+  /** Le lundi depuis lequel tous les indicateurs comptables sont allumés. */
+  readonly réunisDepuis: string | null
+}
+
+export type Trajectoire = {
+  readonly début: string
+  readonly fin: string
+  readonly semaines: readonly string[]
+  readonly scénarios: readonly ScénarioSuivi[]
+  /** Les faits qui comptent pour deux scénarios : les règles se recouvrent, les deux futurs n'arrivent pas pour autant. */
+  readonly partagés: readonly { readonly fait: FaitDeSignal; readonly scénarios: readonly string[] }[]
+}
+
+function lundisEntre(début: string, fin: string): readonly string[] {
+  if (début > fin) return []
+  const premier = lundiDeLaSemaine(début)
+  return semainesJusquÀ(fin, SEMAINES_DE_TRAJECTOIRE).filter((l) => l >= premier)
+}
+
+/**
+ * Chaque semaine, lequel des trois scénarios du trimestre réunit ses signaux.
+ * Des faits comptés contre des règles, jamais une probabilité : aucun total,
+ * aucun pourcentage, aucun scénario « probable ». La fenêtre commence au
+ * lendemain du dépôt des scénarios (les faits d'avant les ont fondés, ils ne
+ * les confirment pas) et finit à la dernière lettre publiée, treize semaines au
+ * plus. Les faits reçus sont ceux de la base, non archivés.
+ */
+export function trajectoireDesScénarios(
+  scénarios: readonly ScénarioLu[],
+  faits: readonly FaitDeTrajectoire[],
+  fenêtre: { readonly début: string; readonly fin: string },
+  grille: Pick<Grille, 'familles'> | null,
+): Trajectoire {
+  const semaines = lundisEntre(fenêtre.début, fenêtre.fin)
+  const dansLaFenêtre = faits.filter((f) => f.dateÉdition >= fenêtre.début && f.dateÉdition <= fenêtre.fin && semaines.includes(lundiDeLaSemaine(f.dateÉdition)))
+  const citer = (f: FaitDeTrajectoire): FaitDeSignal => ({ date: f.date, dateÉdition: f.dateÉdition, édition: f.édition, source: f.source, impact: f.impact, rupture: f.rupture })
+  const parScénario = new Map<FaitDeTrajectoire, Set<string>>()
+
+  const suivis = scénarios.map((s, rang): ScénarioSuivi => {
+    const lettre = String.fromCharCode(65 + rang)
+    const indicateurs = s.indicateurs.map((ind): IndicateurSuivi => {
+      const règle = ind.règle ?? null
+      const sens: SensDIndicateur = règle?.sens === 'absence' ? 'absence' : 'apparition'
+      const trouvée = grille ? familleDeLIndicateur(grille, ind) : { sorte: 'inconnue' as const }
+      const base = { signal: ind.signal, famille: ind.famille, règle: règle ? règleEnClair(règle) : null, sens, seuil: règle?.seuil ?? null }
+      if (trouvée.sorte !== 'trouvée') {
+        return { ...base, nomDeFamille: null, état: 'non-compte', compte: 0, semaines: semaines.map((lundi) => ({ lundi, faits: 0 })), alluméLe: null, faits: [] }
+      }
+      const famille = trouvée.famille
+      // Une lettre unique ne porte pas de veille : son fait revient à la famille quand le numéro n'existe qu'une fois.
+      const seule = grille !== null && grille.familles.filter((f) => f.numéro === famille.numéro).length === 1
+      const entités = règle?.entités && règle.entités.length > 0 ? new Set(règle.entités.map(normaliserTitre)) : null
+      const siens = dansLaFenêtre.filter((f) => {
+        if (f.axe !== famille.numéro) return false
+        const veille = familleDe(f.famille)
+        if (veille !== famille.veille && !(veille === null && seule)) return false
+        if (!règle) return true
+        if (règle.exigence === 'fort' && f.impact !== 'FORT') return false
+        if (règle.exigence === 'rupture' && !f.rupture) return false
+        if (règle.cadre && f.pestel !== règle.cadre && f.porter !== règle.cadre) return false
+        if (règle.mouvement && f.ansoff !== règle.mouvement) return false
+        if (entités && !(f.entité && entités.has(normaliserTitre(f.entité)))) return false
+        return true
+      })
+      const parSemaine = semaines.map((lundi) => ({ lundi, faits: siens.filter((f) => lundiDeLaSemaine(f.dateÉdition) === lundi).length }))
+      const cités = [...siens].sort((a, b) => b.date.localeCompare(a.date) || b.dateÉdition.localeCompare(a.dateÉdition)).map(citer)
+      const commun = { ...base, nomDeFamille: famille.libellé ?? null, semaines: parSemaine, faits: cités }
+      if (!règle) return { ...commun, état: 'large', compte: siens.length, alluméLe: null }
+
+      if (sens === 'absence') {
+        let vides = 0
+        for (let i = parSemaine.length - 1; i >= 0 && parSemaine[i]?.faits === 0; i--) vides++
+        const allumé = vides >= règle.seuil
+        return {
+          ...commun,
+          état: allumé ? 'allume' : vides > 0 && vides * 2 >= règle.seuil ? 'approche' : 'eteint',
+          compte: vides,
+          alluméLe: allumé ? (parSemaine[parSemaine.length - vides + règle.seuil - 1]?.lundi ?? null) : null,
+        }
+      }
+
+      for (const f of siens) parScénario.set(f, (parScénario.get(f) ?? new Set()).add(lettre))
+      let cumul = 0
+      let alluméLe: string | null = null
+      for (const sem of parSemaine) {
+        cumul += sem.faits
+        if (alluméLe === null && cumul >= règle.seuil) alluméLe = sem.lundi
+      }
+      return { ...commun, état: cumul >= règle.seuil ? 'allume' : cumul > 0 && cumul * 2 >= règle.seuil ? 'approche' : 'eteint', compte: cumul, alluméLe }
+    })
+    const comptables = indicateurs.filter((i) => i.état === 'allume' || i.état === 'approche' || i.état === 'eteint')
+    const allumés = comptables.filter((i) => i.état === 'allume')
+    const réunis = comptables.length > 0 && allumés.length === comptables.length
+    return {
+      lettre,
+      titre: s.titre,
+      énoncé: s.énoncé,
+      indicateurs,
+      comptables: comptables.length,
+      allumés: allumés.length,
+      réunisDepuis: réunis ? (allumés.map((i) => i.alluméLe ?? '').sort().at(-1) || null) : null,
+    }
+  })
+
+  const partagés = [...parScénario]
+    .filter(([, lettres]) => lettres.size > 1)
+    .sort(([a], [b]) => b.date.localeCompare(a.date))
+    .map(([f, lettres]) => ({ fait: citer(f), scénarios: [...lettres].sort() }))
+  return { début: fenêtre.début, fin: fenêtre.fin, semaines, scénarios: suivis, partagés }
 }
 
 // ── Onglet PESTEL de « Les axes » ────────────────────────────────────────────
