@@ -1205,6 +1205,39 @@ export const coûtsDesRuns = pgTable(
 export type LigneDOnboarding = typeof onboardings.$inferSelect
 export type LigneDeRunDOnboarding = typeof onboardingRuns.$inferSelect
 
+/**
+ * Simulation (16 novembre 2026, lot 3b des simulations de scénarios) : la
+ * **table d'effets** d'une organisation, des hypothèses bornées (engagements de
+ * départ, actions, cartes d'événement, chacune avec sa référence), proposée par
+ * la revue trimestrielle et jamais publiée d'office : l'opératrice la relit et
+ * la publie. Extension bornée de la règle de Postgres (décision de l'opératrice
+ * du 16 novembre 2026) : libellés de 60 caractères, références de 120, aucun
+ * texte de lettre ni de référentiel. Une table re-postée est une version ; une
+ * seule version est publiée à la fois. Les parties ne sont pas stockées.
+ */
+export const tablesDEffets = pgTable(
+  'tables_d_effets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    version: integer('version').notNull(),
+    empreinte: text('empreinte').notNull(),
+    contenu: jsonb('contenu').$type<Record<string, unknown>>().notNull(),
+    étatPublication: étatDePublication('état_publication').notNull().default('propose'),
+    crééeLe: horodatage('créée_le').notNull().defaultNow(),
+    publiéeLe: horodatage('publiée_le'),
+  },
+  (table) => [
+    uniqueIndex('tables_d_effets_version_unique').on(table.organisationId, table.version),
+    uniqueIndex('tables_d_effets_publiee_unique').on(table.organisationId).where(sql`${table.étatPublication} = 'publie'`),
+    check('tables_d_effets_version', sql`${table.version} >= 1`),
+    check('tables_d_effets_empreinte_forme', sql`${table.empreinte} ~ '^[0-9a-f]{8}$'`),
+    check('tables_d_effets_taille', sql`length(${table.contenu}::text) <= 60000`),
+  ],
+)
+
 export type FaitÉtiqueté = typeof faitsÉtiquetés.$inferSelect
 export type LigneDeGrille = typeof grilles.$inferSelect
 export type ÉlémentDeSynthèse = typeof élémentsSynthèse.$inferSelect

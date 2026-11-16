@@ -3,6 +3,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { exigerOpérateur } from '@/lib/auth/appartenance'
 import { publierLesMarchésDuPilote, type PublicationDesMesures } from '@/lib/portail/marches'
+import { publierLaTableDuPilote, type PublicationDeLaTable } from '@/lib/portail/simulation'
 import { publierLaSynthèseDuPilote, type RésultatDeLaPublication } from '@/lib/portail/strategie'
 
 /**
@@ -64,4 +65,32 @@ export async function publierLesMarchés(données: FormData): Promise<void> {
   console.info(`[publication] ${accès.nom} : marchés ${slug} ${période}, ${état}, ${sorte}.`)
   const code = sorte === 'réglée' ? (état === 'publie' ? 'publiés' : 'retirés') : sorte
   redirect(`/espaces/syntheses?marches=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}&periode=${encodeURIComponent(période)}#marches`)
+}
+
+/**
+ * Publier ou retirer la table d'effets de la simulation (16 novembre 2026,
+ * lot 3b), depuis le même écran. C'est le geste de `PATCH /api/veille/simulation`,
+ * par le même `publierLaTableDuPilote` : la table n'est jamais publiée d'office,
+ * et la publier est ce qui ouvre l'écran « Simulation » au client. La garde
+ * passe d'abord.
+ */
+export async function publierLaTableDEffets(données: FormData): Promise<void> {
+  const slug = données.get('slug')
+  const version = Number(données.get('version'))
+  const état = données.get('etat')
+  if (typeof slug !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) notFound()
+  if (!Number.isInteger(version) || version < 1) notFound()
+  if (état !== 'publie' && état !== 'retire') notFound()
+
+  const accès = await exigerOpérateur()
+  let sorte: PublicationDeLaTable['sorte'] | 'échec'
+  try {
+    sorte = (await publierLaTableDuPilote({ slug, version, état })).sorte
+  } catch (erreur) {
+    console.error(`[publication] table d’effets ${slug} v${version} : ${état} impossible (${erreur instanceof Error ? erreur.message : String(erreur)}).`)
+    sorte = 'échec'
+  }
+  console.info(`[publication] ${accès.nom} : table d’effets ${slug} v${version}, ${état}, ${sorte}.`)
+  const code = sorte === 'réglée' ? (état === 'publie' ? 'publiée' : 'retirée') : sorte
+  redirect(`/espaces/syntheses?simulation=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}#simulation`)
 }
