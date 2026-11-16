@@ -12,7 +12,16 @@ import { baseEnMémoire } from './aide/base-en-memoire'
  * portail sur des registres simulés, rien de montré avant la publication, rien
  * d'un autre registre.
  */
-const { lireLesMarchésDuPilote, marchésDeLEspace, mesurerLesMarchésDuPilote, mesurerÀLaSuite, publierLesMarchésDuPilote, recevoirLesSegments, tableauDesMarchés } = await import('@/lib/portail/marches')
+const {
+  lireLesMarchésDuPilote,
+  marchésDeLEspace,
+  mesurerLesMarchésDuPilote,
+  mesurerÀLaSuite,
+  publierLesMarchésDuPilote,
+  publierLesMarchésEnAttente,
+  recevoirLesSegments,
+  tableauDesMarchés,
+} = await import('@/lib/portail/marches')
 const { recevoirLaGrille, réglerLEspace } = await import('@/lib/portail/strategie')
 const { réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
@@ -72,6 +81,8 @@ describe('marchés et niches', () => {
     ;({ db, fermer } = await baseEnMémoire())
     await ouvrirEnEssai({ slug: 'infralliance', nom: 'Infralliance', registreNotion: REGISTRE }, db)
     await ouvrirEnEssai({ slug: 'autre', nom: 'Autre', registreNotion: AUTRE_REGISTRE }, db)
+    // Le circuit de relecture d'avant le 15 novembre 2026 : ces tests le tiennent, la publication automatique a les siens.
+    vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'non')
   })
   afterEach(async () => {
     vi.restoreAllMocks()
@@ -245,6 +256,42 @@ describe('marchés et niches', () => {
     // Une période publiée n'est pas remesurée ; un registre qui tombe ne lève pas.
     expect(await mesurerÀLaSuite({ slug: 'infralliance', période: '2026-T3' }, db, { f, maintenant, ...sansAttente })).toBe('période-publiée')
     expect(await mesurerÀLaSuite({ slug: 'infralliance' }, { transaction: () => Promise.reject(new Error('base')) } as unknown as Base, { f, maintenant, ...sansAttente })).toBe('échec')
+  })
+
+  it('publication automatique : publiées au calcul, re-mesurées publiées, un retrait tenu, le rattrapage ne publie que l’attente', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+    vi.stubEnv('SOURCE_ACCES', 'double')
+    vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'oui')
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    await ouvrirLePilote()
+    await poserDesFaits()
+    await recevoirLesSegments({ slug: 'infralliance', segments: SEGMENTS }, db)
+    await réglerLEspace({ slug: 'infralliance', actif: true }, db)
+    const { f } = registres(120)
+    const maintenant = () => Date.parse('2026-11-12T08:00:00Z')
+
+    // Publiées dès le calcul : l'écran du client les lit.
+    expect(await mesurerLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, { f, maintenant, ...sansAttente })).toMatchObject({ sorte: 'enregistrées', état: 'publie' })
+    expect(await marchésDeLEspace({ registre: REGISTRE }, db)).toMatchObject({ période: '2026-T4', nonPublié: false })
+    // Une période publiée est re-mesurée (la synthèse du trimestre), et le reste.
+    const plus = registres(150)
+    expect(await mesurerÀLaSuite({ slug: 'infralliance', période: '2026-T4' }, db, { f: plus.f, maintenant, ...sansAttente })).toBe('enregistrées')
+    expect((await marchésDeLEspace({ registre: REGISTRE }, db))?.lignes.find((l) => l.clé === 'colocation')).toMatchObject({ cibles: 150 })
+
+    // Retirée par l'opératrice : re-mesurée, elle reste retirée, et le rattrapage ne la touche pas.
+    await publierLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4', état: 'retire' }, db)
+    expect(await mesurerLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4' }, db, { f, maintenant, ...sansAttente })).toMatchObject({ sorte: 'enregistrées', état: 'retire' })
+    expect(await publierLesMarchésEnAttente(db)).toEqual([])
+    expect(await marchésDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+
+    // Une période en proposition (mesurée avant la mise en service) est publiée par le rattrapage.
+    await publierLesMarchésDuPilote({ slug: 'infralliance', période: '2026-T4', état: 'propose' }, db)
+    vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'non')
+    expect(await publierLesMarchésEnAttente(db)).toEqual([])
+    vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'oui')
+    expect(await publierLesMarchésEnAttente(db)).toEqual(['infralliance:2026-T4'])
+    expect(await marchésDeLEspace({ registre: REGISTRE }, db)).toMatchObject({ période: '2026-T4', nonPublié: false })
+    expect(await publierLesMarchésEnAttente(db)).toEqual([])
   })
 
   it('au plafond du registre, découpe par tranche puis par section, et ne compte un même périmètre qu’une fois', async () => {

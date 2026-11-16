@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { GoogleTagManager } from '@/components/google-tag-manager'
 import { Logo } from '@/components/marque'
 import { ADRESSE_DE_CONTACT } from '@/lib/email/gabarit'
+import { enJsonLd, type QuestionFréquente } from '@/lib/vitrine/referencement'
 
 /**
  * Les pages vitrines (23 octobre 2026) : l'accueil des visiteurs sans session,
@@ -333,6 +334,39 @@ export function ListeCarrée({ éléments }: { éléments: readonly React.ReactN
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * Des données structurées (JSON-LD, schema.org), sérialisées par `enJsonLd` :
+ * « < » échappé, la balise ne se ferme jamais. Les données viennent des
+ * constantes de l'offre et des textes de la page, jamais d'une saisie.
+ */
+export function DonnéesStructurées({ données }: { données: object }) {
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: enJsonLd(données) }} />
+}
+
+/**
+ * Les questions fréquentes d'une page : le même tableau est rendu ici et posé
+ * dans le `FAQPage` des données structurées (`nœudFAQ`), pour que les deux ne
+ * divergent jamais.
+ */
+export function QuestionsFréquentes({
+  questions,
+  étroite = true,
+}: {
+  questions: readonly QuestionFréquente[]
+  /** Bornée à la colonne de lecture ; `false` dans une section en deux colonnes, qui borne déjà. */
+  étroite?: boolean
+}) {
+  return (
+    <div className={`flex ${étroite ? 'max-w-3xl ' : ''}flex-col divide-y divide-gris-ligne border-y border-gris-ligne`}>
+      {questions.map((q) => (
+        <Question key={q.question} titre={q.question}>
+          {q.réponse}
+        </Question>
+      ))}
+    </div>
   )
 }
 

@@ -92,6 +92,7 @@ import {
   type ÉtiquetteProposée,
 } from '@/lib/domaine/strategie'
 import { estLaDémonstration } from '@/lib/domaine/demonstration'
+import { lireLaPublicationAutomatique } from '@/lib/domaine/publication-automatique'
 import { sansAccent } from '@/lib/domaine/texte'
 import { lireBlocsDePage, listerÉditionsPubliées } from '@/lib/notion/editions'
 import { normaliserIdentifiant } from '@/lib/notion/proprietes'
@@ -240,6 +241,8 @@ export type RésultatDeLaSynthèse =
       readonly éléments: number
       readonly positions: number
       readonly archivés: number
+      /** `publie` sous la publication automatique, `propose` sans elle, `retire` si l'opératrice avait retiré la période. */
+      readonly état: 'propose' | 'publie' | 'retire'
       readonly avertissements: readonly Refus[]
     }
   | { readonly sorte: 'refusée'; readonly refus: readonly Refus[]; readonly message: string; readonly avertissements: readonly Refus[] }
@@ -407,7 +410,15 @@ export async function recevoirLaSynthèse(
         )
       : énoncés
   const écrit = await enregistrerLaSynthèse(
-    { organisationId: organisation.id, période: entrée.période, fenêtre: entrée.fenêtre, grilleVersion: s.grilleVersion, éléments, positions },
+    {
+      organisationId: organisation.id,
+      période: entrée.période,
+      fenêtre: entrée.fenêtre,
+      grilleVersion: s.grilleVersion,
+      éléments,
+      positions,
+      publicationAutomatique: publicationAutomatique(),
+    },
     db,
   )
   if (écrit.sorte !== 'enregistrée') return écrit
@@ -726,6 +737,33 @@ export type RésultatDeLaPublication =
  */
 export async function tableauDesSynthèses(db?: Base): Promise<SynthèsesDUneOrganisation[]> {
   return périodesAPublier(await périodesDesSynthèses(db))
+}
+
+/**
+ * `PUBLICATION_AUTOMATIQUE`, lue à chaque appel (15 novembre 2026) : la synthèse
+ * qui passe la porte et les mesures des marchés sont publiées à l'écriture,
+ * sans geste de l'opératrice ; `non` rend le circuit de relecture d'avant.
+ */
+export function publicationAutomatique(): boolean {
+  return lireLaPublicationAutomatique(process.env['PUBLICATION_AUTOMATIQUE'])
+}
+
+/**
+ * Le rattrapage du passage quotidien (15 novembre 2026) : sous la publication
+ * automatique, toute période encore en proposition (écrite avant la mise en
+ * service, ou remise en proposition) est publiée. Une période dont une ligne est
+ * retirée n'est jamais touchée : le retrait reste le geste de l'opératrice.
+ * Rend les périodes publiées, `slug:période`.
+ */
+export async function publierLesSynthèsesEnAttente(db?: Base): Promise<string[]> {
+  if (!publicationAutomatique()) return []
+  const enAttente = (await périodesDesSynthèses(db)).filter((p) => p.retirées === 0 && p.publiées < p.lignes)
+  const publiées: string[] = []
+  for (const p of enAttente) {
+    const r = await publierLaSynthèseDuPilote({ slug: p.slug, période: p.période, état: 'publie' }, db)
+    if (r.sorte === 'publiée') publiées.push(`${p.slug}:${p.période}`)
+  }
+  return publiées
 }
 
 /**

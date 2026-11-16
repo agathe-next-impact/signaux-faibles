@@ -4,7 +4,9 @@ import { baseConfigurée } from '@/lib/base/client'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { env } from '@/lib/env'
 import { planifierLaFile } from '@/lib/portail/file'
+import { publierLesMarchésEnAttente } from '@/lib/portail/marches'
 import { effacerLesDemandesExpirées, rattraperLesOnboardings } from '@/lib/portail/onboarding'
+import { publierLesSynthèsesEnAttente } from '@/lib/portail/strategie'
 import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { préparerLesRappelsDeRenouvellement } from '@/lib/portail/courriers-abonnement'
 import { envoyerLesCourriersDeParcours } from '@/lib/portail/parcours-courriers'
@@ -73,7 +75,26 @@ export async function GET(requête: NextRequest): Promise<NextResponse> {
       console.error(`[veille/parcours] onboardings non rattrapés : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
       return null
     })
-    return NextResponse.json({ état: 'passé', ...rapport, renouvellements, prospection, file, demandesEffacées, onboardings })
+    // Publication automatique (15 novembre 2026) : les synthèses et les mesures
+    // des marchés encore en proposition sont publiées, jamais une période retirée.
+    const synthèsesPubliées = await publierLesSynthèsesEnAttente().catch((erreur: unknown) => {
+      console.error(`[veille/parcours] synthèses en attente non publiées : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return null
+    })
+    const marchésPubliés = await publierLesMarchésEnAttente().catch((erreur: unknown) => {
+      console.error(`[veille/parcours] marchés en attente non publiés : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+      return null
+    })
+    return NextResponse.json({
+      état: 'passé',
+      ...rapport,
+      renouvellements,
+      prospection,
+      file,
+      demandesEffacées,
+      onboardings,
+      publication: { synthèses: synthèsesPubliées, marchés: marchésPubliés },
+    })
   } catch (erreur) {
     // L'erreur sort de lib/base sans donnée : seulement un code.
     console.error(`[veille/parcours] échec : ${erreur instanceof Error ? erreur.message : String(erreur)}`)

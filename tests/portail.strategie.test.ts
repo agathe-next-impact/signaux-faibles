@@ -30,6 +30,7 @@ const {
   lireLesFaits,
   pestelDeLEspace,
   publierLaSynthèseDuPilote,
+  publierLesSynthèsesEnAttente,
   tableauDesSynthèses,
   synthèseDeLEspace,
   synthèseÀRelire,
@@ -380,9 +381,12 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
     await ouvrirEnEssai({ slug: 'infralliance', nom: 'Infralliance', registreNotion: REGISTRE }, db)
     notion.lireÉditionDeTravail.mockResolvedValue(édition())
     notion.lireBlocsDePage.mockResolvedValue(BLOCS_OCTOBRE)
+    // Le circuit de relecture d'avant le 15 novembre 2026 : ces tests le tiennent, la publication automatique a les siens.
+    vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'non')
   })
   afterEach(async () => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
     await fermer()
   })
 
@@ -668,6 +672,40 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'publie' }, db)
         expect(await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)).toMatchObject({ sorte: 'retirée' })
         expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
+    it('publication automatique : publiée au dépôt, republiée réécrite, un retrait tenu, le rattrapage ne publie que l’attente', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'oui')
+      try {
+        // Publiée dès le dépôt : le client la lit sans geste de l'opératrice.
+        expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', éléments: 11, positions: 3, état: 'publie' })
+        expect((await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db))?.mois?.période).toBe('2026-10')
+        expect((await tableauDesSynthèses(db))[0]?.périodes[0]?.état).toBe('publiée')
+        // Réécrite, elle reste publiée.
+        expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', archivés: 14, état: 'publie' })
+        expect((await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db))?.mois?.période).toBe('2026-10')
+
+        // Retirée par l'opératrice : réécrite, elle reste retirée, et le rattrapage ne la touche pas.
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)
+        expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', état: 'retire' })
+        expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        expect(await publierLesSynthèsesEnAttente(db)).toEqual([])
+        expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+
+        // Une période en proposition (écrite avant la mise en service) est publiée par le rattrapage.
+        await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'propose' }, db)
+        vi.stubEnv('PUBLICATION_AUTOMATIQUE', 'non')
+        expect(await publierLesSynthèsesEnAttente(db)).toEqual([])
+        expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        vi.stubEnv('PUBLICATION_AUTOMATIQUE', '')
+        expect(await publierLesSynthèsesEnAttente(db)).toEqual(['infralliance:2026-10'])
+        expect((await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db))?.mois?.période).toBe('2026-10')
+        expect(await publierLesSynthèsesEnAttente(db)).toEqual([])
       } finally {
         vi.unstubAllEnvs()
       }

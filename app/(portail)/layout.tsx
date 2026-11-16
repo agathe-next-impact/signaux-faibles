@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono, Lora, Public_Sans } from 'next/font/google'
 import { BannièreInstallation } from '@/components/banniere-installation'
 import { ServiceWorker } from '@/components/service-worker'
+import { origineCanonique } from '@/lib/vitrine/referencement'
 import '../globals.css'
 
 // Graisses de la charte : Lora 500 à 700 avec italique pour la voix
@@ -31,6 +32,9 @@ const plexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
+  // Les URL relatives des métadonnées (canonique, Open Graph) se résolvent sur
+  // l'origine canonique, `www.` (16 novembre 2026).
+  metadataBase: new URL(origineCanonique()),
   title: 'signauxfaibles',
   // La baseline de la charte, telle quelle.
   description: 'Votre veille, rédigée.',

@@ -2,7 +2,15 @@ import type { Metadata } from 'next'
 import { Case, Grille, Panneau } from '@/components/coquille'
 import { CartesDeTarifs } from '@/components/vitrine-tarifs'
 import { GraphiqueRepèresDeMarché } from '@/components/graphiques-vitrine'
-import { AppelFinal, CoquilleVitrine, ListeCarrée, OuvertureVitrine, Question, SectionVitrine } from '@/components/vitrine'
+import {
+  AppelFinal,
+  CoquilleVitrine,
+  DonnéesStructurées,
+  ListeCarrée,
+  OuvertureVitrine,
+  QuestionsFréquentes,
+  SectionVitrine,
+} from '@/components/vitrine'
 import {
   enEuros,
   FIN_DU_TARIF_EARLY_ADOPTER,
@@ -15,75 +23,70 @@ import {
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { prixParLecteur } from '@/lib/vitrine/marche'
+import { absolue, graphe, métadonnéesDeVitrine, nœudFAQ, nœudOrganisation, nœudService, type QuestionFréquente } from '@/lib/vitrine/referencement'
 
-export const metadata: Metadata = {
-  title: 'Tarifs — signauxfaibles',
+export const metadata: Metadata = métadonnéesDeVitrine({
+  titre: `Tarifs de la veille stratégique : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois · signauxfaibles`,
   description: `${enEuros(PRIX_MENSUEL_HT)} € HT par mois ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an et par organisation, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Frais de mise en place offerts jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
-  robots: { index: true, follow: true },
-}
+  chemin: '/tarifs',
+})
 
 /**
- * Les données structurées de l'offre (schema.org, 6 novembre 2026), tirées des
- * mêmes constantes que la page : l'abonnement mensuel, et les frais de mise en
- * place, offerts jusqu'à la fin de la période early adopter.
+ * Les questions de la page, rendues par `QuestionsFréquentes` et posées telles
+ * quelles dans le `FAQPage` des données structurées.
+ */
+const QUESTIONS_DES_TARIFS: readonly QuestionFréquente[] = [
+  {
+    question: 'Où gérer mon abonnement et mes factures ?',
+    réponse:
+      'Dans votre espace, rubrique « Mon abonnement », qui ouvre l’espace de facturation de notre prestataire de paiement.',
+  },
+  {
+    question: 'Comment ajouter ou retirer un lecteur ?',
+    réponse: `Depuis « Mon abonnement », ou en nous écrivant : chaque lecteur reçoit son propre lien par courriel. L’abonnement en compte ${LECTEURS_ACTIFS_MAX} au plus à la fois.`,
+  },
+  {
+    question: 'Faut-il un mot de passe ?',
+    réponse:
+      'Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en saisissant son adresse sur la page de connexion.',
+  },
+  {
+    question: 'Que couvrent les frais de mise en place ?',
+    réponse: `Ils sont facturés une seule fois, à l’inscription, et offerts aux early adopters, pour toute inscription jusqu’au ${finDuTarifEarlyAdopter()}, puis de ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. La création du référentiel et les ${HEURES_DE_PRISE_EN_MAIN} h de prise en main sont comprises dans l’abonnement.`,
+  },
+  {
+    question: 'Que se passe-t-il si je résilie ?',
+    réponse:
+      'La résiliation se fait depuis « Mon abonnement ». Vos lettres restent lisibles jusqu’à la fin de la période déjà payée, puis l’espace est suspendu.',
+  },
+]
+
+/**
+ * Les données structurées de la page (schema.org, 6 novembre 2026, reliées le
+ * 16 novembre à l'éditeur et à la foire aux questions) : le service et ses
+ * offres, tirés des mêmes constantes que la page (`nœudService`), et les
+ * frais de mise en place early adopter, offerts jusqu'à la fin de la période.
  */
 function donnéesStructurées() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Service',
-    name: 'signauxfaibles, veille hebdomadaire rédigée',
-    serviceType: 'Veille stratégique',
-    areaServed: 'FR',
-    offers: [
-      {
-        '@type': 'Offer',
-        name: `Abonnement mensuel, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
-        priceCurrency: 'EUR',
-        price: PRIX_MENSUEL_HT,
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price: PRIX_MENSUEL_HT,
+  const service = nœudService()
+  return graphe([
+    nœudOrganisation(),
+    {
+      ...service,
+      offers: [
+        ...service.offers,
+        {
+          '@type': 'Offer',
+          name: 'Frais de mise en place, early adopter',
+          url: absolue('/tarifs'),
           priceCurrency: 'EUR',
-          valueAddedTaxIncluded: false,
-          unitCode: 'MON',
-          referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
+          price: 0,
+          priceValidUntil: FIN_DU_TARIF_EARLY_ADOPTER,
         },
-      },
-      {
-        '@type': 'Offer',
-        name: `Abonnement annuel, deux mois offerts, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
-        priceCurrency: 'EUR',
-        price: PRIX_ANNUEL_HT,
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price: PRIX_ANNUEL_HT,
-          priceCurrency: 'EUR',
-          valueAddedTaxIncluded: false,
-          unitCode: 'ANN',
-          referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'ANN' },
-        },
-      },
-      {
-        '@type': 'Offer',
-        name: 'Frais de mise en place, early adopter',
-        priceCurrency: 'EUR',
-        price: 0,
-        priceValidUntil: FIN_DU_TARIF_EARLY_ADOPTER,
-      },
-      {
-        '@type': 'Offer',
-        name: 'Frais de mise en place',
-        priceCurrency: 'EUR',
-        price: FRAIS_DE_MISE_EN_PLACE_HT,
-        priceSpecification: {
-          '@type': 'PriceSpecification',
-          price: FRAIS_DE_MISE_EN_PLACE_HT,
-          priceCurrency: 'EUR',
-          valueAddedTaxIncluded: false,
-        },
-      },
-    ],
-  }
+      ],
+    },
+    nœudFAQ('/tarifs', QUESTIONS_DES_TARIFS),
+  ])
 }
 
 /**
@@ -100,11 +103,7 @@ export default function Tarifs() {
         titre="Un prix par organisation, tout compris."
         chapeau={`Une lettre par semaine, l’espace et toutes ses archives, jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs, la création de votre référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main. Pas d’option, pas de supplément.`}
       />
-      <script
-        type="application/ld+json"
-        // Données de l'offre seulement, sérialisées par JSON.stringify ; « < » échappé pour ne jamais fermer la balise.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(donnéesStructurées()).replace(/</g, '\\u003c') }}
-      />
+      <DonnéesStructurées données={donnéesStructurées()} />
 
       <section className="flex flex-col gap-4 border-b border-gris-ligne px-6 py-12 lg:px-12">
         <Panneau ton="rose">
@@ -175,30 +174,7 @@ export default function Tarifs() {
       </SectionVitrine>
 
       <SectionVitrine surtitre="Questions fréquentes" titre="Avant de vous lancer">
-        <div className="flex max-w-3xl flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-          <Question titre="Où gérer mon abonnement et mes factures ?">
-            Dans votre espace, rubrique « Mon abonnement », qui ouvre l’espace de facturation de
-            notre prestataire de paiement.
-          </Question>
-          <Question titre="Comment ajouter ou retirer un lecteur ?">
-            Depuis « Mon abonnement », ou en nous écrivant : chaque lecteur reçoit son propre lien
-            par courriel. L’abonnement en compte {LECTEURS_ACTIFS_MAX} au plus à la fois.
-          </Question>
-          <Question titre="Faut-il un mot de passe ?">
-            Non. Chaque lecteur accède à l’espace par un lien personnel. Perdu, il se redemande en
-            saisissant son adresse sur la page de connexion.
-          </Question>
-          <Question titre="Que couvrent les frais de mise en place ?">
-            Ils sont facturés une seule fois, à l’inscription, et offerts aux
-            early adopters, pour toute inscription jusqu’au {finDuTarifEarlyAdopter()}, puis de{' '}
-            {enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. La création du référentiel et les{' '}
-            {HEURES_DE_PRISE_EN_MAIN} h de prise en main sont comprises dans l’abonnement.
-          </Question>
-          <Question titre="Que se passe-t-il si je résilie ?">
-            La résiliation se fait depuis « Mon abonnement ». Vos lettres restent lisibles jusqu’à
-            la fin de la période déjà payée, puis l’espace est suspendu.
-          </Question>
-        </div>
+        <QuestionsFréquentes questions={QUESTIONS_DES_TARIFS} />
       </SectionVitrine>
 
       <AppelFinal
