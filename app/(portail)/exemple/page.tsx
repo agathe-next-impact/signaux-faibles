@@ -2,16 +2,17 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BoutonDémo, CoquilleVitrine, OuvertureVitrine } from '@/components/vitrine'
 import { cléDeCloisonnementDeDémonstration, SLUGS_DE_DÉMONSTRATION } from '@/lib/domaine/demonstration'
+import { métadonnéesDeVitrine } from '@/lib/vitrine/referencement'
 import { DÉMONSTRATIONS, type Démonstration } from '@/lib/vitrine/demonstrations'
 import { éditionsDeDémonstration } from '@/lib/vitrine/espace-demonstration'
 import { lettreDeLaSemaine, QUALIFICATIF_DE_LA_VEILLE, VEILLES_DE_DÉMONSTRATION } from '@/lib/vitrine/lettres-par-veille'
 
-export const metadata: Metadata = {
-  title: 'Exemples — signauxfaibles',
+export const metadata: Metadata = métadonnéesDeVitrine({
+  titre: 'Exemples de lettres de veille stratégique · signauxfaibles',
   description:
     'Trois organisations fictives, un cabinet de conseil, une PME industrielle et une entreprise de l’ESS : leur espace client ouvert en lecture seule et leurs deux lettres de la semaine, écosystème et concurrentielle.',
-  robots: { index: true, follow: true },
-}
+  chemin: '/exemple',
+})
 
 /**
  * « Exemples » (24 octobre 2026 ; refonte du 7 novembre 2026, à la demande de

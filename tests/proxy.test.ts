@@ -26,6 +26,11 @@ describe('proxy', () => {
     expect(proxy(requête('/logos/hermitage.webp')).status).toBe(200)
   })
 
+  it('ouvre robots.txt, sitemap.xml et llms.txt aux robots, sans session', () => {
+    for (const chemin of ['/robots.txt', '/sitemap.xml', '/llms.txt']) expect(proxy(requête(chemin)).status).toBe(200)
+    expect(proxy(requête('/llms.txt/autre')).status).toBe(307)
+  })
+
   it('ouvre les trois espaces de démonstration, à l’adresse exacte et sous leur préfixe', () => {
     for (const slug of ['lisiere-conseil', 'tolmen-mecanique', 'atelier-passerelle']) {
       expect(proxy(requête(`/${slug}`)).status).toBe(200)

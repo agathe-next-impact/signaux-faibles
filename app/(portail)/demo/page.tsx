@@ -5,7 +5,15 @@ import { LogoEmpile } from '@/components/marque'
 import { CHAMP_PIÈGE } from '@/lib/portail/demo'
 import { Formulaire } from './formulaire'
 
-export const metadata: Metadata = { title: 'Demander une démo — signauxfaibles' }
+export const metadata: Metadata = {
+  title: 'Demander une démo · signauxfaibles',
+  description:
+    'Demandez une démonstration de signauxfaibles : une lettre de veille stratégique rédigée pour votre organisation et l’espace qui l’accompagne.',
+  alternates: { canonical: '/demo' },
+  // Un formulaire n'a rien à répondre à une recherche : hors index, mais ses
+  // liens sont suivis (16 novembre 2026).
+  robots: { index: false, follow: true },
+}
 
 /**
  * La page publique de demande de démonstration. Elle ne lit ni Notion ni
@@ -17,7 +25,7 @@ export default function Demo() {
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-6 px-6 py-12">
       <header className="flex flex-col gap-6">
         <LogoEmpile />
-        <h2 className="font-titre text-h2 font-bold text-encre">Demander une démo</h2>
+        <h1 className="font-titre text-h2 font-bold text-encre">Demander une démo</h1>
         <p className="text-ardoise">
           Laissez vos coordonnées : nous vous écrivons pour convenir d’un
           créneau et vous montrer une lettre de veille et l’espace qui

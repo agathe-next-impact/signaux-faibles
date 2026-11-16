@@ -1272,6 +1272,18 @@ lecture stratégique « en test » et ce qui nous distingue ; « Exemples » ren
 sur la grille de la démonstration et les faits relevés par `faitsDeLaLettre`).
 `tests/vitrine.marche.test.ts` tient chaque phrase chiffrée contre ses données.
 
+**Référencement de la vitrine, SEO et GEO** (16 novembre 2026, demande de l'opératrice,
+`docs/referencement-vitrine.md`) : `lib/vitrine/referencement.ts` est le seul module de ce qu'un
+robot lit de la vitrine. `/robots.txt` (`app/robots.ts`, robots d'IA nommés avec les mêmes
+exclusions), `/sitemap.xml` (`app/sitemap.ts`, les trois pages indexables, `PAGES_INDEXABLES`) et
+`/llms.txt` (`app/llms.txt/route.ts`, résumé Markdown tiré des constantes de l'offre) sont ouverts
+par le proxy à l'adresse exacte ; avant, ils étaient redirigés vers « recevoir mon lien ». L'origine
+canonique est `www.` (`origineCanonique`, l'apex redirige), posée en `metadataBase` ; chaque page
+vitrine prend `métadonnéesDeVitrine` (canonique, Open Graph, image `public/vitrine/partage.png`,
+`max-snippet: -1`) ; l'accueil et « Tarifs » portent un graphe JSON-LD relié (`Organization`,
+`WebSite`, `Service`, `FAQPage`), la FAQ étant un seul tableau rendu et sérialisé
+(`QuestionsFréquentes`). Le layout racine reste en `noindex` : seules ces trois pages s'indexent.
+
 **Trois espaces de démonstration, ouverts sans identifiant (7 novembre 2026, demande de
 l'opératrice).** `/lisiere-conseil`, `/tolmen-mecanique` et `/atelier-passerelle` sont les
 **vrais écrans de l'espace client** sur les trois organisations **fictives** de « Exemples »,
