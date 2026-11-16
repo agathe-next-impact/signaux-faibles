@@ -11,7 +11,8 @@ import {
   type SynthèsesDUneOrganisation,
 } from '@/lib/domaine/strategie-vues'
 import type { MarchésDUneOrganisation, PériodeDeMarchés } from '@/lib/domaine/marches'
-import { publierLesMarchés, publierUnePériode } from '@/lib/portail/publication'
+import { publierLaTableDEffets, publierLesMarchés, publierUnePériode } from '@/lib/portail/publication'
+import type { SimulationsDUneOrganisation } from '@/lib/portail/simulation'
 import { publicationAutomatique } from '@/lib/portail/strategie'
 
 export const metadata: Metadata = { title: 'Synthèses stratégiques — signauxfaibles' }
@@ -52,6 +53,19 @@ const MESSAGES_DES_MARCHÉS: Record<string, string> = {
   échec: 'La base n’a pas répondu : rien n’a changé.',
 }
 
+const MESSAGES_DE_LA_SIMULATION: Record<string, string> = {
+  publiée: 'Table d’effets publiée : les lecteurs voient « Simulation » à leur prochaine visite.',
+  retirée: 'Table d’effets retirée : l’écran « Simulation » n’est plus montré au client.',
+  refusée: 'Cette version ne passe plus la porte (l’arbre des marchés ou la grille ont changé) : elle n’est pas publiée. La revue doit la reposter.',
+  aucune: 'Aucune table d’effets à cette version.',
+  'hors-pilote': 'Cette organisation n’est pas dans le pilote des outils stratégiques.',
+  'organisation-inconnue': 'Organisation inconnue.',
+  'grille-absente': 'Cette organisation n’a pas de grille : la table ne peut pas être contrôlée.',
+  échec: 'La base n’a pas répondu : rien n’a changé.',
+}
+
+const LIBELLÉS_DE_LA_TABLE: Record<string, string> = { propose: 'proposée, non montrée', publie: 'publiée', retire: 'retirée' }
+
 const LIBELLÉS_DES_MARCHÉS: Record<PériodeDeMarchés['état'], string> = {
   proposée: 'proposées, non montrées',
   publiée: 'publiées',
@@ -72,9 +86,9 @@ const LIEN = 'text-label text-encre underline underline-offset-2'
 export default async function Synthèses({
   searchParams,
 }: {
-  searchParams: Promise<{ synthese?: string | string[]; marches?: string | string[]; slug?: string | string[]; periode?: string | string[] }>
+  searchParams: Promise<{ synthese?: string | string[]; marches?: string | string[]; simulation?: string | string[]; slug?: string | string[]; periode?: string | string[] }>
 }) {
-  const { accès, organisations, marchés } = await listerLesSynthèses()
+  const { accès, organisations, marchés, simulations } = await listerLesSynthèses()
   const automatique = publicationAutomatique()
   const paramètres = await searchParams
   const résultat =
@@ -82,7 +96,9 @@ export default async function Synthèses({
       ? MESSAGES[paramètres.synthese]
       : typeof paramètres.marches === 'string'
         ? MESSAGES_DES_MARCHÉS[paramètres.marches]
-        : undefined
+        : typeof paramètres.simulation === 'string'
+          ? MESSAGES_DE_LA_SIMULATION[paramètres.simulation]
+          : undefined
   const slugRéglé = typeof paramètres.slug === 'string' ? paramètres.slug : undefined
   const périodeRéglée = typeof paramètres.periode === 'string' ? paramètres.periode : undefined
 
@@ -134,6 +150,7 @@ export default async function Synthèses({
       )}
 
       {marchés && marchés.length > 0 ? <Marchés organisations={marchés} automatique={automatique} /> : null}
+      {simulations && simulations.length > 0 ? <Simulations organisations={simulations} /> : null}
     </main>
   )
 }
@@ -259,6 +276,78 @@ function Marchés({ organisations, automatique }: { organisations: readonly Marc
                       <input type="hidden" name="slug" value={o.slug} />
                       <input type="hidden" name="periode" value={p.période} />
                       {p.état === 'publiée' ? (
+                        <>
+                          <input type="hidden" name="etat" value="retire" />
+                          <BoutonEnvoi className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2">Retirer</BoutonEnvoi>
+                        </>
+                      ) : (
+                        <>
+                          <input type="hidden" name="etat" value="publie" />
+                          <BoutonEnvoi className={BOUTON}>Publier</BoutonEnvoi>
+                        </>
+                      )}
+                    </form>
+                  </td>
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Les tables d'effets de la simulation (16 novembre 2026, lot 3b) : une ligne
+ * par version vivante. Des hypothèses écrites par la revue trimestrielle,
+ * jamais publiées d'office : l'opératrice joue la table dans l'espace, où sa
+ * session la voit sous un bandeau, puis la publie ici. Publier ouvre l'écran
+ * « Simulation » au client.
+ */
+function Simulations({ organisations }: { organisations: readonly SimulationsDUneOrganisation[] }) {
+  return (
+    <section id="simulation" aria-labelledby="titre-simulation" className="flex flex-col gap-4">
+      <h2 id="titre-simulation" className="font-titre text-h2 font-bold text-encre">
+        Simulation
+      </h2>
+      <p className="text-ardoise">
+        La table d’effets d’une organisation porte des hypothèses : ce que chaque action et chaque événement font bouger.
+        Elle n’est jamais publiée automatiquement. « Jouer dans l’espace » la montre telle que le client la verra ;
+        « Publier » ouvre l’écran « Simulation » à ses lecteurs et remplace la version publiée avant elle.
+      </p>
+      <div className="overflow-x-auto border border-gris-ligne">
+        <table className="w-full border-collapse text-corps">
+          <thead>
+            <tr className="border-b border-gris-ligne bg-fond-neutre text-left">
+              {['organisation', 'version', 'déposée le', 'état', 'publication'].map((entête) => (
+                <th key={entête} scope="col" className="label-mono px-4 py-3 font-normal text-ardoise">
+                  {entête}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {organisations.flatMap((o) =>
+              o.versions.map((v) => (
+                <tr key={`${o.slug}:${v.version}`} className="border-b border-gris-ligne align-top">
+                  <td className="px-4 py-3">
+                    <p className="text-encre">{o.nom}</p>
+                    <p className="label-mono text-ardoise">{o.slug}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="label-mono text-encre">version {v.version}</p>
+                    <Link href={`/${o.slug}/simulation`} className={LIEN}>
+                      Jouer dans l’espace
+                    </Link>
+                  </td>
+                  <td className="label-mono px-4 py-3 text-ardoise">{v.crééeLe.slice(0, 10)}</td>
+                  <td className={`label-mono px-4 py-3 ${v.état === 'publie' ? 'text-encre' : 'text-ardoise'}`}>{LIBELLÉS_DE_LA_TABLE[v.état]}</td>
+                  <td className="px-4 py-3">
+                    <form action={publierLaTableDEffets} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="slug" value={o.slug} />
+                      <input type="hidden" name="version" value={v.version} />
+                      {v.état === 'publie' ? (
                         <>
                           <input type="hidden" name="etat" value="retire" />
                           <BoutonEnvoi className="text-label text-ardoise underline decoration-gris-ligne underline-offset-2">Retirer</BoutonEnvoi>

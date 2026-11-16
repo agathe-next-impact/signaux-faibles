@@ -417,6 +417,28 @@ export async function tableauDesMarchés(db?: Base): Promise<MarchésDUneOrganis
   return périodesDeMarchés(await périodesMesuréesDuPilote(db))
 }
 
+/**
+ * Ce que la simulation lit des marchés (16 novembre 2026, lot 3b) : les clés de
+ * l'arbre en vigueur, pour la porte de la table d'effets, et la vue des mesures
+ * (publiées seulement, ou proposées aussi pour l'aperçu de l'opératrice), d'où
+ * viennent verdicts et concurrence. Sans borne propre : ses appelants le sont.
+ */
+export async function marchésPourLaSimulation(
+  entrée: { readonly organisationId: string; readonly aperçu?: boolean },
+  db?: Base,
+): Promise<{ readonly segments: readonly { readonly clé: string; readonly libellé: string }[]; readonly vue: VueDesMarchés | null }> {
+  const [segments, mesures] = await Promise.all([
+    derniersSegments(entrée.organisationId, db),
+    entrée.aperçu === true
+      ? mesuresVivantes({ organisationId: entrée.organisationId }, db).then((m) => m.filter((x) => x.état !== 'retire'))
+      : mesuresVivantes({ organisationId: entrée.organisationId, publiées: true }, db),
+  ])
+  return {
+    segments: ((segments?.contenu ?? []) as unknown as SegmentDeMarché[]).map((s) => ({ clé: s.clé, libellé: s.libellé })),
+    vue: vueDesMarchés(versLesMesures(mesures)),
+  }
+}
+
 // ── L'écran « Marchés et niches » ───────────────────────────────────────────
 
 /**
