@@ -133,6 +133,8 @@ export function ongletsDe(
     const réorganisé = [
       { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true, rubrique: 'Cette semaine' },
       { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres, rubrique: 'Cette semaine' },
+      // Le calendrier rejoint « Cette semaine » (16 novembre 2026, demande de l'opératrice) ; son adresse ne change pas.
+      { href: `/${slug}/veille/calendrier`, libellé: 'Calendrier', libelléCourt: 'Calend.', rubrique: 'Cette semaine' },
       // « Entreprises suivies » quand la veille concurrentielle suit les mouvements du territoire (7 novembre 2026).
       { href: `/${slug}/concurrents`, libellé: espace.marché?.écran ?? 'Concurrents', libelléCourt: espace.marché?.écranCourt ?? 'Concurr.', rubrique: 'Le marché' },
       { href: `/${slug}/acteurs`, libellé: 'Acteurs', libelléCourt: 'Acteurs', rubrique: 'Le marché' },
@@ -148,7 +150,6 @@ export function ongletsDe(
       { href: `/${slug}/veille/themes`, libellé: 'Thèmes suivis', libelléCourt: 'Thèmes', rubrique: 'Votre veille' },
       { href: `/${slug}/veille/sources`, libellé: 'Sources', libelléCourt: 'Sources', rubrique: 'Votre veille' },
       { href: `/${slug}/veille/corpus`, libellé: 'Corpus', libelléCourt: 'Corpus', rubrique: 'Votre veille' },
-      { href: `/${slug}/veille/calendrier`, libellé: 'Calendrier', libelléCourt: 'Calend.', rubrique: 'Votre veille' },
       { href: `/${slug}/perimetre`, libellé: 'Périmètre', libelléCourt: 'Périm.', rubrique: 'Votre veille' },
       { href: `/${slug}/archives`, libellé: 'Archives', libelléCourt: 'Archives', compte: comptes.archives, rubrique: 'Votre veille' },
     ]

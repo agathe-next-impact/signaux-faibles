@@ -26,7 +26,7 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
 
   return (
     <>
-      <EntêteÉcran surtitre="votre veille" titre="Ce que nous attendons" état={lue?.fiche ? `${à} échéance${à > 1 ? 's' : ''} en douze mois` : undefined} />
+      <EntêteÉcran surtitre="cette semaine" titre="Ce que nous attendons" état={lue?.fiche ? `${à} échéance${à > 1 ? 's' : ''} en douze mois` : undefined} />
       {!lue ? (
         <p className="mt-6 text-ardoise">Le calendrier de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
       ) : !lue.fiche ? (

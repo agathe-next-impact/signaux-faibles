@@ -61,6 +61,13 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
   return [
     { rubrique: 'Cette semaine', écran: 'Lettres', href: href('/lettres'), valeur: String(d.lettres), mention: d.dernièreSemaine ? `la dernière, ${d.dernièreSemaine}` : 'aucune lettre' },
     {
+      rubrique: 'Cette semaine',
+      écran: 'Calendrier',
+      href: href('/veille/calendrier'),
+      valeur: d.veille?.fiche?.prochaine ? `le ${d.veille.fiche.prochaine.date.slice(8, 10)}/${d.veille.fiche.prochaine.date.slice(5, 7)}` : 'n.d.',
+      mention: d.veille?.fiche ? (d.veille.fiche.prochaine?.libellé ?? 'aucune échéance à venir') : pasEncore,
+    },
+    {
       rubrique: 'Le marché',
       écran: marché.écran,
       href: href('/concurrents'),
@@ -146,13 +153,6 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
         ? `${pluriel(d.veille.concurrents, marché.un, marché.des)}, ${pluriel(d.veille.partiesPrenantes, 'partie prenante', 'parties prenantes')}`
         : 'les acteurs suivis',
     },
-    {
-      rubrique: 'Votre veille',
-      écran: 'Calendrier',
-      href: href('/veille/calendrier'),
-      valeur: d.veille?.fiche?.prochaine ? `le ${d.veille.fiche.prochaine.date.slice(8, 10)}/${d.veille.fiche.prochaine.date.slice(5, 7)}` : 'n.d.',
-      mention: d.veille?.fiche ? (d.veille.fiche.prochaine?.libellé ?? 'aucune échéance à venir') : pasEncore,
-    },
     { rubrique: 'Votre veille', écran: 'Périmètre', href: href('/perimetre'), valeur: 'Ce qui est suivi', mention: 'et ce que nous proposons d’y changer' },
     { rubrique: 'Votre veille', écran: 'Archives', href: href('/archives'), valeur: pluriel(d.archives, 'semaine'), mention: 'une entrée par semaine' },
   ]
@@ -172,7 +172,7 @@ export const RUBRIQUES = [
   { clé: 'marche', titre: 'Le marché', question: 'Qui bouge sur votre marché', présentation: 'Qui vous dispute vos clients, qui pèse sur votre activité, et si le marché se durcit.' },
   { clé: 'environnement', titre: 'L’environnement', question: 'Ce qui change autour de vous', présentation: 'De quoi parle votre veille, et quelles dimensions de votre environnement bougent.' },
   { clé: 'strategie', titre: 'Stratégie', question: 'Où vous en êtes, et que faire', présentation: 'Votre situation, les options qui s’en déduisent, ce qui peut arriver et ce que disent les registres.' },
-  { clé: 'veille', titre: 'Votre veille', question: 'Ce que nous suivons pour vous', présentation: 'Ce que votre veille suit, où elle regarde, qui elle suit et ce qu’elle attend, puis son périmètre et l’archive de vos lettres.' },
+  { clé: 'veille', titre: 'Votre veille', question: 'Ce que nous suivons pour vous', présentation: 'Ce que votre veille suit, où elle regarde et qui elle suit, puis son périmètre et l’archive de vos lettres.' },
 ] as const
 
 export type CléDeRubrique = (typeof RUBRIQUES)[number]['clé']
