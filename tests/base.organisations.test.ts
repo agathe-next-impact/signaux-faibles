@@ -205,20 +205,20 @@ describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
 
   it('fait entrer un client historique dans le parcours : J0 déduit de la prochaine lettre et des parutions restantes', async () => {
     // Prochaine lettre le jeudi 22 octobre, une seule parution complète restante
-    // sur deux (le défaut) : J0 tombe le lundi 12 octobre, une semaine avant le
+    // sur trois (le défaut) : J0 tombe le lundi 5 octobre, deux semaines avant le
     // lundi 19.
     const r = await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)
-    expect(r).toEqual({ sorte: 'mis-en-parcours', j0: '2026-10-12', parutions: 2, restantes: 1 })
+    expect(r).toEqual({ sorte: 'mis-en-parcours', j0: '2026-10-05', parutions: 3, restantes: 1 })
     const o = await lire('hist')
     expect(o).toMatchObject({ état: 'essai', essaiOuvertLe: MAINTENANT })
-    expect(o.activéeLe?.toISOString()).toBe('2026-10-12T06:00:00.000Z')
-    // Deux restantes : J0 la semaine même de la prochaine lettre.
-    const r2 = await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 2 }, db, MAINTENANT)
+    expect(o.activéeLe?.toISOString()).toBe('2026-10-05T06:00:00.000Z')
+    // Trois restantes : J0 la semaine même de la prochaine lettre.
+    const r2 = await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 3 }, db, MAINTENANT)
     expect(r2).toMatchObject({ sorte: 'mis-en-parcours', j0: '2026-10-19' })
-    // Trois parutions réglées, une restante : J0 deux semaines avant.
-    await réglerLeParcours('hist', { sorte: 'parutions', parutions: 3 }, db, MAINTENANT)
+    // Quatre parutions réglées, une restante : J0 trois semaines avant.
+    await réglerLeParcours('hist', { sorte: 'parutions', parutions: 4 }, db, MAINTENANT)
     const r3 = await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)
-    expect(r3).toEqual({ sorte: 'mis-en-parcours', j0: '2026-10-05', parutions: 3, restantes: 1 })
+    expect(r3).toEqual({ sorte: 'mis-en-parcours', j0: '2026-09-28', parutions: 4, restantes: 1 })
   })
 
   it('refuse la mise en parcours d’un abonné Stripe, d’un état hors parcours, ou de restantes hors bornes', async () => {
@@ -233,14 +233,14 @@ describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
       dernierType: 'customer.subscription.updated',
     })
     expect(await réglerLeParcours('hist', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'abonnée-stripe' })
-    expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 3 }, db, MAINTENANT)).toEqual({ sorte: 'parutions-invalides', parutions: 2 })
+    expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 4 }, db, MAINTENANT)).toEqual({ sorte: 'parutions-invalides', parutions: 3 })
     expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '22/10/2026', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'date-invalide' })
     await db.update(organisations).set({ état: 'ecartee' }).where(eq(organisations.slug, 'ess'))
     expect(await réglerLeParcours('ess', { sorte: 'parcours', prochaineLettre: '2026-10-22', restantes: 1 }, db, MAINTENANT)).toEqual({ sorte: 'pas-en-essai', état: 'ecartee' })
   })
 
   it('place à une étape nommée : J0 calculé pour la semaine en cours, et l’étape obtenue est celle demandée', async () => {
-    // Le lundi 19 octobre 2026, deux parutions complètes (le défaut).
+    // Le lundi 19 octobre 2026, trois parutions complètes (le défaut).
     const étapeDe = async (slug: string) => {
       const o = await lire(slug)
       return libelléDÉtape(
@@ -254,17 +254,17 @@ describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
     // Un client historique devient un essai à la parution réduite.
     expect(await réglerLeParcours('hist', { sorte: 'placer', cible: 'tronquee' }, db, MAINTENANT)).toEqual({
       sorte: 'placée',
-      j0: '2026-10-05',
+      j0: '2026-09-28',
       étape: 'fin d’essai · l’essentiel seul',
     })
     expect(await lire('hist')).toMatchObject({ état: 'essai', essaiOuvertLe: MAINTENANT })
-    expect((await lire('hist')).activéeLe?.toISOString()).toBe('2026-10-05T06:00:00.000Z')
+    expect((await lire('hist')).activéeLe?.toISOString()).toBe('2026-09-28T06:00:00.000Z')
     expect(await étapeDe('hist')).toBe('fin d’essai · l’essentiel seul')
 
     for (const [cible, j0, étape] of [
-      ['essai-1', '2026-10-19', 'essai · parution 1 sur 2'],
-      ['derniere', '2026-10-12', 'essai · parution 2 sur 2'],
-      ['suspendue', '2026-09-28', 'suspendue · essai terminé'],
+      ['essai-1', '2026-10-19', 'essai · parution 1 sur 3'],
+      ['derniere', '2026-10-05', 'essai · parution 3 sur 3'],
+      ['suspendue', '2026-09-21', 'suspendue · essai terminé'],
     ] as const) {
       expect(await réglerLeParcours('ess', { sorte: 'placer', cible }, db, MAINTENANT)).toEqual({ sorte: 'placée', j0, étape })
       expect(await étapeDe('ess')).toBe(étape)
@@ -281,8 +281,8 @@ describe('offre, parutions et mise en parcours (19 octobre 2026)', () => {
 
   it('refuse de placer une étape hors de l’essai, un abonné Stripe, un accès offert, une organisation écartée, sans rien écrire', async () => {
     const avant = (await lire('ess')).activéeLe
-    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'essai-3' }, db, MAINTENANT)).toEqual({ sorte: 'cible-invalide', parutions: 2 })
-    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'n-importe-quoi' }, db, MAINTENANT)).toEqual({ sorte: 'cible-invalide', parutions: 2 })
+    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'essai-4' }, db, MAINTENANT)).toEqual({ sorte: 'cible-invalide', parutions: 3 })
+    expect(await réglerLeParcours('ess', { sorte: 'placer', cible: 'n-importe-quoi' }, db, MAINTENANT)).toEqual({ sorte: 'cible-invalide', parutions: 3 })
     expect(await réglerLeParcours('personne', { sorte: 'placer', cible: 'tronquee' }, db, MAINTENANT)).toEqual({ sorte: 'inconnue' })
 
     const [o] = await db.select({ id: organisations.id }).from(organisations).where(eq(organisations.slug, 'hist'))

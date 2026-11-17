@@ -204,6 +204,13 @@
       "when": 1794819489389,
       "tag": "0028_table_d_effets",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794905203998,
+      "tag": "0029_parutions_d_essai_trois",
+      "breakpoints": true
     }
   ]
 }

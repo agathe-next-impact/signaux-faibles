@@ -9,10 +9,10 @@ import { composerCourriel, corpsDeParagraphes, dateDuJour, racineDuPortail, type
  * Avant eux, un client découvrait la fin de son essai en ouvrant le portail :
  * rien ne le prévenait que la lettre allait être réduite à « L'essentiel », ni
  * que son espace serait suspendu. Deux moments, et deux seulement :
- *   · **la dernière parution complète** (J+7 pour l'essai de deux parutions,
- *     défaut depuis le 24 octobre 2026) : il est encore temps de s'abonner sans
+ *   · **la dernière parution complète** (J+14 pour l'essai de trois parutions,
+ *     défaut depuis le 17 novembre 2026) : il est encore temps de s'abonner sans
  *     rien perdre ;
- *   · **la parution réduite** (la semaine suivante, J+14) : la lettre est
+ *   · **la parution réduite** (la semaine suivante, J+21) : la lettre est
  *     réduite à « L'essentiel », l'espace sera suspendu la semaine suivante.
  *
  * Le 23 octobre 2026, Agathe a ajouté les courriers commerciaux, **tous déposés
