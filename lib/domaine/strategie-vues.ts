@@ -1,5 +1,6 @@
 import {
   CASES_SWOT,
+  étatDeLaPériode,
   FORCES_PORTER,
   LIBELLÉS_PESTEL,
   LIBELLÉS_PORTER,
@@ -12,6 +13,7 @@ import {
   trousDuPestel,
   type Benchmark,
   type CaseSwot,
+  type ÉtatDeLaPériode,
   type FamilleDeGrille,
   type ForcePorter,
   type Grille,
@@ -826,8 +828,9 @@ export function vueDuPestel(
 
 // ── Tableau de l'opératrice : les périodes à publier ─────────────────────────
 
-/** `mêlée` : une partie seulement des lignes est publiée, ce que les écrans ne lisent pas. */
-export type ÉtatDeLaPériode = 'proposée' | 'publiée' | 'retirée' | 'mêlée'
+// L'état d'une période et sa règle vivent dans `lib/domaine/strategie.ts`, que le
+// texte de relecture lit aussi ; ils restent exportés d'ici pour les écrans.
+export type { ÉtatDeLaPériode }
 
 export type PériodeAPublier = {
   readonly période: string
@@ -850,13 +853,6 @@ type ComptesDePériode = {
   readonly lignes: number
   readonly publiées: number
   readonly retirées: number
-}
-
-function étatDeLaPériode(c: ComptesDePériode): ÉtatDeLaPériode {
-  if (c.publiées === c.lignes) return 'publiée'
-  if (c.retirées === c.lignes) return 'retirée'
-  if (c.publiées === 0 && c.retirées === 0) return 'proposée'
-  return 'mêlée'
 }
 
 /** Une entrée par organisation, par nom ; ses périodes de la plus récente à la plus ancienne, le trimestre après les mois qu'il couvre. */
