@@ -526,7 +526,7 @@ export function lireLaCommande(argv: readonly string[], maintenant: Date = new D
       // Posée par le portail (lot 6, 2 novembre 2026) ; vide, elle ne compte pas.
       const lue = lireUneConsigne(reste[i + 1])
       i++
-      if (lue === 'illisible') throw new Error('consigne illisible : referentiels, sans-validation, activation, appels ou publication:<id>[,<id>…]')
+      if (lue === 'illisible') throw new Error('consigne illisible : referentiels, sans-validation, activation, appels, lettre-appels ou publication:<id>[,<id>…]')
       consigne = lue
     } else if (reste[i] === '--periodes') {
       const valeur = (reste[i + 1] ?? '').trim()

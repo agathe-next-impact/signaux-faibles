@@ -541,6 +541,12 @@ export type ConsigneDeTâche =
    * validation humaine, et coche la lettre dans le registre.
    */
   | { readonly sorte: 'appels' }
+  /**
+   * La lettre d'appels à projets tout de suite, hors calendrier (17 novembre
+   * 2026, demande de l'opératrice : « crée la première ») : un run `lettres`
+   * pour une seule organisation, qui ne produit que cette lettre.
+   */
+  | { readonly sorte: 'lettre-appels' }
 
 /** Le plus d'éditions qu'une consigne de publication désigne : deux lettres par parution, et une marge. */
 export const ÉDITIONS_PAR_PUBLICATION_MAX = 6
@@ -553,7 +559,7 @@ export function écrireUneConsigne(consigne: ConsigneDeTâche): string {
 export function lireUneConsigne(valeur: string | null | undefined): ConsigneDeTâche | null | 'illisible' {
   const v = (valeur ?? '').trim()
   if (v === '') return null
-  if (v === 'referentiels' || v === 'sans-validation' || v === 'activation' || v === 'appels') return { sorte: v }
+  if (v === 'referentiels' || v === 'sans-validation' || v === 'activation' || v === 'appels' || v === 'lettre-appels') return { sorte: v }
   const publication = /^publication:([0-9a-f]{32}(?:,[0-9a-f]{32})*)$/.exec(v)
   if (!publication) return 'illisible'
   const éditions = [...new Set(publication[1]!.split(','))]
@@ -561,12 +567,13 @@ export function lireUneConsigne(valeur: string | null | undefined): ConsigneDeT�
 }
 
 /** La tâche du workflow qui porte chaque consigne : une consigne ailleurs est refusée par le harnais. */
-export const TÂCHE_DE_LA_CONSIGNE: Readonly<Record<ConsigneDeTâche['sorte'], 'premiere-lettre' | 'balayage' | 'reconciliation'>> = {
+export const TÂCHE_DE_LA_CONSIGNE: Readonly<Record<ConsigneDeTâche['sorte'], 'premiere-lettre' | 'balayage' | 'reconciliation' | 'lettres'>> = {
   referentiels: 'balayage',
   'sans-validation': 'premiere-lettre',
   activation: 'balayage',
   publication: 'reconciliation',
   appels: 'balayage',
+  'lettre-appels': 'lettres',
 }
 
 // ── L'onboarding autonome (lot 7, 15 novembre 2026) ──────────────────────────

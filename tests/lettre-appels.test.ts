@@ -7,7 +7,7 @@ import { construireDocument } from '@/lib/domaine/document'
 import { contexteDesFamilles, estFamilleDAppels, FAMILLE_DES_APPELS, FAMILLES } from '@/lib/portail/contexte'
 import { contrôlerLaLettre, datesDUnTexte } from '@/lib/portail/lint'
 import type { ÉditionDeTravail } from '@/lib/notion/travail'
-import { CONSIGNE_DES_APPELS, texteDeLaConsigne } from '../scripts/taches/pointeurs'
+import { CONSIGNE_DE_LA_LETTRE_D_APPELS, CONSIGNE_DES_APPELS, texteDeLaConsigne } from '../scripts/taches/pointeurs'
 import { lireLaCommande } from '../scripts/taches/executer'
 
 /**
@@ -174,6 +174,24 @@ describe('la consigne « appels » (lot 2)', () => {
     expect(texte).toContain('Quinzaine (semaines paires)')
     expect(texte).toContain('fiches_entreprises')
     expect(texte).toContain('Ne crée aucune édition')
+    expect(texte).not.toContain('—')
+  })
+})
+
+describe('la consigne « lettre-appels » (première lettre hors calendrier)', () => {
+  it('se lit, et ne vaut que pour les lettres d’une organisation', () => {
+    expect(lireUneConsigne('lettre-appels')).toEqual({ sorte: 'lettre-appels' })
+    expect(TÂCHE_DE_LA_CONSIGNE['lettre-appels']).toBe('lettres')
+    expect(lireLaCommande(['lettres', '--organisation', 'cci-cantal', '--consigne', 'lettre-appels']).consigne).toEqual({ sorte: 'lettre-appels' })
+    expect(() => lireLaCommande(['balayage', '--organisation', 'cci-cantal', '--consigne', 'lettre-appels'])).toThrow(/lettres/)
+    expect(() => lireLaCommande(['lettres', '--consigne', 'lettre-appels'])).toThrow(/organisation/)
+  })
+
+  it('ne produit qu’une lettre, au contrat de la page', () => {
+    const texte = texteDeLaConsigne({ sorte: 'lettre-appels' })
+    expect(texte).toBe(CONSIGNE_DE_LA_LETTRE_D_APPELS.join('\n'))
+    expect(texte).toContain('ne produis aucune lettre de « parutions »')
+    expect(texte).toContain('LETTRE D’APPELS À PROJETS » de la fin de l’étape 3')
     expect(texte).not.toContain('—')
   })
 })
