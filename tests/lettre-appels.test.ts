@@ -99,6 +99,16 @@ describe('le calendrier de la lettre d’appels', () => {
     expect(sélectionnerLesAppels(registre, '2026-11-20').prochainesAppels).toEqual([{ slug: 'cci-cantal', date: '2026-11-27', jour: 'Vendredi' }])
   })
 
+  it('suit la quinzaine des semaines impaires : les lundis à partir du 30 novembre 2026', () => {
+    const impaire = [{ slug: 'cci-cantal', jour: 'Lundi' as const, cadence: 'Hebdomadaire' as const, appels: { jour: 'Lundi' as const, cadence: 'Quinzaine (semaines impaires)' as const } }]
+    // Lundi 23 novembre : semaine 48, paire. Lundi 30 : semaine 49. Lundi 14 décembre : semaine 51.
+    expect(sélectionnerLesAppels(impaire, '2026-11-23').parutionsAppels).toEqual([])
+    expect(sélectionnerLesAppels(impaire, '2026-11-30').parutionsAppels.map((o) => o.slug)).toEqual(['cci-cantal'])
+    expect(sélectionnerLesAppels(impaire, '2026-12-07').parutionsAppels).toEqual([])
+    expect(sélectionnerLesAppels(impaire, '2026-12-14').parutionsAppels.map((o) => o.slug)).toEqual(['cci-cantal'])
+    expect(sélectionnerLesAppels(impaire, '2026-11-17').prochainesAppels).toEqual([{ slug: 'cci-cantal', date: '2026-11-30', jour: 'Lundi' }])
+  })
+
   it('suit la cadence donnée quand le registre la porte', () => {
     const hebdo = [{ ...registre[0]!, appels: { jour: 'Vendredi' as const, cadence: 'Hebdomadaire' as const } }]
     expect(sélectionnerLesAppels(hebdo, '2026-11-20').parutionsAppels.map((o) => o.slug)).toEqual(['cci-cantal'])

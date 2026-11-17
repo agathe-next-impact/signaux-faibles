@@ -69,6 +69,15 @@ n'est pas cité dans la section est refusée sans être ouverte. Il rend une
 ligne par appel (intitulé, dates lisibles, adresse, source) et écarte les
 marchés publics. Le collecteur l'a dans ses outils.
 
+**Quinzaine des semaines impaires.** La cadence `Quinzaine (semaines
+impaires)` (`CADENCES`, `lib/domaine/calendrier.ts`) fait paraître une lettre
+les semaines ISO impaires. Elle n'est une option que de la colonne « Cadence
+appels » du registre ; la CCI du Cantal y est réglée depuis le 17 novembre
+2026, pour des parutions le lundi à partir du 30 novembre (semaine 49), à la
+demande de l'opératrice. 2026 compte 53 semaines ISO : les semaines 53 et 1
+sont toutes deux impaires, la lettre paraît donc les lundis 28 décembre 2026
+et 4 janvier 2027.
+
 **Première lettre hors calendrier.** La consigne `lettre-appels` (tâche
 `lettres`, une organisation) fait produire tout de suite la lettre d'appels
 d'une organisation, sans attendre sa parution : `pnpm tache lettres
