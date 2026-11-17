@@ -304,7 +304,7 @@ Pas de clé vers `organisations` : un run peut nommer une organisation que le po
 
 ## Le parcours, calculé et non stocké
 
-`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, puis par semaines ISO autant de parutions complètes que `parutions_d_essai` (deux par défaut depuis le 24 octobre 2026, J0 et J+7 ; trois auparavant) ; la semaine suivante (J+14 par défaut) sans abonnement, une parution réduite à « L'essentiel » de chaque lettre ; `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de cette parution réduite sans abonnement (offre décidée le 17 octobre 2026, `docs/decision-portail-moteur.md`). Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
+`étapeDuParcours(organisation, abonnement, aujourdHui)` est une fonction pure de `lib/domaine/parcours.ts` : J0 à `activée_le`, puis par semaines ISO autant de parutions complètes que `parutions_d_essai` (trois par défaut depuis le 17 novembre 2026, J0, J+7 et J+14 ; deux du 24 octobre au 17 novembre 2026) ; la semaine suivante (J+21 par défaut) sans abonnement, une parution réduite à « L'essentiel » de chaque lettre ; `abonne` si `abonnements.état` est `trialing` ou `active`, `suspendue` au-delà de cette parution réduite sans abonnement (offre décidée le 17 octobre 2026, `docs/decision-portail-moteur.md`). Rien de cela n'est une colonne : une date et un état Stripe suffisent, et un état stocké divergerait.
 
 ## Migration depuis Notion (palier 1)
 

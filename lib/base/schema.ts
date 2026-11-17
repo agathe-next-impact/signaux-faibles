@@ -113,13 +113,14 @@ export const organisations = pgTable(
   étatAvantDécision: étatOrganisation('état_avant_décision'),
   offre: offreOrganisation('offre').notNull().default('standard'),
   /**
-   * Parutions complètes de l'essai avant « L'essentiel » seul : deux par
-   * défaut (J0, J+7) depuis le 24 octobre 2026, trois auparavant (migration
-   * 0011, qui ne touche pas aux organisations existantes), réglable par
-   * l'opératrice pour qu'un essai plus long ne soit pas un cas codé en dur.
-   * Même valeur que `PARUTIONS_D_ESSAI`, qu'affiche la vitrine.
+   * Parutions complètes de l'essai avant « L'essentiel » seul : trois par
+   * défaut (J0, J+7, J+14) depuis le 17 novembre 2026 (migration 0029) ; deux
+   * du 24 octobre au 17 novembre 2026 (migration 0011), trois auparavant.
+   * Aucune des deux migrations ne touche aux organisations existantes.
+   * Réglable par l'opératrice pour qu'un essai plus long ne soit pas un cas
+   * codé en dur. Même valeur que `PARUTIONS_D_ESSAI`, qu'affiche la vitrine.
    */
-  parutionsDEssai: smallint('parutions_d_essai').notNull().default(2),
+  parutionsDEssai: smallint('parutions_d_essai').notNull().default(3),
   /**
    * Le prescripteur qui a recommandé l'organisation (24 octobre 2026,
    * `docs/prescripteurs.md`). Le premier garde l'organisation : jamais réécrit.

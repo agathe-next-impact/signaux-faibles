@@ -27,13 +27,13 @@ describe('lireEntréeDuParcours', () => {
       .values({ slug: 'p', nom: 'P', état: 'essai', activéeLe: activée, registreNotion: REGISTRE })
       .returning({ id: organisations.id })
     expect(await lireEntréeDuParcours(REGISTRE, db)).toEqual({
-      organisation: { état: 'essai', activéeLe: activée, offre: 'standard', parutionsDEssai: 2 },
+      organisation: { état: 'essai', activéeLe: activée, offre: 'standard', parutionsDEssai: 3 },
       abonnement: null,
       inscriteLe: expect.any(Date),
     })
-    // Le défaut de la colonne (migration 0011) est l'essai qu'annonce la
+    // Le défaut de la colonne (migration 0029) est l'essai qu'annonce la
     // vitrine : l'un ne bouge pas sans l'autre.
-    expect(PARUTIONS_D_ESSAI).toBe(2)
+    expect(PARUTIONS_D_ESSAI).toBe(3)
 
     const commun = { organisationId: o!.id, clientStripe: 'cus_1', formule: 'mensuelle' as const, périodeFin: null, type: 'customer.subscription.updated' }
     await enregistrerÉvénementDAbonnement({ ...commun, abonnementStripe: 'sub_1', état: 'canceled', événementId: 'e1', événementLe: new Date('2026-10-20T00:00:00Z') }, db)

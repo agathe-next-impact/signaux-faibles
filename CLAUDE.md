@@ -447,7 +447,7 @@ Les lire avant toute session.
   selon `STRIPE_MODE` pour que Stripe relivre et alerte ; `tests/architecture.test.ts` vérifie le seul écrivain). L'étape du
   parcours n'est jamais stockée : `étapeDuParcours` (`lib/domaine/parcours.ts`)
   la calcule de la date d'activation, de l'état de l'organisation et de l'état
-  Stripe (essai J0, J+7 ; « L'essentiel » seul à J+14 ; suspension
+  Stripe (essai J0, J+7, J+14 ; « L'essentiel » seul à J+21, la quatrième parution ; suspension
   au-delà ; `past_due` reste abonné ; une suspension ou un écart posé par
   l'opérateur prime sur Stripe ; un paiement jamais abouti ne retire rien à un
   client historique). La lettre tronquée est retirée à la
@@ -552,8 +552,11 @@ Les lire avant toute session.
   l'ancienne variable reste lue en repli et la route PATCH accepte encore
   `early_adopter`), `gratuite` = accès offert, jamais de fin
   d'essai, étape « accès offert ») et `organisations.parutions_d_essai`
-  (deux par défaut depuis le 24 octobre 2026, migration 0011, trois
-  auparavant ; quatre pour un essai à J+28), migration 0004. Le même
+  (trois par défaut depuis le 17 novembre 2026, décision de l'opératrice,
+  migration 0029 : trois lettres complètes, la quatrième réduite à
+  « L'essentiel » ; deux du 24 octobre au 17 novembre 2026, migration 0011 ;
+  aucune des deux migrations ne touche aux organisations existantes, qui se
+  règlent une par une ; quatre pour un essai à J+28), migration 0004. Le même
   `réglerLeParcours` porte trois réglages de plus (`offre`, `parutions`,
   `parcours`), par la route PATCH et par le tableau de l'opératrice. `parcours`
   est **le chemin assumé pour un client historique qui devient payant** : la

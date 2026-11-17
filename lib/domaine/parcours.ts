@@ -7,9 +7,10 @@ import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
  * L'offre (décision d'Agathe du 17 octobre 2026, `docs/decision-portail-moteur.md`)
  * en fixe la forme :
  *
- *   · deux parutions complètes, la semaine de l'activation (J0) puis la
- *     suivante (J+7) : c'est l'essai (trois jusqu'au 24 octobre 2026) ;
- *   · la troisième semaine (J+14), sans abonnement, une parution réduite à
+ *   · trois parutions complètes, la semaine de l'activation (J0) puis les
+ *     deux suivantes (J+7, J+14) : c'est l'essai (décision de l'opératrice du
+ *     17 novembre 2026 ; deux du 24 octobre au 17 novembre 2026, trois avant) ;
+ *   · la quatrième semaine (J+21), sans abonnement, une parution réduite à
  *     « L'essentiel » de chaque lettre, avec une invitation à s'abonner ;
  *   · au-delà, sans abonnement, l'espace est suspendu.
  *
@@ -33,12 +34,14 @@ import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
 const ÉTATS_ABONNÉS = new Set(['trialing', 'active', 'past_due'])
 
 /**
- * Parutions complètes de l'essai par défaut : J0, J+7 (24 octobre 2026 ; trois
- * auparavant). Le défaut de la colonne `organisations.parutions_d_essai` porte
- * la même valeur (migration 0011) : changer l'un sans l'autre ferait annoncer
- * par la vitrine un essai que la base n'accorde pas.
+ * Parutions complètes de l'essai par défaut : J0, J+7, J+14, la quatrième
+ * parution étant réduite à « L'essentiel » (17 novembre 2026, décision de
+ * l'opératrice ; deux du 24 octobre au 17 novembre 2026, trois auparavant). Le
+ * défaut de la colonne `organisations.parutions_d_essai` porte la même valeur
+ * (migration 0029) : changer l'un sans l'autre ferait annoncer par la vitrine
+ * un essai que la base n'accorde pas.
  */
-export const PARUTIONS_D_ESSAI = 2
+export const PARUTIONS_D_ESSAI = 3
 
 /**
  * Parutions complètes de l'essai d'une organisation recommandée par un
