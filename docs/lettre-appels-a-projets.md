@@ -69,6 +69,14 @@ n'est pas cité dans la section est refusée sans être ouverte. Il rend une
 ligne par appel (intitulé, dates lisibles, adresse, source) et écarte les
 marchés publics. Le collecteur l'a dans ses outils.
 
+**Première lettre hors calendrier.** La consigne `lettre-appels` (tâche
+`lettres`, une organisation) fait produire tout de suite la lettre d'appels
+d'une organisation, sans attendre sa parution : `pnpm tache lettres
+--organisation <slug> --consigne lettre-appels`, ou le workflow avec ces
+entrées. Le run ne produit que cette lettre, au contrat de la page, et refuse
+si la lettre n'est pas cochée au registre ou si la section manque au
+référentiel (`CONSIGNE_DE_LA_LETTRE_D_APPELS`, `scripts/taches/pointeurs.ts`).
+
 ## À faire dans Notion, après le déploiement
 
 Rien de ceci n'est fait par le portail, qui n'écrit jamais dans Notion. Dans

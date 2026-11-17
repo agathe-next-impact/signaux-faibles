@@ -208,6 +208,8 @@ export function texteDeLaConsigne(consigne: ConsigneDeTâche): string {
       ].join('\n')
     case 'appels':
       return CONSIGNE_DES_APPELS.join('\n')
+    case 'lettre-appels':
+      return CONSIGNE_DE_LA_LETTRE_D_APPELS.join('\n')
   }
 }
 
@@ -257,3 +259,18 @@ export function périodePassée(valeur: string, aujourdhui: string): boolean {
 export function slugValide(valeur: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(valeur) && valeur.length <= 60
 }
+
+/**
+ * La consigne `lettre-appels` (17 novembre 2026, demande de l'opératrice :
+ * « j'ai activé la lettre. Crée la première ») : la lettre d'appels à projets
+ * d'une organisation, tout de suite, hors du calendrier. Le contrat de la
+ * lettre reste celui de la page « Tâche — Lettres de veille » (fin de
+ * l'étape 3) ; la consigne ne dit que ce que le lancement produit.
+ */
+export const CONSIGNE_DE_LA_LETTRE_D_APPELS: readonly string[] = [
+  'CONSIGNE DU PORTAIL : LETTRE D’APPELS À PROJETS HORS CALENDRIER. L’opératrice demande la lettre d’appels à projets de cette organisation maintenant, sans attendre sa parution au calendrier.',
+  '· Ce lancement ne produit qu’UNE lettre : celle de la famille « Appels à projets » de cette organisation, datée d’aujourd’hui. À l’étape 0.0, appelle quand même le calendrier et recopie sa réponse au compte rendu, mais ne produis aucune lettre de « parutions » ni de « parutionsAppels ».',
+  '· Produis-la selon le contrat « LETTRE D’APPELS À PROJETS » de la fin de l’étape 3, en passant par 0.1 à 0.3 (numéro lu dans familles["Appels à projets"] du contexte), puis par les étapes 4, 4bis, 4ter et 6 de la page, comme une lettre du jour.',
+  '· Si « Appels à projets » n’est pas cochée sur la ligne du registre, ou si le référentiel Écosystème n’a pas de section « Appels à projets », ne produis rien et dis-le dans la notification.',
+  '· Si le contexte montre déjà une édition « Appels à projets » datée d’aujourd’hui pour cette organisation, n’en produis pas une seconde.',
+]
