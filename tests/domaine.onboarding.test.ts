@@ -286,7 +286,7 @@ describe('le geste avec le moteur (lot 5)', () => {
 describe('les consignes du portail aux tâches (lot 6)', () => {
   const id = '40cfe829ce7181f183d9c46c4777ce00'
   it('s’écrivent et se relisent à l’identique, et rien d’autre ne passe', () => {
-    for (const c of [{ sorte: 'referentiels' }, { sorte: 'sans-validation' }, { sorte: 'activation' }, { sorte: 'publication', éditions: [id, '40cfe829ce71811d919bf29c8c10eecd'] }] as const) {
+    for (const c of [{ sorte: 'referentiels' }, { sorte: 'sans-validation' }, { sorte: 'activation' }, { sorte: 'appels' }, { sorte: 'publication', éditions: [id, '40cfe829ce71811d919bf29c8c10eecd'] }] as const) {
       expect(lireUneConsigne(écrireUneConsigne(c))).toEqual(c)
     }
     expect(lireUneConsigne('')).toBeNull()
@@ -299,7 +299,7 @@ describe('les consignes du portail aux tâches (lot 6)', () => {
     expect(lireUneConsigne(`publication:${id},${id}`)).toEqual({ sorte: 'publication', éditions: [id] })
   })
   it('chaque consigne a sa tâche', () => {
-    expect(TÂCHE_DE_LA_CONSIGNE).toEqual({ referentiels: 'balayage', 'sans-validation': 'premiere-lettre', activation: 'balayage', publication: 'reconciliation' })
+    expect(TÂCHE_DE_LA_CONSIGNE).toEqual({ referentiels: 'balayage', 'sans-validation': 'premiere-lettre', activation: 'balayage', publication: 'reconciliation', appels: 'balayage' })
   })
 })
 

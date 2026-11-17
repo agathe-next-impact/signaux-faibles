@@ -131,6 +131,12 @@ export async function recevoirUneFin(
   const conclusion = await conclureUnRunDOnboarding({ ...entrée, maintenant })
   if (conclusion.sorte !== 'conclu') return conclusion.sorte
   if (!conclusion.lancéParLePortail) return 'conclu'
+  // La lettre d'appels à projets (17 novembre 2026) : sa section du référentiel
+  // écrite, rien ne s'enchaîne ; la lettre suit la cadence du registre.
+  if (conclusion.consigne === 'appels') {
+    console.info(`[onboarding] ${entrée.slug} : référentiel d’appels à projets, ${conclusion.état}.`)
+    return 'conclu'
+  }
   try {
     if (conclusion.tâche === 'balayage' && conclusion.consigne === 'activation') {
       if (conclusion.état === 'reussi') {
@@ -450,6 +456,37 @@ export async function lancerLOuverture(entrée: { readonly slug: string; readonl
   const vue = vueDUnOnboarding(lu, maintenant)
   if (vue.geste.sorte !== 'ouvrir') return vue.geste.sorte === 'aucun' && vue.geste.raison === 'en-cours' ? 'en-cours' : 'geste-périmé'
   return réserverPuisDéclencher({ github, slug: entrée.slug, tâche: 'balayage', consigne: 'activation', opératrice: entrée.opératrice }, maintenant)
+}
+
+/**
+ * « Activer la lettre d'appels à projets » (17 novembre 2026,
+ * `docs/lettre-appels-a-projets.md`, lot 2) : un run `balayage` avec la consigne
+ * `appels` écrit la section « Appels à projets » du référentiel de cette seule
+ * organisation (familles, sources, profil d'éligibilité), sans validation
+ * humaine, et coche la lettre dans le registre. Le portail n'écrit rien dans
+ * Notion. L'appelant a vérifié le privilège.
+ *
+ * Le geste vaut pour une organisation déjà en service : elle n'a pas toujours
+ * de ligne d'onboarding (client antérieur au 1er novembre 2026), ou une ligne
+ * Cowork. La réservation est alors impossible, et le run part sans elle : le
+ * harnais ouvre la ligne à son début et y applique le budget du mois, comme
+ * pour un run lancé à la main.
+ */
+export async function lancerLaLettreDAppels(entrée: { readonly slug: string; readonly opératrice: string }, maintenant: Date = new Date()): Promise<IssueDuLancement> {
+  const github = configurationGithub()
+  if (!github) return 'indisponible'
+  const issue = await réserverPuisDéclencher({ github, slug: entrée.slug, tâche: 'balayage', consigne: 'appels', opératrice: entrée.opératrice }, maintenant)
+  if (issue !== 'inconnu' && issue !== 'cowork') return issue
+  try {
+    const déclenchement = await déclencherLeWorkflow(github, { tache: 'balayage', organisation: entrée.slug, consigne: écrireUneConsigne({ sorte: 'appels' }) })
+    if (déclenchement.sorte === 'échec') {
+      console.warn(`[onboarding] ${entrée.slug} : lettre d’appels non déclenchée (GitHub ${déclenchement.codeHttp ?? 'sans réponse'}).`)
+      return 'échec-github'
+    }
+    return 'lancé'
+  } catch {
+    return 'échec-github'
+  }
 }
 
 export type IssueDeLaPublication = 'publication-lancée' | 'publication-indisponible' | 'publication-échouée'

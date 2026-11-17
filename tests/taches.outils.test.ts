@@ -258,6 +258,8 @@ describe('sous-agents et consignes du harnais', () => {
     // Capital et santé financière, nouveaux entrants : par les registres publics, en code (26 octobre 2026).
     expect(outils).toContain('mcp__Veille__annonces_bodacc')
     expect(outils).toContain('mcp__Veille__fiches_entreprises')
+    // Lettre d'appels à projets : les seules sources du référentiel (17 novembre 2026).
+    expect(outils).toContain('mcp__Veille__appels_ouverts')
     expect(outils.some((o) => /notion-(create|update)|Gmail/.test(o))).toBe(false)
   })
 
@@ -271,5 +273,6 @@ describe('sous-agents et consignes du harnais', () => {
     expect(consignes).toContain('EXÉCUTEUR : API')
     expect(consignes).toContain('mcp__Veille__annonces_bodacc')
     expect(consignes).toContain('mcp__Veille__fiches_entreprises')
+    expect(consignes).toContain('mcp__Veille__appels_ouverts')
   })
 })

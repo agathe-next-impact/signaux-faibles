@@ -116,6 +116,26 @@ ou identifiant illisible.
 Ce que le validateur accepte, le portail l'affiche. Il n'y a pas de troisième
 lecture : `lib/portail/lint.ts` appelle les mêmes fonctions que les écrans.
 
+### Lettre d'appels à projets : quatre règles de plus (17 novembre 2026)
+
+Le portail lit la propriété `Famille` de la page ; pour `Appels à projets`, il
+ajoute au contrat commun quatre ruptures, toutes de portée `lettre`, sur chaque
+appel d'un axe non RAS. Un appel commence à une phrase-titre (paragraphe qui
+s'ouvre en gras, ou titre de niveau 3) et court jusqu'à la suivante.
+
+| Code | Ce qui manque |
+|---|---|
+| `clôture-absente` | aucune date (jour et mois) dans la phrase-titre |
+| `clôture-passée` | la dernière date de la phrase-titre précède la `Date d'édition` |
+| `source-de-l-appel-absente` | aucune adresse dans les blocs de l'appel |
+| `arguments-absents` | pas de paragraphe « Arguments » suivi d'un contenu ou d'une liste |
+
+Une date sans année prend celle de l'édition, ou la suivante si elle tomberait
+plus de six mois avant (`datesDUnTexte`). L'avertissement `aucun-dossier` ne
+vaut pas pour cette famille ; à l'inverse, `dossiers-dans-la-lettre-d-appels`
+signale une propriété « Dossiers ouverts suivis » remplie : une candidature
+n'est pas un acteur. La réponse rend `famille` comme avant.
+
 ## `POST /api/veille/courriel` — mettre un courriel client à la charte
 
 *20 octobre 2026.* Les tâches n'écrivent plus de HTML pour un client : elles
@@ -205,6 +225,15 @@ l'opératrice a suspendus ou écartés (Postgres). Ils sont retirés de `parutio
 et de `revuesDues`, et les pages des tâches disent de ne pas les traiter.
 `null` quand la base n'est pas en service, en mode `notion` ou au-delà de
 1 500 ms : la sélection reste alors celle du calendrier.
+
+**Lettre d'appels à projets** (17 novembre 2026, `docs/lettre-appels-a-projets.md`) :
+une ligne peut porter `"appels": { "jour": "Vendredi", "cadence": "Quinzaine
+(semaines paires)", "heure": "7 h 30" }`, lu dans les colonnes « Jour appels » et
+« Cadence appels » d'une organisation dont la case « Appels à projets » est
+cochée ; `cadence` vaut la quinzaine si elle manque, `heure` celle de la ligne.
+La réponse porte alors `parutionsAppels` (slugs, mêmes exclusions que
+`parutions`) et `prochainesAppels`. Même règle de parution (`paraîtLe`), pas de
+revue mensuelle pour cette lettre ; une ligne sans `appels` ne change rien.
 
 `parutions` est dans l'ordre de traitement (heure de parution, puis slug).
 `revuesDues` sont les organisations dont la première parution du mois tombe
@@ -728,6 +757,10 @@ l'étape. **Les étiquettes ne bloquent jamais l'envoi d'une lettre** : un éche
 se consigne au compte rendu, et la lettre part.
 
 ### `POST /api/veille/faits` : poster les étiquettes d'une édition
+
+Une édition de la famille « Appels à projets » répond `famille-hors-outils`
+(200, rien d'écrit, 17 novembre 2026) : ses faits n'entrent dans les outils
+qu'au lot 5 de `docs/lettre-appels-a-projets.md`. La tâche passe l'étape.
 
 ```
 { "slug": "infralliance", "page": "<page_id de l'édition>", "etiquettes": [

@@ -62,6 +62,9 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
       blocs,
       dossiersBruts: édition.dossiersOuvertsBruts,
       numéro: édition.numéro,
+      // La lettre d'appels à projets a quatre règles de plus (17 novembre 2026).
+      famille: édition.famille,
+      dateÉdition: édition.dateÉdition,
     })
 
     console.info(

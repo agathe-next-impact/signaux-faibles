@@ -26,7 +26,9 @@ import { lireLesFaits, recevoirLesÉtiquettes, type RésultatDesÉtiquettes } fr
  * phrase-titre relue dans la lettre : ce que la revue mensuelle synthétise.
  *
  * `hors-pilote` (200) : l'organisation n'a pas les outils stratégiques ; la
- * tâche passe l'étape. **Les étiquettes ne bloquent jamais l'envoi d'une
+ * tâche passe l'étape. `famille-hors-outils` (200) : une lettre d'appels à
+ * projets, que les outils ne lisent pas encore (17 novembre 2026) ; la tâche
+ * passe l'étape de même. **Les étiquettes ne bloquent jamais l'envoi d'une
  * lettre.**
  */
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -58,6 +60,7 @@ const STATUT: Record<RésultatDesÉtiquettes['sorte'], number> = {
   accepté: 200,
   refusé: 422,
   'hors-pilote': 200,
+  'famille-hors-outils': 200,
   'organisation-inconnue': 404,
   'édition-introuvable': 404,
   'organisation-différente': 409,

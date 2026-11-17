@@ -5,6 +5,7 @@ import {
   JOURS,
   aujourdHuiÀParis,
   sélectionner,
+  sélectionnerLesAppels,
 } from '@/lib/domaine/calendrier'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée } from '@/lib/base/client'
@@ -32,6 +33,12 @@ import { refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
  * figure dans `suspendues` : les pages des tâches disent de ne pas la traiter.
  * Base absente, `SOURCE_ACCES=notion` ou base lente : personne n'est sorti, la
  * sélection reste celle du calendrier, et `suspendues` vaut `null`.
+ *
+ * Depuis le 17 novembre 2026, une ligne peut porter `appels` (`{ jour, cadence?,
+ * heure? }`, colonnes du registre propres à la lettre d'appels à projets, la
+ * quinzaine par défaut) : la réponse rend alors `parutionsAppels` (slugs, mêmes
+ * exclusions que `parutions`) et `prochainesAppels`. Une ligne sans `appels` ne
+ * change rien.
  */
 const DÉLAI_HORS_SERVICE_MS = 1_500
 
@@ -56,6 +63,10 @@ const schéma = z.object({
         jour: z.enum(JOURS),
         cadence: z.enum(CADENCES),
         heure: z.string().optional(),
+        appels: z
+          .object({ jour: z.enum(JOURS), cadence: z.enum(CADENCES).optional(), heure: z.string().optional() })
+          .nullable()
+          .optional(),
       }),
     )
     .max(200),
@@ -90,6 +101,7 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
   }
 
   const sélection = sélectionner(lecture.data.organisations, date)
+  const appels = sélectionnerLesAppels(lecture.data.organisations, date)
   const suspendues = await horsService(lecture.data.organisations.map((o) => o.slug))
   const enService = (slug: string) => !suspendues?.includes(slug)
 
@@ -99,6 +111,8 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
     ...sélection,
     parutions: sélection.parutions.map((o) => o.slug).filter(enService),
     revuesDues: sélection.revuesDues.map((o) => o.slug).filter(enService),
+    parutionsAppels: appels.parutionsAppels.map((o) => o.slug).filter(enService),
+    prochainesAppels: appels.prochainesAppels,
     suspendues,
   })
 }

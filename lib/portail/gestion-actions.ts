@@ -11,7 +11,7 @@ import { empreinte, origineDe } from '@/lib/portail/debit'
 import { envoyerLesLettresÀPublier } from '@/lib/portail/envoi-des-lettres'
 import { publierLaFicheDuPilote } from '@/lib/portail/fiche-veille'
 import { publierEtEnvoyer } from '@/lib/portail/lettres-a-publier'
-import { lancerLOuverture, moteurDesOnboardings, vueDeLOnboarding } from '@/lib/portail/onboarding'
+import { lancerLaLettreDAppels, lancerLOuverture, moteurDesOnboardings, vueDeLOnboarding } from '@/lib/portail/onboarding'
 import { envoyerUnLienDAccès, type IssueDuLien } from '@/lib/portail/ouverture'
 import { estRenvoyable, renvoyerUnCourrierCommercial } from '@/lib/portail/renvoi-courriers'
 import { lecteursModifiables } from '@/lib/portail/situation'
@@ -406,6 +406,29 @@ export async function envoyerLesLettres(données: FormData): Promise<void> {
       ? `/espaces/abonnements/${encodeURIComponent(slug)}?onboarding=${encodeURIComponent(code)}&section=onboarding#onboarding`
       : `/espaces/onboardings?lancement=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}#${encodeURIComponent(slug)}`,
   )
+}
+
+/**
+ * « Activer la lettre d'appels à projets » (17 novembre 2026,
+ * `docs/lettre-appels-a-projets.md`, lot 2, décision de l'opératrice du même
+ * jour) : un run `balayage` avec la consigne `appels` écrit la section
+ * « Appels à projets » du référentiel de cette organisation, produite par le
+ * prompt sans validation humaine, et coche la lettre dans le registre. La garde
+ * d'abord, puis la seule orchestration du lancement ; rien n'est écrit dans
+ * Notion par le portail, et aucun courrier ne part.
+ */
+export async function activerLaLettreDAppels(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const accès = await exigerOpérateur()
+  let issue: string
+  try {
+    issue = moteurDesOnboardings() === 'github' ? await lancerLaLettreDAppels({ slug, opératrice: accès.nom }) : 'indisponible'
+  } catch (erreur) {
+    console.error(`[gestion] ${slug} : lettre d’appels non lancée (${messageDe(erreur)}).`)
+    issue = 'échec'
+  }
+  console.info(`[gestion] ${accès.nom} : ${slug}, activation de la lettre d’appels à projets, ${issue}.`)
+  retour(slug, `appels-${issue}`, 'veille')
 }
 
 const VEILLE = z.object({

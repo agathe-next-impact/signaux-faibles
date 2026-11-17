@@ -212,6 +212,47 @@ export function sélectionner(
 }
 
 /**
+ * La lettre d'appels à projets (17 novembre 2026, `docs/lettre-appels-a-projets.md`) :
+ * une troisième famille, à sa propre cadence, sur des colonnes du registre
+ * propres à cette lettre. La tâche les donne avec la ligne de l'organisation ;
+ * la cadence vaut la quinzaine si elle n'est pas dite (décision de l'opératrice).
+ */
+export const CADENCE_DES_APPELS: Cadence = 'Quinzaine (semaines paires)'
+
+export type LettreDAppelsÀDater = {
+  readonly jour: Jour
+  readonly cadence?: Cadence
+  readonly heure?: string
+}
+
+export type SélectionDesAppels = {
+  /** Lettres d'appels à produire aujourd'hui, dans l'ordre de traitement. */
+  readonly parutionsAppels: readonly OrganisationÀDater[]
+  readonly prochainesAppels: readonly ProchaineParution[]
+}
+
+/**
+ * La même règle de parution (`paraîtLe`), appliquée à la cadence de la lettre
+ * d'appels : aucune règle de plus, et pas de revue mensuelle pour cette lettre.
+ * Une organisation sans lettre d'appels n'y figure pas.
+ */
+export function sélectionnerLesAppels(
+  organisations: readonly (OrganisationÀDater & { readonly appels?: LettreDAppelsÀDater | null })[],
+  dateISO: string,
+): SélectionDesAppels {
+  const lettres: OrganisationÀDater[] = organisations.flatMap((o) =>
+    o.appels
+      ? [{ slug: o.slug, jour: o.appels.jour, cadence: o.appels.cadence ?? CADENCE_DES_APPELS, heure: o.appels.heure ?? o.heure }]
+      : [],
+  )
+  const aujourdHui = dater(dateISO)
+  return {
+    parutionsAppels: ordonner(lettres.filter((o) => paraîtLe(o, aujourdHui))),
+    prochainesAppels: prochainesParutions(lettres, dateISO),
+  }
+}
+
+/**
  * L'instant UTC d'une date calendaire et d'une heure **de Paris** (`HH:MM` ou
  * `HH:MM:SS`), pour poser l'échéance d'un travail de la file : la parution, à
  * son heure. Le décalage de Paris (une ou deux heures) est lu sur l'instant

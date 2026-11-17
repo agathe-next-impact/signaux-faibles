@@ -23,6 +23,9 @@
  *     `annonces_bodacc` et `fiches_entreprises` interrogent les registres
  *     publics pour les familles « Capital et santé financière » et « Nouveaux
  *     entrants » (26 octobre 2026, `scripts/collecte/registres.ts`).
+ *     `appels_ouverts` relève les appels des seules sources de la section
+ *     « Appels à projets » du référentiel (17 novembre 2026,
+ *     `scripts/collecte/appels.ts`), pour la lettre d'appels à projets.
  *
  * `Gmail__deposer_courriel` compose un courriel client par le portail et le
  * dépose en brouillon sans que le HTML passe par le modèle (23 octobre 2026) :
@@ -37,6 +40,7 @@ import { join, resolve } from 'node:path'
 import { z } from 'zod'
 import { adresseDeRéponseSûre, composerMessage, jetonDeDélégation, PORTÉES_GMAIL } from '@/lib/email/gmail'
 import { lireLesUrls } from '../collecte/lire-sources'
+import { lignesDuRelevé, releverLesAppels, SOURCES_PAR_APPEL_MAX } from '../collecte/appels'
 import { annoncesBodacc, FAMILLES_BODACC, fichesEntreprises } from '../collecte/registres'
 import { synthétiser } from '../collecte/synthese'
 import { cheminDuPortail, SERVEURS } from './garde'
@@ -528,6 +532,21 @@ export function serveursDesOutils(configuration: ConfigurationDesOutils) {
           protéger(async () => {
             configuration.journal(`Veille fiches_entreprises : ${a.sirens.length} SIREN`)
             return fichesEntreprises(a.sirens, configuration.fetch ?? fetch)
+          }),
+      ),
+      tool(
+        'appels_ouverts',
+        "Lettre d'appels à projets : relève les appels ouverts (appels à projets, AMI, appels à candidatures, prix, concours ; jamais les marchés publics) sur 1 à 20 pages de sources. Passe le texte de la section « Appels à projets » du référentiel de l'organisation, tel que Notion te l'a rendu : une adresse dont le domaine n'y figure pas est refusée sans être ouverte. Rend une ligne par appel (intitulé, dates lisibles, adresse, source), puis les sources non ouvertes et refusées. Ouvre ensuite au lecteur les seules pages des appels retenus.",
+        {
+          section: z.string().min(20).max(60_000).describe('Le texte de la section « Appels à projets » du référentiel, avec ses adresses'),
+          sources: z.array(z.string().url()).min(1).max(SOURCES_PAR_APPEL_MAX),
+          mots_cles: z.array(z.string().min(2).max(60)).max(12).optional().describe('Mots du territoire, des missions ou du type de porteur'),
+        },
+        (a) =>
+          protéger(async () => {
+            const relevé = await releverLesAppels({ section: a.section, sources: a.sources, motsClés: a.mots_cles ?? [] }, configuration.fetch ?? fetch)
+            configuration.journal(`Veille appels_ouverts : ${a.sources.length} source(s), ${relevé.appels.length} appel(s), ${relevé.refusées.length} refusée(s)`)
+            return lignesDuRelevé(relevé)
           }),
       ),
       tool(
