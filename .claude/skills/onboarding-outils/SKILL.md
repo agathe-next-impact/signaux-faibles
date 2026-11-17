@@ -1,6 +1,6 @@
 ---
 name: onboarding-outils
-description: Rattrapage des écrans stratégiques d'une organisation dont la première lettre existe déjà — coche « Outils stratégiques », pose le drapeau du pilote et l'espace réorganisé, écrit et poste la grille, étiquette les lettres, poste la synthèse initiale, l'amorçage trimestriel, la fiche de veille et l'arbre des marchés, sans rien publier. À lancer par /onboarding-outils <organisation>.
+description: Rattrapage des écrans stratégiques d'une organisation dont la première lettre existe déjà — coche « Outils stratégiques », pose le drapeau du pilote et l'espace réorganisé, écrit et poste la grille, étiquette les lettres, poste la synthèse initiale, l'amorçage trimestriel, la fiche de veille et l'arbre des marchés. Ne publie rien elle-même : le portail publie les synthèses et les mesures qu'il accepte, la fiche attend l'opératrice. À lancer par /onboarding-outils <organisation>.
 argument-hint: "<nom de l'organisation, au statut 4, 5 ou 6>"
 disable-model-invocation: true
 allowed-tools:
@@ -126,25 +126,39 @@ Organisation visée : $ARGUMENTS
      familles de la grille. **Aucun chiffre de marché** : ce que rien n'établit
      s'omet. `POST /api/veille/marches`. Le portail mesure seul le trimestre en
      cours après un arbre créé : n'appelle ni `mesurer` ni `etat`. Une minute
-     plus tard, le `GET` doit rendre le trimestre dans `périodes`, à l'état
-     `propose`.
+     plus tard, le `GET` doit rendre le trimestre dans `périodes` ; son `état`
+     est `publie` depuis la publication automatique du 15 novembre 2026
+     (`propose` si elle est coupée) : lis-le, ne le suppose pas.
    Un refus 422 se corrige point par point et se renvoie complet, deux reprises
    au plus ; au-delà, consigne-le et passe au pas suivant.
 
 5. **Contrôle** : les `GET` du point 3 rendent « lue » (grille avec
    `validéeLe`), « lus » pour les marchés, et un nombre de faits non nul. Écris dans « Dernier lancement
    manuel » : « outils stratégiques rattrapés le JJ/MM : grille vN, N faits,
-   synthèses AAAA-MM et AAAA-Tn (amorçage), fiche vN et arbre des marchés vN (N segments) proposés ».
+   synthèses AAAA-MM et AAAA-Tn (amorçage), fiche vN et arbre des marchés vN (N segments) », suivi
+   de l'état lu de chacun (point 6), par exemple « synthèses et mesures publiées, fiche proposée ».
 
 6. **Notification `[Relecture]`** à agathe@signauxfaibles.io : ce qui a été
    posté, le « texte » de chaque synthèse tel que le rend le `GET` (celle du
    trimestre présentée comme un **amorçage** : bâtie sur les premières lettres,
-   ses scénarios sont des hypothèses de départ), et ce qui reste à l'opératrice
-   sur `/espaces/abonnements/<slug>` : publier les deux synthèses et la fiche de
-   veille ; et sur `/espaces/syntheses`, section « Marchés et niches » : relire
-   les mesures dans l'espace puis les publier. Dis l'arbre posté (ses offres,
-   ses niches) et les segments laissés sans cibles ou sans dépense. Tu ne
-   publies rien toi-même.
+   ses scénarios sont des hypothèses de départ), puis **l'état de publication
+   de chaque élément, lu dans la réponse du portail, jamais supposé ni déduit du
+   texte** (17 novembre 2026) :
+   - synthèses : le champ `publication` de `GET /api/veille/syntheses`, pour le
+     mois et pour le trimestre. `publie` : publiée à l'écriture, cas ordinaire
+     depuis la publication automatique du 15 novembre 2026 ; le client la lit,
+     l'opératrice la relit et la retire sur `/espaces/syntheses` si elle ne
+     convient pas. `propose` : rien n'est montré, elle la publie. `retire` :
+     retirée par l'opératrice, elle le reste même réécrite. `partielle` :
+     anomalie, dite en tête de la notification ;
+   - mesures des marchés : le champ `état` de la période dans `périodes` de
+     `GET /api/veille/marches`, mêmes mots ; aucune période encore : la mesure
+     est en cours, dis-le sans conclure ;
+   - fiche de veille : le champ `publication` de `GET /api/veille/fiche`.
+     `propose` est le cas ordinaire, la fiche n'étant pas publiée
+     automatiquement : l'opératrice la publie sur `/espaces/abonnements/<slug>`.
+   Dis l'arbre posté (ses offres, ses niches) et les segments laissés sans
+   cibles ou sans dépense. Tu ne publies rien toi-même.
 
 Aucun jeton à manipuler : n'en écris jamais dans une commande. 401 ou 403 : la
 session n'a pas le secret réseau pour ce chemin, dis-le en tête du compte rendu.
