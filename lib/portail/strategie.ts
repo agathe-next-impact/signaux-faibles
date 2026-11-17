@@ -443,7 +443,7 @@ export type LectureDeLaSynthèse =
       readonly positions: number
       /**
        * L'état de publication réel de la période, lu dans ses lignes : `publie`
-       * (visible du client), `propose`, `retire`, ou `partielle`. Le texte dit le
+       * (le client la lit), `propose`, `retire`, ou `partielle`. Le texte dit le
        * même ; ce champ évite à une tâche de le déduire d'une phrase.
        */
       readonly publication: PublicationDeLaPériode

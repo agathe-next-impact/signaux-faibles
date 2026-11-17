@@ -828,7 +828,8 @@ export function vueDuPestel(
 
 // ── Tableau de l'opératrice : les périodes à publier ─────────────────────────
 
-/** `mêlée` : une partie seulement des lignes est publiée, ce que les écrans ne lisent pas. */
+// Les mots du tableau de l'opératrice. La règle vit dans `lib/domaine/strategie.ts`
+// (`publicationDeLaPériode`), que le texte de relecture et la route lisent aussi.
 export type ÉtatDeLaPériode = 'proposée' | 'publiée' | 'retirée' | 'mêlée'
 
 export type PériodeAPublier = {

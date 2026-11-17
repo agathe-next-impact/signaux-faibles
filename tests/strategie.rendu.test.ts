@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { publicationDeLaPériode, rendreLaSynthèse, type PublicationDeLaPériode, type ÉlémentÀRendre, type PositionÀRendre } from '@/lib/domaine/strategie'
+import { PHRASES_DE_PUBLICATION, publicationDeLaPériode, rendreLaSynthèse, type PublicationDeLaPériode, type ÉlémentÀRendre, type PositionÀRendre } from '@/lib/domaine/strategie'
 
 const GRILLE = {
   axesGroupes: [
@@ -104,18 +104,19 @@ describe('rendreLaSynthèse, état de publication', () => {
     }).split('\n')[1]
 
   it('dit l’état réel de la période sur sa deuxième ligne, dans les quatre cas', () => {
-    expect(texteEn('publie')).toBe('Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Publiée : visible du client dans son espace.')
+    expect(texteEn('publie')).toBe('Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Publiée : le client la lit dans son espace.')
     expect(texteEn('propose')).toBe("Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Proposée : rien n'est montré au client.")
-    expect(texteEn('retire')).toBe("Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau.")
-    expect(texteEn('partielle')).toBe(
-      'Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Publiée en partie : les écrans de synthèse du client ne lisent pas cette période tant que toutes ses lignes ne sont pas publiées.',
-    )
+    expect(texteEn('retire')).toBe("Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Retirée par l'opératrice : rien n'est montré au client.")
+    expect(texteEn('partielle')).toBe("Fenêtre du 2026-10-01 au 2026-11-16, grille v3. Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client.")
   })
 
-  it('ne dit jamais « rien n’est montré » d’une période publiée, ni « visible » d’une période qui ne l’est pas', () => {
+  it('seule une période entièrement publiée est dite lue par le client', () => {
     expect(texteEn('publie')).not.toContain('Proposée')
-    expect(texteEn('publie')).not.toContain("rien n'est montré")
-    for (const état of ['propose', 'retire', 'partielle'] as const) expect(texteEn(état)).not.toContain('visible du client')
+    for (const [état, phrase] of Object.entries(PHRASES_DE_PUBLICATION)) {
+      expect(phrase.includes('le client la lit'), état).toBe(état === 'publie')
+      expect(phrase.includes("rien n'est montré au client"), état).toBe(état !== 'publie')
+      expect(phrase).not.toContain('\u2014')
+    }
   })
 })
 

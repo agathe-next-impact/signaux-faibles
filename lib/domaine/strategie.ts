@@ -1082,11 +1082,11 @@ export function publicationDeLaPériode(c: { readonly lignes: number; readonly p
  * depuis la publication automatique du 15 novembre : une synthèse publiée à
  * l'écriture se lisait comme invisible dans le courriel « [Relecture] ».
  */
-const PHRASES_DE_PUBLICATION: Readonly<Record<PublicationDeLaPériode, string>> = {
-  publie: 'Publiée : visible du client dans son espace.',
+export const PHRASES_DE_PUBLICATION: Readonly<Record<PublicationDeLaPériode, string>> = {
+  publie: 'Publiée : le client la lit dans son espace.',
   propose: "Proposée : rien n'est montré au client.",
-  retire: "Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau.",
-  partielle: 'Publiée en partie : les écrans de synthèse du client ne lisent pas cette période tant que toutes ses lignes ne sont pas publiées.',
+  retire: "Retirée par l'opératrice : rien n'est montré au client.",
+  partielle: "Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client.",
 }
 
 export type SynthèseÀRendre = {

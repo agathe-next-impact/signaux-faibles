@@ -1054,10 +1054,10 @@ lecture, dans les mots du `PATCH` : ne pas le déduire du texte, ni de
 
 | `publication` | Ce que voit le client | Deuxième ligne de `texte`, après la fenêtre et la grille |
 |---|---|---|
-| `publie` | la période, dans son espace (les écrans montrent la dernière période entièrement publiée) | « Publiée : visible du client dans son espace. » |
+| `publie` | la période, dans son espace (les écrans montrent la dernière période entièrement publiée) | « Publiée : le client la lit dans son espace. » |
 | `propose` | rien | « Proposée : rien n'est montré au client. » |
-| `retire` | rien, et une réécriture la laisse retirée | « Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau. » |
-| `partielle` | rien sur les écrans de synthèse (une partie seulement des lignes est publiée, ou retirée) | « Publiée en partie : les écrans de synthèse du client ne lisent pas cette période tant que toutes ses lignes ne sont pas publiées. » |
+| `retire` | rien, et une réécriture la laisse retirée | « Retirée par l'opératrice : rien n'est montré au client. » |
+| `partielle` | rien sur les écrans de synthèse (une partie seulement des lignes est publiée, ou retirée) | « Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client. » |
 
 Avant cette date, la deuxième ligne disait toujours « Proposée : rien n'est
 montré au client. », y compris d'une période que la publication automatique
@@ -1067,7 +1067,9 @@ de la lecture (`lue`, `aucune`, `hors-pilote`) : l'état de publication a son
 champ, comme sur `GET /api/veille/fiche`. Aucun geste du portail ne produit
 aujourd'hui `partielle` (il écrit, publie et retire une période entière, dans
 une transaction) ; si elle apparaît, un `PATCH` (`publie` ou `retire`) remet la
-période dans un seul état.
+période dans un seul état. Le seul 17 novembre 2026, le champ a porté `publiée`,
+`proposée`, `retirée` et `mêlée` : aucune tâche ne les lisait, et il a repris le
+jour même les valeurs du `PATCH`, celles de `GET /api/veille/fiche`.
 
 ### `PATCH /api/veille/syntheses` : publier ou retirer une période (lot 11, 28 octobre 2026)
 

@@ -693,10 +693,10 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
       try {
         // Le cas constaté le 16 novembre 2026 (cci-cantal, 2026-T4) : `POST` répond « publie », la lecture disait « Proposée ».
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', état: 'publie' })
-        expect(await lire()).toEqual({ publication: 'publie', phrase: 'Publiée : visible du client dans son espace.' })
+        expect(await lire()).toEqual({ publication: 'publie', phrase: 'Publiée : le client la lit dans son espace.' })
 
         await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)
-        expect(await lire()).toEqual({ publication: 'retire', phrase: "Retirée : rien n'est montré au client, jusqu'à ce qu'elle soit publiée de nouveau." })
+        expect(await lire()).toEqual({ publication: 'retire', phrase: "Retirée par l'opératrice : rien n'est montré au client." })
         // Réécrite, une période retirée reste retirée, et la lecture ne la dit pas publiée parce que le réglage publie.
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', état: 'retire' })
         expect((await lire()).publication).toBe('retire')
@@ -709,7 +709,7 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         await db.update(élémentsSynthèse).set({ étatPublication: 'publie' }).where(eq(élémentsSynthèse.id, une!.id))
         const partielle = await lire()
         expect(partielle.publication).toBe('partielle')
-        expect(partielle.phrase).toMatch(/^Publiée en partie : /)
+        expect(partielle.phrase).toBe("Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client.")
       } finally {
         vi.unstubAllEnvs()
       }
@@ -723,6 +723,12 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         // Publiée dès le dépôt : le client la lit sans geste de l'opératrice.
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', éléments: 11, positions: 3, état: 'publie' })
         expect((await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db))?.mois?.période).toBe('2026-10')
+        // Le texte de relecture ne dit plus « Proposée » d'une période que le client lit (16 novembre 2026).
+        const publiée = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+        expect(publiée).toMatchObject({ sorte: 'lue', publication: 'publie' })
+        if (publiée.sorte !== 'lue') throw new Error('synthèse non lue')
+        expect(publiée.texte).toContain('grille v1. Publiée : le client la lit dans son espace.')
+        expect(publiée.texte).not.toContain('Proposée')
         expect((await tableauDesSynthèses(db))[0]?.périodes[0]?.état).toBe('publiée')
         // Réécrite, elle reste publiée.
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', archivés: 14, état: 'publie' })
@@ -732,6 +738,10 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         await publierLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10', état: 'retire' }, db)
         expect(await recevoir()).toMatchObject({ sorte: 'enregistrée', état: 'retire' })
         expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
+        const retirée = await lireLaSynthèseDuPilote({ slug: 'infralliance', période: '2026-10' }, db)
+        expect(retirée).toMatchObject({ sorte: 'lue', publication: 'retire' })
+        if (retirée.sorte !== 'lue') throw new Error('synthèse non lue')
+        expect(retirée.texte).toContain("Retirée par l'opératrice : rien n'est montré au client.")
         expect(await publierLesSynthèsesEnAttente(db)).toEqual([])
         expect(await synthèseDeLEspace({ registre: REGISTRE, numéros: new Map() }, db)).toBeNull()
 

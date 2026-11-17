@@ -53,6 +53,8 @@ describe('rubriques en accordéons, rail et menu de pied (30 octobre 2026)', () 
     // Plus d'écran de rubrique (31 octobre 2026) : son ancienne adresse n'ouvre rien.
     expect(ouverts('/client/strategie')).toEqual([])
     expect(ouverts('/client/lettres/abc')).toEqual(['Cette semaine'])
+    // Le calendrier vit sous `/veille/` mais appartient à « Cette semaine » (16 novembre 2026).
+    expect(ouverts('/client/veille/calendrier')).toEqual(['Cette semaine'])
   })
 
   it('sans rubrique, un seul groupe sans nom : le rail reste une liste simple', () => {
