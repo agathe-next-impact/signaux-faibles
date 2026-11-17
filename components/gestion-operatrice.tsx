@@ -21,7 +21,7 @@ import {
   étapeDeLaCible,
   type Échéance,
 } from '@/lib/domaine/placement'
-import { réglerLaVeille } from '@/lib/portail/gestion-actions'
+import { activerLaLettreDAppels, réglerLaVeille } from '@/lib/portail/gestion-actions'
 import { mettreEnParcours, placerÀLÉtape, prolongerLEssai, réglerLesParutions } from '@/lib/portail/reglages'
 import { lienTableauDeBordStripe } from '@/lib/stripe/souscription'
 
@@ -402,7 +402,36 @@ export function VeilleHebdomadaire({
           </p>
         </>
       )}
+      <LettreDAppels slug={slug} />
     </Section>
+  )
+}
+
+/**
+ * La lettre d'appels à projets (17 novembre 2026, `docs/lettre-appels-a-projets.md`) :
+ * une troisième lettre, à la quinzaine, sur les appels dont l'organisation est
+ * elle-même porteuse. Le geste lance la tâche qui écrit sa section du
+ * référentiel et coche la lettre dans le registre ; la fiche ne lit pas le
+ * registre et ne sait donc pas si elle est déjà prise : relancer réécrit la
+ * section, sans rien envoyer.
+ */
+export function LettreDAppels({ slug }: { slug: string }) {
+  return (
+    <div className="flex flex-col gap-3 border border-gris-ligne p-4">
+      <p className="text-encre">
+        Lettre d’appels à projets <span className="label-mono text-ardoise">quinzaine · marchés publics exclus</span>
+      </p>
+      <p className="text-ardoise">
+        Les appels à projets, AMI et concours dont l’organisation est elle-même porteuse, avec les arguments pour y répondre.
+        Le geste fait écrire par la tâche la section « Appels à projets » de son référentiel (familles d’appels, sources, profil
+        d’éligibilité), sans validation, puis cocher la lettre dans le registre. Rien ne part au client : chaque lettre reste en
+        aperçu avant envoi.
+      </p>
+      <form action={activerLaLettreDAppels}>
+        <input type="hidden" name="slug" value={slug} />
+        <BoutonEnvoi className={bouton}>Activer la lettre d’appels à projets</BoutonEnvoi>
+      </form>
+    </div>
   )
 }
 

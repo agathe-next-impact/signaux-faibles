@@ -5,12 +5,14 @@ import {
   type Bloc,
   type BlocNotion,
   type Document,
+  type Segment,
 } from '@/lib/domaine/document'
 import { lireDossiersOuverts, type DossierOuvert } from '@/lib/domaine/dossiers'
 import { mentionsDe } from '@/lib/domaine/mentions'
 import { faitsDe, phrasesDe } from '@/lib/domaine/document'
 import type { NiveauImpact } from '@/lib/domaine/impact'
 import { contrôlerLeContrat } from '@/lib/portail/contrat'
+import { estFamilleDAppels } from '@/lib/portail/contexte'
 import {
   ESSENTIEL_CARACTÈRES_MAX,
   ESSENTIEL_LIGNES_MAX,
@@ -67,6 +69,7 @@ export type Rupture = {
     | 'essentiel-absent'
     | 'essentiel-trop-long'
     | CodeDeFormeUnique
+    | CodeDeLettreDAppels
   readonly portée: Portée
   readonly message: string
 }
@@ -88,8 +91,19 @@ export type CodeDeFormeUnique =
   | 'dossier-non-nommé'
   | 'essentiel-ligne-longue'
 
+/**
+ * Les ruptures propres à la lettre d'appels à projets (17 novembre 2026,
+ * `docs/lettre-appels-a-projets.md`), contrôlées pour cette famille seulement.
+ */
+export type CodeDeLettreDAppels =
+  | 'clôture-absente'
+  | 'clôture-passée'
+  | 'source-de-l-appel-absente'
+  | 'arguments-absents'
+
 export type Avertissement = {
   readonly code:
+    | 'dossiers-dans-la-lettre-d-appels'
     | 'dossier-non-nommé'
     | 'axes-hors-rubrique'
     | 'référence-interne'
@@ -356,6 +370,13 @@ export function contrôlerLaLettre(entrée: {
   readonly numéro?: number | null
   /** La forme attendue ; `double` par défaut, le dispositif en service. */
   readonly forme?: Forme
+  /**
+   * La famille interne de l'édition (`Famille` dans Notion). Seule la lettre
+   * d'appels à projets en change le contrat ; absente, les deux autres.
+   */
+  readonly famille?: string | null
+  /** La date de l'édition (AAAA-MM-JJ), contre laquelle une clôture est passée. */
+  readonly dateÉdition?: string | null
 }): Rapport {
   const ruptures: Rupture[] = []
   const avertissements: Avertissement[] = []
@@ -489,7 +510,8 @@ export function contrôlerLaLettre(entrée: {
     }
   }
 
-  if (dossiers.length === 0) {
+  const lettreDAppels = estFamilleDAppels(entrée.famille)
+  if (dossiers.length === 0 && !lettreDAppels) {
     avertissements.push({
       code: 'aucun-dossier',
       message: 'aucun dossier ouvert suivi : l’écran « Acteurs » restera vide pour cette édition.',
@@ -575,6 +597,7 @@ export function contrôlerLaLettre(entrée: {
   }
 
   if (forme === 'unique') contrôlerLaFormeUnique(document, axes, dossiers, ruptures, avertissements)
+  if (lettreDAppels) contrôlerLaLettreDAppels(axes, dossiers, entrée.dateÉdition ?? null, ruptures, avertissements)
 
   return {
     conforme: ruptures.length === 0,
@@ -699,5 +722,159 @@ function contrôlerLaFormeUnique(
     if (!avertissement || !élevés.has(avertissement.code)) continue
     avertissements.splice(i, 1)
     ruptures.push({ code: avertissement.code as CodeDeFormeUnique, portée: 'lettre', message: avertissement.message })
+  }
+}
+
+// ── Lettre d'appels à projets ───────────────────────────────────────────────
+
+const MOIS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'] as const
+
+/** Une date dans un texte, avec ou sans année, en toutes lettres ou chiffrée. */
+const DATE_DANS_UN_APPEL =
+  /\b(\d{1,2})(?:er)?\s+(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)(?:\s+(\d{4}))?\b|\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/g
+
+/**
+ * Les dates lisibles d'un texte, en AAAA-MM-JJ. Une date sans année prend celle
+ * de l'édition, ou la suivante si elle tomberait plus de six mois avant elle :
+ * « clôture le 15 janvier » écrit en novembre vise janvier qui vient.
+ */
+export function datesDUnTexte(texte: string, dateDeRéférence: string): string[] {
+  const annéeDeRéférence = Number(dateDeRéférence.slice(0, 4))
+  const dates: string[] = []
+  for (const m of sansAccent(texte).matchAll(DATE_DANS_UN_APPEL)) {
+    const jour = Number(m[1] ?? m[4])
+    const mois = m[2] ? MOIS.indexOf(m[2] as (typeof MOIS)[number]) + 1 : Number(m[5])
+    const annéeÉcrite = m[3] ?? m[6]
+    if (!(jour >= 1 && jour <= 31 && mois >= 1 && mois <= 12)) continue
+    const composer = (année: number) => `${année}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`
+    if (annéeÉcrite) {
+      const année = Number(annéeÉcrite.length === 2 ? `20${annéeÉcrite}` : annéeÉcrite)
+      dates.push(composer(année))
+      continue
+    }
+    let date = composer(annéeDeRéférence)
+    const écart = (Date.parse(dateDeRéférence) - Date.parse(date)) / (24 * 3600 * 1000)
+    if (écart > 183) date = composer(annéeDeRéférence + 1)
+    dates.push(date)
+  }
+  return dates
+}
+
+/** Un appel d'un axe : sa phrase-titre et les blocs qui la suivent jusqu'au suivant. */
+type AppelDUnAxe = { readonly titre: Bloc; readonly blocs: readonly Bloc[] }
+
+/** La phrase-titre d'un appel : un titre de niveau 3, ou un paragraphe qui s'ouvre en gras. */
+function estTitreDAppel(bloc: Bloc): boolean {
+  if (bloc.type === 'titre') return texteDuBloc(bloc).trim().length > 0
+  if (bloc.type !== 'paragraphe') return false
+  const premier = bloc.segments.find((s) => s.texte.trim().length > 0)
+  return premier !== undefined && premier.gras
+}
+
+/** Les appels d'un axe, dans l'ordre ; ce qui précède la première phrase-titre n'en est pas un. */
+export function appelsDUnAxe(blocs: readonly Bloc[]): AppelDUnAxe[] {
+  const appels: { titre: Bloc; blocs: Bloc[] }[] = []
+  for (const bloc of faitsDe(blocs)) {
+    if (estTitreDAppel(bloc)) appels.push({ titre: bloc, blocs: [bloc] })
+    else appels[appels.length - 1]?.blocs.push(bloc)
+  }
+  return appels
+}
+
+function segmentsDuBloc(bloc: Bloc): readonly Segment[] {
+  switch (bloc.type) {
+    case 'paragraphe':
+    case 'titre':
+    case 'citation':
+    case 'encadré':
+      return bloc.segments
+    case 'liste':
+      return bloc.éléments.flat()
+    case 'tableau':
+      return bloc.lignes.flat(2)
+    default:
+      return []
+  }
+}
+
+function porteUnLien(bloc: Bloc): boolean {
+  return segmentsDuBloc(bloc).some((s) => (s.lien !== null && s.lien.length > 0) || /https?:\/\//.test(s.texte))
+}
+
+/** Le paragraphe « Arguments », avec du contenu : après son libellé, ou en liste juste dessous. */
+function porteDesArguments(blocs: readonly Bloc[]): boolean {
+  return blocs.some((bloc, i) => {
+    const texte = sansAccent(texteDuBloc(bloc)).trim()
+    if (!/^arguments?\b/.test(texte)) return false
+    const reste = texte.replace(/^arguments?\s*(?:pour (?:y )?repondre)?\s*[:.—-]?\s*/, '')
+    return reste.length >= 20 || blocs[i + 1]?.type === 'liste'
+  })
+}
+
+/**
+ * Le contrat de la lettre d'appels à projets, par-dessus le contrat commun.
+ *
+ * Un appel est une phrase-titre (financeur, intitulé, montant, clôture), puis
+ * « Pourquoi vous », « Arguments » et « Pièces et calendrier ». Quatre ruptures,
+ * parce qu'un appel sans date, déjà clos, sans adresse ou sans argument ferait
+ * perdre au lecteur le temps qu'il est censé gagner. Cette lettre ne remplit pas
+ * « Dossiers ouverts suivis » : une candidature n'est pas un acteur, et elle
+ * entrerait dans « Acteurs » et « À la une ».
+ */
+function contrôlerLaLettreDAppels(
+  axes: ReturnType<typeof axesDuDocument>,
+  dossiers: readonly DossierOuvert[],
+  dateÉdition: string | null,
+  ruptures: Rupture[],
+  avertissements: Avertissement[],
+): void {
+  const référence = dateÉdition !== null && /^\d{4}-\d{2}-\d{2}$/.test(dateÉdition) ? dateÉdition : null
+
+  for (const axe of axes) {
+    if (axe.niveau === 'RAS') continue
+    appelsDUnAxe(axe.blocs).forEach((appel, i) => {
+      const titre = écourter(texteDuBloc(appel.titre).trim(), 60)
+      const où = `l’appel ${i + 1} de l’axe « ${axe.titre} » (« ${titre} »)`
+      const texteDuTitre = texteDuBloc(appel.titre)
+      const dates = datesDUnTexte(texteDuTitre, référence ?? `${new Date().getUTCFullYear()}-01-01`)
+      if (dates.length === 0) {
+        ruptures.push({
+          code: 'clôture-absente',
+          portée: 'lettre',
+          message: `${où} ne porte aucune date de clôture dans sa phrase-titre : financeur, intitulé, montant et clôture (jour et mois) y figurent toujours.`,
+        })
+      } else if (référence !== null) {
+        const clôture = dates[dates.length - 1] as string
+        if (clôture < référence) {
+          ruptures.push({
+            code: 'clôture-passée',
+            portée: 'lettre',
+            message: `${où} est clos depuis le ${clôture}, avant la date de l’édition (${référence}) : un appel fermé n’entre pas dans la lettre, sauf à annoncer sa prochaine relève datée.`,
+          })
+        }
+      }
+      if (!appel.blocs.some(porteUnLien)) {
+        ruptures.push({
+          code: 'source-de-l-appel-absente',
+          portée: 'lettre',
+          message: `${où} ne cite aucune adresse : la page de l’appel, ouverte pendant le run, est citée dans la lettre.`,
+        })
+      }
+      if (!porteDesArguments(appel.blocs)) {
+        ruptures.push({
+          code: 'arguments-absents',
+          portée: 'lettre',
+          message: `${où} n’a pas de paragraphe « Arguments » : deux à quatre arguments, chacun appuyé sur un fait daté de la veille ou une force publiée du Diagnostic.`,
+        })
+      }
+    })
+  }
+
+  if (dossiers.length > 0) {
+    avertissements.push({
+      code: 'dossiers-dans-la-lettre-d-appels',
+      message:
+        `la lettre d’appels à projets remplit « Dossiers ouverts suivis » (${dossiers.length} dossier(s)) : cette lettre n’en porte pas, une candidature n’est pas un acteur et entrerait dans « Acteurs » et « À la une ». Vider la propriété.`,
+    })
   }
 }

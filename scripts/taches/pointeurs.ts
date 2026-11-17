@@ -206,8 +206,34 @@ export function texteDeLaConsigne(consigne: ConsigneDeTâche): string {
         '· Pour chacune, et pour elles seules : passe « Statut » à « Envoyé » et écris dans « Livraison » « envoyée par le portail le JJ/MM/AAAA aux lecteurs actifs, depuis le tableau de l’opératrice ». Ne cherche pas leur envoi dans Gmail : il n’y figure pas.',
         '· Ne traite aucune autre édition ni aucune autre étape de la page dans ce lancement, et n’envoie aucune notification si rien d’autre n’est à signaler.',
       ].join('\n')
+    case 'appels':
+      return CONSIGNE_DES_APPELS.join('\n')
   }
 }
+
+/**
+ * La consigne `appels` (17 novembre 2026, `docs/lettre-appels-a-projets.md`,
+ * lots 0 et 2) : l'opératrice a cliqué « Activer la lettre d'appels à projets »
+ * sur la fiche de l'organisation. Le prompt produit lui-même les sources
+ * d'appels et les écrit dans le référentiel, sans liste arrêtée à la main ni
+ * validation humaine ; aucun projet à financer n'est défini a priori ; seuls
+ * les appels dont l'organisation est elle-même porteuse comptent ; les marchés
+ * publics sont exclus. Décisions de l'opératrice du 17 novembre 2026.
+ */
+export const CONSIGNE_DES_APPELS: readonly string[] = [
+  'CONSIGNE DU PORTAIL : LETTRE D’APPELS À PROJETS. L’opératrice a cliqué « Activer la lettre d’appels à projets » sur la fiche de cette organisation (décisions du 17 novembre 2026). Ce lancement écrit la section « Appels à projets » de son référentiel et active la lettre dans le registre, pour cette seule organisation. Il ne collecte aucun appel, n’écrit aucune lettre et n’envoie rien au client.',
+  '· Ne traite aucune autre ligne ni aucune autre file de la page (§1, §2, §2bis, §3). Retrouve la ligne du registre de cette organisation par son slug, son nom ou son domaine, même si aucune vue ne la remonte. Ouvre son référentiel Écosystème (URL de la ligne) et sa fiche organisation ; s’ils ne s’ouvrent pas, rapporte le motif et arrête-toi.',
+  '· PÉRIMÈTRE. Seuls comptent les appels dont l’organisation est elle-même porteuse : appels à projets, appels à manifestation d’intérêt, appels à candidatures, prix et concours ouverts à une structure de son statut. Les appels destinés à ses adhérents, ressortissants, entreprises ou bénéficiaires n’entrent pas dans la lettre. Les marchés publics sont exclus, l’organisation y répondrait en prestataire.',
+  '· AUCUN PROJET A PRIORI. Ne demande ni n’invente de liste de projets à financer. La pertinence d’un appel se jugera à chaque lettre sur l’éligibilité et sur ce que le référentiel et la veille savent déjà de l’organisation (missions, actions menées, faits datés, forces publiées du Diagnostic).',
+  '· PROFIL D’ÉLIGIBILITÉ. Établis-le depuis la fiche organisation et les registres (outil fiches_entreprises sur son SIREN, jamais deviné) : statut juridique et catégorie (établissement public, association, entreprise, collectivité…), territoire d’action (communes, département, région), taille (effectif), missions et compétences, labels et agréments. Une donnée qu’aucune source ne donne s’écrit « à vérifier », jamais supposée.',
+  '· FAMILLES D’APPELS. Trois à six familles, chacune un axe de la future lettre, définies par le financeur ou le type de financement pertinents pour ce profil (par exemple Région et fonds européens, État et opérateurs nationaux, Département et intercommunalités, fondations et mécénat, réseau de l’organisation). Pour chacune : ce qu’elle suit, ce qui rend un appel FORT (éligible, clôture à plus de quinze jours, rejoint ses missions ou ses actions), ce qui le rend RAS.',
+  '· SOURCES. Produis toi-même les sources de chaque famille, sans liste imposée : pages d’appels ouvertes des financeurs, agrégateurs publics d’aides et d’appels, flux de la région et du département de l’organisation. Pour chacune : nom, adresse, ce qu’on y trouve, fréquence de relève. Ouvre chaque adresse dans ce run (sous-agent lecteur) : une source qui ne s’ouvre pas ou ne liste aucun appel n’est pas écrite. Pas de source payante ni derrière un compte.',
+  '· RÉDACTION. Écris la section en fin du référentiel Écosystème, titre de niveau 1 « Appels à projets », dans cet ordre : périmètre (repris du point ci-dessus, verbatim), profil d’éligibilité, familles d’appels avec leurs sources, requêtes types par famille (mots-clés, territoire, type de porteur). La version mineure monte et le journal des versions reçoit une ligne « Section Appels à projets, activation de la lettre, JJ/MM/AAAA ». Si la section existe déjà, réécris-la en place, jamais tout le document.',
+  '· DOUBLON. Si le référentiel Écosystème porte déjà un axe consacré aux appels à projets ou aux financements dont l’organisation est porteuse, retire-le de ses axes (la nouvelle lettre le reprend) et dis-le au journal des versions. Un axe sur les aides aux entreprises du territoire reste en place.',
+  '· REGISTRE. Sur la ligne de l’organisation, coche « Appels à projets », règle « Cadence appels » à « Quinzaine (semaines paires) » et « Jour appels » au jour de parution de ses autres lettres. Si ces colonnes n’existent pas dans le registre, ne les crée pas : dis-le dans la notification et arrête-toi après la section du référentiel.',
+  '· SANS VALIDATION. Ne crée aucun point de validation et ne pose aucune question au client : chaque choix (famille, source, donnée d’éligibilité) se tranche dans ce run, sa raison écrite en une phrase dans la section, comme le prévoit la règle des réponses autonomes de l’onboarding.',
+  '· Ne crée aucune édition, ne dépose aucun brouillon Gmail adressé au client et n’appelle ni /api/acces/ouvrir ni /api/veille/organisations. La notification [Relecture] à agathe@signauxfaibles.io liste les familles retenues, le nombre de sources ouvertes par famille, les données d’éligibilité restées « à vérifier », et l’axe retiré s’il y en avait un.',
+]
 
 /** Le plus de périodes qu'une rétrospective traite en un lancement. */
 export const PÉRIODES_MAX = 4

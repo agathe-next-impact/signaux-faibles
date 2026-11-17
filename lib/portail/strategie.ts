@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { estFamilleDAppels } from '@/lib/portail/contexte'
 import { sourceAccès } from '@/lib/auth/source-acces'
 import { baseConfigurée, type Base } from '@/lib/base/client'
 import {
@@ -143,6 +144,7 @@ export type RésultatDesÉtiquettes =
       readonly sorte:
         | 'organisation-inconnue'
         | 'hors-pilote'
+        | 'famille-hors-outils'
         | 'édition-introuvable'
         | 'organisation-différente'
         | 'organisations-multiples'
@@ -530,6 +532,11 @@ export async function recevoirLesÉtiquettes(
   const pageId = identifiantAvecTirets(entrée.page)
   const édition = await lireÉditionDeTravail(pageId)
   if (!édition) return { sorte: 'édition-introuvable' }
+  // La lettre d'appels à projets (17 novembre 2026) n'alimente pas encore les
+  // outils : ses faits compteraient dans PESTEL et Forces tant que le lot 5 de
+  // `docs/lettre-appels-a-projets.md` n'a pas posé leur exclusion. Rien n'est
+  // écrit, et la tâche passe l'étape comme hors du pilote.
+  if (estFamilleDAppels(édition.famille)) return { sorte: 'famille-hors-outils' }
 
   // Règle 2 : la relation de l'édition est une liste ; on ne lit jamais son
   // premier élément. Plusieurs organisations sur une édition sont une anomalie,

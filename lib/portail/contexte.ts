@@ -11,8 +11,22 @@ import type { ÉditionDeTravail } from '@/lib/notion/travail'
  * de travaux (qui le sert avec chaque travail pris) : une seule lecture des
  * éditions, et la même pour les deux.
  */
-export const FAMILLES = ['Écosystème', 'Concurrentiel'] as const
+export const FAMILLES = ['Écosystème', 'Concurrentiel', 'Appels à projets'] as const
 export type Famille = (typeof FAMILLES)[number]
+
+/**
+ * La troisième famille (17 novembre 2026, `docs/lettre-appels-a-projets.md`) :
+ * la lettre d'appels à projets, numérotée à part comme les deux autres. Sa
+ * forme est celle des deux autres, plus quatre règles du lint (`lib/portail/lint.ts`).
+ * Une organisation qui ne la prend pas n'a simplement aucune édition de cette
+ * famille : son contexte vaut zéro, comme une famille jamais écrite.
+ */
+export const FAMILLE_DES_APPELS = 'Appels à projets' satisfies Famille
+
+/** Vrai pour la famille de la lettre d'appels à projets, et pour elle seule. */
+export function estFamilleDAppels(famille: string | null | undefined): boolean {
+  return famille === FAMILLE_DES_APPELS
+}
 
 export function résuméDÉdition(édition: ÉditionDeTravail) {
   return {

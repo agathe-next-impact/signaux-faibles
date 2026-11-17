@@ -317,6 +317,7 @@ export function consignesDuHarnais(maintenant: Date, portail: string, onboarding
     `· Identifiant d’accès : mcp__${SERVEURS.veille}__tirer_identifiant.`,
     `· Sources en code : mcp__${SERVEURS.veille}__lire_sources(lot, urls) lit jusqu’à 30 URL en quatre minutes, écrit chaque page dans sources/<lot>/ et rend l’index du lot, une ligne de grille par source. mcp__${SERVEURS.veille}__synthese_de_collecte(dossier) condense les grilles et les faits d’un dossier de collecte en une synthèse par lettre.`,
     `· Registres publics : mcp__${SERVEURS.veille}__annonces_bodacc(depuis, sirens | departements, familles, texte) et mcp__${SERVEURS.veille}__fiches_entreprises(sirens). Les familles « Capital et santé financière » et « Nouveaux entrants » se collectent par ces deux outils, pas en ouvrant les pages du BODACC ou de l’annuaire une à une.`,
+    `· Appels à projets : mcp__${SERVEURS.veille}__appels_ouverts(section, sources, mots_cles) relève les appels ouverts des seules sources de la section « Appels à projets » du référentiel de l’organisation (texte de la section passé tel quel) ; c’est le premier geste de la collecte d’une lettre de la famille « Appels à projets ».`,
     `· Navigateur : node ${LIRE_PAGE} <url> [caractères], seule commande Bash permise. Toute autre commande est refusée : si une page prescrit une commande Bash en repli, constate le refus et passe au repli suivant.`,
     '· Les documents de projet claude.ai (project_read, project_write) n’existent pas dans cet environnement : dis-le là où une page les demande.',
     '',
@@ -370,7 +371,7 @@ export function définitionDuCollecteur(): AgentDefinition {
     description: 'Collecte un lot de familles d’un référentiel et écrit sa grille et ses faits sourcés dans le dossier de travail.',
     prompt: PROMPT_DU_COLLECTEUR,
     // Les deux noms de la lecture Notion : `fetch` avec un jeton MCP, `notion-fetch` en OAuth.
-    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__fetch`, `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`, `mcp__${SERVEURS.veille}__annonces_bodacc`, `mcp__${SERVEURS.veille}__fiches_entreprises`],
+    tools: ['WebSearch', 'WebFetch', 'Bash', 'Read', 'Write', `mcp__${SERVEURS.notion}__fetch`, `mcp__${SERVEURS.notion}__notion-fetch`, `mcp__${SERVEURS.veille}__lire_sources`, `mcp__${SERVEURS.veille}__annonces_bodacc`, `mcp__${SERVEURS.veille}__fiches_entreprises`, `mcp__${SERVEURS.veille}__appels_ouverts`],
     model: MODÈLE_COLLECTEUR,
   }
 }
@@ -525,7 +526,7 @@ export function lireLaCommande(argv: readonly string[], maintenant: Date = new D
       // Posée par le portail (lot 6, 2 novembre 2026) ; vide, elle ne compte pas.
       const lue = lireUneConsigne(reste[i + 1])
       i++
-      if (lue === 'illisible') throw new Error('consigne illisible : referentiels, sans-validation, activation ou publication:<id>[,<id>…]')
+      if (lue === 'illisible') throw new Error('consigne illisible : referentiels, sans-validation, activation, appels ou publication:<id>[,<id>…]')
       consigne = lue
     } else if (reste[i] === '--periodes') {
       const valeur = (reste[i + 1] ?? '').trim()

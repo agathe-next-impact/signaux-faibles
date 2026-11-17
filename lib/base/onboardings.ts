@@ -30,9 +30,10 @@ import {
 export type TâcheDOnboarding = 'balayage' | 'premiere_lettre' | 'onboarding'
 
 /** Ce que le portail demande à un run en plus de sa tâche (lot 6, 2 novembre 2026). */
-export type ConsigneDuRun = 'referentiels' | 'sans-validation' | 'activation'
+export type ConsigneDuRun = 'referentiels' | 'sans-validation' | 'activation' | 'appels'
 
-const lireLaConsigne = (valeur: string | null): ConsigneDuRun | null => (valeur === 'referentiels' || valeur === 'sans-validation' || valeur === 'activation' ? valeur : null)
+const lireLaConsigne = (valeur: string | null): ConsigneDuRun | null =>
+  valeur === 'referentiels' || valeur === 'sans-validation' || valeur === 'activation' || valeur === 'appels' ? valeur : null
 
 /** La fin d'un run, et ce qu'il faut savoir pour enchaîner (lot 6) : sa tâche, sa consigne, s'il a été lancé du portail. */
 export type ConclusionDeRun =

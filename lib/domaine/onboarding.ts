@@ -534,6 +534,13 @@ export type ConsigneDeTâche =
   | { readonly sorte: 'sans-validation' }
   | { readonly sorte: 'activation' }
   | { readonly sorte: 'publication'; readonly éditions: readonly string[] }
+  /**
+   * « Activer la lettre d'appels à projets » (17 novembre 2026,
+   * `docs/lettre-appels-a-projets.md`, lot 2) : le balayage écrit la section
+   * « Appels à projets » du référentiel de cette seule organisation, sans
+   * validation humaine, et coche la lettre dans le registre.
+   */
+  | { readonly sorte: 'appels' }
 
 /** Le plus d'éditions qu'une consigne de publication désigne : deux lettres par parution, et une marge. */
 export const ÉDITIONS_PAR_PUBLICATION_MAX = 6
@@ -542,11 +549,11 @@ export function écrireUneConsigne(consigne: ConsigneDeTâche): string {
   return consigne.sorte === 'publication' ? `publication:${consigne.éditions.join(',')}` : consigne.sorte
 }
 
-/** `null` pour une valeur vide ; `'illisible'` pour toute autre valeur que les quatre formes. */
+/** `null` pour une valeur vide ; `'illisible'` pour toute autre valeur que les cinq formes. */
 export function lireUneConsigne(valeur: string | null | undefined): ConsigneDeTâche | null | 'illisible' {
   const v = (valeur ?? '').trim()
   if (v === '') return null
-  if (v === 'referentiels' || v === 'sans-validation' || v === 'activation') return { sorte: v }
+  if (v === 'referentiels' || v === 'sans-validation' || v === 'activation' || v === 'appels') return { sorte: v }
   const publication = /^publication:([0-9a-f]{32}(?:,[0-9a-f]{32})*)$/.exec(v)
   if (!publication) return 'illisible'
   const éditions = [...new Set(publication[1]!.split(','))]
@@ -559,6 +566,7 @@ export const TÂCHE_DE_LA_CONSIGNE: Readonly<Record<ConsigneDeTâche['sorte'], '
   'sans-validation': 'premiere-lettre',
   activation: 'balayage',
   publication: 'reconciliation',
+  appels: 'balayage',
 }
 
 // ── L'onboarding autonome (lot 7, 15 novembre 2026) ──────────────────────────
