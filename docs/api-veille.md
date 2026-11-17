@@ -892,7 +892,9 @@ grille en vigueur : PESTEL, SWOT, TOWS, positions sur la carte des groupes
 stratégiques et sur la matrice de Mendelow. Postée par la revue mensuelle
 (page « Tâche — Revue mensuelle des référentiels », section « SYNTHÈSE
 STRATÉGIQUE », entre l'étape 2 et l'étape 3), relue par l'opératrice dans le
-courriel « [Relecture] » ; **rien n'est montré au client pendant le pilote**.
+courriel « [Relecture] » ; rien n'était montré au client pendant le pilote, et
+depuis le 15 novembre 2026 une synthèse acceptée est publiée à l'écriture (voir
+`PATCH` plus bas) : le texte de relecture dit l'état réel de la période.
 Postgres garde les énoncés (240 caractères au plus, exception bornée de
 `CLAUDE.md`) et les crans, jamais un texte de lettre. Plan :
 `docs/plan-outils-strategiques.md`, lot 6. Depuis le 28 octobre 2026, la même
@@ -1039,25 +1041,35 @@ d'une période non publiée sur `/espaces/syntheses/[slug]/[periode]`.
 ### `GET /api/veille/syntheses?slug=<slug>&periode=AAAA-MM` : la synthèse d'une période
 
 `{ "état": "lue", "organisation", "période", "fenêtre", "grilleVersion",
-"publication", "éléments", "positions", "texte", "swot", "crans" }`. `texte` est
+"éléments", "positions", "publication", "texte", "swot", "crans" }`. `texte` est
 la synthèse rendue pour le courriel « [Relecture] », à recopier telle quelle ;
 `swot` donne les éléments par leur `id` (que la `filiation` du mois suivant
-désigne) et `crans` les positions posées. `aucune` (200) si rien n'est enregistré
-pour la période.
+désigne) et `crans` les positions posées. `aucune` (200) si rien n'est
+enregistré pour la période.
 
-`état` dit seulement que la lecture a abouti. **`publication`** (16 novembre
-2026) dit si le client voit la période, d'après l'état de ses lignes :
+**État de publication** (16 novembre 2026). `publication` dit l'état réel de la
+période, lu dans ses lignes vivantes (éléments et positions) au moment de la
+lecture, dans les mots du `PATCH` : ne pas le déduire du texte, ni de
+`PUBLICATION_AUTOMATIQUE`.
 
-| `publication` | Sens | Ce que dit la deuxième ligne de `texte` |
+| `publication` | Ce que voit le client | Deuxième ligne de `texte`, après la fenêtre et la grille |
 |---|---|---|
-| `publiée` | toutes les lignes sont publiées, le client lit la période | « Publiée : le client la lit dans son espace. » |
-| `proposée` | aucune ligne publiée ni retirée | « Proposée : rien n'est montré au client. » |
-| `retirée` | l'opératrice a retiré la période | « Retirée par l'opératrice : rien n'est montré au client. » |
-| `mêlée` | une partie seulement des lignes est publiée, ce que les écrans ne lisent pas | « Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client. » |
+| `publie` | la période, dans son espace (les écrans montrent la dernière période entièrement publiée) | « Publiée : le client la lit dans son espace. » |
+| `propose` | rien | « Proposée : rien n'est montré au client. » |
+| `retire` | rien, et une réécriture la laisse retirée | « Retirée par l'opératrice : rien n'est montré au client. » |
+| `partielle` | rien sur les écrans de synthèse (une partie seulement des lignes est publiée, ou retirée) | « Publication incomplète, des lignes publiées et d'autres non : rien n'est montré au client. » |
 
-Jusqu'au 16 novembre 2026, le texte portait « Proposée : rien n'est montré au
-client » quel que soit l'état : depuis la publication automatique du
-15 novembre, il affirmait le contraire de ce que le client voyait.
+Avant cette date, la deuxième ligne disait toujours « Proposée : rien n'est
+montré au client. », y compris d'une période que la publication automatique
+venait de publier (constaté sur `cci-cantal`, `2026-T4` : `POST` répondait
+`état: "publie"`, la lecture suivante disait « Proposée »). `état` reste l'issue
+de la lecture (`lue`, `aucune`, `hors-pilote`) : l'état de publication a son
+champ, comme sur `GET /api/veille/fiche`. Aucun geste du portail ne produit
+aujourd'hui `partielle` (il écrit, publie et retire une période entière, dans
+une transaction) ; si elle apparaît, un `PATCH` (`publie` ou `retire`) remet la
+période dans un seul état. Le seul 17 novembre 2026, le champ a porté `publiée`,
+`proposée`, `retirée` et `mêlée` : aucune tâche ne les lisait, et il a repris le
+jour même les valeurs du `PATCH`, celles de `GET /api/veille/fiche`.
 
 ### `PATCH /api/veille/syntheses` : publier ou retirer une période (lot 11, 28 octobre 2026)
 

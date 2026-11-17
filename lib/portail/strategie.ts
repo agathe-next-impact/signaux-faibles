@@ -82,9 +82,8 @@ import {
   forcesNonSuivies,
   messageDeRefus,
   normaliserTitre,
+  publicationDeLaPériode,
   rendreLaSynthèse,
-  étatDesLignes,
-  type ÉtatDeLaPériode,
   trousDuPestel,
   type CaseSwot,
   type Benchmark,
@@ -93,6 +92,7 @@ import {
   type Grille,
   type IndicateurDeScénario,
   type Pestel,
+  type PublicationDeLaPériode,
   type Refus,
   type RègleDIndicateur,
   type ParamètresDuCycle,
@@ -439,10 +439,14 @@ export type LectureDeLaSynthèse =
       readonly période: string
       readonly fenêtre: { readonly début: string; readonly fin: string }
       readonly grilleVersion: number
-      /** L'état de publication de la période, lu dans celui de ses lignes ; le texte dit le même. */
-      readonly publication: ÉtatDeLaPériode
       readonly éléments: number
       readonly positions: number
+      /**
+       * L'état de publication réel de la période, lu dans ses lignes : `publie`
+       * (le client la lit), `propose`, `retire`, ou `partielle`. Le texte dit le
+       * même ; ce champ évite à une tâche de le déduire d'une phrase.
+       */
+      readonly publication: PublicationDeLaPériode
       readonly texte: string
       /** Les éléments SWOT par leur identifiant : la `filiation` du mois suivant les désigne ainsi. */
       readonly swot: readonly { readonly id: string; readonly case: CaseSwot; readonly rang: number; readonly énoncé: string | null; readonly état: string | null }[]
@@ -451,7 +455,7 @@ export type LectureDeLaSynthèse =
     }
   | { readonly sorte: 'aucune' | 'organisation-inconnue' | 'hors-pilote' }
 
-/** La synthèse vivante d'une période, rendue en texte pour le courriel « [Relecture] ». */
+/** La synthèse vivante d'une période, rendue en texte pour le courriel « [Relecture] », avec son état de publication réel. */
 export async function lireLaSynthèseDuPilote(
   entrée: { readonly slug: string; readonly période: string },
   db?: Base,
@@ -468,7 +472,14 @@ export async function lireLaSynthèseDuPilote(
   const cités = [...lue.éléments.flatMap((é) => é.faits), ...lue.positions.flatMap((p) => p.faits)]
   const faits = await faitsConnus({ organisationId: organisation.id, ids: cités }, db)
   const fenêtre = premier ? { début: premier.fenêtreDébut, fin: premier.fenêtreFin } : { début: '', fin: '' }
-  const publication = étatDesLignes([...lue.éléments, ...lue.positions].map((ligne) => ligne.étatPublication))
+  // L'état vient des lignes lues à l'instant, jamais du réglage `PUBLICATION_AUTOMATIQUE` :
+  // une période écrite avant lui, retirée ou remise en proposition garde le sien.
+  const étatsDesLignes = [...lue.éléments, ...lue.positions].map((l) => l.étatPublication)
+  const publication = publicationDeLaPériode({
+    lignes: étatsDesLignes.length,
+    publiées: étatsDesLignes.filter((é) => é === 'publie').length,
+    retirées: étatsDesLignes.filter((é) => é === 'retire').length,
+  })
   const texte = rendreLaSynthèse({
     organisation: entrée.slug,
     période: entrée.période,
@@ -485,9 +496,9 @@ export async function lireLaSynthèseDuPilote(
     période: entrée.période,
     fenêtre,
     grilleVersion,
-    publication,
     éléments: lue.éléments.length,
     positions: lue.positions.length,
+    publication,
     texte,
     swot: lue.éléments
       .filter((é) => é.outil === 'swot')

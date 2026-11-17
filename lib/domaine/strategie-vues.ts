@@ -1,6 +1,5 @@
 import {
   CASES_SWOT,
-  étatDeLaPériode,
   FORCES_PORTER,
   LIBELLÉS_PESTEL,
   LIBELLÉS_PORTER,
@@ -9,11 +8,11 @@ import {
   normaliserTitre,
   normaliserUrl,
   PESTEL,
+  publicationDeLaPériode,
   règleEnClair,
   trousDuPestel,
   type Benchmark,
   type CaseSwot,
-  type ÉtatDeLaPériode,
   type FamilleDeGrille,
   type ForcePorter,
   type Grille,
@@ -21,6 +20,7 @@ import {
   type IndiceDeCycle,
   type LigneDeBenchmark,
   type Pestel,
+  type PublicationDeLaPériode,
   type SensDIndicateur,
 } from '@/lib/domaine/strategie'
 import { lundiDeLaSemaine } from '@/lib/domaine/semaines'
@@ -828,9 +828,9 @@ export function vueDuPestel(
 
 // ── Tableau de l'opératrice : les périodes à publier ─────────────────────────
 
-// L'état d'une période et sa règle vivent dans `lib/domaine/strategie.ts`, que le
-// texte de relecture lit aussi ; ils restent exportés d'ici pour les écrans.
-export type { ÉtatDeLaPériode }
+// Les mots du tableau de l'opératrice. La règle vit dans `lib/domaine/strategie.ts`
+// (`publicationDeLaPériode`), que le texte de relecture et la route lisent aussi.
+export type ÉtatDeLaPériode = 'proposée' | 'publiée' | 'retirée' | 'mêlée'
 
 export type PériodeAPublier = {
   readonly période: string
@@ -853,6 +853,18 @@ type ComptesDePériode = {
   readonly lignes: number
   readonly publiées: number
   readonly retirées: number
+}
+
+/** Les mots du tableau pour l'état que `publicationDeLaPériode` déduit : une seule règle, deux vocabulaires. */
+const ÉTATS_DU_TABLEAU: Readonly<Record<PublicationDeLaPériode, ÉtatDeLaPériode>> = {
+  publie: 'publiée',
+  propose: 'proposée',
+  retire: 'retirée',
+  partielle: 'mêlée',
+}
+
+function étatDeLaPériode(c: ComptesDePériode): ÉtatDeLaPériode {
+  return ÉTATS_DU_TABLEAU[publicationDeLaPériode(c)]
 }
 
 /** Une entrée par organisation, par nom ; ses périodes de la plus récente à la plus ancienne, le trimestre après les mois qu'il couvre. */

@@ -195,7 +195,7 @@ describe('rendu des chiffres', () => {
       période: '2026-T4',
       fenêtre: { début: '2026-10-01', fin: '2026-12-31' },
       grilleVersion: 1,
-      publication: 'proposée',
+      publication: 'propose',
       grille: GRILLE,
       éléments: [
         { id: 'a', outil: 'indice_cycle', clé: 'indice_cycle', rang: 1, énoncé: 'Le marché attire encore.', état: null, origine: 'faits', hypothèse: false, faits: [], références: {}, candidateRecommandation: false, valeur: indice },

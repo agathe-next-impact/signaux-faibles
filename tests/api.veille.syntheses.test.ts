@@ -185,12 +185,20 @@ describe('GET /api/veille/syntheses', () => {
   })
 
   it('rend la synthèse lue, texte compris', async () => {
-    strategie.lireLaSynthèseDuPilote.mockResolvedValue({ sorte: 'lue', période: '2026-11', grilleVersion: 1, publication: 'publiée', éléments: [], positions: [], texte: 'Synthèse stratégique' })
+    strategie.lireLaSynthèseDuPilote.mockResolvedValue({ sorte: 'lue', période: '2026-11', grilleVersion: 1, publication: 'publie', éléments: [], positions: [], texte: 'Synthèse stratégique' })
     const réponse = await lire('?slug=infralliance&periode=2026-11')
     expect(réponse.status).toBe(200)
     // « état » dit que la lecture a abouti ; « publication » dit si le client voit la période.
-    expect(await réponse.json()).toMatchObject({ état: 'lue', publication: 'publiée', organisation: 'infralliance', texte: 'Synthèse stratégique' })
+    expect(await réponse.json()).toMatchObject({ état: 'lue', publication: 'publie', organisation: 'infralliance', texte: 'Synthèse stratégique' })
     expect(strategie.lireLaSynthèseDuPilote).toHaveBeenCalledWith({ slug: 'infralliance', période: '2026-11' })
+  })
+
+  it.each(['publie', 'propose', 'retire', 'partielle'])('rend l’état de publication de la période dans « publication » : %s', async (publication) => {
+    strategie.lireLaSynthèseDuPilote.mockResolvedValue({ sorte: 'lue', période: '2026-T4', grilleVersion: 1, éléments: 14, positions: 3, publication, texte: 'Synthèse stratégique' })
+    const réponse = await lire('?slug=cci-cantal&periode=2026-T4')
+    expect(réponse.status).toBe(200)
+    // `état` reste l'issue de la lecture : l'état de publication a son propre champ.
+    expect(await réponse.json()).toMatchObject({ état: 'lue', organisation: 'cci-cantal', période: '2026-T4', publication })
   })
 
   it('aucune synthèse et hors pilote répondent en 200, une organisation inconnue en 404', async () => {

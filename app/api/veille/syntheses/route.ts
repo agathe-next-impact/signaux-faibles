@@ -41,7 +41,9 @@ import {
  *   GET /api/veille/syntheses?slug=infralliance&periode=2026-11
  *
  * La synthèse vivante de la période, rendue en texte pour le courriel
- * « [Relecture] » de la revue.
+ * « [Relecture] » de la revue, et son état de publication réel dans
+ * `publication` (`publie`, `propose`, `retire`, `partielle`) : le texte dit le
+ * même, une tâche lit le champ.
  *
  *   PATCH /api/veille/syntheses
  *   { "slug": "mastora", "periode": "2026-10", "etat": "publie" | "retire" | "propose" }

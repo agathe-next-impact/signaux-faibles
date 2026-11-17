@@ -102,8 +102,9 @@ Organisation visée : $ARGUMENTS
      registre si elle ne l'est pas, écris « espace en attente : écrans
      stratégiques à alimenter » et dis qu'il faut lancer `/onboarding-outils
      <nom>` puis `/onboarding-ouvrir-espace <nom>`. L'activation de la veille se
-     fait quand même. Une synthèse ou une fiche « proposée » ne retient pas le
-     lien : dis seulement qu'il reste à l'opératrice de les publier.
+     fait quand même. Une synthèse ou une fiche « proposée »
+     (`"publication": "propose"` dans la réponse, jamais déduit du texte) ne
+     retient pas le lien : dis seulement qu'il reste à l'opératrice de les publier.
      L'**amorçage trimestriel** (`GET /api/veille/syntheses?slug=<slug>&periode=<AAAA-Tn>`
      du trimestre de la première lettre) ne retient pas le lien non plus : s'il
      répond `aucune`, dis que les écrans « Forces du marché », « Scénarios » et
