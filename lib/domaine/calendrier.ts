@@ -25,6 +25,13 @@ export const CADENCES = [
   'Hebdomadaire',
   'Quinzaine (semaines paires)',
   'Mensuelle (1re occurrence du mois)',
+  /**
+   * La quinzaine des semaines ISO impaires (17 novembre 2026, demande de
+   * l'opératrice pour la lettre d'appels de la CCI du Cantal : « les lundis à
+   * partir du 30 », semaine 49). Option de la seule colonne « Cadence appels »
+   * du registre ; la règle vaut pour toute cadence que la tâche donne.
+   */
+  'Quinzaine (semaines impaires)',
 ] as const
 export type Cadence = (typeof CADENCES)[number]
 
@@ -112,6 +119,8 @@ export function paraîtLe(organisation: OrganisationÀDater, datation: Datation)
       return true
     case 'Quinzaine (semaines paires)':
       return datation.semainePaire
+    case 'Quinzaine (semaines impaires)':
+      return !datation.semainePaire
     case 'Mensuelle (1re occurrence du mois)':
       return datation.quantième <= 7
   }
