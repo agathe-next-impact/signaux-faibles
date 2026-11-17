@@ -186,6 +186,15 @@ describe('la consigne « appels » (lot 2)', () => {
     expect(texte).toContain('Ne crée aucune édition')
     expect(texte).not.toContain('—')
   })
+
+  it('vise vingt sources retenues sur trente à trente-cinq examinées, sans toucher une cadence posée', () => {
+    const texte = texteDeLaConsigne({ sorte: 'appels' })
+    expect(texte).toContain('trente à trente-cinq sources candidates')
+    expect(texte).toContain('retiens-en vingt')
+    expect(texte).toContain('retentée par une autre entrée')
+    expect(texte).toContain('sans en ajouter pour le compte')
+    expect(texte).toContain('une valeur posée par l’opératrice ne se change pas')
+  })
 })
 
 describe('la consigne « lettre-appels » (première lettre hors calendrier)', () => {

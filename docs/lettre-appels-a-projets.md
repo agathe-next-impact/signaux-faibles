@@ -51,7 +51,13 @@ dédié (9).
 `scripts/taches/pointeurs.ts`) fait écrire au balayage la section « Appels à
 projets » du référentiel Écosystème de l'organisation : périmètre, profil
 d'éligibilité, trois à six familles d'appels avec leurs sources ouvertes dans
-le run, requêtes types. Elle retire l'axe d'appels de la lettre écosystème
+le run, requêtes types. **Volume des sources** (décision de l'opératrice du
+17 novembre 2026) : trente à trente-cinq candidates examinées, vingt retenues ;
+une candidate bloquée est retentée par une autre entrée (navigateur, flux, API,
+agrégateur) avant d'être écartée ; moins de vingt seulement si moins de vingt
+s'ouvrent et listent des appels datés, jamais de source ajoutée pour le compte ;
+la section finit par les candidates écartées et leur motif. Une cadence ou un
+jour déjà posés au registre ne sont pas changés par un nouveau run. Elle retire l'axe d'appels de la lettre écosystème
 s'il existe, coche la lettre au registre et ne crée aucun point de validation.
 Le bouton « Activer la lettre d'appels à projets », section « Veille
 hebdomadaire » de la fiche (`/espaces/abonnements/[slug]`), la lance
