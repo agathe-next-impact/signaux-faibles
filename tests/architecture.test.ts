@@ -1544,7 +1544,7 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     // L'onglet « Appels à projets » (18 novembre 2026) ne paraît que si une lettre lisible porte un appel.
     const avecAppels = ongletsDe('client', comptes, 'complète', { réorganisé: true, appels: true })
     expect(avecAppels).toHaveLength(19)
-    expect(avecAppels.map((o) => o.href).indexOf('/client/appels')).toBe(avecAppels.map((o) => o.href).indexOf('/client/recommandations') + 1)
+    expect(avecAppels.map((o) => o.href).indexOf('/client/appels')).toBe(avecAppels.map((o) => o.href).indexOf('/client/lettres') + 1)
     for (const onglet of avecAppels) {
       const segment = onglet.href.replace(/^\/client\/?/, '')
       const chemin = join(process.cwd(), 'app', '(portail)', '[slug]', ...(segment ? [segment] : []), 'page.tsx')
