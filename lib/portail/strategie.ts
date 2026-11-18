@@ -6,6 +6,7 @@ import {
   dernièreSynthèsePubliée,
   enregistrerLaSynthèse,
   faitsConnus,
+  faitsCités,
   faitsDeLaFenêtre,
   faitsDUneEntité,
   faitsParEntité,
@@ -472,7 +473,7 @@ export async function lireLaSynthèseDuPilote(
   const grilleVersion = premier?.grilleVersion ?? lue.positions[0]!.grilleVersion
   const grille = await lireLaGrille(organisation.id, db)
   const cités = [...lue.éléments.flatMap((é) => é.faits), ...lue.positions.flatMap((p) => p.faits)]
-  const faits = await faitsConnus({ organisationId: organisation.id, ids: cités }, db)
+  const faits = await faitsCités({ organisationId: organisation.id, ids: cités }, db)
   const fenêtre = premier ? { début: premier.fenêtreDébut, fin: premier.fenêtreFin } : { début: '', fin: '' }
   // L'état vient des lignes lues à l'instant, jamais du réglage `PUBLICATION_AUTOMATIQUE` :
   // une période écrite avant lui, retirée ou remise en proposition garde le sien.
@@ -1085,7 +1086,7 @@ export async function synthèseDeLEspace(
     const cités = [...(mois?.éléments ?? []), ...(mois?.positions ?? [])].flatMap((x) => x.faits)
     const [précédente, connus] = await Promise.all([
       mois ? dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois', avant: mois.période }, db) : null,
-      faitsConnus({ organisationId: organisation.id, ids: cités }, db),
+      faitsCités({ organisationId: organisation.id, ids: cités }, db),
     ])
     const faits = new Map([...connus].map(([id, f]) => [id, { date: f.date, édition: f.édition ?? '' }]))
     const numéros = new Map([...entrée.numéros].map(([page, n]) => [normaliserIdentifiant(page), n]))
@@ -1262,7 +1263,7 @@ export async function concurrentsDeLEspace(
     if (!grille) return null
     const [précédente, connus] = await Promise.all([
       mois ? dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois', avant: mois.période }, db) : null,
-      faitsConnus({ organisationId: organisation.id, ids: (mois?.positions ?? []).flatMap((p) => p.faits) }, db),
+      faitsCités({ organisationId: organisation.id, ids: (mois?.positions ?? []).flatMap((p) => p.faits) }, db),
     ])
     const faits = new Map([...connus].map(([id, f]) => [id, { date: f.date, édition: f.édition ?? '' }]))
     return {
