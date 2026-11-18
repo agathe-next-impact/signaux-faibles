@@ -81,12 +81,12 @@ describe('casesDuTableauDeBord', () => {
     const cases = casesDuTableauDeBord(DONNÉES)
     expect(cases.map((c) => c.href)).toEqual([
       '/hermitage/lettres',
+      '/hermitage/veille/calendrier',
       '/hermitage/concurrents',
       '/hermitage/acteurs',
       '/hermitage/forces',
       '/hermitage/axes',
       '/hermitage/pestel',
-      '/hermitage/veille/calendrier',
       '/hermitage/diagnostic',
       '/hermitage/recommandations',
       '/hermitage/scenarios',
@@ -155,7 +155,7 @@ describe('les rubriques', () => {
     const cartes = cartesDesRubriques(cases)
     expect(cartes.map((c) => [c.titre, c.écrans.map((é) => é.écran)])).toEqual([
       ['Le marché', ['Concurrents', 'Acteurs', 'Forces du marché']],
-      ['L’environnement', ['Les axes', 'PESTEL', 'Calendrier']],
+      ['L’environnement', ['Les axes', 'PESTEL']],
       ['Stratégie', ['Diagnostic', 'Options', 'Scénarios', 'Indicateurs']],
       ['Votre veille', ['Thèmes suivis', 'Sources', 'Corpus', 'Périmètre', 'Archives']],
     ])
