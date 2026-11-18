@@ -4,6 +4,7 @@ import { exigerLecture } from '@/lib/auth/appartenance'
 import { Coquille } from '@/components/coquille'
 import { SqueletteDÉcran } from '@/components/squelette'
 import { COOKIE_DU_RAIL } from '@/lib/portail/rail'
+import { éditionsDAppelsDeLEspace, ongletDesAppels } from '@/lib/portail/appels'
 import { ongletsDe, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 
@@ -49,7 +50,12 @@ async function Garde({
   // aucun corps de note n'est chargé pour les afficher.
   // L'espace réorganisé (lot 2) ajoute « Concurrents » au rail ; lu en même
   // temps que la liste, mémoïsé pour la page, borné à 400 ms, et absent dans le doute.
-  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
+  const [semaines, espace, éditionsDAppels] = await Promise.all([
+    semainesDeLEspace(accès),
+    espaceDeLOrganisation(accès.organisationId),
+    // « Appels à projets » (18 novembre 2026) : l'onglet paraît quand une lettre lisible porte un appel relevé.
+    éditionsDAppelsDeLEspace(accès.organisationId),
+  ])
 
   // Un accès valide qui ne voit aucune édition n'est pas forcément une
   // anomalie — un client fraîchement équipé attend sa première lettre. Mais
@@ -97,7 +103,7 @@ async function Garde({
         lettres: espace?.réorganisé ? (semaines[0]?.éditions.length ?? 0) : semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
         recommandations,
         archives: semaines.length,
-      }, lecture, { réorganisé: espace?.réorganisé ?? false, marché: espace?.marché })}
+      }, lecture, { réorganisé: espace?.réorganisé ?? false, marché: espace?.marché, appels: ongletDesAppels(éditionsDAppels, semaines) })}
     >
       {enAperçu > 0 ? (
         <p role="note" className="mb-6 border border-gris-ligne bg-fond-ardoise p-4 text-encre">

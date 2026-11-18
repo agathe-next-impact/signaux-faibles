@@ -526,6 +526,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('faitsDeLAxeDeLEspace')).toEqual(['app/(portail)/[slug]/pestel/[axe]/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('espaceDeLOrganisation')).toEqual([
       'app/(portail)/[slug]/acteurs/page.tsx',
+      'app/(portail)/[slug]/appels/page.tsx',
       'app/(portail)/[slug]/axes/page.tsx',
       'app/(portail)/[slug]/concurrents/[concurrent]/page.tsx',
       'app/(portail)/[slug]/concurrents/page.tsx',
@@ -575,12 +576,14 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       join('veille', 'themes', '[axe]', 'page.tsx'),
       // Marchés et niches (12 novembre 2026).
       join('marches', 'page.tsx'),
+      // Appels à projets (18 novembre 2026).
+      join('appels', 'page.tsx'),
     ]
     for (const page of parOutil) {
       const écran = readFileSync(join(process.cwd(), 'app', '(portail)', '[slug]', page), 'utf8')
       const garde = écran.indexOf('if (espace && !espace.réorganisé) notFound()')
       expect(garde, page).toBeGreaterThan(écran.indexOf('exigerLectureComplète(slug)'))
-      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|présentationDeLEntité|marchésDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
+      expect(garde, page).toBeLessThan(écran.search(/(concurrentsDeLEspace|ficheDuConcurrent|synthèseDeLEspace|pestelDeLEspace|indicateursDeLEspace|tableauDeLEspace|faitsDeLAxeDeLEspace|ficheDeLEspace|présentationDeLEntité|marchésDeLEspace|appelsDeLEspace|notesDeLaSemaine|documentsDeLaSemaine|dernièresNotes)\(/))
     }
   })
 
@@ -932,6 +935,32 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     const orchestration = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
     const porte = orchestration.slice(orchestration.indexOf('export async function modifierLÉnoncéDuPilote'))
     expect(porte.indexOf('contrôlerUnÉnoncé(')).toBeLessThan(porte.indexOf('modifierUnÉnoncé('))
+  })
+
+  /**
+   * Les appels à projets (18 novembre 2026, migration 0030) : la table n'a qu'un
+   * écrivain et lecteur, `lib/base/appels.ts`, appelé par la seule orchestration
+   * `lib/portail/appels.ts` ; le relevé ne part que de la route du lint (jeton),
+   * dans `after()`, et l'écran lit par la clé de la session, jamais une lettre.
+   */
+  it('les appels à projets : un écrivain, un relevé après le lint, un écran', () => {
+    const tablesNommées: string[] = []
+    const parcourir = (dossier: string) => {
+      for (const entrée of readdirSync(dossier, { withFileTypes: true })) {
+        const chemin = join(dossier, entrée.name)
+        if (entrée.isDirectory()) {
+          if (entrée.name !== 'node_modules' && !entrée.name.startsWith('.')) parcourir(chemin)
+        } else if (/\.tsx?$/.test(entrée.name) && /\bappelsÀProjets\b/.test(readFileSync(chemin, 'utf8'))) tablesNommées.push(relatif(chemin))
+      }
+    }
+    for (const racine of ['app', 'components', 'lib', 'scripts', 'trigger']) if (existsSync(join(process.cwd(), racine))) parcourir(join(process.cwd(), racine))
+    expect(tablesNommées.sort()).toEqual(['lib/base/appels.ts', 'lib/base/schema.ts'])
+    for (const nom of ['remplacerLesAppelsDeLÉdition', 'appelsDeLOrganisation', 'éditionsDAppels']) expect(appelants(nom), nom).toEqual(['lib/base/appels.ts', 'lib/portail/appels.ts'])
+    expect(appelants('releverLesAppels')).toEqual(['app/api/veille/lint/route.ts', 'lib/portail/appels.ts'])
+    expect(appelants('appelsDeLEspace')).toEqual(['app/(portail)/[slug]/appels/page.tsx', 'lib/portail/appels.ts'])
+    const route = readFileSync(join(process.cwd(), 'app', 'api', 'veille', 'lint', 'route.ts'), 'utf8')
+    expect(route).toMatch(/after\(\(\) => releverLesAppels\(/)
+    expect(route.indexOf('rapport.conforme && estFamilleDAppels')).toBeGreaterThan(0)
   })
 
   /**
@@ -1507,7 +1536,11 @@ describe('chaque onglet du rail mène à une route qui existe', () => {
     const comptes = { lettres: 2, recommandations: 0, archives: 1 }
     const onglets = ongletsDe('client', comptes, 'complète', { réorganisé: true })
     expect(onglets).toHaveLength(18)
-    for (const onglet of onglets) {
+    // L'onglet « Appels à projets » (18 novembre 2026) ne paraît que si une lettre lisible porte un appel.
+    const avecAppels = ongletsDe('client', comptes, 'complète', { réorganisé: true, appels: true })
+    expect(avecAppels).toHaveLength(19)
+    expect(avecAppels.map((o) => o.href).indexOf('/client/appels')).toBe(avecAppels.map((o) => o.href).indexOf('/client/recommandations') + 1)
+    for (const onglet of avecAppels) {
       const segment = onglet.href.replace(/^\/client\/?/, '')
       const chemin = join(process.cwd(), 'app', '(portail)', '[slug]', ...(segment ? [segment] : []), 'page.tsx')
       expect(existsSync(chemin), `${onglet.libellé} → ${onglet.href}`).toBe(true)
