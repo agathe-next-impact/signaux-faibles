@@ -35,7 +35,7 @@ import {
 } from '@/lib/base/strategie'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { vocabulaireDuMarché, type SujetsDuMarché, type VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
-import { écransMasquésConnus, type ÉcranDésactivable } from '@/lib/domaine/ecrans-de-l-espace'
+import { écransMasquésConnus, nomsDesÉcransConnus, type ÉcranDésactivable, type NomsDesÉcrans } from '@/lib/domaine/ecrans-de-l-espace'
 import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
   activitéParRubrique,
@@ -1202,10 +1202,13 @@ export async function réglerLeMarché(
  * remplace la précédente ; une clé inconnue a déjà été écartée par le domaine.
  */
 export async function réglerLesÉcrans(
-  entrée: { readonly slug: string; readonly masqués: readonly ÉcranDésactivable[] },
+  entrée: { readonly slug: string; readonly masqués: readonly ÉcranDésactivable[]; readonly noms?: NomsDesÉcrans },
   db?: Base,
 ): Promise<'réglé' | 'organisation-inconnue'> {
-  return réglerLesÉcransMasqués({ slug: entrée.slug, masqués: écransMasquésConnus(entrée.masqués) }, db)
+  return réglerLesÉcransMasqués(
+    { slug: entrée.slug, masqués: écransMasquésConnus(entrée.masqués), ...(entrée.noms ? { noms: nomsDesÉcransConnus(entrée.noms) as Record<string, string> } : {}) },
+    db,
+  )
 }
 
 /** Ce que l'écran d'activation des écrans de l'opératrice lit d'une organisation. */
@@ -1215,6 +1218,7 @@ export type ÉcransDUneOrganisation = {
   readonly réorganisé: boolean
   readonly marché: VocabulaireDuMarché
   readonly masqués: readonly ÉcranDésactivable[]
+  readonly noms: NomsDesÉcrans
 }
 
 /**
@@ -1232,6 +1236,7 @@ export async function écransDUneOrganisation(slug: string, db?: Base): Promise<
     réorganisé: organisation.outilsStratégiques && organisation.espaceRéorganisé,
     marché: vocabulaireDuMarché(organisation.sujetsDuMarché),
     masqués: écransMasquésConnus(organisation.écransMasqués),
+    noms: nomsDesÉcransConnus(organisation.nomsDesÉcrans),
   }
 }
 
@@ -1243,13 +1248,15 @@ export type EspaceDeLOrganisation = {
    * l'espace entier est `null` dans le doute, où rien n'est masqué non plus.
    */
   readonly écransMasqués: readonly ÉcranDésactivable[]
+  /** Les noms donnés aux écrans par l'opératrice (18 novembre 2026), vides par défaut. */
+  readonly nomsDesÉcrans: NomsDesÉcrans
   /** Les concurrents de la grille, l'organisation exclue : ce qu'« Acteurs » laisse à « Concurrents ». */
   readonly concurrents: readonly string[]
   /** Les mots de l'écran « Concurrents » : ses concurrents, ou les entreprises de son territoire. */
   readonly marché: VocabulaireDuMarché
 }
 
-const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, écransMasqués: [], concurrents: [], marché: vocabulaireDuMarché(null) }
+const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, écransMasqués: [], nomsDesÉcrans: {}, concurrents: [], marché: vocabulaireDuMarché(null) }
 
 /**
  * L'espace de l'organisation de la session est-il réorganisé ? Le rail le
@@ -1272,11 +1279,13 @@ const espaceMémoïsé = cache(async (registre: string, db?: Base): Promise<Espa
       const organisation = await organisationDuRegistre(registre, db)
       if (!organisation) return NON_RÉORGANISÉ
       const écransMasqués = écransMasquésConnus(organisation.écransMasqués)
-      if (!organisation.outilsStratégiques || !organisation.espaceRéorganisé) return { ...NON_RÉORGANISÉ, écransMasqués }
+      const nomsDesÉcrans = nomsDesÉcransConnus(organisation.nomsDesÉcrans)
+      if (!organisation.outilsStratégiques || !organisation.espaceRéorganisé) return { ...NON_RÉORGANISÉ, écransMasqués, nomsDesÉcrans }
       const grille = await lireLaGrille(organisation.id, db)
       return {
         réorganisé: true,
         écransMasqués,
+        nomsDesÉcrans,
         concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [],
         marché: vocabulaireDuMarché(organisation.sujetsDuMarché),
       }

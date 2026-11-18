@@ -15,14 +15,17 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
  * - Dans le doute (base absente, lente, `SOURCE_ACCES=notion`), l'espace lu est
  *   `null` et rien n'est masqué : le comportement d'avant le réglage.
  *
+ * Elle rend le nom que l'opératrice a donné à l'écran, `null` sans nom : la
+ * page le pose en titre à la place du sien (même jour, renommage).
+ *
  * La lecture est celle du rail (`espaceDeLOrganisation`), mémoïsée par requête :
  * aucune requête de plus pour la page.
  */
 export async function exigerLÉcran(
   accès: { readonly organisationId: string; readonly tousLesEspaces: boolean },
   écran: ÉcranDésactivable,
-): Promise<void> {
-  if (accès.tousLesEspaces) return
+): Promise<string | null> {
   const espace = await espaceDeLOrganisation(accès.organisationId)
-  if (espace?.écransMasqués.includes(écran)) notFound()
+  if (!accès.tousLesEspaces && espace?.écransMasqués.includes(écran)) notFound()
+  return espace?.nomsDesÉcrans[écran] ?? null
 }

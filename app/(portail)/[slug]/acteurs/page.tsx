@@ -33,7 +33,7 @@ const DOSSIERS_VISIBLES = 5
 export default async function LesActeurs({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'acteurs')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'acteurs')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 2, pilote sur L'Hermitage) envoie les concurrents
@@ -83,7 +83,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
     <>
       <EntêteÉcran
         surtitre={réorganisé ? 'le marché' : 'acteurs et concurrents'}
-        titre={réorganisé ? 'Qui pèse sur votre activité' : 'Qui bouge, qui dort'}
+        titre={nomDeLÉcran ?? (réorganisé ? 'Qui pèse sur votre activité' : 'Qui bouge, qui dort')}
         état={
           suiviActeurs
             ? `${suiviActeurs.length} acteur${suiviActeurs.length > 1 ? 's' : ''} suivi${suiviActeurs.length > 1 ? 's' : ''}`

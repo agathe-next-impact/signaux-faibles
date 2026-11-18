@@ -14,7 +14,7 @@ import { semainesDeLEspace } from '@/lib/portail/semaine'
 export default async function Archives({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'archives')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'archives')
 
   const semaines = await semainesDeLEspace(accès)
 
@@ -22,7 +22,7 @@ export default async function Archives({ params }: { params: Promise<{ slug: str
     <>
       <EntêteÉcran
         surtitre="archives"
-        titre="Toutes les semaines"
+        titre={nomDeLÉcran ?? "Toutes les semaines"}
         état={`${semaines.length} semaine${semaines.length > 1 ? 's' : ''}`}
       />
 

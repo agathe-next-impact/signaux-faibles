@@ -17,7 +17,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 export default async function Sources({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'sources')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'sources')
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
@@ -27,7 +27,7 @@ export default async function Sources({ params }: { params: Promise<{ slug: stri
 
   return (
     <>
-      <EntêteÉcran surtitre="votre veille" titre="Où nous regardons" état={lue?.fiche ? `${total} source${total > 1 ? 's' : ''}` : undefined} />
+      <EntêteÉcran surtitre="votre veille" titre={nomDeLÉcran ?? "Où nous regardons"} état={lue?.fiche ? `${total} source${total > 1 ? 's' : ''}` : undefined} />
       {!lue ? (
         <p className="mt-6 text-ardoise">Les sources de votre veille ne peuvent pas être affichées pour l’instant. Réessayez dans quelques minutes.</p>
       ) : !lue.fiche ? (

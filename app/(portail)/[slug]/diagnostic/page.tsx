@@ -20,7 +20,7 @@ import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strateg
 export default async function Diagnostic({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'diagnostic')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'diagnostic')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
@@ -31,7 +31,7 @@ export default async function Diagnostic({ params }: { params: Promise<{ slug: s
 
   return (
     <>
-      <EntêteÉcran surtitre="stratégie" titre="Où en êtes-vous" état={synthèse?.mois ? `synthèse ${libelléDePériode(synthèse.mois.période)}` : undefined} />
+      <EntêteÉcran surtitre="stratégie" titre={nomDeLÉcran ?? "Où en êtes-vous"} état={synthèse?.mois ? `synthèse ${libelléDePériode(synthèse.mois.période)}` : undefined} />
       {synthèse?.mois ? (
         <div className="mt-8">
           <MatriceSwot swot={synthèse.mois.swot} lettre={(édition) => lettres.get(édition) ?? null} />

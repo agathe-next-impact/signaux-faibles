@@ -17,7 +17,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 export default async function Calendrier({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'calendrier')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'calendrier')
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
@@ -28,7 +28,7 @@ export default async function Calendrier({ params }: { params: Promise<{ slug: s
 
   return (
     <>
-      <EntêteÉcran surtitre="cette semaine" titre="Ce que nous attendons" état={lue?.fiche ? `${à} échéance${à > 1 ? 's' : ''} en douze mois` : undefined} />
+      <EntêteÉcran surtitre="cette semaine" titre={nomDeLÉcran ?? "Ce que nous attendons"} état={lue?.fiche ? `${à} échéance${à > 1 ? 's' : ''} en douze mois` : undefined} />
       {!lue ? (
         <p className="mt-6 text-ardoise">Le calendrier de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
       ) : !lue.fiche ? (

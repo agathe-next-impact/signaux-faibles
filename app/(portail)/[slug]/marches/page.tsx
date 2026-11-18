@@ -25,7 +25,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 export default async function Marchés({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'marches')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'marches')
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
@@ -33,7 +33,7 @@ export default async function Marchés({ params }: { params: Promise<{ slug: str
 
   return (
     <>
-      <EntêteÉcran surtitre="le marché" titre="Marchés et niches" état={vue ? `trimestre ${libelléDePériode(vue.période)}` : undefined} />
+      <EntêteÉcran surtitre="le marché" titre={nomDeLÉcran ?? "Marchés et niches"} état={vue ? `trimestre ${libelléDePériode(vue.période)}` : undefined} />
       {vue ? <ÉcranDesMarchés vue={vue} /> : <p className="mt-6 text-ardoise">Les mesures de vos marchés ne sont pas encore publiées. Elles paraissent avec la revue de chaque trimestre.</p>}
       <div className="mt-12 flex flex-col gap-2">
         <p>

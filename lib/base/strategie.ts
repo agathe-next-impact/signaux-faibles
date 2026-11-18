@@ -37,6 +37,8 @@ export type OrganisationDesOutils = {
   readonly sujetsDuMarché: string
   /** Les écrans de l'espace masqués au client, tels qu'en base (`lib/domaine/ecrans-de-l-espace.ts` les filtre). */
   readonly écransMasqués: readonly string[]
+  /** Les noms des écrans, tels qu'en base (`nomsDesÉcransConnus` les filtre). */
+  readonly nomsDesÉcrans: Readonly<Record<string, string>>
 }
 
 /**
@@ -61,6 +63,7 @@ export async function organisationPourLesOutils(
         espaceRéorganisé: organisations.espaceRéorganisé,
         sujetsDuMarché: organisations.sujetsDuMarché,
         écransMasqués: organisations.écransMasqués,
+        nomsDesÉcrans: organisations.nomsDesÉcrans,
       })
       .from(organisations)
       .where(and(critère, isNull(organisations.archivéeLe)))
@@ -131,17 +134,18 @@ export async function réglerLesSujetsDuMarché(
 /**
  * Les écrans de l'espace masqués au client (18 novembre 2026). La liste a passé
  * `masquésDuFormulaire` ou `écransMasquésConnus` (`lib/domaine/ecrans-de-l-espace.ts`) :
- * seules des clés connues arrivent ici. Elle remplace la précédente ; rien d'autre ne change.
+ * seules des clés connues arrivent ici. Elle remplace la précédente, comme les noms quand ils sont donnés
+ * (`nomsDuFormulaire`, 18 novembre 2026) ; rien d'autre ne change.
  */
 export async function réglerLesÉcransMasqués(
-  entrée: { readonly slug: string; readonly masqués: readonly string[] },
+  entrée: { readonly slug: string; readonly masqués: readonly string[]; readonly noms?: Readonly<Record<string, string>> },
   db: Base = base(),
   maintenant: Date = new Date(),
 ): Promise<'réglé' | 'organisation-inconnue'> {
   return protéger('réglage des écrans de l’espace', async () => {
     const lignes = await db
       .update(organisations)
-      .set({ écransMasqués: [...entrée.masqués], modifiéeLe: maintenant })
+      .set({ écransMasqués: [...entrée.masqués], ...(entrée.noms ? { nomsDesÉcrans: { ...entrée.noms } } : {}), modifiéeLe: maintenant })
       .where(and(eq(organisations.slug, entrée.slug), isNull(organisations.archivéeLe)))
       .returning({ id: organisations.id })
     return lignes.length > 0 ? 'réglé' : 'organisation-inconnue'

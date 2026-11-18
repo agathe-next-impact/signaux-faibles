@@ -19,7 +19,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 import { tableauDeLEspace } from '@/lib/portail/tableau'
 import { ActivitéDesSemaines, MiniActivité } from '@/components/graphiques-strategie'
 import { cartesDesRubriques } from '@/lib/domaine/tableau-de-bord'
-import { sansLesÉcransMasqués } from '@/lib/domaine/ecrans-de-l-espace'
+import { casesRenommées, sansLesÉcransMasqués } from '@/lib/domaine/ecrans-de-l-espace'
 import { normaliserTitre } from '@/lib/domaine/strategie'
 
 /**
@@ -69,11 +69,14 @@ export default async function VueDEnsemble({
 
   const semaines = await semainesDeLEspace(accès)
   const courante = semaines[0]
+  // Le nom que l'opératrice a donné à la vue d'ensemble (18 novembre 2026) : la
+  // lecture du rail, mémoïsée, sans requête de plus.
+  const nomDeLaVue = (await espaceDeLOrganisation(accès.organisationId))?.nomsDesÉcrans['vue-d-ensemble'] ?? null
 
   if (!courante) {
     return (
       <>
-        <EntêteÉcran surtitre="veille personnalisée" titre="Vue d’ensemble" />
+        <EntêteÉcran surtitre="veille personnalisée" titre={nomDeLaVue ?? 'Vue d’ensemble'} />
         <p className="mt-8 text-ardoise">
           Dès que la première lettre sera envoyée, elle apparaîtra ici. Si vous en avez
           déjà reçu, dites-le nous : votre espace n’est peut-être pas encore relié à vos
@@ -140,7 +143,7 @@ export default async function VueDEnsemble({
   // rubrique dont tous les écrans sont masqués n'a plus de carte ; l'opératrice voit tout.
   const masqués = accès.tousLesEspaces ? [] : (espace?.écransMasqués ?? [])
   const cartes = tableau
-    ? cartesDesRubriques(sansLesÉcransMasqués(accès.slug, tableau.cases, masqués), tableau.parRubrique).filter((carte) => carte.écrans.length > 0)
+    ? cartesDesRubriques(casesRenommées(accès.slug, sansLesÉcransMasqués(accès.slug, tableau.cases, masqués), espace?.nomsDesÉcrans ?? {}), tableau.parRubrique).filter((carte) => carte.écrans.length > 0)
     : null
   const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
 
@@ -170,7 +173,7 @@ export default async function VueDEnsemble({
     <>
       <EntêteÉcran
         surtitre="veille personnalisée"
-        titre="Vue d’ensemble"
+        titre={nomDeLaVue ?? 'Vue d’ensemble'}
         état={`à jour · ${courante.libellé}`}
       />
 

@@ -3,9 +3,9 @@ import Link from 'next/link'
 import { lireLesÉcransDUneOrganisation } from '@/lib/auth/appartenance'
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { Panneau } from '@/components/coquille'
-import { bouton, MessageDeStatut } from '@/components/gestion-operatrice'
+import { bouton, champ, MessageDeStatut } from '@/components/gestion-operatrice'
 import { Logo } from '@/components/marque'
-import { ÉCRANS_DE_L_ESPACE } from '@/lib/domaine/ecrans-de-l-espace'
+import { NOM_D_ÉCRAN_MAX, ÉCRANS_DE_L_ESPACE } from '@/lib/domaine/ecrans-de-l-espace'
 import { réglerLesÉcransDepuisLaFiche } from '@/lib/portail/gestion-actions'
 
 export const metadata: Metadata = { title: 'Écrans de l’espace — signauxfaibles' }
@@ -20,6 +20,9 @@ export const metadata: Metadata = { title: 'Écrans de l’espace — signauxfai
  * l'ouvrir depuis l'espace, sous un bandeau qui le nomme. La vue d'ensemble ne
  * se masque pas : c'est là que mènent la fin d'essai et chaque écran refusé.
  *
+ * Depuis le même jour, chaque écran peut aussi être renommé pour l'organisation (un
+ * champ par écran, vide pour garder le nom par défaut).
+ *
  * La garde est dans `lireLesÉcransDUneOrganisation`, avant toute lecture ; le
  * geste passe par `réglerLesÉcransDepuisLaFiche`, privilège d'abord.
  */
@@ -27,6 +30,7 @@ export const instant = false
 
 const MESSAGES: Record<string, string> = {
   'écrans-réglés': 'Écrans enregistrés : le client voit l’espace ainsi dès sa prochaine page.',
+  'nom-trop-long': `Un nom dépasse ${NOM_D_ÉCRAN_MAX} caractères : rien n’a changé.`,
   inconnue: 'Organisation introuvable ou archivée : rien n’a changé.',
   échec: 'La base n’a pas répondu : rien n’a changé.',
 }
@@ -72,7 +76,9 @@ export default async function ÉcransDeLEspace({
         <form action={réglerLesÉcransDepuisLaFiche} className="flex flex-col gap-8">
           <input type="hidden" name="slug" value={écrans.slug} />
           <p className="text-ardoise">
-            Un écran coché est montré au client. Décoché, il quitte le rail, le menu de pied et sa carte de la vue
+            Chaque écran peut porter un nom propre à cette organisation, {NOM_D_ÉCRAN_MAX} caractères au plus : il remplace
+            le libellé du rail et du menu mobile, le nom sur la carte de la vue d’ensemble et le titre de l’écran. Un champ
+            vide garde le nom par défaut, affiché en grisé. Un écran coché est montré au client. Décoché, il quitte le rail, le menu de pied et sa carte de la vue
             d’ensemble, et son adresse ne s’ouvre plus pour le client. Vous continuez de l’ouvrir depuis l’espace, où un
             bandeau le signale. Rien n’est supprimé : recocher l’écran le rend tel quel.{' '}
             {écrans.réorganisé
@@ -87,6 +93,7 @@ export default async function ÉcransDeLEspace({
                 {ÉCRANS_DE_L_ESPACE.filter((é) => é.rubrique === rubrique).map((é) => {
                   const actif = !é.désactivable || !(écrans.masqués as readonly string[]).includes(é.clé)
                   const libellé = é.clé === 'concurrents' ? écrans.marché.écran : é.clé === 'recommandations' && écrans.réorganisé ? 'Options' : é.clé === 'recommandations' ? 'Recommandations' : é.libellé
+                  const nom = écrans.noms[é.clé] ?? ''
                   const existe = écrans.réorganisé || é.classique
                   return (
                     <li key={é.clé} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -100,6 +107,17 @@ export default async function ÉcransDeLEspace({
                           className="size-4 accent-encre"
                         />
                         <span>{libellé}</span>
+                      </label>
+                      <label className="flex flex-1 basis-56 items-center gap-2">
+                        <span className="sr-only">Nom de l’écran « {libellé} » pour cette organisation</span>
+                        <input
+                          type="text"
+                          name={`nom:${é.clé}`}
+                          defaultValue={nom}
+                          placeholder={libellé}
+                          maxLength={NOM_D_ÉCRAN_MAX}
+                          className={`${champ} w-full`}
+                        />
                       </label>
                       <span className="flex flex-wrap items-center gap-3">
                         <span className="label-mono text-ardoise">

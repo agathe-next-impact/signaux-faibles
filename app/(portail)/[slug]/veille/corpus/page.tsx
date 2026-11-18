@@ -35,7 +35,7 @@ function Liste({ noms, slug }: { noms: readonly string[]; slug: string }) {
 export default async function Corpus({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'corpus')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'corpus')
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
@@ -49,7 +49,7 @@ export default async function Corpus({ params }: { params: Promise<{ slug: strin
 
   return (
     <>
-      <EntêteÉcran surtitre="votre veille" titre="Qui nous suivons" état={grille ? `${grille.entités.length} entités` : undefined} />
+      <EntêteÉcran surtitre="votre veille" titre={nomDeLÉcran ?? "Qui nous suivons"} état={grille ? `${grille.entités.length} entités` : undefined} />
       {!grille ? (
         <p className="mt-6 text-ardoise">Le corpus de votre veille ne peut pas être affiché pour l’instant. Réessayez dans quelques minutes.</p>
       ) : (

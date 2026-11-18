@@ -852,9 +852,19 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         // Une clé écrite à la main en base n'a aucun effet.
         await db.update(organisations).set({ écransMasqués: ['vue-d-ensemble', 'inexistant', 'pestel'] }).where(eq(organisations.slug, 'infralliance'))
         expect((await espaceDeLOrganisation(REGISTRE, db))?.écransMasqués).toEqual(['pestel'])
-        // Tout réactiver.
-        expect(await réglerLesÉcrans({ slug: 'infralliance', masqués: [] }, db)).toBe('réglé')
-        expect((await espaceDeLOrganisation(REGISTRE, db))?.écransMasqués).toEqual([])
+        // Les noms (18 novembre 2026) : réglés avec les masqués, lus par le rail et l'écran de l'opératrice.
+        expect((await espaceDeLOrganisation(REGISTRE, db))?.nomsDesÉcrans).toEqual({})
+        expect(await réglerLesÉcrans({ slug: 'infralliance', masqués: ['pestel'], noms: { marches: 'Nos marchés' } }, db)).toBe('réglé')
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toMatchObject({ écransMasqués: ['pestel'], nomsDesÉcrans: { marches: 'Nos marchés' } })
+        expect((await écransDUneOrganisation('infralliance', db))?.noms).toEqual({ marches: 'Nos marchés' })
+        // Sans noms donnés, ils restent ; un nom invalide écrit à la main est ignoré.
+        expect(await réglerLesÉcrans({ slug: 'infralliance', masqués: ['pestel'] }, db)).toBe('réglé')
+        expect((await espaceDeLOrganisation(REGISTRE, db))?.nomsDesÉcrans).toEqual({ marches: 'Nos marchés' })
+        await db.update(organisations).set({ nomsDesÉcrans: { marches: 'x'.repeat(41), pirate: 'y', forces: 'Rapports de force' } }).where(eq(organisations.slug, 'infralliance'))
+        expect((await espaceDeLOrganisation(REGISTRE, db))?.nomsDesÉcrans).toEqual({ forces: 'Rapports de force' })
+        // Tout réactiver, tout renommer par défaut.
+        expect(await réglerLesÉcrans({ slug: 'infralliance', masqués: [], noms: {} }, db)).toBe('réglé')
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toMatchObject({ écransMasqués: [], nomsDesÉcrans: {} })
       } finally {
         vi.unstubAllEnvs()
       }
