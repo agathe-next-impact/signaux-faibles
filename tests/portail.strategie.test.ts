@@ -43,11 +43,13 @@ const {
   recevoirLesÉtiquettes,
   réglerLEspace,
   réglerLePilote,
+  réglerLesÉcrans,
+  écransDUneOrganisation,
   validerLaVersion,
 } = await import('@/lib/portail/strategie')
 const { construireDocument } = await import('@/lib/domaine/document')
 const { lireLaSynthèse, organisationPourLesOutils, posterLaGrille, réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
-const { élémentsSynthèse } = await import('@/lib/base/schema')
+const { organisations, élémentsSynthèse } = await import('@/lib/base/schema')
 
 const REGISTRE = '1f2fe829ce71802a9c3bd1f4e8a7b6c5'
 const AUTRE_REGISTRE = '2f2fe829ce71802a9c3bd1f4e8a7b6c5'
@@ -828,6 +830,31 @@ describe('recevoirLaSynthèse et lireLaSynthèseDuPilote', () => {
         vi.stubEnv('SOURCE_ACCES', 'double')
         expect(await réglerLEspace({ slug: 'infralliance', actif: false }, db)).toBe('réglé')
         expect(await concurrentsDeLEspace({ registre: REGISTRE }, db)).toBeNull()
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
+    it('écrans masqués : rien par défaut, réglés par slug, lus par le rail dans les deux espaces, jamais une clé inconnue', async () => {
+      vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+      vi.stubEnv('SOURCE_ACCES', 'double')
+      try {
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toMatchObject({ réorganisé: false, écransMasqués: [] })
+        expect(await écransDUneOrganisation('infralliance', db)).toMatchObject({ slug: 'infralliance', réorganisé: false, masqués: [] })
+        expect(await réglerLesÉcrans({ slug: 'inconnue', masqués: ['marches'] }, db)).toBe('organisation-inconnue')
+        expect(await réglerLesÉcrans({ slug: 'infralliance', masqués: ['indicateurs', 'marches'] }, db)).toBe('réglé')
+        // Espace à sept écrans : le réglage est lu aussi, dans l'ordre du rail.
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toMatchObject({ réorganisé: false, écransMasqués: ['marches', 'indicateurs'] })
+        await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+        await réglerLEspace({ slug: 'infralliance', actif: true }, db)
+        expect(await espaceDeLOrganisation(REGISTRE, db)).toMatchObject({ réorganisé: true, écransMasqués: ['marches', 'indicateurs'] })
+        expect(await écransDUneOrganisation('infralliance', db)).toMatchObject({ réorganisé: true, masqués: ['marches', 'indicateurs'] })
+        // Une clé écrite à la main en base n'a aucun effet.
+        await db.update(organisations).set({ écransMasqués: ['vue-d-ensemble', 'inexistant', 'pestel'] }).where(eq(organisations.slug, 'infralliance'))
+        expect((await espaceDeLOrganisation(REGISTRE, db))?.écransMasqués).toEqual(['pestel'])
+        // Tout réactiver.
+        expect(await réglerLesÉcrans({ slug: 'infralliance', masqués: [] }, db)).toBe('réglé')
+        expect((await espaceDeLOrganisation(REGISTRE, db))?.écransMasqués).toEqual([])
       } finally {
         vi.unstubAllEnvs()
       }

@@ -2,6 +2,7 @@ import type { Onglet } from '@/components/coquille'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { regrouperParSemaine, type Semaine } from '@/lib/domaine/semaines'
 import type { VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
+import { sansLesÉcransMasqués, type ÉcranDeLEspace } from '@/lib/domaine/ecrans-de-l-espace'
 import { lireBlocsDeLÉdition, listerÉditionsPubliées, listerÉditionsÀPrévisualiser, type Édition } from '@/lib/documents'
 
 /**
@@ -120,12 +121,26 @@ export async function dernièresNotes(
       })),
   )
 }
-/** Les écrans de l'espace client, dans l'ordre du rail. */
+/**
+ * Les écrans de l'espace client, dans l'ordre du rail, sans ceux que
+ * l'opératrice a masqués (`masqués`, 18 novembre 2026 ; vide pour elle-même,
+ * qui voit tout).
+ */
 export function ongletsDe(
   slug: string,
   comptes: { lettres: number; recommandations: number; archives: number },
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
   espace: { readonly réorganisé: boolean; readonly marché?: Pick<VocabulaireDuMarché, 'écran' | 'écranCourt'>; readonly appels?: boolean } = { réorganisé: false },
+  masqués: readonly ÉcranDeLEspace[] = [],
+): Onglet[] {
+  return sansLesÉcransMasqués(slug, tousLesOnglets(slug, comptes, lecture, espace), masqués)
+}
+
+function tousLesOnglets(
+  slug: string,
+  comptes: { lettres: number; recommandations: number; archives: number },
+  lecture: 'complète' | 'essentiel' | 'aucune',
+  espace: { readonly réorganisé: boolean; readonly marché?: Pick<VocabulaireDuMarché, 'écran' | 'écranCourt'>; readonly appels?: boolean },
 ): Onglet[] {
   // L'espace réorganisé (lots 2, 3, 5 et 6, 30 octobre 2026, pilote sur L'Hermitage) :
   // un écran par outil, groupés en rubriques ; ailleurs, le rail garde ses sept écrans.

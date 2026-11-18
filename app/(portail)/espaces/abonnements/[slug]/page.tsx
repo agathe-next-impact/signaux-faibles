@@ -29,6 +29,7 @@ import {
   type Statut,
 } from '@/components/gestion-operatrice'
 import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER } from '@/lib/domaine/strategie'
+import { libellésDesÉcrans, écransMasquésConnus } from '@/lib/domaine/ecrans-de-l-espace'
 import {
   basculerLEspace,
   réglerLesSujetsDuMarchéDepuisLaFiche,
@@ -217,6 +218,10 @@ export default async function GérerUneOrganisation({
           ·{' '}
           <Link href={`/${slug}`} className="text-encre underline underline-offset-2">
             Ouvrir l’espace
+          </Link>{' '}
+          ·{' '}
+          <Link href={`/espaces/abonnements/${encodeURIComponent(slug)}/ecrans`} className="text-encre underline underline-offset-2">
+            Écrans de l’espace
           </Link>
         </p>
       </header>
@@ -638,6 +643,22 @@ function Gestion({
             </details>
           </div>
         )}
+      </Section>
+
+      <Section id="ecrans" titre="Écrans de l’espace" statut={statut}>
+        <p className="text-encre">
+          {(() => {
+            const masqués = libellésDesÉcrans(écransMasquésConnus(organisation.écransMasqués))
+            return masqués.length === 0
+              ? 'Tous les écrans sont montrés au client.'
+              : `${masqués.length === 1 ? 'Un écran masqué' : `${masqués.length} écrans masqués`} au client : ${masqués.join(', ')}.`
+          })()}
+        </p>
+        <p>
+          <Link href={`/espaces/abonnements/${encodeURIComponent(slug)}/ecrans`} className={bouton}>
+            Activer ou désactiver des écrans
+          </Link>
+        </p>
       </Section>
 
       <Section id="courriers" titre={`Courriers, ${JOURS_DU_JOURNAL} derniers jours`} statut={statut}>

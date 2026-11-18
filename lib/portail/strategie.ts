@@ -25,6 +25,7 @@ import {
   réglerLEspaceRéorganisé,
   réglerLesOutilsStratégiques,
   réglerLesSujetsDuMarché,
+  réglerLesÉcransMasqués,
   synthèsePrécédente,
   validerLaGrille,
   étatDeLÉtiquetage,
@@ -34,6 +35,7 @@ import {
 } from '@/lib/base/strategie'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { vocabulaireDuMarché, type SujetsDuMarché, type VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
+import { écransMasquésConnus, type ÉcranDésactivable } from '@/lib/domaine/ecrans-de-l-espace'
 import { calculer, type Calculs, type Dépendances } from '@/lib/portail/calculs'
 import {
   activitéParRubrique,
@@ -1194,15 +1196,60 @@ export async function réglerLeMarché(
   return réglerLesSujetsDuMarché(entrée, db)
 }
 
+/**
+ * Les écrans de l'espace masqués au client (18 novembre 2026), depuis l'écran
+ * d'activation de l'opératrice (`/espaces/abonnements/[slug]/ecrans`). La liste
+ * remplace la précédente ; une clé inconnue a déjà été écartée par le domaine.
+ */
+export async function réglerLesÉcrans(
+  entrée: { readonly slug: string; readonly masqués: readonly ÉcranDésactivable[] },
+  db?: Base,
+): Promise<'réglé' | 'organisation-inconnue'> {
+  return réglerLesÉcransMasqués({ slug: entrée.slug, masqués: écransMasquésConnus(entrée.masqués) }, db)
+}
+
+/** Ce que l'écran d'activation des écrans de l'opératrice lit d'une organisation. */
+export type ÉcransDUneOrganisation = {
+  readonly slug: string
+  readonly nom: string
+  readonly réorganisé: boolean
+  readonly marché: VocabulaireDuMarché
+  readonly masqués: readonly ÉcranDésactivable[]
+}
+
+/**
+ * L'organisation par son slug, pour l'écran d'activation des écrans
+ * (`/espaces/abonnements/[slug]/ecrans`). Seul appelant : `lireLesÉcransDUneOrganisation`
+ * (`lib/auth/appartenance.ts`), qui vérifie le privilège avant. `null` pour un
+ * slug inconnu ou archivé.
+ */
+export async function écransDUneOrganisation(slug: string, db?: Base): Promise<ÉcransDUneOrganisation | null> {
+  const organisation = await organisationPourLesOutils({ slug }, db)
+  if (!organisation) return null
+  return {
+    slug: organisation.slug,
+    nom: organisation.nom,
+    réorganisé: organisation.outilsStratégiques && organisation.espaceRéorganisé,
+    marché: vocabulaireDuMarché(organisation.sujetsDuMarché),
+    masqués: écransMasquésConnus(organisation.écransMasqués),
+  }
+}
+
 export type EspaceDeLOrganisation = {
   readonly réorganisé: boolean
+  /**
+   * Les écrans masqués au client (18 novembre 2026), dans l'espace réorganisé
+   * comme dans l'espace à sept écrans. Vide quand rien n'est masqué ; et
+   * l'espace entier est `null` dans le doute, où rien n'est masqué non plus.
+   */
+  readonly écransMasqués: readonly ÉcranDésactivable[]
   /** Les concurrents de la grille, l'organisation exclue : ce qu'« Acteurs » laisse à « Concurrents ». */
   readonly concurrents: readonly string[]
   /** Les mots de l'écran « Concurrents » : ses concurrents, ou les entreprises de son territoire. */
   readonly marché: VocabulaireDuMarché
 }
 
-const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, concurrents: [], marché: vocabulaireDuMarché(null) }
+const NON_RÉORGANISÉ: EspaceDeLOrganisation = { réorganisé: false, écransMasqués: [], concurrents: [], marché: vocabulaireDuMarché(null) }
 
 /**
  * L'espace de l'organisation de la session est-il réorganisé ? Le rail le
@@ -1223,10 +1270,13 @@ const espaceMémoïsé = cache(async (registre: string, db?: Base): Promise<Espa
     'lecture de l’espace réorganisé',
     async () => {
       const organisation = await organisationDuRegistre(registre, db)
-      if (!organisation?.outilsStratégiques || !organisation.espaceRéorganisé) return NON_RÉORGANISÉ
+      if (!organisation) return NON_RÉORGANISÉ
+      const écransMasqués = écransMasquésConnus(organisation.écransMasqués)
+      if (!organisation.outilsStratégiques || !organisation.espaceRéorganisé) return { ...NON_RÉORGANISÉ, écransMasqués }
       const grille = await lireLaGrille(organisation.id, db)
       return {
         réorganisé: true,
+        écransMasqués,
         concurrents: grille ? nomsDesConcurrents(grille.grille, organisation.nom) : [],
         marché: vocabulaireDuMarché(organisation.sujetsDuMarché),
       }

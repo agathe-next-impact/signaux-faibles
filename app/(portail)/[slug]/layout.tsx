@@ -7,6 +7,7 @@ import { COOKIE_DU_RAIL } from '@/lib/portail/rail'
 import { éditionsDAppelsDeLEspace, ongletDesAppels } from '@/lib/portail/appels'
 import { ongletsDe, semainesDeLEspace } from '@/lib/portail/semaine'
 import { espaceDeLOrganisation } from '@/lib/portail/strategie'
+import { libellésDesÉcrans } from '@/lib/domaine/ecrans-de-l-espace'
 
 /**
  * Le cadre de l'espace client : le rail latéral et les cinq écrans.
@@ -86,6 +87,11 @@ async function Garde({
   // jamais d'édition en aperçu : le bandeau ne peut pas paraître chez lui.
   const enAperçu = semaines.reduce((total, semaine) => total + semaine.éditions.filter((é) => é.aperçu).length, 0)
 
+  // Les écrans masqués par l'opératrice (18 novembre 2026) quittent le rail du
+  // client ; elle-même les garde, pour les prévisualiser, et le bandeau les nomme.
+  const masqués = espace?.écransMasqués ?? []
+  const masquésDuRail = accès.tousLesEspaces ? [] : masqués
+
   const recommandations = semaines.filter((semaine) =>
     semaine.éditions.some((édition) => édition.actionDeLaSemaine.length > 0),
   ).length
@@ -103,8 +109,15 @@ async function Garde({
         lettres: espace?.réorganisé ? (semaines[0]?.éditions.length ?? 0) : semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
         recommandations,
         archives: semaines.length,
-      }, lecture, { réorganisé: espace?.réorganisé ?? false, marché: espace?.marché, appels: ongletDesAppels(éditionsDAppels, semaines) })}
+      }, lecture, { réorganisé: espace?.réorganisé ?? false, marché: espace?.marché, appels: ongletDesAppels(éditionsDAppels, semaines) }, masquésDuRail)}
     >
+      {accès.tousLesEspaces && masqués.length > 0 ? (
+        <p role="note" className="mb-6 border border-gris-ligne bg-fond-ardoise p-4 text-encre">
+          <span className="label-mono text-ardoise">écrans masqués</span>{' '}
+          {masqués.length === 1 ? 'Un écran est masqué' : `${masqués.length} écrans sont masqués`} au client, visibles par l’opératrice
+          seulement : {libellésDesÉcrans(masqués).join(', ')}.
+        </p>
+      ) : null}
       {enAperçu > 0 ? (
         <p role="note" className="mb-6 border border-gris-ligne bg-fond-ardoise p-4 text-encre">
           <span className="label-mono text-ardoise">aperçu</span>{' '}

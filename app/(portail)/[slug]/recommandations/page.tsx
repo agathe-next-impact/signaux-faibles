@@ -1,4 +1,5 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
+import { exigerLÉcran } from '@/lib/portail/ecrans'
 import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { Repliable } from '@/components/repliable'
 import { semainesDeLEspace } from '@/lib/portail/semaine'
@@ -21,6 +22,7 @@ export default async function Recommandations({
 }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
+  await exigerLÉcran(accès, 'recommandations')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 3) : cet écran devient « Options », l'option retenue

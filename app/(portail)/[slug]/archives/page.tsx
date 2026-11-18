@@ -1,4 +1,5 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
+import { exigerLÉcran } from '@/lib/portail/ecrans'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { semainesDeLEspace } from '@/lib/portail/semaine'
 
@@ -13,6 +14,7 @@ import { semainesDeLEspace } from '@/lib/portail/semaine'
 export default async function Archives({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
+  await exigerLÉcran(accès, 'archives')
 
   const semaines = await semainesDeLEspace(accès)
 

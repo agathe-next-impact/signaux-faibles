@@ -131,6 +131,8 @@ describe('outils stratégiques en base', () => {
         outilsStratégiques: false,
         espaceRéorganisé: false,
         sujetsDuMarché: 'concurrents',
+        // Aucun écran masqué par défaut (migration 0031) : l'espace reste celui d'avant.
+        écransMasqués: [],
       })
       expect(await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)).toBe('réglé')
       expect((await organisationPourLesOutils({ slug: 'infralliance' }, db))!.outilsStratégiques).toBe(true)

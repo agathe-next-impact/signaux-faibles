@@ -161,6 +161,14 @@ export const organisations = pgTable(
    */
   sujetsDuMarché: text('sujets_du_marche').notNull().default('concurrents'),
   /**
+   * Les écrans de l'espace client que l'opératrice a masqués (18 novembre 2026,
+   * `lib/domaine/ecrans-de-l-espace.ts`) : un écran masqué quitte le rail et la
+   * vue d'ensemble, et son adresse répond 404 au client ; l'opératrice le voit
+   * toujours. Vide par défaut : tout ce qui s'affichait reste affiché. Une clé
+   * inconnue est ignorée à la lecture. Posé depuis `/espaces/abonnements/[slug]/ecrans`.
+   */
+  écransMasqués: text('ecrans_masques').array().notNull().default(sql`'{}'::text[]`),
+  /**
    * L'aperçu avant envoi (1er novembre 2026, décision de l'opératrice) : tant
    * que vrai, rien ne part au client sans son geste. `POST /api/acces/ouvrir`
    * refuse (`apercu-avant-envoi`) : le lien part de la fiche de l'organisation ;

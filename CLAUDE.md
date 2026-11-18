@@ -1049,6 +1049,22 @@ pas, son calendrier reste au registre. Le réglage « relecture » (`relecture_r
 détourne que les **lettres envoyées par le portail** (`lib/portail/parution.ts`,
 `envoi-des-lettres.ts`), plus les courriers d'essai, brouillons depuis le 23 octobre : son
 libellé le dit désormais.
+**Écrans de l'espace activables** (18 novembre 2026, demande de l'opératrice : « un écran
+d'activation de chaque écran client ») : `/espaces/abonnements/[slug]/ecrans` (lien depuis la
+fiche, section « Écrans de l'espace ») porte une case par écran, rangée par rubrique ; décochée,
+l'écran quitte le rail, le menu de pied et sa carte de la vue d'ensemble, et son adresse (détails
+compris) répond 404 au client. La liste des **masqués** est dans `organisations.ecrans_masques`
+(migration 0031, vide par défaut : rien ne change pour une organisation existante, un écran ajouté
+plus tard est actif) ; clés, libellés et adresses dans `lib/domaine/ecrans-de-l-espace.ts` seul,
+une clé inconnue ignorée ; la vue d'ensemble ne se masque pas. Chaque page de `/[slug]` (hors vue
+d'ensemble, lecture d'une lettre, « Mon abonnement », « Vos recommandations ») appelle
+`exigerLÉcran` (`lib/portail/ecrans.ts`) après le droit de lecture, garde d'architecture ; la
+lecture est celle du rail (`espaceDeLOrganisation`, mémoïsée), donc `null` dans le doute et rien
+de masqué. L'opératrice (privilège « Tous les espaces ») voit et ouvre tout, sous un bandeau qui
+nomme les écrans masqués. Seul écrivain `réglerLesÉcransMasqués` (`lib/base/strategie.ts`), par
+`réglerLesÉcrans` et l'action `réglerLesÉcransDepuisLaFiche` (`exigerOpérateur` d'abord) ; lecture
+de l'écran par `lireLesÉcransDUneOrganisation`, garde dans la fonction. Les liens internes d'un
+écran vers un écran masqué (« Voir les forces du marché »…) restent et répondent 404 au client.
 **Suivi des onboardings** (1er novembre 2026, lot 1 de
 `docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
 portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une

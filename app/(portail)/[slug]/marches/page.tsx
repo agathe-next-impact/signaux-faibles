@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
+import { exigerLÉcran } from '@/lib/portail/ecrans'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { ÉcranDesMarchés } from '@/components/marches-ecran'
 import { libelléDePériode } from '@/lib/domaine/strategie-vues'
@@ -24,6 +25,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 export default async function Marchés({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
+  await exigerLÉcran(accès, 'marches')
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()

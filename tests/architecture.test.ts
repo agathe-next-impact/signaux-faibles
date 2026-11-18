@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { écranDeLAdresse } from '@/lib/domaine/ecrans-de-l-espace'
 
 /**
  * Garde d'architecture.
@@ -550,6 +551,8 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       'app/(portail)/[slug]/veille/sources/page.tsx',
       'app/(portail)/[slug]/veille/themes/[axe]/page.tsx',
       'app/(portail)/[slug]/veille/themes/page.tsx',
+      // La garde des écrans masqués (18 novembre 2026) relit l'espace du rail, mémoïsé.
+      'lib/portail/ecrans.ts',
       'lib/portail/strategie.ts',
     ])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'strategie.ts'), 'utf8')
@@ -1030,6 +1033,9 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
   it('la gestion d’une organisation est gardée par le privilège opérateur, avant toute lecture et toute écriture', () => {
     expect(appelants('gestionDUneOrganisation')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
     expect(appelants('santéDesEspaces')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/gestion.ts'])
+    // L'écran d'activation des écrans de l'espace (18 novembre 2026).
+    expect(appelants('écransDUneOrganisation')).toEqual(['lib/auth/appartenance.ts', 'lib/portail/strategie.ts'])
+    expect(appelants('réglerLesÉcrans')).toEqual(['lib/portail/gestion-actions.ts', 'lib/portail/strategie.ts'])
     // L'ouverture de l'espace depuis l'onboarding (lot 4, 1er novembre 2026) lit
     // les lecteurs actifs derrière `exigerOpérateur`, comme `adresseDUnLecteur`.
     expect(appelants('lecteursÀGérer')).toEqual(['lib/base/gestion.ts', 'lib/portail/gestion-actions.ts', 'lib/portail/gestion.ts'])
@@ -1041,6 +1047,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     for (const [fonction, lecture] of [
       ['export async function lireLaGestionDUneOrganisation', 'gestionDUneOrganisation('],
       ['export async function lireLaSantéDesEspaces', 'santéDesEspaces('],
+      ['export async function lireLesÉcransDUneOrganisation', 'écransDUneOrganisation('],
     ] as const) {
       const corps = garde.slice(garde.indexOf(fonction))
       expect(corps.indexOf('exigerOpérateur()'), fonction).toBeGreaterThan(0)
@@ -1059,6 +1066,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
       ['export async function réactiverUnLecteur', 'changerActivation('],
       ['export async function publierLaLettre', 'publierEtEnvoyer('],
       ['export async function renvoyerUnCourrier', 'renvoyerUnCourrierCommercial('],
+      ['export async function réglerLesÉcransDepuisLaFiche', 'réglerLesÉcrans('],
     ] as const) {
       const corps = actions.slice(actions.indexOf(action))
       expect(corps.indexOf('exigerOpérateur()'), action).toBeGreaterThan(0)
@@ -1647,6 +1655,26 @@ describe('chaque écran de l’espace obéit au droit de lecture', () => {
       const source = readFileSync(join(racine, ouverte), 'utf8')
       expect(source, ouverte).toContain('exigerLecture(slug)')
       expect(source, ouverte).not.toContain('exigerAccès(')
+    }
+  })
+
+  // Les écrans que l'opératrice peut masquer (18 novembre 2026) : chaque page
+  // garde son écran, celui que désigne son adresse, après le droit de lecture.
+  // Restent hors de la garde la vue d'ensemble (jamais masquée), la lecture d'une
+  // lettre (atteinte aussi des archives et de l'accueil), « Mon abonnement » et
+  // « Vos recommandations », qui ne sont pas des écrans de veille.
+  it('chaque écran masquable garde son adresse par exigerLÉcran, après le droit de lecture', () => {
+    const horsGarde = ['page.tsx', join('lettres', '[edition]', 'page.tsx'), join('abonnement', 'page.tsx'), join('prescripteur', 'page.tsx')]
+    const gardées = pages.filter((p) => !horsGarde.includes(p.slice(racine.length + 1)))
+    expect(gardées.length).toBeGreaterThanOrEqual(24)
+    for (const page of gardées) {
+      const dossier = page.slice(racine.length + 1, -'/page.tsx'.length).split(sep).join('/')
+      const écran = écranDeLAdresse('s', `/s/${dossier}`)
+      expect(écran, page).not.toBeNull()
+      const source = readFileSync(page, 'utf8')
+      const garde = source.indexOf(`await exigerLÉcran(accès, '${écran}')`)
+      expect(garde, page).toBeGreaterThan(-1)
+      expect(garde, page).toBeGreaterThan(source.search(/exigerLecture(?:Complète)?\(slug\)/))
     }
   })
 
