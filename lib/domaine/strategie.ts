@@ -766,7 +766,7 @@ export type SynthèseProposée = {
 }
 
 /** Un fait étiqueté de l'organisation, tel que la base le connaît. */
-export type FaitConnu = { readonly date: string; readonly entite: string | null; readonly édition?: string }
+export type FaitConnu = { readonly date: string; readonly entite: string | null; readonly édition?: string; readonly empreinte?: string }
 
 export type ContexteDeSynthèse = {
   readonly faits: ReadonlyMap<string, FaitConnu>

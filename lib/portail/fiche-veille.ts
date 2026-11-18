@@ -1,6 +1,8 @@
 import type { Base } from '@/lib/base/client'
 import { dernièreFiche, enregistrerLaFiche, fichePubliée, réglerLaPublicationDeLaFiche, type ÉtatDeLaFiche } from '@/lib/base/fiche-veille'
-import { lireLaGrille, organisationPourLesOutils, positionsPubliées } from '@/lib/base/strategie'
+import { dernièreSynthèsePubliée, faitsCités, faitsDUneEntité, lireLaGrille, organisationPourLesOutils, positionsPubliées } from '@/lib/base/strategie'
+import { acteurDuSegment, nomsDesActeurs, vueDeLActeur, type FicheDeLActeur, type SynthèseLue } from '@/lib/domaine/fiche-acteur'
+import { vueDeLaSwot, type PositionDatée } from '@/lib/domaine/strategie-vues'
 import {
   contrôlerLaFiche,
   messageDeRepriseDeLaFiche,
@@ -10,7 +12,7 @@ import {
   type PrésentationDEntité,
   type RefusDeFiche,
 } from '@/lib/domaine/fiche-veille'
-import type { Grille } from '@/lib/domaine/strategie'
+import { normaliserTitre, type Grille } from '@/lib/domaine/strategie'
 import { bornée, organisationDuRegistre } from '@/lib/portail/strategie'
 
 /**
@@ -144,6 +146,73 @@ export async function présentationDeLEntité(
       })),
       organisation.nom,
     )
+    return vue ? { sorte: 'fiche', fiche: vue } : { sorte: 'inconnu' }
+  })
+}
+
+export type ActeurLu = { readonly sorte: 'fiche'; readonly fiche: FicheDeLActeur } | { readonly sorte: 'inconnu' }
+
+/**
+ * L'écran d'un acteur (18 novembre 2026, `lib/domaine/fiche-acteur.ts`) : ses
+ * positions publiées de Mendelow et de la carte sur toutes les périodes, les
+ * faits qu'elles citent et ceux étiquetés à son nom, sa présentation de la fiche
+ * de veille **publiée**, et les énoncés de la dernière synthèse mensuelle et
+ * trimestrielle publiées qui le concernent. Pour toute organisation du pilote
+ * des outils, espace réorganisé ou non. Le segment n'est comparé qu'aux noms de
+ * l'organisation de la session (règle 2) : inconnu, `inconnu`, et rien venu de
+ * l'URL n'atteint la base. Aucune lecture Notion ; `null` hors du pilote ou dans
+ * le doute, l'écran retombe alors sur le dossier de même nom s'il y en a un.
+ */
+export async function ficheDeLActeur(
+  entrée: { readonly registre: string; readonly segment: string; readonly numéros: ReadonlyMap<string, number> },
+  db?: Base,
+): Promise<ActeurLu | null> {
+  return bornée('lecture d’une fiche d’acteur', async () => {
+    const organisation = await organisationDuRegistre(entrée.registre, db)
+    if (!organisation?.outilsStratégiques) return null
+    const [grilleLue, mendelow, groupes] = await Promise.all([
+      lireLaGrille(organisation.id, db),
+      positionsPubliées({ organisationId: organisation.id, outil: 'mendelow' }, db),
+      positionsPubliées({ organisationId: organisation.id, outil: 'groupes' }, db),
+    ])
+    const grille: Grille | null = grilleLue?.grille ?? null
+    const positions: PositionDatée[] = [...mendelow, ...groupes].map((p) => ({
+      outil: p.outil,
+      sujet: p.sujet,
+      axe: p.axe,
+      cran: p.cran,
+      nonSuivi: p.nonSuivi,
+      tendance: p.tendance,
+      faits: p.faits,
+      origine: p.origine,
+      période: p.période,
+      référence: p.référence,
+    }))
+    const nom = acteurDuSegment(nomsDesActeurs({ positions, grille, organisation: organisation.nom }), entrée.segment)
+    if (!nom) return { sorte: 'inconnu' }
+    const clé = normaliserTitre(nom)
+    const entité = grille?.entités.find((e) => normaliserTitre(e.nom) === clé) ?? null
+    const [fiche, mois, trimestre, nommés] = await Promise.all([
+      fichePubliée(organisation.id, db),
+      dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'mois' }, db),
+      dernièreSynthèsePubliée({ organisationId: organisation.id, granularité: 'trimestre' }, db),
+      entité ? faitsDUneEntité({ organisationId: organisation.id, entité: entité.nom }, db) : [],
+    ])
+    const cités = await faitsCités({ organisationId: organisation.id, ids: positions.flatMap((p) => (normaliserTitre(p.sujet) === clé ? p.faits : [])) }, db)
+    const synthèses: SynthèseLue[] = [mois, trimestre].flatMap((s) =>
+      s ? [{ période: s.période, éléments: s.éléments, codes: vueDeLaSwot(s.éléments, new Map(), new Map()).codes }] : [],
+    )
+    const vue = vueDeLActeur({
+      segment: entrée.segment,
+      grille,
+      organisation: organisation.nom,
+      fiche: fiche ? (fiche.contenu as unknown as FicheDeVeille) : null,
+      positions,
+      faitsCités: new Map([...cités].map(([id, f]) => [id, { date: f.date, édition: f.édition ?? '', empreinte: f.empreinte ?? null }])),
+      faitsNommés: nommés.map((f) => ({ id: f.id, date: f.dateFait, édition: f.éditionNotion, empreinte: f.empreinteTitre })),
+      numéros: entrée.numéros,
+      synthèses,
+    })
     return vue ? { sorte: 'fiche', fiche: vue } : { sorte: 'inconnu' }
   })
 }

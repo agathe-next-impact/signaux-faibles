@@ -1452,6 +1452,23 @@ pures. Un dossier qui ne nomme aucun acteur placé quitte l'écran ; il garde sa
 l'écran reste celui d'avant. La case « Acteurs » de la vue d'ensemble compte les
 mêmes acteurs et les dossiers qui les nomment.
 
+**Chaque acteur a son écran** (18 novembre 2026, demande de l'opératrice : « crée des
+écrans Acteur pour chaque acteur avec les infos le concernant »). `/[slug]/acteurs/[acteur]`
+montre d'abord l'acteur quand le segment est le nom d'un sujet placé par une synthèse
+publiée (Mendelow, carte) ou d'un nom de la grille, l'organisation exceptée, pour toute
+organisation du pilote, espace réorganisé ou non : sa présentation de la fiche de veille
+publiée, sa position et son historique de période en période (coin de Mendelow, crans de
+la carte, changement de case), ses faits datés (cités par ses positions ou étiquetés à son
+nom, chacun vers sa lettre, phrase-titre relue par empreinte dans les dernières lettres),
+les énoncés SWOT, TOWS et scénarios des dernières synthèses publiées qui le nomment ou
+citent un de ses faits, les dossiers ouverts qui le nomment et les passages des dernières
+lettres (sous ses formes courtes). Règles pures dans `lib/domaine/fiche-acteur.ts`, seule
+lecture `ficheDeLActeur` (`lib/portail/fiche-veille.ts`, bornée, aucune lecture Notion),
+rendu `components/fiche-acteur.tsx`. Hors du pilote, ou si la lecture n'aboutit pas, le
+segment retombe sur le dossier de même nom, comme avant ; un dossier du même nom qu'un
+acteur se lit sous lui. Les noms de « Le suivi des acteurs » et de la matrice de Mendelow y
+mènent.
+
 Chaque écran porte sa page de détail sous son propre segment :
 `/[slug]/axes/[axe]` (l'axe sur les quatre dernières lettres, lien de retour
 « Retour aux axes ») et `/[slug]/acteurs/[acteur]` (lien de retour « Retour aux
