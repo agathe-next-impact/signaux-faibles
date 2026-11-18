@@ -295,7 +295,9 @@ describe('Postgres ne se lit que par lib/base, l’appartenance que par la faça
     ])
     const fiche = readFileSync(join(process.cwd(), 'lib', 'portail', 'fiche-veille.ts'), 'utf8')
     const importés = /import \{([^}]*)\} from '@\/lib\/base\/strategie'/.exec(fiche)?.[1]?.split(',').map((x) => x.trim()).filter(Boolean)
-    expect(importés).toEqual(['lireLaGrille', 'organisationPourLesOutils', 'positionsPubliées'])
+    // L'écran d'un acteur (18 novembre 2026) lit aussi les dernières synthèses publiées et les faits qu'elles citent ou qui le nomment : des lectures.
+    expect(importés).toEqual(['dernièreSynthèsePubliée', 'faitsCités', 'faitsDUneEntité', 'lireLaGrille', 'organisationPourLesOutils', 'positionsPubliées'])
+    expect(fiche.slice(fiche.indexOf('export async function ficheDeLActeur')).indexOf("bornée('")).toBeGreaterThan(0)
   })
 
 
@@ -525,6 +527,7 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     expect(appelants('indicateursDeLEspace')).toEqual(['app/(portail)/[slug]/indicateurs/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('faitsDeLAxeDeLEspace')).toEqual(['app/(portail)/[slug]/pestel/[axe]/page.tsx', 'lib/portail/strategie.ts'])
     expect(appelants('espaceDeLOrganisation')).toEqual([
+      'app/(portail)/[slug]/acteurs/[acteur]/page.tsx',
       'app/(portail)/[slug]/acteurs/page.tsx',
       'app/(portail)/[slug]/appels/page.tsx',
       'app/(portail)/[slug]/axes/page.tsx',
@@ -721,6 +724,8 @@ describe('les lectures du dispositif restent sous /api/veille', () => {
     ])
     // La fiche de présentation d'une entité (6 novembre 2026) : un écran, bornée, dans l'espace réorganisé.
     expect(appelants('présentationDeLEntité')).toEqual(['app/(portail)/[slug]/veille/corpus/[entite]/page.tsx', 'lib/portail/fiche-veille.ts'])
+    // L'écran d'un acteur (18 novembre 2026) : un écran, bornée, pour toute organisation du pilote.
+    expect(appelants('ficheDeLActeur')).toEqual(['app/(portail)/[slug]/acteurs/[acteur]/page.tsx', 'lib/portail/fiche-veille.ts'])
     const source = readFileSync(join(process.cwd(), 'lib', 'portail', 'fiche-veille.ts'), 'utf8')
     const recevoir = source.slice(source.indexOf('export async function recevoirLaFiche'))
     expect(recevoir.indexOf('contrôlerLaFiche(')).toBeGreaterThan(0)

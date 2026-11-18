@@ -8,7 +8,7 @@ import { baseEnMémoire } from './aide/base-en-memoire'
  * le pilote et la grille avant la porte, la porte avant l'écriture, rien de
  * montré avant la publication, rien d'un autre registre.
  */
-const { ficheDeLEspace, lireLaFicheDuPilote, présentationDeLEntité, publierLaFicheDuPilote, recevoirLaFiche } = await import('@/lib/portail/fiche-veille')
+const { ficheDeLActeur, ficheDeLEspace, lireLaFicheDuPilote, présentationDeLEntité, publierLaFicheDuPilote, recevoirLaFiche } = await import('@/lib/portail/fiche-veille')
 const { recevoirLaGrille, réglerLEspace } = await import('@/lib/portail/strategie')
 const { réglerLesOutilsStratégiques } = await import('@/lib/base/strategie')
 
@@ -131,5 +131,27 @@ describe('la fiche de veille', () => {
     expect(await présentationDeLEntité({ registre: AUTRE_REGISTRE, segment: 'cigref' }, db)).toBeNull()
     vi.stubEnv('SOURCE_ACCES', 'notion')
     expect(await présentationDeLEntité({ registre: REGISTRE, segment: 'cigref' }, db)).toBeNull()
+  })
+
+  it('l’écran d’un acteur : pour tout le pilote, espace réorganisé ou non, seulement les noms de l’organisation et la fiche publiée', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://base-en-memoire')
+    vi.stubEnv('SOURCE_ACCES', 'double')
+    const numéros = new Map<string, number>()
+    expect(await ficheDeLActeur({ registre: REGISTRE, segment: 'anssi', numéros }, db)).toBeNull()
+    await réglerLesOutilsStratégiques({ slug: 'infralliance', actif: true }, db)
+    await recevoirLaGrille({ slug: 'infralliance', référentiel: '3d2fe829ce71801eae49fa7fc4a0e76c', grille: GRILLE }, db)
+    // Hors de l'espace réorganisé aussi.
+    expect(await ficheDeLActeur({ registre: REGISTRE, segment: 'anssi', numéros }, db)).toMatchObject({
+      sorte: 'fiche',
+      fiche: { nom: 'ANSSI', sorte: 'partie-prenante', présentation: null, historique: [], faits: [], synthèses: [] },
+    })
+    expect(await ficheDeLActeur({ registre: REGISTRE, segment: 'inconnue', numéros }, db)).toEqual({ sorte: 'inconnu' })
+    await recevoirLaFiche({ slug: 'infralliance', grilleVersion: 1, fiche: { ...FICHE, présentations: [{ nom: 'ANSSI', texte: 'L’agence nationale de la sécurité des systèmes d’information.' }] } }, db)
+    expect(await ficheDeLActeur({ registre: REGISTRE, segment: 'anssi', numéros }, db)).toMatchObject({ fiche: { présentation: null } })
+    await publierLaFicheDuPilote({ slug: 'infralliance', état: 'publie' }, db)
+    expect(await ficheDeLActeur({ registre: REGISTRE, segment: 'anssi', numéros }, db)).toMatchObject({
+      fiche: { présentation: 'L’agence nationale de la sécurité des systèmes d’information.' },
+    })
+    expect(await ficheDeLActeur({ registre: AUTRE_REGISTRE, segment: 'anssi', numéros }, db)).toBeNull()
   })
 })

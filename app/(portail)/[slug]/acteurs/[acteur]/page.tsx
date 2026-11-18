@@ -9,12 +9,27 @@ import { SurtitreAxe } from '@/components/titre-axe'
 import { mentionsDe } from '@/lib/domaine/mentions'
 import { enSlug } from '@/lib/domaine/slug'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
-import { dernièresNotes, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/portail/semaine'
+import { dernièresNotes, LETTRES_SUIVIES, lettresPubliées, semainesDeLEspace } from '@/lib/portail/semaine'
+import { normaliserIdentifiant } from '@/lib/notion/proprietes'
+import { ficheDeLActeur } from '@/lib/portail/fiche-veille'
+import { espaceDeLOrganisation } from '@/lib/portail/strategie'
+import { faitsDeLaLettre } from '@/lib/domaine/strategie'
+import { formesDuNom, rattacherAuxActeurs } from '@/lib/domaine/dossiers-des-acteurs'
+import { FicheDUnActeur, type PassagesDUneLettre } from '@/components/fiche-acteur'
 
 /**
- * Un acteur suivi, et ce que les lettres en disent.
+ * L'écran d'un acteur, ou à défaut celui d'un dossier ouvert.
  *
- * Un dossier ouvert n'a pas de contenu propre dans Notion : c'est une entrée
+ * **Un acteur** (18 novembre 2026, demande de l'opératrice) est un sujet placé
+ * par une synthèse publiée, Mendelow ou carte des groupes, ou un nom de la
+ * grille. Son écran réunit sa présentation, sa position et son historique, ses
+ * faits datés, les énoncés des synthèses qui le concernent, les dossiers qui le
+ * nomment et les passages des dernières lettres qui le nomment
+ * (`ficheDeLActeur`, `lib/domaine/fiche-acteur.ts`). Le segment n'est comparé
+ * qu'aux noms de l'organisation de la session. Hors du pilote des outils, ou si
+ * la lecture n'aboutit pas, l'écran retombe sur le dossier de même nom.
+ *
+ * **Un dossier** ouvert n'a pas de contenu propre dans Notion : c'est une entrée
  * texte, un nom et un compteur. Cette page l'assemble à partir de deux sources
  * de coûts très différents. Le **suivi** ne lit aucun corps de note — il vient
  * de la propriété texte des éditions, et couvre toute l'archive pour la seule
@@ -33,13 +48,55 @@ export default async function UnActeur({
   const { slug, acteur: segment } = await params
   const accès = await exigerLectureComplète(slug)
 
-  const semaines = await semainesDeLEspace(accès)
-  const suivi = suivreLesDossiers(semaines).find((dossier) => enSlug(dossier.nom) === segment)
+  const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
+  const dossiers = suivreLesDossiers(semaines)
+  const suivi = dossiers.find((dossier) => enSlug(dossier.nom) === segment)
+
+  // Les numéros des lettres déjà listées pour l'organisation, par identifiant normalisé (règle 2).
+  const lettres = lettresPubliées(semaines)
+  const numéros = new Map(lettres.flatMap((l) => (l.édition.numéro !== null ? [[normaliserIdentifiant(l.édition.pageId), l.édition.numéro] as const] : [])))
+  const lue = await ficheDeLActeur({ registre: accès.organisationId, segment, numéros })
+
+  if (lue?.sorte === 'fiche') {
+    const { fiche } = lue
+    const notes = await dernièresNotes(semaines)
+    // Les phrases-titres des faits, relues dans les lettres que l'écran lit déjà, par empreinte.
+    const titres = new Map(
+      notes.flatMap(({ lettre, document }) =>
+        faitsDeLaLettre(document).map((f) => [`${normaliserIdentifiant(lettre.édition.pageId)}:${f.empreinte}`, f.titre] as const),
+      ),
+    )
+    // Un nom d'acteur se cherche sous ses formes courtes : « Sénat, examen du PLF 2027 » se lit « Sénat » dans une lettre.
+    const formes = formesDuNom(fiche.nom)
+    const passages: PassagesDUneLettre[] = notes.flatMap(({ lettre, document }) => {
+      const vus = new Set<string>()
+      const extraits = formes
+        .flatMap((forme) => mentionsDe(forme, document))
+        .flatMap((m) => m.passages)
+        .filter((p) => (vus.has(p.texte) ? false : (vus.add(p.texte), true)))
+      return extraits.length > 0
+        ? [{ pageId: lettre.édition.pageId, libellé: lettre.semaine.libellé, numéro: lettre.édition.numéro, veille: lettre.édition.veille ?? null, passages: extraits }]
+        : []
+    })
+    const hrefs = new Map(lettres.map((l) => [normaliserIdentifiant(l.édition.pageId), `/${accès.slug}/lettres/${l.édition.pageId}`]))
+    return (
+      <FicheDUnActeur
+        slug={accès.slug}
+        fiche={fiche}
+        réorganisé={espace?.réorganisé ?? false}
+        dossiers={rattacherAuxActeurs(dossiers, [fiche.nom]).rattachés.map((r) => r.dossier)}
+        titres={titres}
+        lettres={hrefs}
+        passages={passages}
+        lettresLues={LETTRES_SUIVIES}
+      />
+    )
+  }
 
   if (!suivi) notFound()
 
   const notes = await dernièresNotes(semaines)
-  const lettres = notes.flatMap(({ lettre, document }) => {
+  const lettresQuiLeNomment = notes.flatMap(({ lettre, document }) => {
     const mentions = mentionsDe(suivi.nom, document)
     return mentions.length > 0 ? [{ lettre, mentions }] : []
   })
@@ -89,7 +146,7 @@ export default async function UnActeur({
           Les passages des {LETTRES_SUIVIES} dernières lettres qui nomment cet acteur.
         </p>
 
-        {lettres.length === 0 ? (
+        {lettresQuiLeNomment.length === 0 ? (
           // Sans passage à citer, la page ne doit pas laisser le lecteur sans
           // issue : on lui ouvre les lettres de la période, à lui de juger.
           <div className="flex flex-col gap-4">
@@ -112,7 +169,7 @@ export default async function UnActeur({
           </div>
         ) : (
           <div className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-            {lettres.map(({ lettre, mentions }) => (
+            {lettresQuiLeNomment.map(({ lettre, mentions }) => (
               <section key={lettre.édition.pageId} className="flex flex-col gap-4 py-6">
                 <div className="flex flex-col gap-1">
                   <p className="label-mono text-ardoise">
