@@ -43,22 +43,23 @@ export function Fraicheur({
   )
 }
 
+const LÉGENDE_PAR_DÉFAUT = {
+  nouveau: 'du nouveau cette semaine',
+  suivi: 'suivi, rien de neuf',
+  dormant: 'sans nouveauté depuis plusieurs semaines',
+} as const
+
 /**
  * La légende du code couleur.
  *
  * Un code couleur qu'on n'explique pas est une décoration. Trois lignes en pied
- * d'écran coûtent moins cher qu'un lecteur qui devine.
+ * d'écran coûtent moins cher qu'un lecteur qui devine. `libellés` la redit pour un écran qui
+ * les lit autrement (le suivi des acteurs, au mois).
  */
-export function LégendeFraicheur() {
+export function LégendeFraicheur({ libellés = LÉGENDE_PAR_DÉFAUT }: { libellés?: Readonly<Record<keyof typeof LÉGENDE_PAR_DÉFAUT, string>> } = {}) {
   return (
     <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
-      {(
-        [
-          ['nouveau', 'du nouveau cette semaine'],
-          ['suivi', 'suivi, rien de neuf'],
-          ['dormant', 'sans nouveauté depuis plusieurs semaines'],
-        ] as const
-      ).map(([fraîcheur, libellé]) => (
+      {(['nouveau', 'suivi', 'dormant'] as const).map((fraîcheur) => [fraîcheur, libellés[fraîcheur]] as const).map(([fraîcheur, libellé]) => (
         <li key={fraîcheur} className="flex items-center gap-2">
           <span aria-hidden="true" className={`size-1.5 shrink-0 ${COULEUR[fraîcheur]}`} />
           <span className="label-mono text-ardoise">{libellé}</span>

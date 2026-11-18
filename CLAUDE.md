@@ -1435,6 +1435,23 @@ façon de couper, écrite à un seul endroit.
 L'ancienne adresse `/[slug]/cadrage` redirige en 308 vers `/[slug]/perimetre`
 (`next.config.ts`) : le rail n'y menait plus, un signet gardé, si.
 
+**« Acteurs » suit les acteurs placés, pas tous les dossiers** (18 novembre 2026,
+décision de l'opératrice : « le suivi des dossiers n'est pas corrélé au contenu de
+l'écran »). Sous la carte et Mendelow, la section listait la propriété `Dossiers
+ouverts suivis`, des sujets pour la plupart (une loi, un budget, un marché) : sur
+L'Hermitage, aucun des dossiers ne nommait l'une des sept parties prenantes placées.
+Quand une synthèse publiée place des acteurs, la section devient « Le suivi des
+acteurs » : une ligne par sujet de Mendelow (et de la carte hors de l'espace
+réorganisé), avec sa position, les faits datés que ses positions citent (chacun vers
+sa lettre) et les dossiers qui le **nomment**, dans leur nom ou leur précision
+actuelle, par la règle des mentions (`nomme`, `formesDuNom` : tête avant la virgule
+ou la parenthèse, noms entre parenthèses, jamais un découpage sur « et ») ;
+`suiviDesActeurs`, `rattacherAuxActeurs`, `lib/domaine/dossiers-des-acteurs.ts`,
+pures. Un dossier qui ne nomme aucun acteur placé quitte l'écran ; il garde sa page
+`/[slug]/acteurs/[acteur]` et l'accueil le montre quand il bouge. Sans acteur placé,
+l'écran reste celui d'avant. La case « Acteurs » de la vue d'ensemble compte les
+mêmes acteurs et les dossiers qui les nomment.
+
 Chaque écran porte sa page de détail sous son propre segment :
 `/[slug]/axes/[axe]` (l'axe sur les quatre dernières lettres, lien de retour
 « Retour aux axes ») et `/[slug]/acteurs/[acteur]` (lien de retour « Retour aux

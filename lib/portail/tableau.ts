@@ -2,6 +2,7 @@ import { casesDuTableauDeBord, type CaseDÉcran } from '@/lib/domaine/tableau-de
 import { normaliserTitre } from '@/lib/domaine/strategie'
 import type { ActivitéDeRubrique, SemaineDActivité } from '@/lib/domaine/strategie-vues'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
+import { acteursPlacés, rattacherAuxActeurs } from '@/lib/domaine/dossiers-des-acteurs'
 import type { SemaineDÉditions } from '@/lib/portail/semaine'
 import { ficheDeLEspace } from '@/lib/portail/fiche-veille'
 import { faitsRécentsDeLEspace, synthèseDeLEspace } from '@/lib/portail/strategie'
@@ -42,6 +43,8 @@ export async function tableauDeLEspace(entrée: {
   ])
   const aujourdhui = new Date().toISOString().slice(0, 10)
   const concurrents = new Set(entrée.concurrents.map(normaliserTitre))
+  const dossiers = suivreLesDossiers(semaines).filter((d) => !concurrents.has(normaliserTitre(d.nom)))
+  const acteurs = synthèse?.mois ? acteursPlacés(synthèse.mois.mendelow, null) : []
   const cases = casesDuTableauDeBord({
     slug: entrée.slug,
     lettres: semaines.reduce((n, s) => n + s.éditions.length, 0),
@@ -49,7 +52,8 @@ export async function tableauDeLEspace(entrée: {
     archives: semaines.length,
     axes: entrée.axes?.total ?? null,
     axesForts: entrée.axes?.forts ?? 0,
-    dossiersHorsConcurrents: suivreLesDossiers(semaines).filter((d) => !concurrents.has(normaliserTitre(d.nom))).length,
+    dossiersHorsConcurrents: dossiers.length,
+    ...(acteurs.length > 0 ? { dossiersLiésAuxActeurs: rattacherAuxActeurs(dossiers, acteurs).rattachés.length } : {}),
     concurrents: entrée.concurrents.length,
     marché: entrée.marché,
     synthèse,

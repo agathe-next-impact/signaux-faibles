@@ -5,7 +5,10 @@ import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { normaliserTitre } from '@/lib/domaine/strategie'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
-import { semainesDeLEspace } from '@/lib/portail/semaine'
+import { lettresPubliées, semainesDeLEspace } from '@/lib/portail/semaine'
+import { normaliserIdentifiant } from '@/lib/notion/proprietes'
+import { acteursPlacés, suiviDesActeurs, type ActeurSuivi } from '@/lib/domaine/dossiers-des-acteurs'
+import { dateCourte } from '@/lib/domaine/strategie-vues'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
 import { Repliable } from '@/components/repliable'
 import { SynthèseDesActeurs } from '@/components/strategie-ecrans'
@@ -49,65 +52,103 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
   // hors du pilote ou sans synthèse publiée, l'écran reste celui d'avant.
   const numéros = new Map(semaines.flatMap((s) => s.éditions).flatMap((é) => (é.numéro !== null ? [[é.pageId, é.numéro] as const] : [])))
   const synthèse = await synthèseDeLEspace({ registre: accès.organisationId, numéros })
-  const enMouvement = suivis.filter(
-    (dossier) => fraîcheurDUnDossier(dossier) === 'nouveau',
-  ).length
+  // Quand l'écran place des acteurs (Mendelow, et la carte hors de l'espace
+  // réorganisé), la section suit ces acteurs et non plus tous les dossiers :
+  // les dossiers de la propriété `Dossiers ouverts suivis` sont pour la plupart
+  // des sujets (une loi, un budget, un marché) et n'en nommaient aucun
+  // (18 novembre 2026, décision de l'opératrice ; `lib/domaine/dossiers-des-acteurs.ts`).
+  // Un dossier n'y figure que sous l'acteur qu'il nomme. Sans acteur placé,
+  // l'écran reste celui d'avant.
+  const mois = synthèse?.mois ?? null
+  const carte = réorganisé ? null : (mois?.carte ?? null)
+  const acteurs = mois ? acteursPlacés(mois.mendelow, carte) : []
+  const suiviActeurs =
+    mois?.lu && acteurs.length > 0
+      ? suiviDesActeurs({
+          acteurs,
+          outils: carte ? ['mendelow', 'groupes'] : ['mendelow'],
+          positions: mois.lu.positions,
+          précédentes: mois.lu.précédentes,
+          faits: mois.lu.faits,
+          numéros: mois.lu.numéros,
+          dossiers: suivis,
+        })
+      : null
+  // Un fait cité mène à sa lettre, parmi celles déjà listées pour l'organisation (règle 2).
+  const lettres = new Map(lettresPubliées(semaines).map((l) => [normaliserIdentifiant(l.édition.pageId), `/${accès.slug}/lettres/${l.édition.pageId}`]))
+  const enMouvement = suiviActeurs
+    ? suiviActeurs.filter((a) => a.aBougé).length
+    : suivis.filter((dossier) => fraîcheurDUnDossier(dossier) === 'nouveau').length
 
   return (
     <>
       <EntêteÉcran
         surtitre={réorganisé ? 'le marché' : 'acteurs et concurrents'}
         titre={réorganisé ? 'Qui pèse sur votre activité' : 'Qui bouge, qui dort'}
-        état={`${suivis.length} dossier${suivis.length > 1 ? 's' : ''} suivi${suivis.length > 1 ? 's' : ''}`}
+        état={
+          suiviActeurs
+            ? `${suiviActeurs.length} acteur${suiviActeurs.length > 1 ? 's' : ''} suivi${suiviActeurs.length > 1 ? 's' : ''}`
+            : `${suivis.length} dossier${suivis.length > 1 ? 's' : ''} suivi${suivis.length > 1 ? 's' : ''}`
+        }
       />
 
       <p className="mt-6 text-ardoise">
         {réorganisé
           ? `Les administrations, financeurs, réseaux et organisations du secteur que la veille rouvre d’une lettre à l’autre. ${espace?.marché.leurÉcran ?? 'Les concurrents ont leur écran.'}`
           : 'Les concurrents, administrations et organisations du secteur que la veille rouvre d’une lettre à l’autre.'}{' '}
-        {suivis.length > 0
+        {suiviActeurs
           ? enMouvement > 0
-            ? `${enMouvement} ${enMouvement > 1 ? 'ont bougé' : 'a bougé'} cette semaine.`
-            : 'Aucun n’a bougé cette semaine.'
-          : ''}
+            ? `${enMouvement} ${enMouvement > 1 ? 'ont changé' : 'a changé'} de case ce mois-ci.`
+            : 'Aucun n’a changé de case ce mois-ci.'
+          : suivis.length > 0
+            ? enMouvement > 0
+              ? `${enMouvement} ${enMouvement > 1 ? 'ont bougé' : 'a bougé'} cette semaine.`
+              : 'Aucun n’a bougé cette semaine.'
+            : ''}
       </p>
 
       {synthèse?.mois ? (
         <>
           <SynthèseDesActeurs période={synthèse.mois.période} carte={réorganisé ? null : synthèse.mois.carte} mendelow={synthèse.mois.mendelow} />
-          <h2 className="mt-12 font-titre text-h2 font-bold text-encre">Le suivi des dossiers</h2>
+          <h2 className="mt-12 font-titre text-h2 font-bold text-encre">{suiviActeurs ? 'Le suivi des acteurs' : 'Le suivi des dossiers'}</h2>
         </>
       ) : null}
 
-      <div className="mt-6">
-        <LégendeFraicheur />
-      </div>
+      {suiviActeurs ? (
+        <SuiviDesActeurs slug={accès.slug} acteurs={suiviActeurs} période={mois?.période ?? ''} lettres={lettres} />
+      ) : (
+        <>
+          <div className="mt-6">
+            <LégendeFraicheur />
+          </div>
 
-      <section className="mt-8 flex flex-col gap-4">
-        {suivis.length === 0 ? (
-          <p className="text-ardoise">
-            Aucun dossier n’est suivi pour l’instant. Ils apparaîtront dès que les notes en
-            ouvriront.
-          </p>
-        ) : (
-          <>
-            <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-              {(réorganisé ? suivis.slice(0, DOSSIERS_VISIBLES) : suivis).map((dossier) => (
-                <DossierSuivi key={dossier.nom} slug={accès.slug} dossier={dossier} />
-              ))}
-            </ul>
-            {réorganisé ? (
-              <Repliable reste={suivis.length - DOSSIERS_VISIBLES} nom="dossiers">
+          <section className="mt-8 flex flex-col gap-4">
+            {suivis.length === 0 ? (
+              <p className="text-ardoise">
+                Aucun dossier n’est suivi pour l’instant. Ils apparaîtront dès que les notes en
+                ouvriront.
+              </p>
+            ) : (
+              <>
                 <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
-                  {suivis.slice(DOSSIERS_VISIBLES).map((dossier) => (
+                  {(réorganisé ? suivis.slice(0, DOSSIERS_VISIBLES) : suivis).map((dossier) => (
                     <DossierSuivi key={dossier.nom} slug={accès.slug} dossier={dossier} />
                   ))}
                 </ul>
-              </Repliable>
-            ) : null}
-          </>
-        )}
-      </section>
+                {réorganisé ? (
+                  <Repliable reste={suivis.length - DOSSIERS_VISIBLES} nom="dossiers">
+                    <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
+                      {suivis.slice(DOSSIERS_VISIBLES).map((dossier) => (
+                        <DossierSuivi key={dossier.nom} slug={accès.slug} dossier={dossier} />
+                      ))}
+                    </ul>
+                  </Repliable>
+                ) : null}
+              </>
+            )}
+          </section>
+        </>
+      )}
 
       <div className="mt-8 flex flex-col gap-2">
         {réorganisé ? (
@@ -130,6 +171,100 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
   )
 }
 
+type Dossier = ReturnType<typeof suivreLesDossiers>[number]
+
+/** Le libellé de fraîcheur d'un dossier, le même partout sur l'écran. */
+function libelléDuDossier(dossier: Dossier): string {
+  return dossier.aBougé
+    ? 'a bougé cette semaine'
+    : dossier.semainesSansMouvement === 0
+      ? 'ouvert cette semaine'
+      : `${dossier.semainesSansMouvement} semaine${dossier.semainesSansMouvement > 1 ? 's' : ''} sans mouvement`
+}
+
+/**
+ * Une ligne par acteur placé sur la carte ou sur Mendelow : sa position, les
+ * faits datés que la synthèse cite pour lui (chacun vers sa lettre), et les
+ * dossiers ouverts qui le nomment (chacun vers sa page). Les acteurs qui ont
+ * changé de case d'abord.
+ */
+function SuiviDesActeurs({
+  slug,
+  acteurs,
+  période,
+  lettres,
+}: {
+  slug: string
+  acteurs: readonly ActeurSuivi<Dossier>[]
+  période: string
+  lettres: ReadonlyMap<string, string>
+}) {
+  const avecDossier = acteurs.filter((a) => a.dossiers.length > 0).length
+  return (
+    <section className="mt-6 flex flex-col gap-4">
+      <p className="max-w-[68ch] text-ardoise">
+        Les acteurs placés ci-dessus, un par ligne : leur position, les faits datés des lettres qui la fondent, et les dossiers ouverts qui les nomment.{' '}
+        {avecDossier > 0
+          ? `${avecDossier} ${avecDossier > 1 ? 'ont' : 'a'} un dossier ouvert.`
+          : 'Aucun dossier ouvert ne les nomme pour l’instant.'}
+      </p>
+      <LégendeFraicheur
+        libellés={{ nouveau: 'a changé de case ce mois-ci', suivi: 'position inchangée, fondée sur des faits datés', dormant: 'aucun fait daté' }}
+      />
+      <ul className="flex flex-col divide-y divide-gris-ligne border-y border-gris-ligne">
+        {acteurs.map((acteur) => (
+          <li key={acteur.sujet} className="flex flex-col gap-3 py-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h3 className="font-titre text-h3 font-semibold text-encre">{acteur.sujet}</h3>
+              <Fraicheur
+                fraîcheur={acteur.aBougé ? 'nouveau' : acteur.faits.length > 0 ? 'suivi' : 'dormant'}
+                libellé={
+                  acteur.aBougé
+                    ? 'a changé de case ce mois-ci'
+                    : acteur.faits.length > 0
+                      ? 'position inchangée'
+                      : acteur.déclaratif
+                        ? 'position déclarative'
+                        : 'aucun fait daté'
+                }
+              />
+            </div>
+            {acteur.position ? <p className="label-mono text-ardoise">{acteur.position}</p> : null}
+            {acteur.faits.length > 0 ? (
+              <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={`Faits datés, synthèse ${période}`}>
+                {acteur.faits.map((f) => {
+                  const libellé = `Fait du ${dateCourte(f.date)}${f.numéro ? ` · lettre n° ${f.numéro}` : ''}`
+                  const href = lettres.get(normaliserIdentifiant(f.édition))
+                  return (
+                    <li key={`${f.date}:${f.édition}`} className="label-mono text-ardoise">
+                      {href ? <LienFlèche href={href}>{libellé}</LienFlèche> : libellé}
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : null}
+            {acteur.dossiers.length > 0 ? (
+              <ul className="flex flex-col gap-2" aria-label="Dossiers ouverts qui le nomment">
+                {acteur.dossiers.map((dossier) => (
+                  <li key={dossier.nom} className="flex flex-col gap-1">
+                    <div className="flex flex-wrap items-baseline gap-3">
+                      <LienFlèche href={`/${slug}/acteurs/${enSlug(dossier.nom)}`}>{dossier.nom}</LienFlèche>
+                      <Fraicheur fraîcheur={fraîcheurDUnDossier(dossier)} libellé={libelléDuDossier(dossier)} />
+                    </div>
+                    {dossier.précisionActuelle ? <p className="text-sm text-ardoise">{dossier.précisionActuelle}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-ardoise">Aucun dossier ouvert ne le nomme.</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** Un dossier suivi : son nom vers sa page, sa fraîcheur, sa précision et ses relevés semaine par semaine. */
 function DossierSuivi({ slug, dossier }: { slug: string; dossier: ReturnType<typeof suivreLesDossiers>[number] }) {
   return (
@@ -142,13 +277,7 @@ function DossierSuivi({ slug, dossier }: { slug: string; dossier: ReturnType<typ
         </h2>
         <Fraicheur
           fraîcheur={fraîcheurDUnDossier(dossier)}
-          libellé={
-            dossier.aBougé
-              ? 'a bougé cette semaine'
-              : dossier.semainesSansMouvement === 0
-                ? 'ouvert cette semaine'
-                : `${dossier.semainesSansMouvement} semaine${dossier.semainesSansMouvement > 1 ? 's' : ''} sans mouvement`
-          }
+          libellé={libelléDuDossier(dossier)}
         />
       </div>
 
