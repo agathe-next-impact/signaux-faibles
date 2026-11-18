@@ -19,6 +19,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 import { tableauDeLEspace } from '@/lib/portail/tableau'
 import { ActivitéDesSemaines, MiniActivité } from '@/components/graphiques-strategie'
 import { cartesDesRubriques } from '@/lib/domaine/tableau-de-bord'
+import { sansLesÉcransMasqués } from '@/lib/domaine/ecrans-de-l-espace'
 import { normaliserTitre } from '@/lib/domaine/strategie'
 
 /**
@@ -135,7 +136,12 @@ export default async function VueDEnsemble({
         axes: { total: axes.length, forts: axes.filter((a) => a.niveau === 'FORT').length },
       })
     : null
-  const cartes = tableau ? cartesDesRubriques(tableau.cases, tableau.parRubrique) : null
+  // Un écran masqué par l'opératrice (18 novembre 2026) quitte sa carte, et une
+  // rubrique dont tous les écrans sont masqués n'a plus de carte ; l'opératrice voit tout.
+  const masqués = accès.tousLesEspaces ? [] : (espace?.écransMasqués ?? [])
+  const cartes = tableau
+    ? cartesDesRubriques(sansLesÉcransMasqués(accès.slug, tableau.cases, masqués), tableau.parRubrique).filter((carte) => carte.écrans.length > 0)
+    : null
   const concurrents = new Set((espace?.concurrents ?? []).map(normaliserTitre))
 
   // Le portail ne devine pas un format qu'il ne reconnaît pas — mais il ne doit

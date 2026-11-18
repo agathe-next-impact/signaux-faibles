@@ -35,6 +35,8 @@ export type OrganisationDesOutils = {
   readonly espaceRéorganisé: boolean
   /** Ce que l'écran « Concurrents » montre (`lib/domaine/sujets-du-marche.ts`). */
   readonly sujetsDuMarché: string
+  /** Les écrans de l'espace masqués au client, tels qu'en base (`lib/domaine/ecrans-de-l-espace.ts` les filtre). */
+  readonly écransMasqués: readonly string[]
 }
 
 /**
@@ -58,6 +60,7 @@ export async function organisationPourLesOutils(
         outilsStratégiques: organisations.outilsStratégiques,
         espaceRéorganisé: organisations.espaceRéorganisé,
         sujetsDuMarché: organisations.sujetsDuMarché,
+        écransMasqués: organisations.écransMasqués,
       })
       .from(organisations)
       .where(and(critère, isNull(organisations.archivéeLe)))
@@ -119,6 +122,26 @@ export async function réglerLesSujetsDuMarché(
     const lignes = await db
       .update(organisations)
       .set({ sujetsDuMarché: entrée.sujets, modifiéeLe: maintenant })
+      .where(and(eq(organisations.slug, entrée.slug), isNull(organisations.archivéeLe)))
+      .returning({ id: organisations.id })
+    return lignes.length > 0 ? 'réglé' : 'organisation-inconnue'
+  })
+}
+
+/**
+ * Les écrans de l'espace masqués au client (18 novembre 2026). La liste a passé
+ * `masquésDuFormulaire` ou `écransMasquésConnus` (`lib/domaine/ecrans-de-l-espace.ts`) :
+ * seules des clés connues arrivent ici. Elle remplace la précédente ; rien d'autre ne change.
+ */
+export async function réglerLesÉcransMasqués(
+  entrée: { readonly slug: string; readonly masqués: readonly string[] },
+  db: Base = base(),
+  maintenant: Date = new Date(),
+): Promise<'réglé' | 'organisation-inconnue'> {
+  return protéger('réglage des écrans de l’espace', async () => {
+    const lignes = await db
+      .update(organisations)
+      .set({ écransMasqués: [...entrée.masqués], modifiéeLe: maintenant })
       .where(and(eq(organisations.slug, entrée.slug), isNull(organisations.archivéeLe)))
       .returning({ id: organisations.id })
     return lignes.length > 0 ? 'réglé' : 'organisation-inconnue'

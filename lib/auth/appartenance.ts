@@ -18,7 +18,7 @@ import { lireLaFile } from '@/lib/portail/file'
 import { coûtsDuMois, type CoûtsDuMois } from '@/lib/portail/couts'
 import { estUnMois, moisDeParis } from '@/lib/domaine/couts'
 import { gestionDUneOrganisation, santéDesEspaces, type GestionDUneOrganisation, type SantéDesEspaces } from '@/lib/portail/gestion'
-import { synthèseÀRelire, tableauDesSynthèses, type SynthèseÀRelire } from '@/lib/portail/strategie'
+import { synthèseÀRelire, tableauDesSynthèses, écransDUneOrganisation, type SynthèseÀRelire, type ÉcransDUneOrganisation } from '@/lib/portail/strategie'
 import type { SynthèsesDUneOrganisation } from '@/lib/domaine/strategie-vues'
 import { tableauDesMarchés } from '@/lib/portail/marches'
 import type { MarchésDUneOrganisation } from '@/lib/domaine/marches'
@@ -329,6 +329,24 @@ export async function lireLaGestionDUneOrganisation(slug: string): Promise<{
   if (!gestion) notFound()
   // La ligne du tableau des abonnements, reprise sur la fiche (31 octobre 2026).
   return { accès, gestion, abonnement: lignes.find((l) => l.slug === slug) ?? null }
+}
+
+/**
+ * L'écran d'activation des écrans de l'espace d'une organisation, pour
+ * l'opératrice (18 novembre 2026). La garde est **dans** la fonction, avant la
+ * lecture ; `écransDUneOrganisation` n'a pas d'autre appelant
+ * (`tests/architecture.test.ts`). `écrans` vaut `null` quand Postgres n'est pas
+ * en service ; un slug inconnu est introuvable.
+ */
+export async function lireLesÉcransDUneOrganisation(slug: string): Promise<{
+  readonly accès: Accès
+  readonly écrans: ÉcransDUneOrganisation | null
+}> {
+  const accès = await exigerOpérateur()
+  if (!baseConfigurée() || sourceAccès() === 'notion') return { accès, écrans: null }
+  const écrans = await écransDUneOrganisation(slug)
+  if (!écrans) notFound()
+  return { accès, écrans }
 }
 
 /**

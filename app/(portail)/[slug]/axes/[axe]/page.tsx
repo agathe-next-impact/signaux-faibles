@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
+import { exigerLÉcran } from '@/lib/portail/ecrans'
 import { BadgeImpact } from '@/components/badge-impact'
 import { EntêteÉcran, LienFlèche, Panneau } from '@/components/coquille'
 import { RenduBlocs } from '@/components/document'
@@ -28,6 +29,7 @@ export default async function UnAxe({
 }) {
   const { slug, axe: segment } = await params
   const accès = await exigerLectureComplète(slug)
+  await exigerLÉcran(accès, 'axes')
 
   const semaines = await semainesDeLEspace(accès)
   const notes = await dernièresNotes(semaines)

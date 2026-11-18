@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { exigerLecture } from '@/lib/auth/appartenance'
+import { exigerLÉcran } from '@/lib/portail/ecrans'
 import { BadgeImpact } from '@/components/badge-impact'
 import { Case, EntêteÉcran, Grille, LienFlèche } from '@/components/coquille'
 import { Fraicheur } from '@/components/fraicheur'
@@ -32,6 +33,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 export default async function Lettres({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const { accès, lecture } = await exigerLecture(slug)
+  await exigerLÉcran(accès, 'lettres')
   if (lecture === 'aucune') redirect(`/${accès.slug}`)
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])

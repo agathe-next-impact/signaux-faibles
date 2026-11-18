@@ -1,4 +1,5 @@
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
+import { exigerLÉcran } from '@/lib/portail/ecrans'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { Fraicheur, LégendeFraicheur } from '@/components/fraicheur'
 import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
@@ -33,6 +34,7 @@ const DOSSIERS_VISIBLES = 5
 export default async function LesActeurs({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
+  await exigerLÉcran(accès, 'acteurs')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 2, pilote sur L'Hermitage) envoie les concurrents

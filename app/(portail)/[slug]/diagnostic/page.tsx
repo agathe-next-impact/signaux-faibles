@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { exigerLectureComplète } from '@/lib/auth/appartenance'
+import { exigerLÉcran } from '@/lib/portail/ecrans'
 import { EntêteÉcran, LienFlèche } from '@/components/coquille'
 import { MatriceSwot } from '@/components/strategie-ecrans'
 import { libelléDePériode } from '@/lib/domaine/strategie-vues'
@@ -19,6 +20,7 @@ import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strateg
 export default async function Diagnostic({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
+  await exigerLÉcran(accès, 'diagnostic')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
