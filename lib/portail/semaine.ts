@@ -125,7 +125,7 @@ export function ongletsDe(
   slug: string,
   comptes: { lettres: number; recommandations: number; archives: number },
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
-  espace: { readonly réorganisé: boolean; readonly marché?: Pick<VocabulaireDuMarché, 'écran' | 'écranCourt'> } = { réorganisé: false },
+  espace: { readonly réorganisé: boolean; readonly marché?: Pick<VocabulaireDuMarché, 'écran' | 'écranCourt'>; readonly appels?: boolean } = { réorganisé: false },
 ): Onglet[] {
   // L'espace réorganisé (lots 2, 3, 5 et 6, 30 octobre 2026, pilote sur L'Hermitage) :
   // un écran par outil, groupés en rubriques ; ailleurs, le rail garde ses sept écrans.
@@ -145,6 +145,8 @@ export function ongletsDe(
       { href: `/${slug}/pestel`, libellé: 'PESTEL', libelléCourt: 'PESTEL', rubrique: 'L’environnement' },
       { href: `/${slug}/diagnostic`, libellé: 'Diagnostic', libelléCourt: 'Diagnos.', rubrique: 'Stratégie' },
       { href: `/${slug}/recommandations`, libellé: 'Options', libelléCourt: 'Options', compte: comptes.recommandations, rubrique: 'Stratégie' },
+      // Appels à projets (18 novembre 2026) : seulement quand une lettre lisible porte un appel relevé.
+      ...(espace.appels ? [{ href: `/${slug}/appels`, libellé: 'Appels à projets', libelléCourt: 'Appels', rubrique: 'Stratégie' }] : []),
       { href: `/${slug}/scenarios`, libellé: 'Scénarios', libelléCourt: 'Scénar.', rubrique: 'Stratégie' },
       { href: `/${slug}/indicateurs`, libellé: 'Indicateurs', libelléCourt: 'Indic.', rubrique: 'Stratégie' },
       { href: `/${slug}/veille/themes`, libellé: 'Thèmes suivis', libelléCourt: 'Thèmes', rubrique: 'Votre veille' },

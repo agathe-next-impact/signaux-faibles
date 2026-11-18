@@ -269,7 +269,18 @@ pas « Dossiers ouverts suivis » et n'entre pas dans les outils
 écrites dans le référentiel par la consigne `appels` du balayage, lancée par le bouton
 « Activer la lettre d'appels à projets » de la fiche (`activerLaLettreDAppels`,
 privilège d'abord ; `lancerLaLettreDAppels`), et l'outil `appels_ouverts` n'ouvre que
-les domaines cités dans cette section.
+les domaines cités dans cette section. **Écran « Appels à projets »** (18 novembre 2026,
+décision de l'opératrice, option A ; lot 4) : table `appels_a_projets`
+(migration 0030 : intitulé de 120 caractères, financeur de 80, clôture,
+adresse, impact, « à vérifier », par édition, jamais un corps), écrite en code
+quand `POST /api/veille/lint` trouve conforme une lettre d'appels
+(`releverLesAppels` dans `after()`, `appelsDeLaLettre`,
+`lib/domaine/appels.ts` ; aucun modèle ne fournit une ligne), seul écrivain
+`lib/base/appels.ts`, seule orchestration `lib/portail/appels.ts` ; suivi
+calculé à la lecture (`vueDesAppels`), sur les seules lettres lisibles ;
+`/[slug]/appels`, rubrique « Stratégie » après « Options », espace réorganisé,
+onglet montré seulement si une lettre lisible porte un appel
+(`ongletDesAppels`) ; garde d'architecture.
 
 Domaine : **signauxfaibles.io** (tranché le 10 septembre 2026, conforme à la
 charte ; rien n'est codé en dur, `PORTAIL_URL` porte la valeur). Marque : « signauxfaibles » — voir `docs/charte-design.pdf` et

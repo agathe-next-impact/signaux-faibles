@@ -27,9 +27,16 @@ export function PasEncorePubliée({ quoi }: { quoi: string }) {
  * une échéance (l'ocre porte le temps, charte §02), gris de filet sinon ; un
  * mois vide le dit, il n'est pas un mois calme.
  */
-export function FriseDesÉchéances({ mois }: { mois: readonly MoisDuCalendrier[] }) {
+export function FriseDesÉchéances({
+  mois,
+  étiquette = 'Échéances des douze prochains mois',
+}: {
+  mois: readonly MoisDuCalendrier[]
+  /** Le nom de la frise pour les lecteurs d'écran. */
+  étiquette?: string
+}) {
   return (
-    <ol className="mt-4 flex flex-col" aria-label="Échéances des douze prochains mois">
+    <ol className="mt-4 flex flex-col" aria-label={étiquette}>
       {mois.map((m) => {
         const occupé = m.échéances.length > 0
         return (

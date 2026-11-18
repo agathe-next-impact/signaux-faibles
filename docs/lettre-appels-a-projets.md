@@ -20,9 +20,10 @@ porte et ce qui reste à faire dans Notion.
 | | Marchés publics exclus |
 | | Tarif de la lettre : 49 € par mois (rien n'est codé dans les lots 0 à 3 : ni prix Stripe ni `lib/domaine/offre.ts`) |
 
-Choix encore ouverts, pour les lots 4 à 6 : table `appels_a_projets` (6), faits
-d'appels dans PESTEL et Forces (7), lien avec « Marchés et niches » (8), écran
-dédié (9).
+Tranchés le 18 novembre 2026 : table `appels_a_projets` (6) et écran dédié (9),
+option A, la table Postgres alimentée en code (voir « Lot 4 » plus bas). Choix
+encore ouverts : faits d'appels dans PESTEL et Forces (7), lien avec « Marchés
+et niches » (8).
 
 ## Ce que le dépôt porte (lots 0 à 3)
 
@@ -91,6 +92,41 @@ d'une organisation, sans attendre sa parution : `pnpm tache lettres
 entrées. Le run ne produit que cette lettre, au contrat de la page, et refuse
 si la lettre n'est pas cochée au registre ou si la section manque au
 référentiel (`CONSIGNE_DE_LA_LETTRE_D_APPELS`, `scripts/taches/pointeurs.ts`).
+
+## Lot 4, l'écran « Appels à projets » (18 novembre 2026)
+
+Décision de l'opératrice : option A, une table Postgres lue par l'écran, sans
+ouvrir aucune lettre.
+
+- **Table** `appels_a_projets` (migration 0030) : une ligne par appel retenu et
+  par édition (organisation, identifiant Notion de l'édition, date, clé, rang,
+  intitulé de 120 caractères, financeur de 80, clôture, adresse de l'appel,
+  impact `fort` ou `moyen`, « à vérifier »). Ni corps de lettre ni argument :
+  des champs courts, comme les autres exceptions à la règle de Postgres. Seul
+  écrivain et lecteur `lib/base/appels.ts`, seule orchestration
+  `lib/portail/appels.ts`.
+- **Relevé en code, jamais par un modèle** : quand `POST /api/veille/lint`
+  trouve conforme une lettre d'appels, `releverLesAppels` en extrait les appels
+  (`appelsDeLaLettre`, `lib/domaine/appels.ts` : phrase-titre « Financeur :
+  intitulé », dernière date du titre pour la clôture, dernier « Impact fort »
+  ou « Impact moyen » du texte, à défaut le niveau de l'axe, adresse prise dans
+  « Pièces et calendrier ») et remplace ceux de l'édition, dans `after()`, sans
+  jamais faire échouer le lint. Une lettre corrigée puis relue ne garde pas un
+  appel qu'elle a retiré. La tâche n'a rien de plus à faire que son lint.
+- **Suivi calculé à la lecture** (`vueDesAppels`) : un appel est reconnu d'une
+  lettre à l'autre par sa clé (adresse normalisée, à défaut l'intitulé), prend
+  sa citation la plus récente, est ouvert tant que sa clôture n'est pas passée,
+  « nouveau » s'il n'apparaît que dans la dernière lettre. Seules comptent les
+  lettres que le lecteur peut lire (règle 3 ; l'opératrice voit aussi l'aperçu).
+- **Écran** `/[slug]/appels`, rubrique « Stratégie » après « Options », dans
+  l'espace réorganisé, onglet montré seulement quand une lettre lisible porte un
+  appel relevé : action de la quinzaine, « À instruire » (clôture en ocre,
+  badge, « nouveau », « à vérifier », lien vers l'appel et vers la lettre),
+  frise des clôtures sur six mois, appels clos repliés.
+- **Limites** : une lettre passée au lint avant le déploiement n'a pas de
+  lignes tant qu'elle n'est pas relue par le lint (contrôle du soir, étape
+  3bis, ou un nouveau passage) ; les appels écartés par la tâche ne sont pas
+  enregistrés, seuls les appels retenus dans la lettre le sont.
 
 ## À faire dans Notion, après le déploiement
 

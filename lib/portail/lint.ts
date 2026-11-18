@@ -5,8 +5,8 @@ import {
   type Bloc,
   type BlocNotion,
   type Document,
-  type Segment,
 } from '@/lib/domaine/document'
+import { appelsDUnAxe, datesDUnTexte, segmentsDUnBloc } from '@/lib/domaine/appels'
 import { lireDossiersOuverts, type DossierOuvert } from '@/lib/domaine/dossiers'
 import { mentionsDe } from '@/lib/domaine/mentions'
 import { faitsDe, phrasesDe } from '@/lib/domaine/document'
@@ -727,78 +727,12 @@ function contrôlerLaFormeUnique(
 
 // ── Lettre d'appels à projets ───────────────────────────────────────────────
 
-const MOIS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'] as const
-
-/** Une date dans un texte, avec ou sans année, en toutes lettres ou chiffrée. */
-const DATE_DANS_UN_APPEL =
-  /\b(\d{1,2})(?:er)?\s+(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)(?:\s+(\d{4}))?\b|\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/g
-
-/**
- * Les dates lisibles d'un texte, en AAAA-MM-JJ. Une date sans année prend celle
- * de l'édition, ou la suivante si elle tomberait plus de six mois avant elle :
- * « clôture le 15 janvier » écrit en novembre vise janvier qui vient.
- */
-export function datesDUnTexte(texte: string, dateDeRéférence: string): string[] {
-  const annéeDeRéférence = Number(dateDeRéférence.slice(0, 4))
-  const dates: string[] = []
-  for (const m of sansAccent(texte).matchAll(DATE_DANS_UN_APPEL)) {
-    const jour = Number(m[1] ?? m[4])
-    const mois = m[2] ? MOIS.indexOf(m[2] as (typeof MOIS)[number]) + 1 : Number(m[5])
-    const annéeÉcrite = m[3] ?? m[6]
-    if (!(jour >= 1 && jour <= 31 && mois >= 1 && mois <= 12)) continue
-    const composer = (année: number) => `${année}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`
-    if (annéeÉcrite) {
-      const année = Number(annéeÉcrite.length === 2 ? `20${annéeÉcrite}` : annéeÉcrite)
-      dates.push(composer(année))
-      continue
-    }
-    let date = composer(annéeDeRéférence)
-    const écart = (Date.parse(dateDeRéférence) - Date.parse(date)) / (24 * 3600 * 1000)
-    if (écart > 183) date = composer(annéeDeRéférence + 1)
-    dates.push(date)
-  }
-  return dates
-}
-
-/** Un appel d'un axe : sa phrase-titre et les blocs qui la suivent jusqu'au suivant. */
-type AppelDUnAxe = { readonly titre: Bloc; readonly blocs: readonly Bloc[] }
-
-/** La phrase-titre d'un appel : un titre de niveau 3, ou un paragraphe qui s'ouvre en gras. */
-function estTitreDAppel(bloc: Bloc): boolean {
-  if (bloc.type === 'titre') return texteDuBloc(bloc).trim().length > 0
-  if (bloc.type !== 'paragraphe') return false
-  const premier = bloc.segments.find((s) => s.texte.trim().length > 0)
-  return premier !== undefined && premier.gras
-}
-
-/** Les appels d'un axe, dans l'ordre ; ce qui précède la première phrase-titre n'en est pas un. */
-export function appelsDUnAxe(blocs: readonly Bloc[]): AppelDUnAxe[] {
-  const appels: { titre: Bloc; blocs: Bloc[] }[] = []
-  for (const bloc of faitsDe(blocs)) {
-    if (estTitreDAppel(bloc)) appels.push({ titre: bloc, blocs: [bloc] })
-    else appels[appels.length - 1]?.blocs.push(bloc)
-  }
-  return appels
-}
-
-function segmentsDuBloc(bloc: Bloc): readonly Segment[] {
-  switch (bloc.type) {
-    case 'paragraphe':
-    case 'titre':
-    case 'citation':
-    case 'encadré':
-      return bloc.segments
-    case 'liste':
-      return bloc.éléments.flat()
-    case 'tableau':
-      return bloc.lignes.flat(2)
-    default:
-      return []
-  }
-}
+// Le découpage d'une lettre d'appels vit dans `lib/domaine/appels.ts` (18 novembre
+// 2026) : le lint et le relevé des appels pour l'écran lisent la même forme.
+export { datesDUnTexte }
 
 function porteUnLien(bloc: Bloc): boolean {
-  return segmentsDuBloc(bloc).some((s) => (s.lien !== null && s.lien.length > 0) || /https?:\/\//.test(s.texte))
+  return segmentsDUnBloc(bloc).some((s) => (s.lien !== null && s.lien.length > 0) || /https?:\/\//.test(s.texte))
 }
 
 /** Le paragraphe « Arguments », avec du contenu : après son libellé, ou en liste juste dessous. */

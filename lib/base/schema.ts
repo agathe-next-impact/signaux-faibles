@@ -1241,3 +1241,54 @@ export type FaitÉtiqueté = typeof faitsÉtiquetés.$inferSelect
 export type LigneDeGrille = typeof grilles.$inferSelect
 export type ÉlémentDeSynthèse = typeof élémentsSynthèse.$inferSelect
 export type Position = typeof positions.$inferSelect
+
+/**
+ * Les appels à projets relevés dans les lettres d'appels (18 novembre 2026,
+ * décision de l'opératrice, option A ; migration 0030). Une ligne par appel et
+ * par édition : la suite des éditions dit, à la lecture, si un appel est
+ * nouveau, encore ouvert ou clos. **Exception bornée** à la règle de Postgres,
+ * comme les libellés de la grille : l'intitulé (120 caractères) et le financeur
+ * (80) sont recopiés de la phrase-titre de l'appel, rien d'autre de la lettre ;
+ * « Pourquoi vous », les arguments et les pièces restent dans Notion.
+ *
+ * Écrite par le seul `lib/base/appels.ts`, depuis la seule orchestration
+ * `lib/portail/appels.ts`, quand `POST /api/veille/lint` trouve conforme une
+ * lettre d'appels : les lignes sont **extraites par le portail**
+ * (`appelsDeLaLettre`, `lib/domaine/appels.ts`), jamais fournies par un modèle.
+ */
+export const appelsÀProjets = pgTable(
+  'appels_a_projets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .notNull()
+      .references(() => organisations.id),
+    /** La page Édition, 32 hexadécimaux sans tirets. */
+    éditionNotion: text('édition_notion').notNull(),
+    dateÉdition: date('date_édition', { mode: 'string' }).notNull(),
+    /** `cléDAppel` : l'adresse de l'appel normalisée, ou son intitulé sans accent ; elle suit un appel d'une lettre à l'autre. */
+    clé: text('clé').notNull(),
+    rang: smallint('rang').notNull(),
+    intitulé: text('intitulé').notNull(),
+    financeur: text('financeur'),
+    clôture: date('clôture', { mode: 'string' }).notNull(),
+    adresse: text('adresse'),
+    impact: text('impact').notNull(),
+    /** « Pourquoi vous » laisse au moins un critère « à vérifier ». */
+    àVérifier: boolean('à_vérifier').notNull(),
+    reléveLe: horodatage('relevé_le').notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('appels_a_projets_unique').on(table.éditionNotion, table.clé),
+    index('appels_a_projets_organisation').on(table.organisationId, table.dateÉdition),
+    check('appels_a_projets_édition_forme', sql`${table.éditionNotion} ~ '^[0-9a-f]{32}$'`),
+    check('appels_a_projets_clé_taille', sql`length(${table.clé}) between 1 and 300`),
+    check('appels_a_projets_intitulé_taille', sql`length(${table.intitulé}) between 1 and 120`),
+    check('appels_a_projets_financeur_taille', sql`${table.financeur} is null or length(${table.financeur}) between 1 and 80`),
+    check('appels_a_projets_adresse_forme', sql`${table.adresse} is null or (${table.adresse} ~ '^https?://' and length(${table.adresse}) <= 500)`),
+    check('appels_a_projets_impact', sql`${table.impact} in ('fort', 'moyen')`),
+    check('appels_a_projets_rang', sql`${table.rang} >= 1`),
+  ],
+)
+
+export type LigneDAppel = typeof appelsÀProjets.$inferSelect

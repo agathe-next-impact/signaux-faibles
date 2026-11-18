@@ -1,8 +1,10 @@
 import { revalidateTag } from 'next/cache'
-import { NextResponse, type NextRequest } from 'next/server'
+import { after, NextResponse, type NextRequest } from 'next/server'
 import { lireBlocsDePage } from '@/lib/notion/editions'
 import { lireÉditionDeTravail } from '@/lib/notion/travail'
 import { identifiantAvecTirets, identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
+import { releverLesAppels } from '@/lib/portail/appels'
+import { estFamilleDAppels } from '@/lib/portail/contexte'
 import { contrôlerLaLettre } from '@/lib/portail/lint'
 
 /**
@@ -23,6 +25,10 @@ import { contrôlerLaLettre } from '@/lib/portail/lint'
  * de plus, tenu comme les trois autres derrière une vérification : le jeton.
  * `revalidateTag(…, { expire: 0 })` et non `updateTag` : ce dernier n'est
  * permis que dans une action serveur, et lèverait ici.
+ *
+ * **Une lettre d'appels conforme est relevée** (18 novembre 2026) : ses appels
+ * entrent dans `appels_a_projets`, extraits en code, dans `after()`. C'est le
+ * seul chemin d'écriture de la table ; un lint refusé n'écrit rien.
  *
  * L'identifiant est recomposé **avec tirets** : c'est la forme que Notion
  * renvoie, celle des tags des écrans et du webhook. Sans cela la route
@@ -66,6 +72,12 @@ export async function POST(requête: NextRequest): Promise<NextResponse> {
       famille: édition.famille,
       dateÉdition: édition.dateÉdition,
     })
+
+    // Une lettre d'appels conforme : le portail en relève les appels pour l'écran
+    // « Appels à projets » (18 novembre 2026), après la réponse, sans jamais la retarder.
+    if (rapport.conforme && estFamilleDAppels(édition.famille)) {
+      after(() => releverLesAppels({ pageId, édition, blocs }).then(() => undefined))
+    }
 
     console.info(
       `[veille/lint] ${pageId} (${édition.statut ?? 'sans statut'}) : ` +
