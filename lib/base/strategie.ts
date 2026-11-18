@@ -268,6 +268,74 @@ export async function faitsConnus(
   })
 }
 
+/**
+ * Les faits cités par une synthèse **déjà enregistrée**, pour l'afficher : à la
+ * différence de `faitsConnus`, qui sert la porte et ne connaît que les faits
+ * vivants, un fait archivé par un ré-étiquetage reste lisible, comme le schéma
+ * le promet (« une synthèse qui les citait les retrouve »).
+ *
+ * Un ré-étiquetage archive les faits d'une édition et en insère de nouveaux,
+ * sous de nouveaux identifiants : sans cette lecture, une synthèse écrite avant
+ * lui ne retrouvait plus aucun de ses faits (constaté le 18 novembre 2026 sur
+ * `cci-cantal`, période `2026-11` : vingt-huit références sur vingt-huit
+ * « fait inconnu », l'édition du 2 novembre ayant été ré-étiquetée après le
+ * changement de grille). Un fait archivé se lit par son **successeur** : le fait
+ * vivant de la même édition qui porte la même empreinte de phrase-titre, donc
+ * la même phrase de la même lettre, avec ses étiquettes du jour ; à défaut (la
+ * phrase a été réécrite ou retirée), par sa propre ligne, qui garde la date et
+ * l'édition d'où il venait. Jamais un fait d'une autre organisation.
+ */
+export async function faitsCités(
+  entrée: { readonly organisationId: string; readonly ids: readonly string[] },
+  db: Base = base(),
+): Promise<Map<string, FaitConnu>> {
+  const ids = [...new Set(entrée.ids)].filter(estUuid)
+  if (ids.length === 0) return new Map()
+  return protéger('lecture des faits cités par une synthèse enregistrée', async () => {
+    const lignes = await db
+      .select({
+        id: faitsÉtiquetés.id,
+        date: faitsÉtiquetés.dateFait,
+        entite: faitsÉtiquetés.entité,
+        édition: faitsÉtiquetés.éditionNotion,
+        empreinte: faitsÉtiquetés.empreinteTitre,
+        archivéeLe: faitsÉtiquetés.archivéeLe,
+      })
+      .from(faitsÉtiquetés)
+      .where(and(eq(faitsÉtiquetés.organisationId, entrée.organisationId), inArray(faitsÉtiquetés.id, ids)))
+    const archivées = lignes.filter((l) => l.archivéeLe !== null)
+    const successeurs = new Map<string, FaitConnu>()
+    if (archivées.length > 0) {
+      const vivants = await db
+        .select({
+          date: faitsÉtiquetés.dateFait,
+          entite: faitsÉtiquetés.entité,
+          édition: faitsÉtiquetés.éditionNotion,
+          empreinte: faitsÉtiquetés.empreinteTitre,
+        })
+        .from(faitsÉtiquetés)
+        .where(
+          and(
+            eq(faitsÉtiquetés.organisationId, entrée.organisationId),
+            isNull(faitsÉtiquetés.archivéeLe),
+            inArray(faitsÉtiquetés.éditionNotion, [...new Set(archivées.map((l) => l.édition))]),
+          ),
+        )
+        .orderBy(asc(faitsÉtiquetés.section), asc(faitsÉtiquetés.numéroAxe), asc(faitsÉtiquetés.rang))
+      for (const v of vivants) {
+        const clé = `${v.édition}:${v.empreinte}`
+        if (!successeurs.has(clé)) successeurs.set(clé, { date: v.date, entite: v.entite, édition: v.édition })
+      }
+    }
+    return new Map(
+      lignes.map((l) => {
+        const propre: FaitConnu = { date: l.date, entite: l.entite, édition: l.édition }
+        return [l.id, l.archivéeLe === null ? propre : (successeurs.get(`${l.édition}:${l.empreinte}`) ?? propre)]
+      }),
+    )
+  })
+}
+
 /** Les faits vivants qui nomment une entité de la grille, du plus récent au plus ancien. */
 export async function faitsDUneEntité(
   entrée: { readonly organisationId: string; readonly entité: string },

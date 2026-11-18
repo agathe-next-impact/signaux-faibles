@@ -21,6 +21,7 @@ import {
 import {
   enregistrerLaSynthèse,
   faitsConnus,
+  faitsCités,
   faitsDeLaFenêtre,
   lireLaGrille,
   lireLaSynthèse,
@@ -263,6 +264,33 @@ describe('outils stratégiques en base', () => {
       const anciens = (await faitsDeLaFenêtre({ organisationId: infralliance, début: DATE_OCTOBRE, fin: DATE_OCTOBRE }, db)).map((f) => f.id)
       await remplacerLesÉtiquettes({ organisationId: infralliance, édition: ÉDITION, étiquettes: lotDOctobre() }, db)
       expect((await faitsConnus({ organisationId: infralliance, ids: anciens }, db)).size).toBe(0)
+    })
+
+    it('un fait archivé par un ré-étiquetage reste lisible pour une synthèse enregistrée, par son successeur', async () => {
+      await remplacerLesÉtiquettes({ organisationId: infralliance, édition: ÉDITION, étiquettes: lotDOctobre() }, db)
+      const anciens = await faitsDeLaFenêtre({ organisationId: infralliance, début: DATE_OCTOBRE, fin: DATE_OCTOBRE }, db)
+      // Le même lot, une entité renommée par la nouvelle grille : mêmes phrases, nouveaux identifiants.
+      const relu = lotDOctobre().map((é, i) => (i === 0 ? { ...é, entite: 'Renommée' } : é))
+      await remplacerLesÉtiquettes({ organisationId: infralliance, édition: ÉDITION, étiquettes: relu }, db)
+      const ids = anciens.map((f) => f.id)
+      const cités = await faitsCités({ organisationId: infralliance, ids }, db)
+      expect(cités.size).toBe(anciens.length)
+      for (const f of anciens) expect(cités.get(f.id)).toMatchObject({ date: f.dateFait, édition: f.éditionNotion })
+      // Le successeur porte les étiquettes du jour.
+      const premier = anciens.find((f) => f.empreinteTitre === relu[0]!.empreinte)!
+      expect(cités.get(premier.id)?.entite).toBe('Renommée')
+      // Jamais pour une autre organisation, ni pour un identifiant mal formé.
+      expect((await faitsCités({ organisationId: autre, ids }, db)).size).toBe(0)
+      expect((await faitsCités({ organisationId: infralliance, ids: ['S1'] }, db)).size).toBe(0)
+    })
+
+    it('un fait archivé sans successeur se lit par sa propre ligne', async () => {
+      await remplacerLesÉtiquettes({ organisationId: infralliance, édition: ÉDITION, étiquettes: lotDOctobre() }, db)
+      const anciens = await faitsDeLaFenêtre({ organisationId: infralliance, début: DATE_OCTOBRE, fin: DATE_OCTOBRE }, db)
+      await remplacerLesÉtiquettes({ organisationId: infralliance, édition: ÉDITION, étiquettes: [] }, db)
+      const cités = await faitsCités({ organisationId: infralliance, ids: anciens.map((f) => f.id) }, db)
+      expect(cités.size).toBe(anciens.length)
+      expect(cités.get(anciens[0]!.id)).toEqual({ date: anciens[0]!.dateFait, entite: anciens[0]!.entité, édition: anciens[0]!.éditionNotion })
     })
   })
 

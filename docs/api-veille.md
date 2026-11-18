@@ -1080,6 +1080,17 @@ la synthèse rendue pour le courriel « [Relecture] », à recopier telle quelle
 désigne) et `crans` les positions posées. `aucune` (200) si rien n'est
 enregistré pour la période.
 
+**Faits cités après un ré-étiquetage** (18 novembre 2026). Un nouveau lot de
+`POST /api/veille/faits` archive les faits de l'édition et en crée d'autres, sous
+de nouveaux `id`. La porte de `POST` ne connaît que les faits vivants
+(`fait-inconnu`), mais la **lecture** d'une synthèse enregistrée (ce `texte`, les
+écrans de l'espace) retrouve un fait archivé par son successeur, le fait vivant de
+la même édition et de la même phrase-titre, ou à défaut par sa propre ligne
+(`faitsCités`, `lib/base/strategie.ts`). Avant, la période `2026-11` de
+`cci-cantal`, écrite avant le ré-étiquetage de l'édition du 2 novembre, rendait
+ses vingt-huit références en « fait inconnu », et l'écran « Acteurs » ses cinq
+parties prenantes sans fait daté.
+
 **État de publication** (16 novembre 2026). `publication` dit l'état réel de la
 période, lu dans ses lignes vivantes (éléments et positions) au moment de la
 lecture, dans les mots du `PATCH` : ne pas le déduire du texte, ni de
