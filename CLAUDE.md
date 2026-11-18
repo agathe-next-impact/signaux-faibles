@@ -185,7 +185,7 @@ mène à l'écran de ses faits sur treize semaines (`/[slug]/pestel/[axe]`,
 écrans (`/[slug]/veille/themes`, `/sources`, `/corpus`, `/calendrier`, dix-sept
 écrans au rail) : thèmes, sources et calendrier lisent la fiche de veille
 publiée (`ficheDeLEspace`, bornée, Postgres seulement, et le disent tant
-qu'elle ne l'est pas ; le calendrier en frise verticale depuis le même jour, `FriseDesÉchéances`, `components/votre-veille.tsx`, repère ocre pour un mois qui porte une échéance) ; depuis le 16 novembre 2026, à la demande de l'opératrice, le calendrier est rangé au rail dans « Cette semaine », après « Lettres », son adresse inchangée, et quitte donc la carte « Votre veille » de la vue d'ensemble ; depuis le 18 novembre 2026, à sa demande, il passe dans « L'environnement », après « PESTEL », toujours à la même adresse, et figure donc sur la carte « L'environnement » de la vue d'ensemble ; le corpus lit la seule grille. Depuis le même jour, le
+qu'elle ne l'est pas ; le calendrier en frise verticale depuis le même jour, `FriseDesÉchéances`, `components/votre-veille.tsx`, repère ocre pour un mois qui porte une échéance) ; depuis le 16 novembre 2026, à la demande de l'opératrice, le calendrier est rangé au rail dans « Cette semaine », après « Lettres », son adresse inchangée, et quitte donc la carte « Votre veille » de la vue d'ensemble ; le 18 novembre 2026, à sa demande, il est passé dans « L'environnement », puis revenu le même jour à sa place dans « Cette semaine », après « Lettres », toujours à la même adresse et hors des cartes de la vue d'ensemble ; le corpus lit la seule grille. Depuis le même jour, le
 rail se **replie** sur grand écran (`components/rail-retractable.tsx`, seul
 composant client de la coquille) ; le choix tient dans le cookie `rail`
 (`COOKIE_DU_RAIL`, `lib/portail/rail.ts`), lu par le layout de l'espace pour
@@ -278,7 +278,7 @@ quand `POST /api/veille/lint` trouve conforme une lettre d'appels
 `lib/domaine/appels.ts` ; aucun modèle ne fournit une ligne), seul écrivain
 `lib/base/appels.ts`, seule orchestration `lib/portail/appels.ts` ; suivi
 calculé à la lecture (`vueDesAppels`), sur les seules lettres lisibles ;
-`/[slug]/appels`, rubrique « Stratégie » après « Options » puis, le même jour à la demande de l'opératrice, « Cette semaine » après « Lettres », espace réorganisé,
+`/[slug]/appels`, rubrique « Stratégie » après « Options » puis, le même jour à la demande de l'opératrice, « Cette semaine » après « Lettres » (et le calendrier, revenu le même jour), espace réorganisé,
 onglet montré seulement si une lettre lisible porte un appel
 (`ongletDesAppels`) ; garde d'architecture.
 

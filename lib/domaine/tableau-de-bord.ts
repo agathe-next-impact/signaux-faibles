@@ -63,6 +63,13 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
   return [
     { rubrique: 'Cette semaine', écran: 'Lettres', href: href('/lettres'), valeur: String(d.lettres), mention: d.dernièreSemaine ? `la dernière, ${d.dernièreSemaine}` : 'aucune lettre' },
     {
+      rubrique: 'Cette semaine',
+      écran: 'Calendrier',
+      href: href('/veille/calendrier'),
+      valeur: d.veille?.fiche?.prochaine ? `le ${d.veille.fiche.prochaine.date.slice(8, 10)}/${d.veille.fiche.prochaine.date.slice(5, 7)}` : 'n.d.',
+      mention: d.veille?.fiche ? (d.veille.fiche.prochaine?.libellé ?? 'aucune échéance à venir') : pasEncore,
+    },
+    {
       rubrique: 'Le marché',
       écran: marché.écran,
       href: href('/concurrents'),
@@ -108,13 +115,6 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
       href: href('/pestel'),
       valeur: pestel && pestel.faits > 0 ? pestel.libellé : 'n.d.',
       mention: pestel && pestel.faits > 0 ? `la plus citée, ${pluriel(pestel.faits, 'fait')} en treize semaines` : 'treize semaines',
-    },
-    {
-      rubrique: 'L’environnement',
-      écran: 'Calendrier',
-      href: href('/veille/calendrier'),
-      valeur: d.veille?.fiche?.prochaine ? `le ${d.veille.fiche.prochaine.date.slice(8, 10)}/${d.veille.fiche.prochaine.date.slice(5, 7)}` : 'n.d.',
-      mention: d.veille?.fiche ? (d.veille.fiche.prochaine?.libellé ?? 'aucune échéance à venir') : pasEncore,
     },
     {
       rubrique: 'Stratégie',

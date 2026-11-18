@@ -148,8 +148,12 @@ function tousLesOnglets(
     const réorganisé = [
       { href: `/${slug}`, libellé: 'Vue d’ensemble', libelléCourt: 'Vue', exact: true, rubrique: 'Cette semaine' },
       { href: `/${slug}/lettres`, libellé: 'Lettres', libelléCourt: 'Lettres', compte: comptes.lettres, rubrique: 'Cette semaine' },
+      // Le calendrier, rangé dans « Cette semaine » le 16 novembre 2026, passé dans « L'environnement »
+      // le 18 novembre puis revenu le même jour à sa place, après « Lettres » (demande de l'opératrice) ;
+      // son adresse ne change pas.
+      { href: `/${slug}/veille/calendrier`, libellé: 'Calendrier', libelléCourt: 'Calend.', rubrique: 'Cette semaine' },
       // Appels à projets (18 novembre 2026) : seulement quand une lettre lisible porte un appel relevé ;
-      // rangé dans « Cette semaine », après « Lettres », le même jour (demande de l'opératrice).
+      // rangé dans « Cette semaine », après « Lettres » et le calendrier, le même jour (demande de l'opératrice).
       ...(espace.appels ? [{ href: `/${slug}/appels`, libellé: 'Appels à projets', libelléCourt: 'Appels', rubrique: 'Cette semaine' }] : []),
       // « Entreprises suivies » quand la veille concurrentielle suit les mouvements du territoire (7 novembre 2026).
       { href: `/${slug}/concurrents`, libellé: espace.marché?.écran ?? 'Concurrents', libelléCourt: espace.marché?.écranCourt ?? 'Concurr.', rubrique: 'Le marché' },
@@ -159,9 +163,6 @@ function tousLesOnglets(
       { href: `/${slug}/marches`, libellé: 'Marchés et niches', libelléCourt: 'Marchés', rubrique: 'Le marché' },
       { href: `/${slug}/axes`, libellé: 'Les axes', libelléCourt: 'Axes', rubrique: 'L’environnement' },
       { href: `/${slug}/pestel`, libellé: 'PESTEL', libelléCourt: 'PESTEL', rubrique: 'L’environnement' },
-      // Le calendrier, rangé dans « Cette semaine » le 16 novembre 2026, passe dans « L'environnement »
-      // le 18 novembre 2026 (demande de l'opératrice) ; son adresse ne change pas.
-      { href: `/${slug}/veille/calendrier`, libellé: 'Calendrier', libelléCourt: 'Calend.', rubrique: 'L’environnement' },
       { href: `/${slug}/diagnostic`, libellé: 'Diagnostic', libelléCourt: 'Diagnos.', rubrique: 'Stratégie' },
       { href: `/${slug}/recommandations`, libellé: 'Options', libelléCourt: 'Options', compte: comptes.recommandations, rubrique: 'Stratégie' },
       { href: `/${slug}/scenarios`, libellé: 'Scénarios', libelléCourt: 'Scénar.', rubrique: 'Stratégie' },
