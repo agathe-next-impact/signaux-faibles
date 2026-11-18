@@ -33,7 +33,7 @@ import { espaceDeLOrganisation } from '@/lib/portail/strategie'
 export default async function Lettres({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const { accès, lecture } = await exigerLecture(slug)
-  await exigerLÉcran(accès, 'lettres')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'lettres')
   if (lecture === 'aucune') redirect(`/${accès.slug}`)
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
@@ -45,7 +45,7 @@ export default async function Lettres({ params }: { params: Promise<{ slug: stri
     <>
       <EntêteÉcran
         surtitre={réorganisé ? 'cette semaine' : 'lettres'}
-        titre={réorganisé ? 'Les lettres de la semaine' : 'Toutes les lettres'}
+        titre={nomDeLÉcran ?? (réorganisé ? 'Les lettres de la semaine' : 'Toutes les lettres')}
         état={réorganisé && semaines[0] ? semaines[0].libellé : `${lettres.length} lettre${lettres.length > 1 ? 's' : ''}`}
       />
 

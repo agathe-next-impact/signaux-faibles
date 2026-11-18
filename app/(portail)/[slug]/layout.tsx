@@ -109,13 +109,13 @@ async function Garde({
         lettres: espace?.réorganisé ? (semaines[0]?.éditions.length ?? 0) : semaines.reduce((total, semaine) => total + semaine.éditions.length, 0),
         recommandations,
         archives: semaines.length,
-      }, lecture, { réorganisé: espace?.réorganisé ?? false, marché: espace?.marché, appels: ongletDesAppels(éditionsDAppels, semaines) }, masquésDuRail)}
+      }, lecture, { réorganisé: espace?.réorganisé ?? false, marché: espace?.marché, appels: ongletDesAppels(éditionsDAppels, semaines) }, masquésDuRail, espace?.nomsDesÉcrans)}
     >
       {accès.tousLesEspaces && masqués.length > 0 ? (
         <p role="note" className="mb-6 border border-gris-ligne bg-fond-ardoise p-4 text-encre">
           <span className="label-mono text-ardoise">écrans masqués</span>{' '}
           {masqués.length === 1 ? 'Un écran est masqué' : `${masqués.length} écrans sont masqués`} au client, visibles par l’opératrice
-          seulement : {libellésDesÉcrans(masqués).join(', ')}.
+          seulement : {libellésDesÉcrans(masqués, espace?.nomsDesÉcrans).join(', ')}.
         </p>
       ) : null}
       {enAperçu > 0 ? (

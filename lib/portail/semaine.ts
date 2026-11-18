@@ -2,7 +2,7 @@ import type { Onglet } from '@/components/coquille'
 import { construireDocument, type Document } from '@/lib/domaine/document'
 import { regrouperParSemaine, type Semaine } from '@/lib/domaine/semaines'
 import type { VocabulaireDuMarché } from '@/lib/domaine/sujets-du-marche'
-import { sansLesÉcransMasqués, type ÉcranDeLEspace } from '@/lib/domaine/ecrans-de-l-espace'
+import { ongletsRenommés, sansLesÉcransMasqués, type NomsDesÉcrans, type ÉcranDeLEspace } from '@/lib/domaine/ecrans-de-l-espace'
 import { lireBlocsDeLÉdition, listerÉditionsPubliées, listerÉditionsÀPrévisualiser, type Édition } from '@/lib/documents'
 
 /**
@@ -124,7 +124,7 @@ export async function dernièresNotes(
 /**
  * Les écrans de l'espace client, dans l'ordre du rail, sans ceux que
  * l'opératrice a masqués (`masqués`, 18 novembre 2026 ; vide pour elle-même,
- * qui voit tout).
+ * qui voit tout), et sous les noms qu'elle leur a donnés (`noms`, même jour).
  */
 export function ongletsDe(
   slug: string,
@@ -132,8 +132,9 @@ export function ongletsDe(
   lecture: 'complète' | 'essentiel' | 'aucune' = 'complète',
   espace: { readonly réorganisé: boolean; readonly marché?: Pick<VocabulaireDuMarché, 'écran' | 'écranCourt'>; readonly appels?: boolean } = { réorganisé: false },
   masqués: readonly ÉcranDeLEspace[] = [],
+  noms: NomsDesÉcrans = {},
 ): Onglet[] {
-  return sansLesÉcransMasqués(slug, tousLesOnglets(slug, comptes, lecture, espace), masqués)
+  return ongletsRenommés(slug, sansLesÉcransMasqués(slug, tousLesOnglets(slug, comptes, lecture, espace), masqués), noms)
 }
 
 function tousLesOnglets(

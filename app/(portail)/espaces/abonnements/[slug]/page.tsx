@@ -29,7 +29,7 @@ import {
   type Statut,
 } from '@/components/gestion-operatrice'
 import { LIBELLÉS_PESTEL, LIBELLÉS_PORTER } from '@/lib/domaine/strategie'
-import { libellésDesÉcrans, écransMasquésConnus } from '@/lib/domaine/ecrans-de-l-espace'
+import { libellésDesÉcrans, nomsDesÉcransConnus, écransMasquésConnus } from '@/lib/domaine/ecrans-de-l-espace'
 import {
   basculerLEspace,
   réglerLesSujetsDuMarchéDepuisLaFiche,
@@ -648,15 +648,19 @@ function Gestion({
       <Section id="ecrans" titre="Écrans de l’espace" statut={statut}>
         <p className="text-encre">
           {(() => {
-            const masqués = libellésDesÉcrans(écransMasquésConnus(organisation.écransMasqués))
+            const masqués = libellésDesÉcrans(écransMasquésConnus(organisation.écransMasqués), nomsDesÉcransConnus(organisation.nomsDesÉcrans))
             return masqués.length === 0
               ? 'Tous les écrans sont montrés au client.'
               : `${masqués.length === 1 ? 'Un écran masqué' : `${masqués.length} écrans masqués`} au client : ${masqués.join(', ')}.`
+          })()}{' '}
+          {(() => {
+            const renommés = Object.keys(nomsDesÉcransConnus(organisation.nomsDesÉcrans)).length
+            return renommés === 0 ? 'Aucun écran renommé.' : renommés === 1 ? 'Un écran renommé.' : `${renommés} écrans renommés.`
           })()}
         </p>
         <p>
           <Link href={`/espaces/abonnements/${encodeURIComponent(slug)}/ecrans`} className={bouton}>
-            Activer ou désactiver des écrans
+            Activer, désactiver ou renommer des écrans
           </Link>
         </p>
       </Section>

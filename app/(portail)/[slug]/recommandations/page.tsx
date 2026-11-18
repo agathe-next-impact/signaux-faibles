@@ -22,7 +22,7 @@ export default async function Recommandations({
 }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'recommandations')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'recommandations')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 3) : cet écran devient « Options », l'option retenue
@@ -46,7 +46,7 @@ export default async function Recommandations({
     <>
       <EntêteÉcran
         surtitre={réorganisé ? 'stratégie' : 'recommandations'}
-        titre="Ce que nous suggérons de faire"
+        titre={nomDeLÉcran ?? "Ce que nous suggérons de faire"}
         état={`${avecAction.length} semaine${avecAction.length > 1 ? 's' : ''} avec action`}
       />
 

@@ -225,6 +225,13 @@
       "when": 1794998770725,
       "tag": "0031_ecrans_masques",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794999942904,
+      "tag": "0032_noms_des_ecrans",
+      "breakpoints": true
     }
   ]
 }

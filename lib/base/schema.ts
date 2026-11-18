@@ -169,6 +169,13 @@ export const organisations = pgTable(
    */
   écransMasqués: text('ecrans_masques').array().notNull().default(sql`'{}'::text[]`),
   /**
+   * Les noms que l'opératrice a donnés aux écrans de l'espace (18 novembre 2026),
+   * par clé d'écran (`lib/domaine/ecrans-de-l-espace.ts`), 40 caractères au plus :
+   * rail, menu de pied, carte de la vue d'ensemble et titre de l'écran. Vide par
+   * défaut : chaque écran garde son nom. Une clé ou un nom invalide est ignoré à la lecture.
+   */
+  nomsDesÉcrans: jsonb('noms_des_ecrans').$type<Record<string, string>>().notNull().default({}),
+  /**
    * L'aperçu avant envoi (1er novembre 2026, décision de l'opératrice) : tant
    * que vrai, rien ne part au client sans son geste. `POST /api/acces/ouvrir`
    * refuse (`apercu-avant-envoi`) : le lien part de la fiche de l'organisation ;

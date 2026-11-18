@@ -24,7 +24,7 @@ const OUVERTS_VISIBLES = 8
 export default async function Appels({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'appels')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'appels')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
@@ -42,7 +42,7 @@ export default async function Appels({ params }: { params: Promise<{ slug: strin
 
   return (
     <>
-      <EntêteÉcran surtitre="stratégie" titre="Appels à projets" état={vue ? `${n} appel${n > 1 ? 's' : ''} à instruire` : undefined} />
+      <EntêteÉcran surtitre="stratégie" titre={nomDeLÉcran ?? "Appels à projets"} état={vue ? `${n} appel${n > 1 ? 's' : ''} à instruire` : undefined} />
       {!vue ? (
         <p className="mt-6 text-ardoise">Les appels à projets ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes.</p>
       ) : vue.lettres === 0 ? (

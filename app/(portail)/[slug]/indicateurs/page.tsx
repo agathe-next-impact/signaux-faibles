@@ -22,7 +22,7 @@ import { espaceDeLOrganisation, indicateursDeLEspace } from '@/lib/portail/strat
 export default async function Indicateurs({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'indicateurs')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'indicateurs')
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
@@ -31,7 +31,7 @@ export default async function Indicateurs({ params }: { params: Promise<{ slug: 
 
   return (
     <>
-      <EntêteÉcran surtitre="stratégie" titre="Le secteur grandit-il" état={vue ? `trimestre ${libelléDePériode(vue.période)}` : undefined} />
+      <EntêteÉcran surtitre="stratégie" titre={nomDeLÉcran ?? "Le secteur grandit-il"} état={vue ? `trimestre ${libelléDePériode(vue.période)}` : undefined} />
       {vue ? (
         <>
           <EnBref chiffres={enBrefDesIndicateurs(vue)} />

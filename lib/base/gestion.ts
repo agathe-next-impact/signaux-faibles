@@ -26,6 +26,8 @@ export type OrganisationÀGérer = {
   readonly sujetsDuMarché: string
   /** Les écrans de l'espace masqués au client (18 novembre 2026), tels qu'en base. */
   readonly écransMasqués: readonly string[]
+  /** Les noms donnés aux écrans de l'espace (18 novembre 2026), tels qu'en base. */
+  readonly nomsDesÉcrans: Readonly<Record<string, string>>
   /** L'aperçu avant envoi (1er novembre 2026) : vrai, rien ne part au client sans le geste de l'opératrice. */
   readonly aperçuAvantEnvoi: boolean
   /** Vrai si l'organisation porte sa clé de cloisonnement : sans elle, aucun lecteur ne peut entrer (règle 2). */
@@ -48,6 +50,7 @@ export async function organisationÀGérer(slug: string, db: Base = base()): Pro
         espaceRéorganisé: organisations.espaceRéorganisé,
         sujetsDuMarché: organisations.sujetsDuMarché,
         écransMasqués: organisations.écransMasqués,
+        nomsDesÉcrans: organisations.nomsDesÉcrans,
         aperçuAvantEnvoi: organisations.aperçuAvantEnvoi,
         registreNotion: organisations.registreNotion,
         archivéeLe: organisations.archivéeLe,

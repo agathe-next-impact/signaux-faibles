@@ -81,10 +81,10 @@ export function sansLesÉcransMasqués<T extends { readonly href: string }>(
   })
 }
 
-/** Les libellés des écrans masqués, dans l'ordre du rail, pour le bandeau de l'opératrice. */
-export function libellésDesÉcrans(clés: readonly ÉcranDeLEspace[]): string[] {
+/** Les libellés des écrans, dans l'ordre du rail (le nom choisi pour l'organisation d'abord), pour le bandeau de l'opératrice. */
+export function libellésDesÉcrans(clés: readonly ÉcranDeLEspace[], noms: Readonly<Partial<Record<ÉcranDeLEspace, string>>> = {}): string[] {
   const voulues = new Set<string>(clés)
-  return ÉCRANS_DE_L_ESPACE.filter((é) => voulues.has(é.clé)).map((é) => é.libellé)
+  return ÉCRANS_DE_L_ESPACE.filter((é) => voulues.has(é.clé)).map((é) => noms[é.clé] ?? é.libellé)
 }
 
 /**
@@ -95,4 +95,98 @@ export function libellésDesÉcrans(clés: readonly ÉcranDeLEspace[]): string[]
 export function masquésDuFormulaire(actifs: readonly unknown[]): readonly ÉcranDésactivable[] {
   const cochés = new Set(actifs.filter(estÉcranDésactivable))
   return ÉCRANS_DE_L_ESPACE.filter((é) => é.désactivable && !cochés.has(é.clé)).map((é) => é.clé as ÉcranDésactivable)
+}
+
+// ── Les noms des écrans (18 novembre 2026, demande de l'opératrice) ──────────
+
+/**
+ * Un écran peut porter, pour une organisation, un nom choisi par l'opératrice
+ * (`organisations.noms_des_ecrans`, migration 0032) : il remplace le libellé du
+ * rail et du menu de pied, le nom de l'écran sur sa carte de la vue
+ * d'ensemble, et le titre de l'écran. Un champ vide garde le nom par défaut.
+ * Quarante caractères au plus, une ligne, sans caractère de contrôle.
+ */
+export const NOM_D_ÉCRAN_MAX = 40
+
+/** Au-delà, le libellé court du menu de pied est abrégé, comme « Diagnos. ». */
+export const LIBELLÉ_COURT_MAX = 9
+
+export type NomsDesÉcrans = Readonly<Partial<Record<ÉcranDeLEspace, string>>>
+
+const CLÉS: ReadonlySet<string> = new Set(ÉCRANS_DE_L_ESPACE.map((é) => é.clé))
+
+/** Un nom propre, ou `null` : vide, trop long ou porteur d'un caractère de contrôle. */
+export function nomDÉcranValide(valeur: unknown): string | null {
+  if (typeof valeur !== 'string') return null
+  const nom = valeur.replace(/\s+/g, ' ').trim()
+  if (nom.length === 0 || nom.length > NOM_D_ÉCRAN_MAX) return null
+  if (/[\u0000-\u001f\u007f]/.test(nom)) return null
+  return nom
+}
+
+/** La valeur lue en base, réduite aux clés connues et aux noms valides ; tout le reste est ignoré. */
+export function nomsDesÉcransConnus(valeur: unknown): NomsDesÉcrans {
+  if (!valeur || typeof valeur !== 'object' || Array.isArray(valeur)) return {}
+  const noms: Partial<Record<ÉcranDeLEspace, string>> = {}
+  for (const [clé, nom] of Object.entries(valeur as Record<string, unknown>)) {
+    const propre = nomDÉcranValide(nom)
+    if (CLÉS.has(clé) && propre) noms[clé as ÉcranDeLEspace] = propre
+  }
+  return noms
+}
+
+/**
+ * Ce que le formulaire envoie : un champ `nom:<clé>` par écran. Un champ vide
+ * retire le nom ; un nom trop long est refusé (`trop-long`) plutôt que coupé en silence.
+ */
+export function nomsDuFormulaire(
+  champs: Iterable<readonly [string, unknown]>,
+): { readonly sorte: 'noms'; readonly noms: NomsDesÉcrans } | { readonly sorte: 'trop-long'; readonly écran: ÉcranDeLEspace } {
+  const noms: Partial<Record<ÉcranDeLEspace, string>> = {}
+  for (const [champ, valeur] of champs) {
+    if (!champ.startsWith('nom:')) continue
+    const clé = champ.slice(4)
+    if (!CLÉS.has(clé) || typeof valeur !== 'string') continue
+    const nettoyé = valeur.replace(/\s+/g, ' ').trim()
+    if (nettoyé.length === 0) continue
+    const propre = nomDÉcranValide(nettoyé)
+    if (!propre) return { sorte: 'trop-long', écran: clé as ÉcranDeLEspace }
+    noms[clé as ÉcranDeLEspace] = propre
+  }
+  return { sorte: 'noms', noms }
+}
+
+/** Le libellé court du menu de pied : le nom s'il tient, son premier mot sinon, abrégé au besoin. */
+export function libelléCourtDe(nom: string): string {
+  if (nom.length <= LIBELLÉ_COURT_MAX) return nom
+  const premier = nom.split(' ')[0] ?? nom
+  if (premier.length <= LIBELLÉ_COURT_MAX) return premier
+  return `${premier.slice(0, LIBELLÉ_COURT_MAX - 1)}.`
+}
+
+/** Le nom d'un écran pour une organisation : le sien s'il en a un, `null` sinon. */
+export function nomDeLÉcran(noms: NomsDesÉcrans | undefined, écran: ÉcranDeLEspace): string | null {
+  return noms?.[écran] ?? null
+}
+
+/** Les onglets du rail, renommés : libellé et libellé court. */
+export function ongletsRenommés<T extends { readonly href: string; readonly libellé: string; readonly libelléCourt: string }>(
+  slug: string,
+  onglets: readonly T[],
+  noms: NomsDesÉcrans,
+): T[] {
+  return onglets.map((onglet) => {
+    const écran = écranDeLAdresse(slug, onglet.href)
+    const nom = écran ? nomDeLÉcran(noms, écran) : null
+    return nom ? { ...onglet, libellé: nom, libelléCourt: libelléCourtDe(nom) } : onglet
+  })
+}
+
+/** Les cases de la vue d'ensemble, renommées : le nom de l'écran sur sa carte. */
+export function casesRenommées<T extends { readonly href: string; readonly écran: string }>(slug: string, cases: readonly T[], noms: NomsDesÉcrans): T[] {
+  return cases.map((c) => {
+    const écran = écranDeLAdresse(slug, c.href)
+    const nom = écran ? nomDeLÉcran(noms, écran) : null
+    return nom ? { ...c, écran: nom } : c
+  })
 }

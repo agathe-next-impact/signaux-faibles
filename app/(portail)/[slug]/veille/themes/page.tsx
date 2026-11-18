@@ -19,7 +19,7 @@ import { PasEncorePubliée, VEILLES_AFFICHÉES } from '@/components/votre-veille
 export default async function ThèmesSuivis({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'themes')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'themes')
 
   const espace = await espaceDeLOrganisation(accès.organisationId)
   if (espace && !espace.réorganisé) notFound()
@@ -28,7 +28,7 @@ export default async function ThèmesSuivis({ params }: { params: Promise<{ slug
 
   return (
     <>
-      <EntêteÉcran surtitre="votre veille" titre="Ce que nous surveillons pour vous" état={lue ? `${thèmes.length} thèmes` : undefined} />
+      <EntêteÉcran surtitre="votre veille" titre={nomDeLÉcran ?? "Ce que nous surveillons pour vous"} état={lue ? `${thèmes.length} thèmes` : undefined} />
       {!lue ? (
         <p className="mt-6 text-ardoise">Les thèmes de votre veille ne peuvent pas être affichés pour l’instant. Réessayez dans quelques minutes.</p>
       ) : (

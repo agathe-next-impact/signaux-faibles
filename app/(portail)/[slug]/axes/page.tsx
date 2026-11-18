@@ -30,7 +30,7 @@ import { CarteDeChaleurDesAxes } from '@/components/graphiques-strategie'
 export default async function LesAxes({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'axes')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'axes')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   // L'espace réorganisé (lot 3) a son écran « PESTEL » : l'onglet n'est plus lu ici.
@@ -102,7 +102,7 @@ export default async function LesAxes({ params }: { params: Promise<{ slug: stri
     <>
       <EntêteÉcran
         surtitre="écosystème"
-        titre="Les axes"
+        titre={nomDeLÉcran ?? "Les axes"}
         état={
           comparable ? 'comparés à la semaine précédente' : 'première semaine observée'
         }

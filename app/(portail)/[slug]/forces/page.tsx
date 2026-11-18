@@ -17,7 +17,7 @@ import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strateg
 export default async function ForcesDuMarché({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'forces')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'forces')
 
   const [semaines, espace] = await Promise.all([semainesDeLEspace(accès), espaceDeLOrganisation(accès.organisationId)])
   if (espace && !espace.réorganisé) notFound()
@@ -27,7 +27,7 @@ export default async function ForcesDuMarché({ params }: { params: Promise<{ sl
 
   return (
     <>
-      <EntêteÉcran surtitre="le marché" titre="Le marché se durcit-il" état={trimestre ? `trimestre ${libelléDePériode(trimestre.période)}` : undefined} />
+      <EntêteÉcran surtitre="le marché" titre={nomDeLÉcran ?? "Le marché se durcit-il"} état={trimestre ? `trimestre ${libelléDePériode(trimestre.période)}` : undefined} />
       {trimestre ? (
         <div className="mt-8">
           <CinqForces période={trimestre.période} forces={trimestre.forces} barres />

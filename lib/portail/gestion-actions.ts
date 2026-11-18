@@ -17,7 +17,7 @@ import { estRenvoyable, renvoyerUnCourrierCommercial } from '@/lib/portail/renvo
 import { lecteursModifiables } from '@/lib/portail/situation'
 import { env } from '@/lib/env'
 import { réglerLEspace, réglerLeMarché, réglerLePilote, réglerLesÉcrans, validerLaVersion } from '@/lib/portail/strategie'
-import { masquésDuFormulaire } from '@/lib/domaine/ecrans-de-l-espace'
+import { masquésDuFormulaire, nomsDuFormulaire } from '@/lib/domaine/ecrans-de-l-espace'
 
 /**
  * Les gestes de la page de gestion d'une organisation (31 octobre 2026,
@@ -112,16 +112,24 @@ export async function réglerLesSujetsDuMarchéDepuisLaFiche(données: FormData)
 /**
  * Les écrans de l'espace actifs pour le client (18 novembre 2026, écran
  * `/espaces/abonnements/[slug]/ecrans`). Le formulaire envoie les écrans cochés ;
- * les autres, parmi ceux qui peuvent l'être, sont masqués. Le privilège d'abord.
+ * les autres, parmi ceux qui peuvent l'être, sont masqués ; un champ `nom:<écran>` par
+ * écran porte son nom, vide pour garder celui par défaut. Le privilège d'abord.
  * Effet à la requête suivante du client : rien n'est mis en cache.
  */
 export async function réglerLesÉcransDepuisLaFiche(données: FormData): Promise<void> {
   const slug = slugDu(données)
   const masqués = masquésDuFormulaire(données.getAll('ecran'))
+  // Les noms (18 novembre 2026) : un champ vide garde le nom par défaut, un nom trop long refuse tout le formulaire.
+  const noms = nomsDuFormulaire([...données.entries()])
   const accès = await exigerOpérateur()
   let code: string
   try {
-    code = (await réglerLesÉcrans({ slug, masqués })) === 'réglé' ? 'écrans-réglés' : 'inconnue'
+    code =
+      noms.sorte === 'trop-long'
+        ? 'nom-trop-long'
+        : (await réglerLesÉcrans({ slug, masqués, noms: noms.noms })) === 'réglé'
+          ? 'écrans-réglés'
+          : 'inconnue'
   } catch (erreur) {
     console.error(`[gestion] ${slug} : écrans de l’espace impossibles (${messageDe(erreur)}).`)
     code = 'échec'

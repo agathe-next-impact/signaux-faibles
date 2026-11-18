@@ -1065,6 +1065,13 @@ nomme les écrans masqués. Seul écrivain `réglerLesÉcransMasqués` (`lib/bas
 `réglerLesÉcrans` et l'action `réglerLesÉcransDepuisLaFiche` (`exigerOpérateur` d'abord) ; lecture
 de l'écran par `lireLesÉcransDUneOrganisation`, garde dans la fonction. Les liens internes d'un
 écran vers un écran masqué (« Voir les forces du marché »…) restent et répondent 404 au client.
+**Renommage des écrans** (même jour, demande de l'opératrice) : le même écran porte un champ de nom par
+écran (40 caractères, `NOM_D_ÉCRAN_MAX`, vide pour le nom par défaut), rangé dans
+`organisations.noms_des_ecrans` (jsonb, migration 0032, vide par défaut) ; le nom remplace le libellé du
+rail et du menu de pied (libellé court abrégé, `libelléCourtDe`), le nom sur la carte de la vue
+d'ensemble (`casesRenommées`) et le titre de l'écran (`exigerLÉcran` rend le nom, la vue d'ensemble le lit
+dans l'espace du rail) ; un nom invalide en base est ignoré (`nomsDesÉcransConnus`), un nom trop long
+refuse le formulaire.
 **Suivi des onboardings** (1er novembre 2026, lot 1 de
 `docs/proposition-onboarding-admin.md`, décisions du même jour au §10) : le
 portail **suit** les runs `balayage` et `premiere-lettre` lancés sur une

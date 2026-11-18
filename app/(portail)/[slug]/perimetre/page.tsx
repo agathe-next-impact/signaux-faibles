@@ -29,7 +29,7 @@ import { dernièresNotes, LETTRES_SUIVIES, semainesDeLEspace } from '@/lib/porta
 export default async function Périmètre({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const accès = await exigerLectureComplète(slug)
-  await exigerLÉcran(accès, 'perimetre')
+  const nomDeLÉcran = await exigerLÉcran(accès, 'perimetre')
 
   const semaines = await semainesDeLEspace(accès)
   const notes = await dernièresNotes(semaines)
@@ -40,7 +40,7 @@ export default async function Périmètre({ params }: { params: Promise<{ slug: 
     <>
       <EntêteÉcran
         surtitre="périmètre de la veille"
-        titre="Ce que nous suivons pour vous"
+        titre={nomDeLÉcran ?? "Ce que nous suivons pour vous"}
         état={`${LETTRES_SUIVIES} dernières lettres`}
       />
 
