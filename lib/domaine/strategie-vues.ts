@@ -959,6 +959,18 @@ export type SynthèseVue = {
     readonly mendelow: VueDeMendelow
     readonly swot: VueDeLaSwot
     readonly tows: VueDeLaTows
+    /**
+     * Ce que les vues ont lu, pour le suivi des acteurs de « Acteurs »
+     * (`suiviDesActeurs`) : les positions du mois et de la synthèse publiée
+     * précédente, les faits cités (clé : identifiant du fait), et les numéros des
+     * lettres par identifiant normalisé. Absent d'une synthèse construite ailleurs.
+     */
+    readonly lu?: {
+      readonly positions: readonly PositionLue[]
+      readonly précédentes: readonly PositionLue[]
+      readonly faits: ReadonlyMap<string, FaitCité>
+      readonly numéros: ReadonlyMap<string, number>
+    }
   } | null
   readonly trimestre: {
     readonly période: string

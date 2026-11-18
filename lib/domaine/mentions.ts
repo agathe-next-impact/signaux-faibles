@@ -54,6 +54,16 @@ function motifDe(nom: string): RegExp | null {
   return new RegExp(`(?<![a-z0-9])${mots.join(liaison)}(?![a-z0-9])`)
 }
 
+/**
+ * Le texte nomme-t-il `nom` ? La même règle que les mentions : bornée aux mots,
+ * accents et casse ignorés, petits mots de liaison tolérés. Sert à rattacher un
+ * dossier ouvert aux acteurs d'un écran sans rapprocher deux noms voisins.
+ */
+export function nomme(nom: string, texte: string): boolean {
+  const motif = motifDe(nom)
+  return motif !== null && motif.test(sansAccent(texte))
+}
+
 /** Un séparateur de cellules, sans mise en forme propre. */
 const ENTRE_CELLULES: Segment = {
   texte: ' · ',

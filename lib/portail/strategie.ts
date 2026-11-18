@@ -1098,6 +1098,7 @@ export async function synthèseDeLEspace(
             mendelow: vueDeMendelow(mois.positions, précédente?.positions ?? [], faits),
             swot,
             tows: vueDeLaTows(mois.éléments, codes),
+            lu: { positions: mois.positions, précédentes: précédente?.positions ?? [], faits, numéros },
           }
         })()
       : null

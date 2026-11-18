@@ -27,6 +27,8 @@ export type DonnéesDuTableau = {
   readonly axesForts: number
   /** Les dossiers ouverts qui ne nomment pas un concurrent de la grille. */
   readonly dossiersHorsConcurrents: number
+  /** Les dossiers qui nomment un acteur de Mendelow (`rattacherAuxActeurs`) ; absent, la case garde le compte de tous les dossiers. */
+  readonly dossiersLiésAuxActeurs?: number
   readonly concurrents: number
   /** Les mots de l'écran « Concurrents » (7 novembre 2026) ; les concurrents par défaut. */
   readonly marché?: VocabulaireDuMarché
@@ -78,8 +80,20 @@ export function casesDuTableauDeBord(d: DonnéesDuTableau): readonly CaseDÉcran
       rubrique: 'Le marché',
       écran: 'Acteurs',
       href: href('/acteurs'),
-      valeur: pluriel(d.dossiersHorsConcurrents, 'dossier'),
-      mention: mois ? `${pluriel(mois.mendelow.placés, 'partie prenante', 'parties prenantes')} sur Mendelow` : marché.horsDeLÉcran,
+      // Depuis le 18 novembre 2026, « Acteurs » suit les acteurs placés sur
+      // Mendelow et les dossiers qui les nomment : la case dit les mêmes chiffres.
+      valeur:
+        mois && mois.mendelow.placés > 0
+          ? pluriel(mois.mendelow.placés, 'acteur suivi', 'acteurs suivis')
+          : pluriel(d.dossiersHorsConcurrents, 'dossier'),
+      mention:
+        mois && mois.mendelow.placés > 0
+          ? d.dossiersLiésAuxActeurs !== undefined
+            ? pluriel(d.dossiersLiésAuxActeurs, 'dossier ouvert les nomme', 'dossiers ouverts les nomment')
+            : 'sur Mendelow'
+          : mois
+            ? `${pluriel(mois.mendelow.placés, 'partie prenante', 'parties prenantes')} sur Mendelow`
+            : marché.horsDeLÉcran,
     },
     {
       rubrique: 'Le marché',

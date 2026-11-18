@@ -99,7 +99,10 @@ describe('casesDuTableauDeBord', () => {
     ])
     const par = new Map(cases.map((c) => [c.écran, c]))
     expect(par.get('Concurrents')).toMatchObject({ valeur: '36 suivis', mention: '1 a changé de case' })
-    expect(par.get('Acteurs')).toMatchObject({ valeur: '10 dossiers', mention: '4 parties prenantes sur Mendelow' })
+    // Depuis le 18 novembre 2026, la case suit les acteurs placés, comme l'écran.
+    expect(par.get('Acteurs')).toMatchObject({ valeur: '4 acteurs suivis', mention: 'sur Mendelow' })
+    const avecDossiers = new Map(casesDuTableauDeBord({ ...DONNÉES, dossiersLiésAuxActeurs: 2 }).map((c) => [c.écran, c]))
+    expect(avecDossiers.get('Acteurs')).toMatchObject({ valeur: '4 acteurs suivis', mention: '2 dossiers ouverts les nomment' })
     expect(par.get('Forces du marché')).toMatchObject({ valeur: '1 intense', mention: 'trimestre de juillet à septembre 2026' })
     expect(par.get('Les axes')).toMatchObject({ valeur: '12 axes', mention: '3 signaux forts cette semaine' })
     expect(par.get('PESTEL')).toMatchObject({ valeur: 'Économique', mention: 'la plus citée, 5 faits en treize semaines' })
