@@ -156,7 +156,8 @@ export function CarteDesGroupes({ carte, lien }: { carte: VueDeLaCarte; lien?: (
   )
 }
 
-export function MatriceDeMendelow({ mendelow }: { mendelow: VueDeMendelow }) {
+/** `lienDe` : l'adresse de l'écran d'un sujet, quand l'écran en a un (« Acteurs », 18 novembre 2026). */
+export function MatriceDeMendelow({ mendelow, lienDe }: { mendelow: VueDeMendelow; lienDe?: (sujet: string) => string }) {
   return (
     <div className="flex flex-col gap-4">
       <BullesDeMendelow mendelow={mendelow} />
@@ -179,7 +180,7 @@ export function MatriceDeMendelow({ mendelow }: { mendelow: VueDeMendelow }) {
                     {coin ? <p className="label-mono text-ardoise">{coin}</p> : null}
                     {sujets.map((s) => (
                       <div key={s.sujet} className="flex flex-col gap-1">
-                        <p className="flex gap-2 leading-snug"><Pastille couleur={s.aBougé ? 'rose' : 'ardoise'} /><span className="text-encre">{s.sujet}</span></p>
+                        <p className="flex gap-2 leading-snug"><Pastille couleur={s.aBougé ? 'rose' : 'ardoise'} /><span className="text-encre">{lienDe ? <Link href={lienDe(s.sujet)} className="underline decoration-gris-ligne underline-offset-4 hover:decoration-encre">{s.sujet}</Link> : s.sujet}</span></p>
                         {s.aBougé && s.fait ? <p className="label-mono text-ardoise">Fait du {dateCourte(s.fait.date)}</p> : null}
                       </div>
                     ))}
@@ -201,7 +202,7 @@ function déclarés(n: number, total: number): string {
 }
 
 /** Les deux outils de la synthèse publiée, en tête de l'écran « Acteurs ». */
-export function SynthèseDesActeurs({ période, carte, mendelow }: { période: string; carte: VueDeLaCarte | null; mendelow: VueDeMendelow }) {
+export function SynthèseDesActeurs({ période, carte, mendelow, lienDe }: { période: string; carte: VueDeLaCarte | null; mendelow: VueDeMendelow; lienDe?: (sujet: string) => string }) {
   return (
     <div className="mt-8 flex flex-col gap-12">
       {carte && carte.placés > 0 ? (
@@ -221,7 +222,7 @@ export function SynthèseDesActeurs({ période, carte, mendelow }: { période: s
             {mendelow.placés} partie{mendelow.placés > 1 ? 's' : ''} prenante{mendelow.placés > 1 ? 's' : ''}, placée{mendelow.placés > 1 ? 's' : ''} selon leur pouvoir sur votre activité et l’intérêt qu’elles y portent. Trois crans de chaque côté : bas, intermédiaire, élevé.
             {mendelow.déclaratifs > 0 ? ` ${déclarés(mendelow.déclaratifs, mendelow.placés)}` : ''}
           </p>
-          <MatriceDeMendelow mendelow={mendelow} />
+          <MatriceDeMendelow mendelow={mendelow} lienDe={lienDe} />
         </section>
       ) : null}
     </div>

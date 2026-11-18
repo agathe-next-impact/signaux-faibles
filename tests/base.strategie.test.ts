@@ -292,7 +292,7 @@ describe('outils stratégiques en base', () => {
       await remplacerLesÉtiquettes({ organisationId: infralliance, édition: ÉDITION, étiquettes: [] }, db)
       const cités = await faitsCités({ organisationId: infralliance, ids: anciens.map((f) => f.id) }, db)
       expect(cités.size).toBe(anciens.length)
-      expect(cités.get(anciens[0]!.id)).toEqual({ date: anciens[0]!.dateFait, entite: anciens[0]!.entité, édition: anciens[0]!.éditionNotion })
+      expect(cités.get(anciens[0]!.id)).toEqual({ date: anciens[0]!.dateFait, entite: anciens[0]!.entité, édition: anciens[0]!.éditionNotion, empreinte: anciens[0]!.empreinteTitre })
     })
   })
 

@@ -111,7 +111,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
 
       {synthèse?.mois ? (
         <>
-          <SynthèseDesActeurs période={synthèse.mois.période} carte={réorganisé ? null : synthèse.mois.carte} mendelow={synthèse.mois.mendelow} />
+          <SynthèseDesActeurs période={synthèse.mois.période} carte={réorganisé ? null : synthèse.mois.carte} mendelow={synthèse.mois.mendelow} lienDe={(sujet) => `/${accès.slug}/acteurs/${enSlug(sujet)}`} />
           <h2 className="mt-12 font-titre text-h2 font-bold text-encre">{suiviActeurs ? 'Le suivi des acteurs' : 'Le suivi des dossiers'}</h2>
         </>
       ) : null}
@@ -217,7 +217,10 @@ function SuiviDesActeurs({
         {acteurs.map((acteur) => (
           <li key={acteur.sujet} className="flex flex-col gap-3 py-6">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h3 className="font-titre text-h3 font-semibold text-encre">{acteur.sujet}</h3>
+              <h3 className="font-titre text-h3 font-semibold text-encre">
+                {/* Chaque acteur a son écran : présentation, position, faits, synthèses, dossiers et lettres. */}
+                <LienFlèche href={`/${slug}/acteurs/${enSlug(acteur.sujet)}`}>{acteur.sujet}</LienFlèche>
+              </h3>
               <Fraicheur
                 fraîcheur={acteur.aBougé ? 'nouveau' : acteur.faits.length > 0 ? 'suivi' : 'dormant'}
                 libellé={

@@ -347,12 +347,12 @@ export async function faitsCités(
         .orderBy(asc(faitsÉtiquetés.section), asc(faitsÉtiquetés.numéroAxe), asc(faitsÉtiquetés.rang))
       for (const v of vivants) {
         const clé = `${v.édition}:${v.empreinte}`
-        if (!successeurs.has(clé)) successeurs.set(clé, { date: v.date, entite: v.entite, édition: v.édition })
+        if (!successeurs.has(clé)) successeurs.set(clé, { date: v.date, entite: v.entite, édition: v.édition, empreinte: v.empreinte })
       }
     }
     return new Map(
       lignes.map((l) => {
-        const propre: FaitConnu = { date: l.date, entite: l.entite, édition: l.édition }
+        const propre: FaitConnu = { date: l.date, entite: l.entite, édition: l.édition, empreinte: l.empreinte }
         return [l.id, l.archivéeLe === null ? propre : (successeurs.get(`${l.édition}:${l.empreinte}`) ?? propre)]
       }),
     )
