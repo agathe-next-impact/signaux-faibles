@@ -6,8 +6,7 @@ import { fraîcheurDUnDossier, rangDeFraîcheur } from '@/lib/domaine/fraicheur'
 import { enSlug } from '@/lib/domaine/slug'
 import { normaliserTitre } from '@/lib/domaine/strategie'
 import { suivreLesDossiers } from '@/lib/domaine/tendances'
-import { lettresPubliées, semainesDeLEspace } from '@/lib/portail/semaine'
-import { normaliserIdentifiant } from '@/lib/notion/proprietes'
+import { semainesDeLEspace } from '@/lib/portail/semaine'
 import { acteursPlacés, suiviDesActeurs, type ActeurSuivi } from '@/lib/domaine/dossiers-des-acteurs'
 import { dateCourte } from '@/lib/domaine/strategie-vues'
 import { espaceDeLOrganisation, synthèseDeLEspace } from '@/lib/portail/strategie'
@@ -76,8 +75,6 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
           dossiers: suivis,
         })
       : null
-  // Un fait cité mène à sa lettre, parmi celles déjà listées pour l'organisation (règle 2).
-  const lettres = new Map(lettresPubliées(semaines).map((l) => [normaliserIdentifiant(l.édition.pageId), `/${accès.slug}/lettres/${l.édition.pageId}`]))
   const enMouvement = suiviActeurs
     ? suiviActeurs.filter((a) => a.aBougé).length
     : suivis.filter((dossier) => fraîcheurDUnDossier(dossier) === 'nouveau').length
@@ -117,7 +114,7 @@ export default async function LesActeurs({ params }: { params: Promise<{ slug: s
       ) : null}
 
       {suiviActeurs ? (
-        <SuiviDesActeurs slug={accès.slug} acteurs={suiviActeurs} période={mois?.période ?? ''} lettres={lettres} />
+        <SuiviDesActeurs slug={accès.slug} acteurs={suiviActeurs} période={mois?.période ?? ''} />
       ) : (
         <>
           <div className="mt-6">
@@ -194,12 +191,10 @@ function SuiviDesActeurs({
   slug,
   acteurs,
   période,
-  lettres,
 }: {
   slug: string
   acteurs: readonly ActeurSuivi<Dossier>[]
   période: string
-  lettres: ReadonlyMap<string, string>
 }) {
   const avecDossier = acteurs.filter((a) => a.dossiers.length > 0).length
   return (
@@ -237,15 +232,12 @@ function SuiviDesActeurs({
             {acteur.position ? <p className="label-mono text-ardoise">{acteur.position}</p> : null}
             {acteur.faits.length > 0 ? (
               <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={`Faits datés, synthèse ${période}`}>
-                {acteur.faits.map((f) => {
-                  const libellé = `Fait du ${dateCourte(f.date)}${f.numéro ? ` · lettre n° ${f.numéro}` : ''}`
-                  const href = lettres.get(normaliserIdentifiant(f.édition))
-                  return (
-                    <li key={`${f.date}:${f.édition}`} className="label-mono text-ardoise">
-                      {href ? <LienFlèche href={href}>{libellé}</LienFlèche> : libellé}
-                    </li>
-                  )
-                })}
+                {/* Sans lien vers la lettre (demande de l'opératrice, 18 novembre 2026) : l'écran de l'acteur les porte. */}
+                {acteur.faits.map((f) => (
+                  <li key={`${f.date}:${f.édition}`} className="label-mono text-ardoise">
+                    {`Fait du ${dateCourte(f.date)}${f.numéro ? ` · lettre n° ${f.numéro}` : ''}`}
+                  </li>
+                ))}
               </ul>
             ) : null}
             {acteur.dossiers.length > 0 ? (

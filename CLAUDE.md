@@ -1465,8 +1465,9 @@ ouverts suivis`, des sujets pour la plupart (une loi, un budget, un marché) : s
 L'Hermitage, aucun des dossiers ne nommait l'une des sept parties prenantes placées.
 Quand une synthèse publiée place des acteurs, la section devient « Le suivi des
 acteurs » : une ligne par sujet de Mendelow (et de la carte hors de l'espace
-réorganisé), avec sa position, les faits datés que ses positions citent (chacun vers
-sa lettre) et les dossiers qui le **nomment**, dans leur nom ou leur précision
+réorganisé), avec sa position, les faits datés que ses positions citent (date et numéro
+de lettre, **sans lien vers la lettre** depuis le 18 novembre 2026, à la demande de
+l'opératrice : l'écran de l'acteur porte ces liens) et les dossiers qui le **nomment**, dans leur nom ou leur précision
 actuelle, par la règle des mentions (`nomme`, `formesDuNom` : tête avant la virgule
 ou la parenthèse, noms entre parenthèses, jamais un découpage sur « et ») ;
 `suiviDesActeurs`, `rattacherAuxActeurs`, `lib/domaine/dossiers-des-acteurs.ts`,
