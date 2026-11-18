@@ -154,14 +154,35 @@ export function cléDAppel(adresse: string | null, intitulé: string): string {
   return sansAccent(intitulé).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 300) || 'appel'
 }
 
-/** Le financeur et l'intitulé d'une phrase-titre « Financeur : intitulé, montant, clôture ». */
+/**
+ * Le financeur et l'intitulé d'une phrase-titre. Deux formes : « Financeur :
+ * intitulé, montant, clôture » (contrat de la lettre) et « Financeur, intitulé,
+ * montant, clôture », celle de la première lettre réelle (CCI du Cantal,
+ * 18 novembre 2026). Dans la seconde, le financeur est ce qui précède la
+ * première virgule hors parenthèses et guillemets, s'il tient en 80 caractères.
+ * La clause finale de clôture ou de dépôt est retirée de l'intitulé : l'écran
+ * montre la date à part.
+ */
 function financeurEtIntitulé(titre: string): { financeur: string | null; intitulé: string } {
   const propre = titre.replace(/\s+/g, ' ').trim().replace(/[.]$/, '')
-  const i = propre.indexOf(' : ')
-  if (i > 0 && i <= FINANCEUR_MAX) {
-    return { financeur: borner(propre.slice(0, i), FINANCEUR_MAX), intitulé: borner(propre.slice(i + 3), INTITULÉ_MAX) }
+  const sansClôture = (t: string) =>
+    t.replace(/,\s*(cl[oô]ture|d[ée]p[oô]t|date limite)\b[^,]*$/i, '').trim() || t
+  const deuxPoints = propre.indexOf(' : ')
+  if (deuxPoints > 0 && deuxPoints <= FINANCEUR_MAX) {
+    return { financeur: borner(propre.slice(0, deuxPoints), FINANCEUR_MAX), intitulé: borner(sansClôture(propre.slice(deuxPoints + 3)), INTITULÉ_MAX) }
   }
-  return { financeur: null, intitulé: borner(propre, INTITULÉ_MAX) }
+  let profondeur = 0
+  for (let i = 0; i < propre.length && i <= FINANCEUR_MAX; i++) {
+    const c = propre[i]
+    if (c === '(' || c === '«') profondeur++
+    else if ((c === ')' || c === '»') && profondeur > 0) profondeur--
+    else if (c === ',' && profondeur === 0) {
+      const reste = propre.slice(i + 1).trim()
+      if (i > 0 && reste.length > 0) return { financeur: borner(propre.slice(0, i), FINANCEUR_MAX), intitulé: borner(sansClôture(reste), INTITULÉ_MAX) }
+      break
+    }
+  }
+  return { financeur: null, intitulé: borner(sansClôture(propre), INTITULÉ_MAX) }
 }
 
 /**

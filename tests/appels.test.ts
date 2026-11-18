@@ -72,8 +72,28 @@ describe('appelsDeLaLettre', () => {
       àVérifier: true,
       clé: 'auvergnerhonealpes.fr/aides/appel-a-projets-tiers-lieux',
     })
-    expect(appels[0]?.intitulé).toMatch(/^appel à projets « Tiers-lieux 2027 »/)
+    expect(appels[0]?.intitulé).toBe('appel à projets « Tiers-lieux 2027 », 30 000 € au plus')
     expect(appels[1]).toMatchObject({ rang: 2, financeur: 'GAL du Cantal', clôture: '2027-02-28', adresse: LEADER, impact: 'moyen', àVérifier: false })
+  })
+
+  it('lit aussi la phrase-titre à virgules de la première lettre réelle (18 novembre 2026)', () => {
+    const titres = [
+      'Région Auvergne-Rhône-Alpes, label « formations du Campus Région du numérique », sans dotation financière, dépôt avant le 1er mars 2027.',
+      'Commission européenne, actions d’information sur la politique de cohésion, environ 200 000 € par projet financés à 80 %, clôture le 13 janvier 2027.',
+      'Agence de la transition écologique (ADEME), opérations collectives pour la décarbonation des entreprises, subvention d’ingénierie, dépôt avant le 30 décembre 2026 à 23 h 59.',
+    ]
+    const blocs = [h1('Actualités par axe'), h2('① Région — FORT'), ...titres.flatMap((titre, i) => appel({ titre, url: `https://exemple.fr/appel-${i}` }))]
+    const appels = appelsDeLaLettre(construireDocument(blocs), '2026-11-18')
+    expect(appels.map((a) => [a.financeur, a.clôture])).toEqual([
+      ['Région Auvergne-Rhône-Alpes', '2027-03-01'],
+      ['Commission européenne', '2027-01-13'],
+      ['Agence de la transition écologique (ADEME)', '2026-12-30'],
+    ])
+    expect(appels.map((a) => a.intitulé)).toEqual([
+      'label « formations du Campus Région du numérique », sans dotation financière',
+      'actions d’information sur la politique de cohésion, environ 200 000 € par projet financés à 80 %',
+      'opérations collectives pour la décarbonation des entreprises, subvention d’ingénierie',
+    ])
   })
 
   it('la clé ignore le protocole, « www. » et la barre finale, et retombe sur l’intitulé sans adresse', () => {
