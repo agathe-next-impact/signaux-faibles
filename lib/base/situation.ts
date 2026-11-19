@@ -1,9 +1,10 @@
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
-import { abonnementQuiFaitFoi } from '@/lib/base/abonnements'
+import { abonnementQuiFaitFoi, ÉTATS_OUVERTS } from '@/lib/base/abonnements'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { MISE_EN_SERVICE_DE_L_ESSAI } from '@/lib/base/organisations'
 import { abonnements, lecteurs, organisations } from '@/lib/base/schema'
+import { forfaitEnVigueur, type Forfait } from '@/lib/domaine/offre'
 import type { Offre, ÉtatOrganisation } from '@/lib/domaine/parcours'
 
 /**
@@ -34,6 +35,8 @@ export type SituationDAbonnement = {
     readonly activéeLe: Date | null
     readonly essaiOuvertLe: Date | null
     readonly offre: Offre
+    /** Le forfait posé par l'opératrice ; `forfait`, plus bas, est celui qui fait foi. */
+    readonly forfaitPosé: Forfait
     readonly parutionsDEssai: number
     /** Importée avant la mise en service de l'essai : un client d'avant l'offre. */
     readonly historique: boolean
@@ -41,6 +44,8 @@ export type SituationDAbonnement = {
     readonly inscriteLe: Date
   }
   readonly abonnement: AbonnementLu | null
+  /** Le forfait qui fait foi (`forfaitEnVigueur`) : il donne le plafond de lecteurs. */
+  readonly forfait: Forfait
   /**
    * Les lecteurs actifs de l'organisation, par leur nom seul. L'identifiant est
    * celui de la ligne, pour le retrait depuis l'écran ; jamais l'identifiant d'accès.
@@ -74,6 +79,7 @@ export async function lireSituationDAbonnement(
         activéeLe: organisations.activéeLe,
         essaiOuvertLe: organisations.essaiOuvertLe,
         offre: organisations.offre,
+        forfait: organisations.forfait,
         parutionsDEssai: organisations.parutionsDEssai,
         crééeLe: organisations.crééeLe,
       })
@@ -84,7 +90,12 @@ export async function lireSituationDAbonnement(
 
     const [lignes, actifs] = await Promise.all([
       db
-        .select({ état: abonnements.état, formule: abonnements.formule, périodeFin: abonnements.périodeFin })
+        .select({
+          état: abonnements.état,
+          formule: abonnements.formule,
+          forfait: abonnements.forfait,
+          périodeFin: abonnements.périodeFin,
+        })
         .from(abonnements)
         .where(eq(abonnements.organisationId, organisation.id))
         .orderBy(desc(abonnements.événementLe)),
@@ -94,7 +105,12 @@ export async function lireSituationDAbonnement(
         .where(and(eq(lecteurs.organisationId, organisation.id), eq(lecteurs.actif, true)))
         .orderBy(asc(lecteurs.nom)),
     ])
-    const abonnement = abonnementQuiFaitFoi(lignes)
+    const fait = abonnementQuiFaitFoi(lignes)
+    const forfait = forfaitEnVigueur({
+      forfaitPosé: organisation.forfait,
+      abonnement: fait ? { ouvert: ÉTATS_OUVERTS.has(fait.état), forfait: fait.forfait } : null,
+    })
+    const abonnement = fait ? { état: fait.état, formule: fait.formule, périodeFin: fait.périodeFin } : null
 
     return {
       organisation: {
@@ -102,11 +118,13 @@ export async function lireSituationDAbonnement(
         activéeLe: organisation.activéeLe,
         essaiOuvertLe: organisation.essaiOuvertLe,
         offre: organisation.offre,
+        forfaitPosé: organisation.forfait,
         parutionsDEssai: organisation.parutionsDEssai,
         historique: organisation.crééeLe < MISE_EN_SERVICE_DE_L_ESSAI,
         inscriteLe: organisation.crééeLe,
       },
       abonnement: abonnement ? { ...abonnement, formule: formuleLue(abonnement.formule) } : null,
+      forfait,
       lecteurs: actifs,
     }
   })
@@ -122,6 +140,10 @@ export type LigneDAbonnement = {
   readonly offre: Offre
   readonly parutionsDEssai: number
   readonly abonnement: (AbonnementLu & { readonly abonnementStripe: string }) | null
+  /** Le forfait qui fait foi, et donc le plafond de lecteurs. */
+  readonly forfait: Forfait
+  /** Le forfait posé par l'opératrice, qui fait foi sans abonnement Stripe qui porte le sien. */
+  readonly forfaitPosé?: Forfait
   readonly lecteursActifs: number
 }
 
@@ -148,6 +170,7 @@ export async function tableauDesAbonnements(db: Base = base()): Promise<LigneDAb
           essaiOuvertLe: organisations.essaiOuvertLe,
           relectureRequise: organisations.relectureRequise,
           offre: organisations.offre,
+          forfait: organisations.forfait,
           parutionsDEssai: organisations.parutionsDEssai,
         })
         .from(organisations)
@@ -159,6 +182,7 @@ export async function tableauDesAbonnements(db: Base = base()): Promise<LigneDAb
           abonnementStripe: abonnements.abonnementStripe,
           état: abonnements.état,
           formule: abonnements.formule,
+          forfait: abonnements.forfait,
           périodeFin: abonnements.périodeFin,
         })
         .from(abonnements)
@@ -198,6 +222,11 @@ export async function tableauDesAbonnements(db: Base = base()): Promise<LigneDAb
                 périodeFin: abonnement.périodeFin,
               }
             : null,
+          forfaitPosé: ligne.forfait,
+          forfait: forfaitEnVigueur({
+            forfaitPosé: ligne.forfait,
+            abonnement: abonnement ? { ouvert: ÉTATS_OUVERTS.has(abonnement.état), forfait: abonnement.forfait } : null,
+          }),
           lecteursActifs: lecteursPar.get(ligne.id) ?? 0,
         }
       })

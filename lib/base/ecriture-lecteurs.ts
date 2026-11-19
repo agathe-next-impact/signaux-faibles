@@ -3,7 +3,8 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { lecteurs, organisations } from '@/lib/base/schema'
-import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
+import { lireLeForfait } from '@/lib/base/abonnements'
+import { FORFAIT_DE_BASE, forfaitAtteint, LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
 
 /**
  * Les écritures des lecteurs, palier 1a-bis : créer, révoquer, réactiver.
@@ -28,10 +29,17 @@ export type RésultatÉcriture =
   /** Le demandeur voulait retirer son propre accès : refusé, il se fermerait la porte. */
   | { readonly sorte: 'soi-même' }
 
-// Le plafond est celui de l'offre (décision du 17 octobre 2026,
-// `docs/decision-portail-moteur.md`), écrit dans `lib/domaine/offre.ts` avec les
-// prix ; réexporté ici pour la route des lecteurs et ses tests.
+// Le plafond est celui du forfait de l'organisation (19 novembre 2026 ; trois
+// lecteurs pour tous jusque-là, décision du 17 octobre 2026), écrit dans
+// `lib/domaine/offre.ts` avec les prix. Le plafond du forfait de base reste
+// réexporté pour la route des lecteurs et ses tests.
 export { LECTEURS_ACTIFS_MAX }
+
+/** Vrai si un lecteur actif de plus dépasserait le forfait de l'organisation. */
+async function auPlafond(db: Base, organisationId: string): Promise<boolean> {
+  const forfait = (await lireLeForfait(organisationId, db)) ?? FORFAIT_DE_BASE
+  return forfaitAtteint(forfait, await lecteursActifs(db, organisationId))
+}
 
 const adresse = (email: string) => email.trim().toLowerCase()
 
@@ -76,7 +84,7 @@ export async function créerLecteur(
       )
       .limit(1)
     if (existant) return { sorte: 'déjà-inscrit' }
-    if ((await lecteursActifs(db, organisation.id)) >= LECTEURS_ACTIFS_MAX) return { sorte: 'plafond-atteint' }
+    if (await auPlafond(db, organisation.id)) return { sorte: 'plafond-atteint' }
 
     await db.insert(lecteurs).values({
       organisationId: organisation.id,
@@ -110,7 +118,7 @@ export async function changerActivation(
       .limit(1)
     if (!ligne) return { sorte: 'lecteur-inconnu' }
     if (ligne.actif === demande.actif) return { sorte: 'inchangé' }
-    if (demande.actif && ligne.organisationId && (await lecteursActifs(db, ligne.organisationId)) >= LECTEURS_ACTIFS_MAX) {
+    if (demande.actif && ligne.organisationId && (await auPlafond(db, ligne.organisationId))) {
       return { sorte: 'plafond-atteint' }
     }
 

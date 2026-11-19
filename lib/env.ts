@@ -60,6 +60,14 @@ const schema = z.object({
   STRIPE_CLE_SECRETE: facultative(z.string().min(1)),
   STRIPE_PRIX_MENSUEL: facultative(z.string().min(1)),
   STRIPE_PRIX_ANNUEL: facultative(z.string().min(1)),
+  // Forfaits par nombre de lecteurs (19 novembre 2026) : chacun facultatif, un
+  // prix absent rend ce forfait indisponible à la souscription.
+  STRIPE_PRIX_MENSUEL_DIX: facultative(z.string().min(1)),
+  STRIPE_PRIX_ANNUEL_DIX: facultative(z.string().min(1)),
+  STRIPE_PRIX_MENSUEL_CENT: facultative(z.string().min(1)),
+  STRIPE_PRIX_ANNUEL_CENT: facultative(z.string().min(1)),
+  STRIPE_PRIX_MENSUEL_ILLIMITE: facultative(z.string().min(1)),
+  STRIPE_PRIX_ANNUEL_ILLIMITE: facultative(z.string().min(1)),
   STRIPE_PRIX_MISE_EN_PLACE: facultative(z.string().min(1)),
   STRIPE_TAUX_TVA: facultative(z.string().min(1)),
   // Prospection par lemlist (19 octobre 2026) : lues directement dans

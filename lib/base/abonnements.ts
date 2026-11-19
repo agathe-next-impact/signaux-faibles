@@ -1,7 +1,8 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
-import { abonnements, organisations, type Abonnement } from '@/lib/base/schema'
+import { abonnements, lecteurs, organisations, type Abonnement } from '@/lib/base/schema'
+import { forfaitEnVigueur, type Forfait } from '@/lib/domaine/offre'
 
 /**
  * La copie de l'abonnement Stripe d'une organisation (palier 1c).
@@ -43,6 +44,8 @@ export type ÉvénementDAbonnement = {
   readonly abonnementStripe: string
   readonly état: string
   readonly formule: 'mensuelle' | 'annuelle' | null
+  /** Le forfait par nombre de lecteurs, lu chez Stripe ; nul s'il n'y est pas dit. */
+  readonly forfait?: Forfait | null
   readonly périodeFin: Date | null
   readonly événementId: string
   readonly événementLe: Date
@@ -58,7 +61,7 @@ export type RésultatAbonnement =
   /** L'abonnement est déjà rattaché à une autre organisation : il n'en change pas. */
   | { readonly sorte: 'autre-organisation' }
 
-const ÉTATS_OUVERTS = new Set(['trialing', 'active', 'past_due'])
+export const ÉTATS_OUVERTS: ReadonlySet<string> = new Set(['trialing', 'active', 'past_due'])
 /** Un abonnement qui a existé puis s'est arrêté : résilié, impayé, en pause. */
 const ÉTATS_FERMÉS = new Set(['canceled', 'unpaid', 'paused'])
 
@@ -126,6 +129,7 @@ export async function enregistrerÉvénementDAbonnement(
         abonnementStripe: événement.abonnementStripe,
         état: événement.état,
         formule: événement.formule,
+        forfait: événement.forfait ?? null,
         périodeFin: événement.périodeFin,
         dernierÉvénement: événement.événementId,
         événementLe: événement.événementLe,
@@ -197,6 +201,10 @@ export async function lireFacturation(
   readonly organisationId: string
   /** L'offre posée : la formule admise en dépend. */
   readonly offre: 'standard' | 'fondateur' | 'gratuite'
+  /** Le forfait qui fait foi : la page de paiement propose les autres. */
+  readonly forfait: Forfait
+  /** Les lecteurs actifs : un forfait plus petit que ce nombre n'est pas proposé. */
+  readonly lecteursActifs: number
   /** L'entrée dans le portail : décide des frais de mise en place. */
   readonly inscriteLe: Date
   readonly abonnement: { readonly clientStripe: string; readonly état: string; readonly ouvert: boolean } | null
@@ -204,19 +212,58 @@ export async function lireFacturation(
   if (!/^[0-9a-f]{32}$/.test(registreNotion)) return null
   return protéger('lecture de la facturation', async () => {
     const [organisation] = await db
-      .select({ id: organisations.id, offre: organisations.offre, crééeLe: organisations.crééeLe })
+      .select({ id: organisations.id, offre: organisations.offre, crééeLe: organisations.crééeLe, forfait: organisations.forfait })
       .from(organisations)
       .where(eq(organisations.registreNotion, registreNotion))
       .limit(1)
     if (!organisation) return null
     const abonnement = await lireAbonnement(organisation.id, db)
+    const [compte] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(lecteurs)
+      .where(and(eq(lecteurs.organisationId, organisation.id), eq(lecteurs.actif, true)))
+    const ouvert = abonnement ? ÉTATS_OUVERTS.has(abonnement.état) : false
     return {
       organisationId: organisation.id,
       offre: organisation.offre,
+      forfait: forfaitEnVigueur({
+        forfaitPosé: organisation.forfait,
+        abonnement: abonnement ? { ouvert, forfait: abonnement.forfait } : null,
+      }),
+      lecteursActifs: Number(compte?.n ?? 0),
       inscriteLe: organisation.crééeLe,
       abonnement: abonnement
-        ? { clientStripe: abonnement.clientStripe, état: abonnement.état, ouvert: ÉTATS_OUVERTS.has(abonnement.état) }
+        ? { clientStripe: abonnement.clientStripe, état: abonnement.état, ouvert }
         : null,
     }
+  })
+}
+
+/**
+ * Le forfait qui fait foi pour une organisation (19 novembre 2026), par la règle
+ * de `forfaitEnVigueur` : celui de l'abonnement Stripe qui fait foi s'il est
+ * ouvert et en porte un, sinon celui posé sur l'organisation. `null` si
+ * l'organisation n'existe pas. Lu dans la transaction de l'appelant quand il en
+ * a une : le plafond des lecteurs se vérifie au moment d'écrire.
+ */
+export async function lireLeForfait(organisationId: string, db: Base = base()): Promise<Forfait | null> {
+  if (!UUID.test(organisationId)) return null
+  return protéger('lecture du forfait', async () => {
+    const [organisation] = await db
+      .select({ forfait: organisations.forfait })
+      .from(organisations)
+      .where(eq(organisations.id, organisationId))
+      .limit(1)
+    if (!organisation) return null
+    const lignes = await db
+      .select({ état: abonnements.état, forfait: abonnements.forfait })
+      .from(abonnements)
+      .where(eq(abonnements.organisationId, organisationId))
+      .orderBy(desc(abonnements.événementLe))
+    const abonnement = abonnementQuiFaitFoi(lignes)
+    return forfaitEnVigueur({
+      forfaitPosé: organisation.forfait,
+      abonnement: abonnement ? { ouvert: ÉTATS_OUVERTS.has(abonnement.état), forfait: abonnement.forfait } : null,
+    })
   })
 }

@@ -75,9 +75,90 @@ export const PRIX_FONDATEUR_HT = 29
 /** Pour un bon de commande, un virement, ou quand la souscription en ligne est indisponible. */
 export const ADRESSE_D_ABONNEMENT = 'agathe@signauxfaibles.io'
 /**
- * Trois lecteurs actifs au plus par organisation : c'est l'offre. Pour en
- * ajouter un, on en révoque un autre. L'opérateur global n'est rattaché à
- * aucune organisation et n'entre pas dans le compte.
+ * Les forfaits par nombre de lecteurs (19 novembre 2026, demande de
+ * l'opératrice : « les forfaits d'abonnement doivent prévoir l'ajout
+ * d'utilisateurs »). Le forfait de base reste celui de l'offre, trois lecteurs à
+ * `PRIX_MENSUEL_HT` ; trois forfaits s'y ajoutent, à dix, cent et sans limite.
+ * Chaque forfait a sa formule mensuelle et son annuelle (dix mois payés, la
+ * même règle que le forfait de base), chacune sur son propre prix Stripe.
+ *
+ * Un lecteur est une personne qui a son lien d'accès : « utilisateur » dans la
+ * demande, « lecteur » dans le portail. L'opérateur global n'est rattaché à
+ * aucune organisation et n'entre dans aucun compte.
+ */
+export const FORFAITS = ['trois', 'dix', 'cent', 'illimite'] as const
+export type Forfait = (typeof FORFAITS)[number]
+
+export type DéfinitionDuForfait = {
+  readonly clé: Forfait
+  /** Lecteurs actifs au plus ; `null` : sans limite. */
+  readonly lecteurs: number | null
+  readonly prixMensuelHT: number
+  /** « 3 lecteurs », « Lecteurs illimités ». */
+  readonly libellé: string
+}
+
+export const DÉFINITIONS_DES_FORFAITS: Readonly<Record<Forfait, DéfinitionDuForfait>> = {
+  trois: { clé: 'trois', lecteurs: 3, prixMensuelHT: PRIX_MENSUEL_HT, libellé: '3 lecteurs' },
+  dix: { clé: 'dix', lecteurs: 10, prixMensuelHT: 199, libellé: '10 lecteurs' },
+  cent: { clé: 'cent', lecteurs: 100, prixMensuelHT: 299, libellé: '100 lecteurs' },
+  illimite: { clé: 'illimite', lecteurs: null, prixMensuelHT: 499, libellé: 'Lecteurs illimités' },
+}
+
+/** Le forfait de toute organisation qui n'en a pas d'autre : celui de l'offre d'origine. */
+export const FORFAIT_DE_BASE: Forfait = 'trois'
+
+export function estUnForfait(valeur: unknown): valeur is Forfait {
+  return typeof valeur === 'string' && (FORFAITS as readonly string[]).includes(valeur)
+}
+
+/** Dix mois payés, comme le forfait de base. */
+export function prixAnnuelDuForfaitHT(forfait: Forfait): number {
+  return DÉFINITIONS_DES_FORFAITS[forfait].prixMensuelHT * 10
+}
+
+/** L'annuel d'un forfait ramené au mois. */
+export function équivalentMensuelDuForfait(forfait: Forfait): number {
+  return Math.round((prixAnnuelDuForfaitHT(forfait) / 12) * 100) / 100
+}
+
+/** Le plafond de lecteurs actifs d'un forfait ; `null` : sans limite. */
+export function plafondDeLecteurs(forfait: Forfait): number | null {
+  return DÉFINITIONS_DES_FORFAITS[forfait].lecteurs
+}
+
+/** Vrai si un lecteur de plus dépasserait le forfait. */
+export function forfaitAtteint(forfait: Forfait, actifs: number): boolean {
+  const plafond = plafondDeLecteurs(forfait)
+  return plafond !== null && actifs >= plafond
+}
+
+/**
+ * Le forfait qui fait foi pour une organisation. Stripe est la source de
+ * vérité : un abonnement **ouvert** dont le prix porte un forfait l'emporte
+ * (`abonnements.forfait`, écrit par le webhook) ; sinon, le forfait posé par
+ * l'opératrice sur l'organisation (`organisations.forfait`, trois lecteurs par
+ * défaut), qui sert aux essais, aux accès offerts, au tarif fondateur et aux
+ * abonnements par virement. Un abonnement résilié ne garde pas son forfait.
+ */
+export function forfaitEnVigueur(entrée: {
+  readonly forfaitPosé: Forfait
+  readonly abonnement: { readonly ouvert: boolean; readonly forfait: Forfait | null } | null
+}): Forfait {
+  if (entrée.abonnement?.ouvert && entrée.abonnement.forfait) return entrée.abonnement.forfait
+  return entrée.forfaitPosé
+}
+
+/** « 2 sur 10 », ou « 2 · illimité » : le compte des lecteurs actifs face au forfait. */
+export function lecteursFaceAuForfait(actifs: number, forfait: Forfait): string {
+  const plafond = plafondDeLecteurs(forfait)
+  return plafond === null ? `${actifs} · illimité` : `${actifs} sur ${plafond}`
+}
+
+/**
+ * Trois lecteurs actifs au plus : le plafond du forfait de base, que la vitrine
+ * cite pour son prix d'entrée. Le plafond d'une organisation est celui de son
+ * forfait (`forfaitEnVigueur`, `plafondDeLecteurs`), jamais cette constante.
  */
 export const LECTEURS_ACTIFS_MAX = 3
 /** TVA applicable (offre du 17 octobre 2026). */

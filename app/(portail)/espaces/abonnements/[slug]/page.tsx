@@ -9,10 +9,10 @@ import { Panneau } from '@/components/coquille'
 import { FriseDOnboarding, GesteDOnboarding, MESSAGES_DE_LANCEMENT, MétaDOnboarding, MotifDeBlocage, RunsDOnboarding } from '@/components/onboarding-operatrice'
 import type { LigneDAbonnement } from '@/lib/base/situation'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
+import { DÉFINITIONS_DES_FORFAITS, FORFAIT_DE_BASE, FORFAITS, lecteursFaceAuForfait } from '@/lib/domaine/offre'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours } from '@/lib/domaine/parcours'
 import { prochaineÉchéance } from '@/lib/domaine/placement'
-import { poserLOffre, réglerLaRelecture, réglerLAperçu } from '@/lib/portail/reglages'
+import { poserLeForfait, poserLOffre, réglerLaRelecture, réglerLAperçu } from '@/lib/portail/reglages'
 import {
   bouton,
   champ,
@@ -101,6 +101,7 @@ const MESSAGES: Record<string, string> = {
   'sans-j0': 'J0 n’est pas encore posé : rien à prolonger.',
   'au-delà-d-aujourdhui': 'Ce décalage mettrait J0 après aujourd’hui : refusé.',
   'offre-posée': 'Offre posée.',
+  'forfait-posé': 'Forfait posé.',
   'parutions-réglées': 'Nombre de parutions complètes réglé.',
   'mis-en-parcours': 'Entrée dans le parcours : J0 est posé, la mécanique de fin d’essai suit.',
   'abonnée-stripe': 'Un abonnement Stripe est ouvert : cette organisation n’entre pas dans le parcours.',
@@ -131,7 +132,7 @@ const MESSAGES: Record<string, string> = {
   'notion-fait-foi': 'Notion fait foi pour les accès tant que SOURCE_ACCES ne vaut pas postgres : ce geste se fait dans la base « Accès ».',
   invalide: 'Nom ou adresse invalide.',
   'déjà-inscrit': 'Ce lecteur est déjà inscrit : le réactiver dans la liste.',
-  'plafond-atteint': `Plafond atteint : ${LECTEURS_ACTIFS_MAX} lecteurs actifs au plus.`,
+  'plafond-atteint': 'Plafond atteint : le forfait de l’organisation est complet.',
   révoqué: 'Lecteur révoqué : son lien ne fonctionne plus.',
   réactivé: 'Lecteur réactivé.',
   inchangé: 'Rien à changer.',
@@ -425,7 +426,7 @@ function Gestion({
 
       <Section id="lecteurs" titre="Lecteurs" statut={statut}>
         <p className="label-mono text-ardoise">
-          {actifs} actif{actifs > 1 ? 's' : ''} sur {LECTEURS_ACTIFS_MAX}
+          actifs : {lecteursFaceAuForfait(actifs, ligne?.forfait ?? FORFAIT_DE_BASE)}
         </p>
         {lecteurs.length === 0 ? (
           <p className="text-ardoise">Aucun lecteur en base.</p>
@@ -494,6 +495,28 @@ function Gestion({
             <p className="text-ardoise">
               L’accès offert n’a ni fin d’essai ni courrier de parcours ; une organisation en essai y devient abonnée. Le tarif
               fondateur ne propose que sa formule mensuelle.
+            </p>
+            <SousTitre>Forfait</SousTitre>
+            <form action={poserLeForfait} className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="retour" value="fiche" />
+              <label className="label-mono text-ardoise">
+                forfait{' '}
+                <select name="forfait" defaultValue={ligne.forfaitPosé ?? ligne.forfait} className={champ}>
+                  {FORFAITS.map((forfait) => (
+                    <option key={forfait} value={forfait}>
+                      {DÉFINITIONS_DES_FORFAITS[forfait].libellé.toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <BoutonEnvoi className={bouton}>Poser</BoutonEnvoi>
+            </form>
+            <p className="text-ardoise">
+              En vigueur : <span className="label-mono">{DÉFINITIONS_DES_FORFAITS[ligne.forfait].libellé.toLowerCase()}</span>.
+              Un abonnement Stripe ouvert dont le prix porte un forfait l’emporte sur celui posé ici, qui sert aux essais, à
+              l’accès offert, au tarif fondateur et aux abonnements par virement. Un forfait plus petit ne révoque personne : il
+              empêche seulement d’ajouter un lecteur.
             </p>
           </>
         ) : null}

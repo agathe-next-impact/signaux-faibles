@@ -5,7 +5,7 @@ import type { LigneDAbonnement } from '@/lib/base/situation'
 import type { VeilleListée } from '@/lib/base/veilles'
 import { JOURS, aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { parutionsÀPlanifier } from '@/lib/domaine/file'
-import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
+import { lecteursFaceAuForfait } from '@/lib/domaine/offre'
 import { abonnementOuvert, dateLongueDeParis, libelléDÉtape, étapeDuParcours, type EntréeDuParcours } from '@/lib/domaine/parcours'
 import {
   aperçuDuPlacement,
@@ -129,7 +129,7 @@ export function Résumé({ ligne, archivéeLe, santé }: { ligne: LigneDAbonneme
         {entrée ? libelléDÉtape(étapeDuParcours(entrée)) : archivéeLe ? `archivée le ${dateLongueDeParis(archivéeLe)}` : 'inconnue'}
       </Donnée>
       <Donnée libellé="prochaine échéance">{entrée ? texteDÉchéance(prochaineÉchéance(entrée)) : 'aucune'}</Donnée>
-      <Donnée libellé="lecteurs actifs">{ligne ? `${ligne.lecteursActifs} sur ${LECTEURS_ACTIFS_MAX}` : 'aucun'}</Donnée>
+      <Donnée libellé="lecteurs actifs">{ligne ? lecteursFaceAuForfait(ligne.lecteursActifs, ligne.forfait) : 'aucun'}</Donnée>
       <Donnée libellé="santé">{santé}</Donnée>
     </dl>
   )

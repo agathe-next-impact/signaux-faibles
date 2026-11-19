@@ -8,7 +8,7 @@ import { SynchroDesAccès } from '@/components/synchro-acces'
 import { BoutonEnvoi } from '@/components/bouton-envoi'
 import { désarchiverLOrganisationDepuisLeTableau } from '@/lib/portail/archivage-actions'
 import type { LigneDAbonnement } from '@/lib/base/situation'
-import { LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
+import { forfaitAtteint, lecteursFaceAuForfait } from '@/lib/domaine/offre'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type EntréeDuParcours, type Étape } from '@/lib/domaine/parcours'
 import {
@@ -86,6 +86,7 @@ const MESSAGES: Record<string, string> = {
   'sans-j0': 'J0 n’est pas encore posé : rien à prolonger.',
   'au-delà-d-aujourdhui': 'Ce décalage mettrait J0 après aujourd’hui : refusé.',
   'offre-posée': 'Offre posée.',
+  'forfait-posé': 'Forfait posé.',
   'parutions-réglées': 'Nombre de parutions complètes réglé.',
   'mis-en-parcours': 'Entrée dans le parcours : J0 est posé, la mécanique de fin d’essai suit.',
   'abonnée-stripe': 'Un abonnement Stripe est ouvert : cette organisation n’entre pas dans le parcours.',
@@ -310,7 +311,7 @@ function Ligne({
   santé: Promise<SantéDesEspaces | null>
   cochée: boolean
 }) {
-  const auPlafond = ligne.lecteursActifs >= LECTEURS_ACTIFS_MAX
+  const auPlafond = forfaitAtteint(ligne.forfait, ligne.lecteursActifs)
   // Un essai sans J0 n'est pas une panne : il attend sa première lettre publiée (la fiche dit la suite en entier).
   const enAttenteDeJ0 = étape.étape === 'hors-parcours' && ligne.état === 'essai' && ligne.activéeLe === null
 
@@ -377,7 +378,7 @@ function Ligne({
           : 'aucun'}
       </td>
       <td className={`label-mono px-4 py-3 ${auPlafond ? 'text-rose-texte' : 'text-ardoise'}`}>
-        {ligne.lecteursActifs} sur {LECTEURS_ACTIFS_MAX}
+        {lecteursFaceAuForfait(ligne.lecteursActifs, ligne.forfait)}
       </td>
     </tr>
   )

@@ -67,7 +67,7 @@ describe('lireFacturation', () => {
       .insert(organisations)
       .values({ slug: 'f', nom: 'F', état: 'essai', registreNotion: REGISTRE })
       .returning({ id: organisations.id })
-    expect(await lireFacturation(REGISTRE, db)).toEqual({ organisationId: o!.id, offre: 'standard', inscriteLe: expect.any(Date), abonnement: null })
+    expect(await lireFacturation(REGISTRE, db)).toEqual({ organisationId: o!.id, offre: 'standard', forfait: 'trois', lecteursActifs: 0, inscriteLe: expect.any(Date), abonnement: null })
 
     const commun = { organisationId: o!.id, clientStripe: 'cus_9', formule: 'mensuelle' as const, périodeFin: null, type: 'customer.subscription.updated' }
     await enregistrerÉvénementDAbonnement({ ...commun, abonnementStripe: 'sub_9', état: 'canceled', événementId: 'e1', événementLe: new Date('2026-10-20T00:00:00Z') }, db)

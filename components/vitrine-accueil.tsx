@@ -146,7 +146,7 @@ export function AccueilVitrine() {
               éléments={[
                 `L’essentiel en ${ESSENTIEL_LIGNES_MAX} lignes, puis ${LETTRE_UNIQUE.axesMin} à ${LETTRE_UNIQUE.axesMax} axes classés par impact.`,
                 'Chaque fait daté, lié à sa source.',
-                `Jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs par organisation.`,
+                `De ${LECTEURS_ACTIFS_MAX} lecteurs à un nombre illimité, selon le forfait.`,
               ]}
             />
           </Case>
@@ -167,7 +167,7 @@ export function AccueilVitrine() {
       <SectionVitrine
         surtitre="Tarifs"
         titre="Un prix par organisation, tout compris"
-        chapeau={`${LECTEURS_ACTIFS_MAX} lecteurs, référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main compris : ${enEuros(prixParLecteur())} € HT par lecteur et par mois.`}
+        chapeau={`Un forfait par nombre de lecteurs, référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main compris. Avec ${LECTEURS_ACTIFS_MAX} lecteurs : ${enEuros(prixParLecteur())} € HT par lecteur et par mois.`}
         disposition="côte"
         ton="neutre"
       >

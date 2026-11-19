@@ -43,7 +43,7 @@ const QUESTIONS_DES_TARIFS: readonly QuestionFréquente[] = [
   },
   {
     question: 'Comment ajouter ou retirer un lecteur ?',
-    réponse: `Depuis « Mon abonnement », ou en nous écrivant : chaque lecteur reçoit son propre lien par courriel. L’abonnement en compte ${LECTEURS_ACTIFS_MAX} au plus à la fois.`,
+    réponse: `Depuis « Mon abonnement », ou en nous écrivant : chaque lecteur reçoit son propre lien par courriel. Le forfait fixe le nombre de lecteurs actifs à la fois, de ${LECTEURS_ACTIFS_MAX} à illimité ; pour en ajouter au-delà, on passe au forfait suivant depuis l’espace.`,
   },
   {
     question: 'Faut-il un mot de passe ?',
@@ -101,7 +101,7 @@ export default function Tarifs() {
       <OuvertureVitrine
         surtitre="Tarifs"
         titre="Un prix par organisation, tout compris."
-        chapeau={`Une lettre par semaine, l’espace et toutes ses archives, jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs, la création de votre référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main. Pas d’option, pas de supplément.`}
+        chapeau={`Une lettre par semaine, l’espace et toutes ses archives, la création de votre référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main. Le forfait ne dépend que du nombre de lecteurs : ${LECTEURS_ACTIFS_MAX}, 10, 100 ou illimité.`}
       />
       <DonnéesStructurées données={donnéesStructurées()} />
 
@@ -137,7 +137,7 @@ export default function Tarifs() {
             'La création de votre référentiel : vos axes, vos sources, vos acteurs.',
             `${HEURES_DE_PRISE_EN_MAIN} h de prise en main, pour vos lecteurs et votre espace.`,
             'L’espace en ligne, toutes les lettres et toutes les archives.',
-            `Jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs actifs, chacun avec son lien personnel. Pour en ajouter un quatrième, on en retire un depuis l’espace.`,
+            `De ${LECTEURS_ACTIFS_MAX} lecteurs actifs à un nombre illimité selon le forfait, chacun avec son lien personnel. Pour en ajouter au-delà du forfait, on passe au suivant depuis l’espace.`,
           ]}
         />
       </SectionVitrine>

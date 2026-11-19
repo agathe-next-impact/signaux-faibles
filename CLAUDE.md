@@ -455,9 +455,25 @@ Les lire avant toute session.
   (`creer`, `revoquer`, `reactiver`, par slug et adresse), qui refuse tant que
   `SOURCE_ACCES` n'est pas `postgres` — avant, Notion fait foi. L'identifiant
   d'accès est tiré par le portail et ne sort jamais ; le lien part ensuite par
-  `/api/acces/ouvrir`. **Trois lecteurs actifs au plus par organisation** (offre
-  du 17 octobre 2026) : au-delà, la route répond `plafond-atteint`, à la
-  création comme à la réactivation ; l'opérateur global n'y compte pas.
+  `/api/acces/ouvrir`. **Le plafond de lecteurs actifs est celui du forfait de
+  l'organisation** (trois pour tous de l'offre du 17 octobre 2026 au 19 novembre
+  2026) : au-delà, la route répond `plafond-atteint`, à la création comme à la
+  réactivation ; l'opérateur global n'y compte pas. **Forfaits par nombre de
+  lecteurs** (19 novembre 2026, demande de l'opératrice) : 3 lecteurs à 149 € HT
+  par mois, 10 à 199 €, 100 à 299 €, illimité à 499 €, l'annuel de chacun à dix
+  mois payés ; montants et plafonds dans `DÉFINITIONS_DES_FORFAITS`
+  (`lib/domaine/offre.ts`) seulement. Le forfait qui fait foi (`forfaitEnVigueur`,
+  lu par `lireLeForfait`, `lib/base/abonnements.ts`) est celui de l'abonnement
+  Stripe ouvert quand il en porte un (`abonnements.forfait`, copié par le webhook
+  depuis `metadata.forfait` du prix, à défaut de l'abonnement ; migration 0033),
+  sinon celui posé sur l'organisation par l'opératrice (`organisations.forfait`,
+  trois par défaut ; fiche, section « Cycle de vie », ou `PATCH
+  /api/veille/organisations` `action: forfait`). La souscription propose une case
+  par forfait, mensuel ou annuel, sur ses propres prix (`STRIPE_PRIX_MENSUEL_DIX`,
+  `STRIPE_PRIX_ANNUEL_DIX`, puis `_CENT`, `_ILLIMITE`, facultatifs : absent, ce
+  forfait est indisponible), jamais un forfait plus petit que les lecteurs déjà
+  actifs ; le tarif fondateur reste à trois lecteurs ; un forfait abaissé ne
+  révoque personne.
   La bascule demande, le même jour, de poser `SOURCE_ACCES=postgres` **et** de faire passer la tâche Cowork qui tient la
   base Accès (§1.3 du balayage) par cette route. Le contrôle du soir rend la
   source en cours et l'état de la base (`accès` dans sa réponse) ; une base
@@ -1203,7 +1219,7 @@ la migration des lettres.
 lecteur ajoute un lecteur (nom et adresse ; le lien d'accès part aussitôt par
 `envoyerCourrier`, déclencheur `espace-client`, sous la même limitation de débit
 que l'activation) ou en retire un, par identifiant de ligne, jamais par
-adresse, et jamais lui-même (`soi-même`). Plafond de trois actifs tenu par
+adresse, et jamais lui-même (`soi-même`). Plafond du forfait tenu par
 `lib/base/ecriture-lecteurs.ts`, comme pour la route. Les actions
 (`lib/portail/lecteurs.ts`) passent par `exigerAccès`, refusent la visite
 opérateur et n'écrivent que si Postgres fait foi (`lecteursModifiables`,

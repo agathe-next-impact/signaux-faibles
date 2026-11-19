@@ -214,7 +214,10 @@ export function composerCourrierDeParcours(entrée: {
         action: { libellé: 'M’abonner', url: abonnement },
       }
 
-  const offreEnClair = `L'abonnement couvre votre organisation, ses deux veilles et trois lecteurs : ${prix}.`
+  // Les forfaits plus grands (19 novembre 2026) ne s'offrent qu'à l'offre standard : un fondateur garde son tarif.
+  const autresForfaits =
+    entrée.offre === 'fondateur' ? '' : ' Des forfaits à 10 lecteurs, 100 lecteurs ou sans limite sont proposés dans votre espace.'
+  const offreEnClair = `L'abonnement couvre votre organisation, ses deux veilles et trois lecteurs : ${prix}.${autresForfaits}`
   const courriel: Courriel = {
     objet: corps.sujet,
     préheader: corps.préheader,
@@ -252,7 +255,7 @@ export function composerCourrierDeParcours(entrée: {
       ...corps.lignes,
       '',
       `L'abonnement couvre votre organisation, ses deux veilles et trois lecteurs :`,
-      `${prix}. Vous pouvez vous abonner depuis votre espace :`,
+      `${prix}.${autresForfaits} Vous pouvez vous abonner depuis votre espace :`,
       '',
       espace,
       '',

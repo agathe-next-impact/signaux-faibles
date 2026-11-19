@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
 import { ADRESSE_DE_CONTACT } from '@/lib/email/gabarit'
 import {
+  DÉFINITIONS_DES_FORFAITS,
   enEuros,
+  FORFAITS,
   FRAIS_DE_MISE_EN_PLACE_HT,
   finDuTarifEarlyAdopter,
   HEURES_DE_PRISE_EN_MAIN,
-  LECTEURS_ACTIFS_MAX,
-  PRIX_ANNUEL_HT,
   PRIX_MENSUEL_HT,
+  prixAnnuelDuForfaitHT,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { ESSENTIEL_LIGNES_MAX } from '@/lib/domaine/texte'
@@ -226,36 +227,42 @@ export function nœudService(origine = origineCanonique()) {
     areaServed: { '@type': 'Country', name: 'France' },
     audience: { '@type': 'BusinessAudience', name: 'Entreprises, cabinets de conseil et organisations' },
     offers: [
-      {
-        '@type': 'Offer',
-        name: `Abonnement mensuel, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
-        url: absolue('/tarifs', origine),
-        priceCurrency: 'EUR',
-        price: PRIX_MENSUEL_HT,
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price: PRIX_MENSUEL_HT,
-          priceCurrency: 'EUR',
-          valueAddedTaxIncluded: false,
-          unitCode: 'MON',
-          referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
-        },
-      },
-      {
-        '@type': 'Offer',
-        name: `Abonnement annuel, deux mois offerts, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
-        url: absolue('/tarifs', origine),
-        priceCurrency: 'EUR',
-        price: PRIX_ANNUEL_HT,
-        priceSpecification: {
-          '@type': 'UnitPriceSpecification',
-          price: PRIX_ANNUEL_HT,
-          priceCurrency: 'EUR',
-          valueAddedTaxIncluded: false,
-          unitCode: 'ANN',
-          referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'ANN' },
-        },
-      },
+      ...FORFAITS.flatMap((forfait) => {
+        const { libellé, prixMensuelHT } = DÉFINITIONS_DES_FORFAITS[forfait]
+        const annuel = prixAnnuelDuForfaitHT(forfait)
+        return [
+          {
+            '@type': 'Offer',
+            name: `Abonnement mensuel, ${libellé.toLowerCase()}, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
+            url: absolue('/tarifs', origine),
+            priceCurrency: 'EUR',
+            price: prixMensuelHT,
+            priceSpecification: {
+              '@type': 'UnitPriceSpecification',
+              price: prixMensuelHT,
+              priceCurrency: 'EUR',
+              valueAddedTaxIncluded: false,
+              unitCode: 'MON',
+              referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
+            },
+          },
+          {
+            '@type': 'Offer',
+            name: `Abonnement annuel, ${libellé.toLowerCase()}, deux mois offerts, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises`,
+            url: absolue('/tarifs', origine),
+            priceCurrency: 'EUR',
+            price: annuel,
+            priceSpecification: {
+              '@type': 'UnitPriceSpecification',
+              price: annuel,
+              priceCurrency: 'EUR',
+              valueAddedTaxIncluded: false,
+              unitCode: 'ANN',
+              referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'ANN' },
+            },
+          },
+        ]
+      }),
       {
         '@type': 'Offer',
         name: 'Frais de mise en place',
@@ -308,7 +315,7 @@ export function texteLlms(origine = origineCanonique()): string {
   const lien = (chemin: string) => absolue(chemin, origine)
   return `# ${MARQUE}
 
-> ${descriptionDuService()} Service français, en français, ${enEuros(PRIX_MENSUEL_HT)} € HT par mois et par organisation.
+> ${descriptionDuService()} Service français, en français, à partir de ${enEuros(PRIX_MENSUEL_HT)} € HT par mois et par organisation.
 
 ${MARQUE} (${BASELINE}) est un service de veille stratégique et concurrentielle par abonnement. Chaque semaine, le même jour, chaque lecteur de l’organisation abonnée reçoit par courriel une lettre écrite pour elle seule, qui reste ensuite lisible dans un espace en ligne.
 
@@ -328,8 +335,8 @@ ${MARQUE} (${BASELINE}) est un service de veille stratégique et concurrentielle
 
 ## Offre et tarifs
 
-- ${enEuros(PRIX_MENSUEL_HT)} € HT par mois, ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an (deux mois offerts), par organisation.
-- Compris : la création du référentiel de veille (axes, sources, acteurs), ${HEURES_DE_PRISE_EN_MAIN} h de prise en main, l’espace et ses archives, jusqu’à ${LECTEURS_ACTIFS_MAX} lecteurs actifs.
+${FORFAITS.map((forfait) => `- ${DÉFINITIONS_DES_FORFAITS[forfait].libellé} actifs : ${enEuros(DÉFINITIONS_DES_FORFAITS[forfait].prixMensuelHT)} € HT par mois, ou ${enEuros(prixAnnuelDuForfaitHT(forfait))} € HT par an (deux mois offerts), par organisation.`).join('\n')}
+- Compris dans chaque forfait : la création du référentiel de veille (axes, sources, acteurs), ${HEURES_DE_PRISE_EN_MAIN} h de prise en main, l’espace et ses archives.
 - Frais de mise en place : offerts pour toute inscription jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT une fois.
 - Essai : ${PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire, à partir de la première lettre publiée.
 - Résiliation de la formule mensuelle à tout moment, depuis l’espace.

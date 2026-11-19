@@ -3,7 +3,14 @@ import { exigerLecture } from '@/lib/auth/appartenance'
 import { ChoixDeFormule, GérerLAbonnement, RetourDAbonnement } from '@/components/abonnement'
 import { Case, EntêteÉcran, Grille, LienFlèche, Panneau } from '@/components/coquille'
 import { aujourdHuiÀParis } from '@/lib/domaine/calendrier'
-import { ADRESSE_D_ABONNEMENT, fraisDeMiseEnPlaceDus, LECTEURS_ACTIFS_MAX } from '@/lib/domaine/offre'
+import {
+  ADRESSE_D_ABONNEMENT,
+  DÉFINITIONS_DES_FORFAITS,
+  FORFAIT_DE_BASE,
+  forfaitAtteint,
+  fraisDeMiseEnPlaceDus,
+  plafondDeLecteurs,
+} from '@/lib/domaine/offre'
 import { dateLongueDeParis, libelléDÉtape, étapeDuParcours, type Étape } from '@/lib/domaine/parcours'
 import { ajouterLecteur, retirerLecteur } from '@/lib/portail/lecteurs'
 import { espacePrescripteurDe } from '@/lib/portail/prescripteur'
@@ -31,7 +38,7 @@ const MESSAGES_LECTEURS: Record<string, string> = {
   ajoute: 'Lecteur ajouté : son lien d’accès vient de partir.',
   reactive: 'Ce lecteur était inscrit puis retiré : il est de nouveau actif, son lien vient de partir.',
   deja: 'Cette adresse est déjà inscrite et active.',
-  plafond: `${LECTEURS_ACTIFS_MAX} lecteurs actifs au plus : retirez-en un pour en ajouter un.`,
+  plafond: 'Votre forfait est complet : retirez un lecteur, ou passez à un forfait plus grand, pour en ajouter un.',
   retire: 'Lecteur retiré : son lien ne fonctionne plus.',
   'soi-meme': 'Vous ne pouvez pas retirer votre propre accès.',
   inconnu: 'Ce lecteur n’existe pas, ou n’est pas dans votre organisation.',
@@ -89,7 +96,10 @@ export default async function MonAbonnement({
   // la main ne prime : à un abonné suspendu, proposer de payer serait absurde.
   const peutSouscrire = étape?.étape !== 'abonnee' && !suspenduÀLaMain && offre !== 'gratuite'
   const gestion = lecteursModifiables() && situation !== null
-  const auPlafond = situation !== null && situation.lecteurs.length >= LECTEURS_ACTIFS_MAX
+  // Le plafond est celui du forfait qui fait foi (19 novembre 2026) : trois, dix, cent lecteurs, ou aucun.
+  const forfait = situation?.forfait ?? FORFAIT_DE_BASE
+  const plafond = plafondDeLecteurs(forfait)
+  const auPlafond = situation !== null && forfaitAtteint(forfait, situation.lecteurs.length)
 
   return (
     <>
@@ -124,7 +134,7 @@ export default async function MonAbonnement({
           <h2 className="font-titre text-h3 font-semibold text-encre">Formule</h2>
           {abonnéStripe && situation?.abonnement ? (
             <>
-              <Grille étiquette="Abonnement en cours" colonnes={2}>
+              <Grille étiquette="Abonnement en cours" colonnes={3}>
                 <Case>
                   <p className="label-mono text-ardoise">formule</p>
                   <p className="font-titre text-h3 font-semibold text-encre">
@@ -133,6 +143,12 @@ export default async function MonAbonnement({
                       : situation.abonnement.formule === 'mensuelle'
                         ? 'Mensuelle'
                         : 'Non précisée'}
+                  </p>
+                </Case>
+                <Case>
+                  <p className="label-mono text-ardoise">forfait</p>
+                  <p className="font-titre text-h3 font-semibold text-encre">
+                    {DÉFINITIONS_DES_FORFAITS[forfait].libellé}
                   </p>
                 </Case>
                 <Case>
@@ -148,8 +164,8 @@ export default async function MonAbonnement({
                 </Case>
               </Grille>
               <p className="text-ardoise">
-                Factures, moyen de paiement, changement de formule et résiliation se font dans votre
-                espace de facturation Stripe.
+                Factures, moyen de paiement, changement de formule ou de forfait et résiliation se font
+                dans votre espace de facturation Stripe.
               </p>
               <GérerLAbonnement slug={accès.slug} />
             </>
@@ -174,10 +190,15 @@ export default async function MonAbonnement({
           ) : peutSouscrire ? (
             <>
               <p className="text-ardoise">
-                L’abonnement couvre votre organisation, ses deux veilles et {LECTEURS_ACTIFS_MAX}{' '}
-                lecteurs.
+                L’abonnement couvre votre organisation et ses deux veilles. Le forfait fixe le nombre de
+                lecteurs actifs à la fois.
               </p>
-              <ChoixDeFormule slug={accès.slug} offre={offre} fraisDeMiseEnPlace={fraisDeMiseEnPlace} />
+              <ChoixDeFormule
+                slug={accès.slug}
+                offre={offre}
+                fraisDeMiseEnPlace={fraisDeMiseEnPlace}
+                lecteursActifs={situation?.lecteurs.length ?? 0}
+              />
               <p className="text-ardoise">
                 Paiement sécurisé par Stripe, facture à chaque échéance. Pour un bon de commande ou un
                 virement, écrivez à{' '}
@@ -208,7 +229,9 @@ export default async function MonAbonnement({
           {situation ? (
             <>
               <p className="label-mono text-ardoise">
-                {situation.lecteurs.length} sur {LECTEURS_ACTIFS_MAX} lecteurs actifs
+                {plafond === null
+                  ? `${situation.lecteurs.length} lecteur${situation.lecteurs.length > 1 ? 's' : ''} actif${situation.lecteurs.length > 1 ? 's' : ''} · forfait illimité`
+                  : `${situation.lecteurs.length} sur ${plafond} lecteurs actifs`}
               </p>
               {situation.lecteurs.length === 0 ? (
                 <p className="text-ardoise">Aucun lecteur actif n’est rattaché à votre organisation.</p>
@@ -243,8 +266,9 @@ export default async function MonAbonnement({
           {gestion ? (
             auPlafond ? (
               <p className="text-ardoise">
-                Votre organisation a ses {LECTEURS_ACTIFS_MAX} lecteurs. Pour en ajouter un, retirez-en un
-                d’abord.
+                Votre organisation a ses {plafond} lecteurs. Pour en ajouter un, retirez-en un d’abord, ou
+                passez à un forfait plus grand
+                {abonnéStripe ? ' depuis votre espace de facturation' : ` en écrivant à ${ADRESSE_D_ABONNEMENT}`}.
               </p>
             ) : (
               <form action={ajouterLecteur} className="flex flex-col gap-3 border border-gris-ligne bg-blanc p-6">
