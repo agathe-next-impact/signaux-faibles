@@ -12,11 +12,9 @@ import {
   SectionVitrine,
 } from '@/components/vitrine'
 import {
-  DÉFINITIONS_DES_FORFAITS,
   enEuros,
   FIN_DU_TARIF_EARLY_ADOPTER,
   finDuTarifEarlyAdopter,
-  FORFAITS,
   FRAIS_DE_MISE_EN_PLACE_HT,
   HEURES_DE_PRISE_EN_MAIN,
   LECTEURS_ACTIFS_MAX,
@@ -24,12 +22,12 @@ import {
   PRIX_MENSUEL_HT,
 } from '@/lib/domaine/offre'
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
-import { prixParLecteurEnPhrase } from '@/lib/vitrine/marche'
+import { prixParLecteur } from '@/lib/vitrine/marche'
 import { absolue, graphe, métadonnéesDeVitrine, nœudFAQ, nœudOrganisation, nœudService, type QuestionFréquente } from '@/lib/vitrine/referencement'
 
 export const metadata: Metadata = métadonnéesDeVitrine({
-  titre: `Tarifs de la veille stratégique : dès ${enEuros(PRIX_MENSUEL_HT)} € HT par mois · signauxfaibles`,
-  description: `Un forfait par nombre de lecteurs : ${FORFAITS.map((f) => `${DÉFINITIONS_DES_FORFAITS[f].libellé.toLowerCase()} à ${enEuros(DÉFINITIONS_DES_FORFAITS[f].prixMensuelHT)} €`).join(', ')} HT par mois et par organisation, l’annuel à dix mois payés (${enEuros(PRIX_ANNUEL_HT)} € HT pour ${LECTEURS_ACTIFS_MAX} lecteurs). Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Frais de mise en place offerts jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
+  titre: `Tarifs de la veille stratégique : ${enEuros(PRIX_MENSUEL_HT)} € HT par mois · signauxfaibles`,
+  description: `${enEuros(PRIX_MENSUEL_HT)} € HT par mois ou ${enEuros(PRIX_ANNUEL_HT)} € HT par an et par organisation, création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises. Frais de mise en place offerts jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT. Essai de ${PARUTIONS_D_ESSAI} parutions complètes.`,
   chemin: '/tarifs',
 })
 
@@ -102,7 +100,7 @@ export default function Tarifs() {
     <CoquilleVitrine courante="tarifs">
       <OuvertureVitrine
         surtitre="Tarifs"
-        titre="Un forfait par nombre de lecteurs, tout compris."
+        titre="Un prix par organisation, tout compris."
         chapeau={`Une lettre par semaine, l’espace et toutes ses archives, la création de votre référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main. Le forfait ne dépend que du nombre de lecteurs : ${LECTEURS_ACTIFS_MAX}, 10, 100 ou illimité.`}
       />
       <DonnéesStructurées données={donnéesStructurées()} />
@@ -122,7 +120,7 @@ export default function Tarifs() {
       <SectionVitrine
         surtitre="Où se place ce prix"
         titre="Le prix d’un outil, le travail d’un analyste"
-        chapeau={`Au prix des outils d’alerte haut de gamme, et loin sous les plateformes de veille, même en illimité. Par lecteur et par mois, il revient à ${prixParLecteurEnPhrase()}, référentiel et prise en main compris.`}
+        chapeau={`Au prix des outils d’alerte haut de gamme, et loin sous les plateformes de veille. Avec ${LECTEURS_ACTIFS_MAX} lecteurs, il revient à ${enEuros(prixParLecteur())} € HT par lecteur et par mois, référentiel et prise en main compris.`}
       >
         <GraphiqueRepèresDeMarché />
         <p className="max-w-3xl text-encre">

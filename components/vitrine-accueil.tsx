@@ -24,7 +24,7 @@ import { enEuros, HEURES_DE_PRISE_EN_MAIN, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT 
 import { PARUTIONS_D_ESSAI } from '@/lib/domaine/parcours'
 import { LETTRE_UNIQUE } from '@/lib/portail/lint'
 import { graphe, nœudFAQ, nœudOrganisation, nœudService, nœudSite, type QuestionFréquente } from '@/lib/vitrine/referencement'
-import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSemaine, prixParLecteurEnPhrase } from '@/lib/vitrine/marche'
+import { COÛT_HORAIRE_ILLUSTRATIF, coûtDeLaVeilleInterne, coûtDUneHeureParSemaine, prixParLecteur } from '@/lib/vitrine/marche'
 
 /**
  * L'accueil des visiteurs sans session (23 octobre 2026, refondu le
@@ -127,7 +127,7 @@ export function AccueilVitrine() {
           chiffres={[
             { valeur: `${enEuros(coûtDUneHeureParSemaine())} €`, libellé: '1 h par semaine, en interne' },
             { valeur: `${enEuros(coûtDeLaVeilleInterne()[1]!.parMois)} €`, libellé: '2 h par semaine, en interne' },
-            { valeur: `${enEuros(PRIX_MENSUEL_HT)} €`, libellé: `signauxfaibles, HT par mois, ${LECTEURS_ACTIFS_MAX} lecteurs` },
+            { valeur: `${enEuros(PRIX_MENSUEL_HT)} €`, libellé: 'signauxfaibles, HT par mois' },
           ]}
         />
         <GraphiqueTempsDeVeille />
@@ -166,8 +166,8 @@ export function AccueilVitrine() {
 
       <SectionVitrine
         surtitre="Tarifs"
-        titre="Un forfait par nombre de lecteurs, tout compris"
-        chapeau={`Un forfait par nombre de lecteurs, référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main compris. Par lecteur et par mois : ${prixParLecteurEnPhrase()}.`}
+        titre="Un prix par organisation, tout compris"
+        chapeau={`Un forfait par nombre de lecteurs, référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main compris. Avec ${LECTEURS_ACTIFS_MAX} lecteurs : ${enEuros(prixParLecteur())} € HT par lecteur et par mois.`}
         disposition="côte"
         ton="neutre"
       >

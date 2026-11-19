@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { positionSurLÉchelle } from '@/components/graphiques-vitrine'
 import { construireDocument } from '@/lib/domaine/document'
 import { markdownVersBlocs } from '@/lib/domaine/markdown'
-import { DÉFINITIONS_DES_FORFAITS, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import { faitsDeLaLettre } from '@/lib/domaine/strategie'
 import { DÉMONSTRATIONS } from '@/lib/vitrine/demonstrations'
 import { lectureDeDémonstration } from '@/lib/vitrine/lecture-demonstration'
@@ -13,7 +13,6 @@ import {
   notreFourchette,
   POSITIONS_SUR_LA_CARTE,
   prixParLecteur,
-  prixParLecteurEnPhrase,
 } from '@/lib/vitrine/marche'
 
 /**
@@ -39,21 +38,17 @@ describe('les repères de marché', () => {
     }
   })
 
-  it('tiennent « au prix des outils d’alerte haut de gamme, loin sous les plateformes, même en illimité »', () => {
+  it('tiennent « au prix des outils d’alerte haut de gamme, loin sous les plateformes »', () => {
     const nous = notreFourchette()
-    // L'annuel du forfait de base ramené au mois (dix mois payés), puis le mensuel illimité.
-    expect(nous).toEqual({ min: 124.17, max: 499 })
+    // L'annuel ramené au mois (dix mois payés), puis le mensuel.
+    expect(nous).toEqual({ min: 124.17, max: PRIX_MENSUEL_HT })
     expect(nous.min).toBeGreaterThanOrEqual(famille('outils').min)
-    expect(PRIX_MENSUEL_HT).toBeLessThanOrEqual(famille('outils').max)
+    expect(nous.max).toBeLessThanOrEqual(famille('outils').max)
     expect(famille('plateformes').min / PRIX_MENSUEL_HT).toBeGreaterThanOrEqual(10)
-    expect(famille('plateformes').min / DÉFINITIONS_DES_FORFAITS.illimite.prixMensuelHT).toBeGreaterThanOrEqual(5)
   })
 
-  it('ramènent le prix à 50, 20 et 3 € HT par lecteur et par mois, selon le forfait', () => {
+  it('ramènent le prix à 50 € HT par lecteur et par mois, avec trois lecteurs', () => {
     expect(prixParLecteur()).toBe(50)
-    expect(prixParLecteur('dix')).toBe(20)
-    expect(prixParLecteur('cent')).toBe(3)
-    expect(prixParLecteurEnPhrase()).toBe('50 € HT avec 3 lecteurs, 20 € avec 10, 3 € avec 100')
   })
 
   it('placent chaque famille sur la carte, et nous seuls avec les cabinets en haut à droite', () => {
