@@ -1,4 +1,9 @@
-import { LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT, équivalentMensuelDeLAnnuel } from '@/lib/domaine/offre'
+import {
+  DÉFINITIONS_DES_FORFAITS,
+  type Forfait,
+  LECTEURS_ACTIFS_MAX,
+  équivalentMensuelDeLAnnuel,
+} from '@/lib/domaine/offre'
 
 /**
  * Ce que la vitrine dit du marché et de la valeur de la veille (27 octobre
@@ -79,14 +84,30 @@ export const FAMILLES_D_OFFRES: readonly FamilleDOffres[] = [
   },
 ]
 
-/** Notre fourchette : l'annuel ramené au mois, puis le mensuel. */
+/**
+ * Notre fourchette, de forfait en forfait (19 novembre 2026) : l'annuel du
+ * forfait de base ramené au mois, puis le mensuel du forfait illimité.
+ */
 export function notreFourchette(): { readonly min: number; readonly max: number } {
-  return { min: équivalentMensuelDeLAnnuel(), max: PRIX_MENSUEL_HT }
+  return { min: équivalentMensuelDeLAnnuel(), max: DÉFINITIONS_DES_FORFAITS.illimite.prixMensuelHT }
 }
 
-/** Le prix du mois ramené à un lecteur, quand l'organisation en a le plafond. */
-export function prixParLecteur(): number {
-  return Math.round(PRIX_MENSUEL_HT / LECTEURS_ACTIFS_MAX)
+/** Les forfaits qui ont un plafond de lecteurs, les seuls qu'on ramène à un lecteur. */
+export type ForfaitBorné = Exclude<Forfait, 'illimite'>
+export const FORFAITS_BORNÉS: readonly ForfaitBorné[] = ['trois', 'dix', 'cent']
+
+/** Le prix du mois d'un forfait ramené à un lecteur, quand l'organisation en a le plafond. */
+export function prixParLecteur(forfait: ForfaitBorné = 'trois'): number {
+  const { prixMensuelHT, lecteurs } = DÉFINITIONS_DES_FORFAITS[forfait]
+  return Math.round(prixMensuelHT / (lecteurs ?? LECTEURS_ACTIFS_MAX))
+}
+
+/** « 50 € HT avec 3 lecteurs, 20 € avec 10, 3 € avec 100 » : la phrase des chapeaux, tirée des forfaits. */
+export function prixParLecteurEnPhrase(): string {
+  return FORFAITS_BORNÉS.map((forfait, i) => {
+    const lecteurs = DÉFINITIONS_DES_FORFAITS[forfait].lecteurs
+    return i === 0 ? `${prixParLecteur(forfait)} € HT avec ${lecteurs} lecteurs` : `${prixParLecteur(forfait)} € avec ${lecteurs}`
+  }).join(', ')
 }
 
 /**

@@ -335,7 +335,7 @@ ${MARQUE} (${BASELINE}) est un service de veille stratégique et concurrentielle
 
 ## Offre et tarifs
 
-${FORFAITS.map((forfait) => `- ${DÉFINITIONS_DES_FORFAITS[forfait].libellé} actifs : ${enEuros(DÉFINITIONS_DES_FORFAITS[forfait].prixMensuelHT)} € HT par mois, ou ${enEuros(prixAnnuelDuForfaitHT(forfait))} € HT par an (deux mois offerts), par organisation.`).join('\n')}
+${FORFAITS.map((forfait) => `- Forfait ${DÉFINITIONS_DES_FORFAITS[forfait].libellé.toLowerCase()} : ${enEuros(DÉFINITIONS_DES_FORFAITS[forfait].prixMensuelHT)} € HT par mois, ou ${enEuros(prixAnnuelDuForfaitHT(forfait))} € HT par an (deux mois offerts), par organisation.`).join('\n')}
 - Compris dans chaque forfait : la création du référentiel de veille (axes, sources, acteurs), ${HEURES_DE_PRISE_EN_MAIN} h de prise en main, l’espace et ses archives.
 - Frais de mise en place : offerts pour toute inscription jusqu’au ${finDuTarifEarlyAdopter()}, puis ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT une fois.
 - Essai : ${PARUTIONS_D_ESSAI} parutions complètes, sans carte bancaire, à partir de la première lettre publiée.

@@ -1,5 +1,5 @@
 import { AnimerÀLEntrée } from '@/components/anime-a-l-entree'
-import { enEuros, HEURES_DE_PRISE_EN_MAIN, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
+import { enEuros, HEURES_DE_PRISE_EN_MAIN, LECTEURS_ACTIFS_MAX, PRIX_MENSUEL_HT } from '@/lib/domaine/offre'
 import {
   AXES_DE_LA_CARTE,
   COÛT_HORAIRE_ILLUSTRATIF,
@@ -131,7 +131,7 @@ export function GraphiqueRepèresDeMarché() {
         ))}
         <LigneDeMarché
           libellé="signauxfaibles"
-          livre={`Une analyse rédigée pour vous, référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main compris`}
+          livre={`Une analyse rédigée pour vous, de ${LECTEURS_ACTIFS_MAX} lecteurs à illimité selon le forfait`}
           min={nous.min}
           max={nous.max}
           nous
@@ -178,13 +178,15 @@ export function GraphiqueRepèresDeMarché() {
             <tr className="align-top">
               <td className="py-2 pr-4 font-medium text-encre">signauxfaibles</td>
               <td className="py-2 pr-4 text-encre">{fourchette(nous.min, nous.max)}</td>
-              <td className="py-2 text-ardoise">Abonnement mensuel, référentiel et prise en main compris</td>
+              <td className="py-2 text-ardoise">
+                Du forfait {LECTEURS_ACTIFS_MAX} lecteurs à l’année au forfait illimité au mois, référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main compris
+              </td>
             </tr>
           </tbody>
         </table>
         <p className="mt-2 text-label text-ardoise">
           Prix publics relevés le {DATE_DU_RELEVÉ}, par famille d’offres. Une lettre professionnelle
-          se vend par utilisateur : la fourchette va d’un à trois lecteurs.
+          se vend par utilisateur : la fourchette va d’un à {LECTEURS_ACTIFS_MAX} lecteurs, notre forfait de base.
         </p>
       </Chiffres>
     </figure>
