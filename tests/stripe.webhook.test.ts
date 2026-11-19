@@ -44,6 +44,7 @@ describe('interpréterLivraisonStripe', () => {
         abonnementStripe: 'sub_123',
         état: 'active',
         formule: 'mensuelle',
+        forfait: null,
         périodeFin: new Date(1794909600 * 1000),
         événementId: 'evt_1',
         événementLe: new Date(1792231200 * 1000),

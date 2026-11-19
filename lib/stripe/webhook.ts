@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import type { ÉvénementDAbonnement } from '@/lib/base/abonnements'
+import { estUnForfait, type Forfait } from '@/lib/domaine/offre'
 
 /**
  * Lecture d'une livraison de webhook Stripe (palier 1c).
@@ -51,6 +52,20 @@ function formuleDe(abonnement: Stripe.Subscription): 'mensuelle' | 'annuelle' | 
   if (intervalle === 'month') return 'mensuelle'
   if (intervalle === 'year') return 'annuelle'
   return null
+}
+
+/**
+ * Le forfait par nombre de lecteurs (19 novembre 2026) : d'abord
+ * `metadata.forfait` du **prix**, que l'opératrice pose sur chaque prix Stripe
+ * et qui suit donc un changement de forfait fait dans l'espace de facturation ;
+ * à défaut, `metadata.forfait` de l'abonnement, posé par le portail à la page de
+ * paiement. Une valeur inconnue vaut une absence.
+ */
+function forfaitDe(abonnement: Stripe.Subscription): Forfait | null {
+  const duPrix = abonnement.items.data[0]?.price.metadata?.['forfait']
+  if (estUnForfait(duPrix)) return duPrix
+  const deLAbonnement = abonnement.metadata?.['forfait']
+  return estUnForfait(deLAbonnement) ? deLAbonnement : null
 }
 
 function finDePériode(abonnement: Stripe.Subscription): Date | null {
@@ -108,6 +123,7 @@ export function interpréterLivraisonStripe(livraison: {
       abonnementStripe: abonnement.id,
       état: abonnement.status,
       formule: formuleDe(abonnement),
+      forfait: forfaitDe(abonnement),
       périodeFin: finDePériode(abonnement),
       événementId: événement.id,
       événementLe: new Date(événement.created * 1000),

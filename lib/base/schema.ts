@@ -63,6 +63,13 @@ export const étatOrganisation = pgEnum('état_organisation', [
  */
 export const offreOrganisation = pgEnum('offre_organisation', ['standard', 'fondateur', 'gratuite'])
 
+/**
+ * Le forfait par nombre de lecteurs (19 novembre 2026, migration 0033) : trois,
+ * dix, cent ou illimité. Les montants et les plafonds sont dans
+ * `lib/domaine/offre.ts` (`DÉFINITIONS_DES_FORFAITS`), jamais ici.
+ */
+export const forfaitLecteurs = pgEnum('forfait_lecteurs', ['trois', 'dix', 'cent', 'illimite'])
+
 /** Une par client, prospect ou organisation de test. */
 export const organisations = pgTable(
   'organisations',
@@ -112,6 +119,13 @@ export const organisations = pgTable(
    */
   étatAvantDécision: étatOrganisation('état_avant_décision'),
   offre: offreOrganisation('offre').notNull().default('standard'),
+  /**
+   * Le forfait posé par l'opératrice (19 novembre 2026, migration 0033), trois
+   * lecteurs par défaut : il fait foi tant qu'aucun abonnement Stripe ouvert ne
+   * porte le sien (`forfaitEnVigueur`). C'est celui d'un essai, d'un accès
+   * offert, du tarif fondateur ou d'un abonnement par virement.
+   */
+  forfait: forfaitLecteurs('forfait').notNull().default('trois'),
   /**
    * Parutions complètes de l'essai avant « L'essentiel » seul : trois par
    * défaut (J0, J+7, J+14) depuis le 17 novembre 2026 (migration 0029) ; deux
@@ -360,6 +374,12 @@ export const abonnements = pgTable(
     état: text('état').notNull(),
     /** `mensuelle` ou `annuelle`, lue sur l'intervalle du prix ; nulle si Stripe ne le dit pas. */
     formule: text('formule'),
+    /**
+     * Le forfait par nombre de lecteurs (19 novembre 2026, migration 0033), lu
+     * dans `metadata.forfait` du prix Stripe, à défaut de l'abonnement ; nul si
+     * ni l'un ni l'autre ne le dit, et le forfait de l'organisation fait alors foi.
+     */
+    forfait: forfaitLecteurs('forfait'),
     périodeFin: horodatage('période_fin'),
     /** Identifiant du dernier événement Stripe appliqué. */
     dernierÉvénement: text('dernier_événement').notNull(),

@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { exigerOpérateur } from '@/lib/auth/appartenance'
 import { réglerLeParcours, type Réglage, type RésultatDuRéglage } from '@/lib/base/organisations'
 import { cléDeLot, estUneCléDeCible, lireUnLot, type Lot } from '@/lib/domaine/placement'
+import { estUnForfait } from '@/lib/domaine/offre'
 
 /**
  * Les réglages du parcours depuis le tableau des abonnements (19 octobre 2026).
@@ -82,6 +83,14 @@ export async function poserLOffre(données: FormData): Promise<void> {
   const offre = données.get('offre')
   if (offre !== 'standard' && offre !== 'fondateur' && offre !== 'gratuite') notFound()
   await appliquer(données, slug, `offre ${offre}`, { sorte: 'offre', offre }, 'cycle')
+}
+
+/** Le forfait par nombre de lecteurs (19 novembre 2026), pour une organisation sans abonnement Stripe qui le porte. */
+export async function poserLeForfait(données: FormData): Promise<void> {
+  const slug = slugDu(données)
+  const forfait = données.get('forfait')
+  if (!estUnForfait(forfait)) notFound()
+  await appliquer(données, slug, `forfait ${forfait}`, { sorte: 'forfait', forfait }, 'cycle')
 }
 
 export async function réglerLesParutions(données: FormData): Promise<void> {

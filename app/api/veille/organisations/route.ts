@@ -10,6 +10,7 @@ import {
   type RésultatDuRéglage,
 } from '@/lib/base/organisations'
 import { codeDePrescripteurValide } from '@/lib/domaine/prescripteurs'
+import { FORFAITS } from '@/lib/domaine/offre'
 import { identifiantNotionValide, refuserSiNonAutorisé } from '@/lib/portail/garde-veille'
 import { SUJETS_DU_MARCHÉ } from '@/lib/domaine/sujets-du-marche'
 import { réglerLEspace, réglerLeMarché, réglerLePilote } from '@/lib/portail/strategie'
@@ -53,6 +54,7 @@ import { réglerLEspace, réglerLeMarché, réglerLePilote } from '@/lib/portail
  *   { "slug": "acme", "action": "relecture", "requise": true | false }
  *   { "slug": "acme", "action": "apercu", "actif": true | false }
  *   { "slug": "acme", "action": "offre", "offre": "standard" | "fondateur" | "gratuite" }
+ *   { "slug": "acme", "action": "forfait", "forfait": "trois" | "dix" | "cent" | "illimite" }
  *   (« early_adopter », l'ancien nom du tarif fondateur, reste accepté et vaut « fondateur »)
  *   { "slug": "acme", "action": "parutions", "parutions": 3 }
  *   { "slug": "acme", "action": "parcours", "prochaineLettre": "2026-10-22", "restantes": 1 }
@@ -115,6 +117,7 @@ const réglage = z.discriminatedUnion('action', [
       .enum(['standard', 'fondateur', 'early_adopter', 'gratuite'])
       .transform((offre) => (offre === 'early_adopter' ? 'fondateur' : offre)),
   }),
+  z.object({ slug: z.string().trim().min(1), action: z.literal('forfait'), forfait: z.enum(FORFAITS) }),
   z.object({ slug: z.string().trim().min(1), action: z.literal('parutions'), parutions: z.number().int().min(1).max(8) }),
   z.object({
     slug: z.string().trim().min(1),
@@ -135,6 +138,7 @@ const STATUT_DU_RÉGLAGE: Record<RésultatDuRéglage['sorte'], number> = {
   'relecture-réglée': 200,
   'aperçu-réglé': 200,
   'offre-posée': 200,
+  'forfait-posé': 200,
   'parutions-réglées': 200,
   'mis-en-parcours': 200,
   placée: 200,
@@ -282,6 +286,8 @@ function enRéglage(demande: z.infer<typeof réglage>): Réglage {
       return { sorte: 'apercu', actif: demande.actif }
     case 'offre':
       return { sorte: 'offre', offre: demande.offre }
+    case 'forfait':
+      return { sorte: 'forfait', forfait: demande.forfait }
     case 'parutions':
       return { sorte: 'parutions', parutions: demande.parutions }
     case 'parcours':
@@ -303,6 +309,8 @@ function journalDuRéglage(résultat: RésultatDuRéglage): string {
       return résultat.actif ? 'aperçu avant envoi' : 'envois sans aperçu'
     case 'offre-posée':
       return `offre ${résultat.offre}, état ${résultat.état}`
+    case 'forfait-posé':
+      return `forfait ${résultat.forfait}`
     case 'mis-en-parcours':
       return `J0 ${résultat.j0}, ${résultat.restantes} parution(s) complète(s) restante(s) sur ${résultat.parutions}`
     case 'placée':

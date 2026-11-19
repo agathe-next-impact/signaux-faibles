@@ -79,7 +79,8 @@ export function FinDEssai({
         <div className="flex flex-col gap-2">
           <h2 className="font-titre text-h3 font-semibold text-encre">S’abonner</h2>
           <p className="text-ardoise">
-            L’abonnement couvre votre organisation, ses deux veilles et trois lecteurs.
+            L’abonnement couvre votre organisation et ses deux veilles, pour le nombre de lecteurs de
+            son forfait : 3, 10, 100 ou illimité.
           </p>
           <ChoixDeFormule slug={slug} offre={offre} fraisDeMiseEnPlace={fraisDeMiseEnPlace} />
           <p className="text-ardoise">

@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import type { Forfait } from '@/lib/domaine/offre'
 
 /**
  * La souscription en ligne (palier 1c) : ce que le portail demande à Stripe
@@ -27,6 +28,16 @@ export type ConfigurationStripe = {
   readonly cléSecrète: string
   /** `fondateur` est nul tant que `STRIPE_PRIX_FONDATEUR` n'est pas posée : la formule est alors indisponible, le reste non. */
   readonly prix: { readonly mensuelle: string; readonly annuelle: string; readonly fondateur: string | null }
+  /**
+   * Les prix des forfaits au-delà de trois lecteurs (19 novembre 2026), chacun
+   * facultatif : `STRIPE_PRIX_MENSUEL_DIX`, `STRIPE_PRIX_ANNUEL_DIX`, puis
+   * `_CENT` et `_ILLIMITE`. Un prix absent rend ce forfait, dans cette formule,
+   * indisponible, sans toucher au reste. Le forfait de base garde
+   * `STRIPE_PRIX_MENSUEL` et `STRIPE_PRIX_ANNUEL`.
+   */
+  readonly forfaits: Readonly<
+    Record<Exclude<Forfait, 'trois'>, { readonly mensuelle: string | null; readonly annuelle: string | null }>
+  >
   /**
    * Le prix unique des frais de mise en place (`STRIPE_PRIX_MISE_EN_PLACE`,
    * 7 novembre 2026), nul tant qu'il n'est pas posé : une souscription qui les
@@ -58,6 +69,14 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   const miseEnPlace = vide(source['STRIPE_PRIX_MISE_EN_PLACE'])
   const taux = vide(source['STRIPE_TAUX_TVA'])
   const portailUrl = vide(source['PORTAIL_URL'])
+  const forfaits = {
+    dix: { mensuelle: vide(source['STRIPE_PRIX_MENSUEL_DIX']), annuelle: vide(source['STRIPE_PRIX_ANNUEL_DIX']) },
+    cent: { mensuelle: vide(source['STRIPE_PRIX_MENSUEL_CENT']), annuelle: vide(source['STRIPE_PRIX_ANNUEL_CENT']) },
+    illimite: {
+      mensuelle: vide(source['STRIPE_PRIX_MENSUEL_ILLIMITE']),
+      annuelle: vide(source['STRIPE_PRIX_ANNUEL_ILLIMITE']),
+    },
+  }
 
   const manques: string[] = []
   // `rk_` : une clé restreinte, recommandée par Stripe pour un serveur.
@@ -67,6 +86,11 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   if (fondateur && !fondateur.startsWith('price_')) manques.push('STRIPE_PRIX_FONDATEUR')
   if (miseEnPlace && !miseEnPlace.startsWith('price_')) manques.push('STRIPE_PRIX_MISE_EN_PLACE')
   if (taux && !taux.startsWith('txr_')) manques.push('STRIPE_TAUX_TVA')
+  for (const [forfait, prix] of Object.entries(forfaits)) {
+    const suffixe = forfait.toUpperCase()
+    if (prix.mensuelle && !prix.mensuelle.startsWith('price_')) manques.push(`STRIPE_PRIX_MENSUEL_${suffixe}`)
+    if (prix.annuelle && !prix.annuelle.startsWith('price_')) manques.push(`STRIPE_PRIX_ANNUEL_${suffixe}`)
+  }
   if (!portailUrl) manques.push('PORTAIL_URL')
   if (manques.length > 0) {
     console.warn(`[abonnement] souscription indisponible, à poser ou corriger : ${manques.join(', ')}.`)
@@ -76,6 +100,7 @@ export function configurationStripe(source: NodeJS.ProcessEnv = process.env): Co
   return {
     cléSecrète: cléSecrète!,
     prix: { mensuelle: mensuel!, annuelle: annuel!, fondateur },
+    forfaits,
     miseEnPlace,
     tauxDeTva: taux,
     portailUrl: portailUrl!.replace(/\/+$/, ''),
@@ -91,10 +116,20 @@ export function cléAccordéeAuMode(cléSecrète: string, modeRéel: boolean): b
   return cléSecrète.includes('_live_') === modeRéel
 }
 
-/** Le prix Stripe d'une formule ; lève si la formule fondateur n'a pas de prix posé. */
-export function prixDe(configuration: ConfigurationStripe, formule: Formule): string {
-  const prix = configuration.prix[formule]
-  if (!prix) throw new Error(`formule ${formule} sans prix Stripe configuré`)
+/**
+ * Le prix Stripe d'une formule et d'un forfait, ou `null` s'il n'est pas posé.
+ * Le tarif fondateur n'existe qu'au forfait de base : il n'a pas d'autre prix.
+ */
+export function prixPosé(configuration: ConfigurationStripe, formule: Formule, forfait: Forfait = 'trois'): string | null {
+  if (forfait === 'trois') return configuration.prix[formule]
+  if (formule === 'fondateur') return null
+  return configuration.forfaits[forfait][formule]
+}
+
+/** Le prix Stripe d'une formule et d'un forfait ; lève s'il n'est pas posé. */
+export function prixDe(configuration: ConfigurationStripe, formule: Formule, forfait: Forfait = 'trois'): string {
+  const prix = prixPosé(configuration, formule, forfait)
+  if (!prix) throw new Error(`formule ${formule}, forfait ${forfait}, sans prix Stripe configuré`)
   return prix
 }
 
@@ -122,6 +157,9 @@ export function clientStripe(configuration: ConfigurationStripe): Stripe {
  * lecteur pré-remplit le formulaire, qu'il peut changer pour celle de sa
  * comptabilité.
  *
+ * Le forfait par nombre de lecteurs (19 novembre 2026) choisit le prix, et il
+ * est posé dans les métadonnées de l'abonnement avec l'organisation.
+ *
  * Les frais de mise en place, quand ils sont dus (`fraisDeMiseEnPlaceDus`),
  * sont une seconde ligne, au prix unique : Stripe les porte sur la première
  * facture de l'abonnement, et sur elle seule. Le taux de TVA y est posé
@@ -134,6 +172,8 @@ export function clientStripe(configuration: ConfigurationStripe): Stripe {
 export function paramètresDePaiement(entrée: {
   readonly configuration: ConfigurationStripe
   readonly formule: Formule
+  /** Le forfait par nombre de lecteurs ; le forfait de base par défaut. */
+  readonly forfait?: Forfait
   readonly organisationId: string
   readonly slug: string
   readonly clientStripe: string | null
@@ -142,11 +182,14 @@ export function paramètresDePaiement(entrée: {
   readonly fraisDeMiseEnPlace: boolean
 }): Stripe.Checkout.SessionCreateParams {
   const { configuration, formule, organisationId, slug } = entrée
-  const métadonnées = { organisation_id: organisationId, slug }
+  const forfait = entrée.forfait ?? 'trois'
+  // Le forfait voyage aussi dans les métadonnées de l'abonnement : le webhook le
+  // lit là quand le prix ne le porte pas.
+  const métadonnées = { organisation_id: organisationId, slug, forfait }
   if (entrée.fraisDeMiseEnPlace && !configuration.miseEnPlace) {
     throw new Error('frais de mise en place dus sans prix Stripe configuré')
   }
-  const lignes: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: prixDe(configuration, formule), quantity: 1 }]
+  const lignes: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: prixDe(configuration, formule, forfait), quantity: 1 }]
   if (entrée.fraisDeMiseEnPlace && configuration.miseEnPlace) {
     lignes.push({
       price: configuration.miseEnPlace,

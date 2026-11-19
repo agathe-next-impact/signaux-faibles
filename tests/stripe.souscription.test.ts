@@ -26,6 +26,11 @@ describe('configurationStripe', () => {
     expect(configurationStripe(ENV)).toEqual({
       cléSecrète: 'sk_test_abc',
       prix: { mensuelle: 'price_mensuel', annuelle: 'price_annuel', fondateur: null },
+      forfaits: {
+        dix: { mensuelle: null, annuelle: null },
+        cent: { mensuelle: null, annuelle: null },
+        illimite: { mensuelle: null, annuelle: null },
+      },
       miseEnPlace: null,
       tauxDeTva: 'txr_20',
       portailUrl: 'https://www.signauxfaibles.io',
@@ -75,7 +80,7 @@ describe('paramètresDePaiement', () => {
     const p = paramètresDePaiement({ configuration, formule: 'annuelle', organisationId: ORG, slug: 'konica', clientStripe: null, email: 'a@b.fr', fraisDeMiseEnPlace: false })
     expect(p.mode).toBe('subscription')
     expect(p.managed_payments).toEqual({ enabled: false })
-    expect(p.subscription_data?.metadata).toEqual({ organisation_id: ORG, slug: 'konica' })
+    expect(p.subscription_data?.metadata).toEqual({ organisation_id: ORG, slug: 'konica', forfait: 'trois' })
     expect(p.line_items).toEqual([{ price: 'price_annuel', quantity: 1 }])
     expect(p.subscription_data?.default_tax_rates).toEqual(['txr_20'])
     expect(p.client_reference_id).toBe(ORG)
@@ -85,7 +90,7 @@ describe('paramètresDePaiement', () => {
     expect(p.billing_address_collection).toBe('required')
     expect(p.success_url).toBe('https://www.signauxfaibles.io/konica?abonnement=merci')
     expect(p.cancel_url).toBe('https://www.signauxfaibles.io/konica')
-    expect(p.metadata).toEqual({ organisation_id: ORG, slug: 'konica', frais_de_mise_en_place: 'non' })
+    expect(p.metadata).toEqual({ organisation_id: ORG, slug: 'konica', forfait: 'trois', frais_de_mise_en_place: 'non' })
   })
 
   it('ajoute les frais de mise en place en seconde ligne, avec la TVA, quand ils sont dus', () => {
@@ -102,9 +107,9 @@ describe('paramètresDePaiement', () => {
       { price: 'price_mensuel', quantity: 1 },
       { price: 'price_mep', quantity: 1, tax_rates: ['txr_20'] },
     ])
-    expect(p.metadata).toEqual({ organisation_id: ORG, slug: 'k', frais_de_mise_en_place: 'oui' })
+    expect(p.metadata).toEqual({ organisation_id: ORG, slug: 'k', forfait: 'trois', frais_de_mise_en_place: 'oui' })
     // Le webhook ne lit que les métadonnées de l'abonnement : elles ne changent pas.
-    expect(p.subscription_data?.metadata).toEqual({ organisation_id: ORG, slug: 'k' })
+    expect(p.subscription_data?.metadata).toEqual({ organisation_id: ORG, slug: 'k', forfait: 'trois' })
   })
 
   it('n’ajoute pas les frais quand ils ne sont pas dus, même avec un prix posé', () => {
@@ -136,7 +141,7 @@ describe('paramètresDePaiement', () => {
 
   it('sans taux de TVA, n’en ajoute aucun', () => {
     const p = paramètresDePaiement({ configuration: { ...configuration, tauxDeTva: null }, formule: 'mensuelle', organisationId: ORG, slug: 'k', clientStripe: null, email: null, fraisDeMiseEnPlace: false })
-    expect(p.subscription_data).toEqual({ metadata: { organisation_id: ORG, slug: 'k' } })
+    expect(p.subscription_data).toEqual({ metadata: { organisation_id: ORG, slug: 'k', forfait: 'trois' } })
     expect(p.customer_email).toBeUndefined()
   })
 })

@@ -523,6 +523,11 @@ l'opératrice (`/espaces/abonnements`) porte aussi en actions serveur :
   2026, valeur encore acceptée) ne propose et n'admet que la formule à 29 € HT
   par mois, sur son propre prix Stripe (`STRIPE_PRIX_FONDATEUR`, à défaut
   `STRIPE_PRIX_EARLY_ADOPTER`). 200 `offre-posée`
+- `{ "slug", "action": "forfait", "forfait": "trois" | "dix" | "cent" | "illimite" }`
+  (19 novembre 2026) pose le forfait par nombre de lecteurs de l'organisation,
+  qui fait foi tant qu'aucun abonnement Stripe ouvert ne porte le sien
+  (`forfaitEnVigueur`). Un forfait plus petit que les lecteurs actifs ne révoque
+  personne ; il empêche d'en ajouter. 200 `forfait-posé`
   avec `offre` et `état` ;
 - `{ "slug", "action": "parutions", "parutions": 1..8 }` règle le nombre de
   parutions complètes de l'essai (trois par défaut depuis le 17 novembre 2026,

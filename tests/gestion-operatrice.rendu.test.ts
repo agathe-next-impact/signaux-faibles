@@ -21,6 +21,7 @@ const ligne = (extras: Partial<LigneDAbonnement> = {}): LigneDAbonnement => ({
   offre: 'standard',
   parutionsDEssai: 3,
   abonnement: null,
+  forfait: 'trois',
   lecteursActifs: 2,
   ...extras,
 })

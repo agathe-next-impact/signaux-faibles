@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { exigerAccès } from '@/lib/auth/appartenance'
 import { baseConfigurée } from '@/lib/base/client'
 import { lireFacturation } from '@/lib/base/abonnements'
-import { fraisDeMiseEnPlaceDus } from '@/lib/domaine/offre'
+import { estUnForfait, fraisDeMiseEnPlaceDus, plafondDeLecteurs, type Forfait } from '@/lib/domaine/offre'
 import { empreinte } from '@/lib/portail/debit'
 import {
   cléAccordéeAuMode,
@@ -12,6 +12,7 @@ import {
   configurationStripe,
   paramètresDeFacturation,
   paramètresDePaiement,
+  prixPosé,
   type Formule,
 } from '@/lib/stripe/souscription'
 
@@ -47,10 +48,14 @@ export async function souscrire(données: FormData): Promise<void> {
   const formule = données.get('formule')
   if (typeof formule !== 'string' || !FORMULES.has(formule as Formule)) notFound()
 
+  // Le forfait par nombre de lecteurs (19 novembre 2026) ; absent, le forfait de base.
+  const forfaitLu = données.get('forfait') ?? 'trois'
+  if (!estUnForfait(forfaitLu)) notFound()
+
   const accès = await exigerAccès(slug)
   if (accès.enOpérateur || accès.démonstration) redirect(`/${accès.slug}/abonnement?abonnement=operateur`)
 
-  const destination = await pageDePaiement(accès, formule as Formule)
+  const destination = await pageDePaiement(accès, formule as Formule, forfaitLu)
   // `redirect` lève une exception de contrôle : appelé hors de tout `try`.
   redirect(destination)
 }
@@ -66,7 +71,7 @@ export async function gérerLAbonnement(données: FormData): Promise<void> {
 
 type AccèsFacturé = { readonly slug: string; readonly organisationId: string; readonly email: string | null }
 
-async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise<string> {
+async function pageDePaiement(accès: AccèsFacturé, formule: Formule, forfait: Forfait): Promise<string> {
   const indisponible = `/${accès.slug}/abonnement?abonnement=indisponible`
   const configuration = configurationStripe()
   if (!configuration || !baseConfigurée()) return indisponible
@@ -97,6 +102,15 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
       console.error('[abonnement] STRIPE_PRIX_FONDATEUR absente : formule fondateur indisponible.')
       return indisponible
     }
+    // Le tarif fondateur n'existe qu'au forfait de base ; un forfait plus petit
+    // que les lecteurs déjà actifs laisserait l'organisation au-delà de son plafond.
+    if (formule === 'fondateur' && forfait !== 'trois') return `/${accès.slug}/abonnement?abonnement=formule`
+    const plafond = plafondDeLecteurs(forfait)
+    if (plafond !== null && facturation.lecteursActifs > plafond) return `/${accès.slug}/abonnement?abonnement=forfait`
+    if (!prixPosé(configuration, formule, forfait)) {
+      console.error(`[abonnement] prix Stripe absent pour le forfait ${forfait} (${formule}) : souscription refusée.`)
+      return indisponible
+    }
 
     // Les frais de mise en place : après la période early adopter, une fois par
     // organisation. Dus sans prix posé, la souscription est refusée plutôt que
@@ -115,6 +129,7 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
       paramètresDePaiement({
         configuration,
         formule,
+        forfait,
         organisationId: facturation.organisationId,
         slug: accès.slug,
         clientStripe: facturation.abonnement?.clientStripe ?? null,
@@ -124,7 +139,7 @@ async function pageDePaiement(accès: AccèsFacturé, formule: Formule): Promise
     )
     if (!session.url) throw new Error('session de paiement sans URL')
     console.info(
-      `[abonnement] ${accès.slug} : page de paiement ouverte (${formule}${fraisDeMiseEnPlace ? ', frais de mise en place' : ''})` +
+      `[abonnement] ${accès.slug} : page de paiement ouverte (${formule}, forfait ${forfait}${fraisDeMiseEnPlace ? ', frais de mise en place' : ''})` +
         `${accès.email ? ` pour ${empreinte(accès.email)}` : ''}.`,
     )
     return session.url

@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { base, type Base } from '@/lib/base/client'
 import { protéger } from '@/lib/base/erreurs'
 import { abonnements, lecteurs, organisations, prescripteurs, travaux } from '@/lib/base/schema'
+import type { Forfait } from '@/lib/domaine/offre'
 import { dateDeParis, libelléDÉtape, PARUTIONS_D_ESSAI_RECOMMANDÉE, type Offre } from '@/lib/domaine/parcours'
 import { j0PourLaCible, lireUneCible, refusDuPlacement, étapeDeLaCible } from '@/lib/domaine/placement'
 import { estUneDateISO, lundiDeLaSemaine } from '@/lib/domaine/semaines'
@@ -250,6 +251,12 @@ export type Réglage =
   | { readonly sorte: 'relecture'; readonly requise: boolean }
   | { readonly sorte: 'apercu'; readonly actif: boolean }
   | { readonly sorte: 'offre'; readonly offre: Offre }
+  /**
+   * Le forfait par nombre de lecteurs (19 novembre 2026). Il fait foi tant
+   * qu'aucun abonnement Stripe ouvert ne porte le sien ; un forfait plus petit
+   * que les lecteurs actifs ne révoque personne, il empêche seulement d'en ajouter.
+   */
+  | { readonly sorte: 'forfait'; readonly forfait: Forfait }
   | { readonly sorte: 'parutions'; readonly parutions: number }
   | { readonly sorte: 'parcours'; readonly prochaineLettre: string; readonly restantes: number }
   /** Placer à une étape nommée (16 novembre 2026) : `essai-2`, `derniere`, `tronquee`, `suspendue`. */
@@ -276,6 +283,7 @@ export type RésultatDuRéglage =
   | { readonly sorte: 'relecture-réglée'; readonly requise: boolean }
   | { readonly sorte: 'aperçu-réglé'; readonly actif: boolean }
   | { readonly sorte: 'offre-posée'; readonly offre: Offre; readonly état: string }
+  | { readonly sorte: 'forfait-posé'; readonly forfait: Forfait }
   | { readonly sorte: 'parutions-réglées'; readonly parutions: number }
   | { readonly sorte: 'mis-en-parcours'; readonly j0: string; readonly parutions: number; readonly restantes: number }
   | { readonly sorte: 'placée'; readonly j0: string; readonly étape: string }
@@ -358,6 +366,14 @@ export async function réglerLeParcours(
           .set({ offre: réglage.offre, état, modifiéeLe: maintenant })
           .where(eq(organisations.id, organisation.id))
         return { sorte: 'offre-posée', offre: réglage.offre, état } as const
+      }
+
+      if (réglage.sorte === 'forfait') {
+        await tx
+          .update(organisations)
+          .set({ forfait: réglage.forfait, modifiéeLe: maintenant })
+          .where(eq(organisations.id, organisation.id))
+        return { sorte: 'forfait-posé', forfait: réglage.forfait } as const
       }
 
       if (réglage.sorte === 'parutions') {

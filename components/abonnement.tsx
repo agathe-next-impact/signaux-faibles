@@ -1,14 +1,18 @@
 import Link from 'next/link'
 import { gérerLAbonnement, souscrire } from '@/lib/portail/abonnement'
 import {
+  DÉFINITIONS_DES_FORFAITS,
   enEuros,
+  FORFAITS,
   FRAIS_DE_MISE_EN_PLACE_HT,
   HEURES_DE_PRISE_EN_MAIN,
-  PRIX_ANNUEL_HT,
+  plafondDeLecteurs,
+  prixAnnuelDuForfaitHT,
   PRIX_FONDATEUR_HT,
-  PRIX_MENSUEL_HT,
-  équivalentMensuelDeLAnnuel,
+  équivalentMensuelDuForfait,
+  type Forfait,
 } from '@/lib/domaine/offre'
+import type { Formule } from '@/lib/stripe/souscription'
 import type { Offre } from '@/lib/domaine/parcours'
 
 /**
@@ -34,13 +38,15 @@ export function LienMonAbonnement({ slug }: { slug: string }) {
  * slug voyage en champ caché et y est vérifié, et les boutons fonctionnent sans
  * JavaScript.
  *
- * Deux formules côte à côte, sur une grille à angle droit comme le reste de
- * l'espace (l'annuelle, retirée le 6 novembre 2026, revient le 7). L'annuelle
- * porte son équivalent mensuel : c'est la seule comparaison que le lecteur
- * fait de tête, autant la faire pour lui.
+ * Depuis le 19 novembre 2026, une case par forfait de lecteurs (trois, dix,
+ * cent, illimité), sur une grille à angle droit comme le reste de l'espace ;
+ * chaque case porte ses deux formules, mensuelle et annuelle, en deux boutons
+ * du même formulaire. L'annuelle porte son équivalent mensuel : c'est la seule
+ * comparaison que le lecteur fait de tête. Un forfait plus petit que le nombre
+ * de lecteurs déjà actifs n'est pas proposé, et l'action le refuse aussi.
  *
  * Quand les frais de mise en place sont dus (`fraisDeMiseEnPlaceDus`, une
- * inscription après la période early adopter), la formule les annonce : la page
+ * inscription après la période early adopter), la grille les annonce : la page
  * de paiement Stripe les ajoute à la première facture, et le lecteur ne doit pas
  * les y découvrir.
  */
@@ -48,77 +54,87 @@ export function ChoixDeFormule({
   slug,
   offre = 'standard',
   fraisDeMiseEnPlace = false,
+  lecteursActifs = 0,
 }: {
   slug: string
   offre?: Offre
   fraisDeMiseEnPlace?: boolean
+  lecteursActifs?: number
 }) {
   // Le tarif fondateur (19 octobre 2026) ne voit que sa formule : afficher le prix standard
   // à qui paiera 29 € serait faux. L'action serveur revérifie l'offre.
   if (offre === 'fondateur') {
     return (
       <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
-        <Formule
-          slug={slug}
-          formule="fondateur"
-          intitulé="Tarif fondateur"
-          prix={`${enEuros(PRIX_FONDATEUR_HT)} € HT par mois`}
-          détail="Tarif réservé à votre organisation. Sans engagement, résiliable à tout moment."
-        />
+        <form action={souscrire} className="flex flex-col gap-3 border-b border-r border-gris-ligne bg-blanc p-6">
+          <input type="hidden" name="slug" value={slug} />
+          <input type="hidden" name="formule" value="fondateur" />
+          <input type="hidden" name="forfait" value="trois" />
+          <p className="label-mono text-ardoise">Tarif fondateur</p>
+          <p className="font-titre text-h3 font-semibold text-encre">{enEuros(PRIX_FONDATEUR_HT)} € HT par mois</p>
+          <p className="text-ardoise">
+            Tarif réservé à votre organisation, {DÉFINITIONS_DES_FORFAITS.trois.lecteurs} lecteurs. Sans
+            engagement, résiliable à tout moment.
+          </p>
+          <BoutonDeSouscription formule="fondateur">S’abonner</BoutonDeSouscription>
+        </form>
       </div>
     )
   }
-  const frais = fraisDeMiseEnPlace
-    ? ` Frais de mise en place de ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une fois avec la première échéance.`
-    : ''
+  const forfaits = FORFAITS.filter((forfait) => {
+    const plafond = plafondDeLecteurs(forfait)
+    return plafond === null || plafond >= lecteursActifs
+  })
   return (
-    <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
-      <Formule
-        slug={slug}
-        formule="mensuelle"
-        intitulé="Mensuel"
-        prix={`${enEuros(PRIX_MENSUEL_HT)} € HT par mois`}
-        détail={`Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.${frais} Sans engagement, résiliable à tout moment.`}
-      />
-      <Formule
-        slug={slug}
-        formule="annuelle"
-        intitulé="Annuel"
-        prix={`${enEuros(PRIX_ANNUEL_HT)} € HT par an`}
-        détail={`Soit ${enEuros(équivalentMensuelDeLAnnuel())} € HT par mois, deux mois offerts. Création du référentiel et ${HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises.${frais}`}
-      />
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 border-l border-t border-gris-ligne sm:grid-cols-2">
+        {forfaits.map((forfait) => (
+          <CaseDeForfait key={forfait} slug={slug} forfait={forfait} />
+        ))}
+      </div>
+      <p className="text-ardoise">
+        Création du référentiel et {HEURES_DE_PRISE_EN_MAIN} h de prise en main comprises dans chaque
+        forfait. Mensuel sans engagement, résiliable à tout moment ; annuel à dix mois payés, deux mois
+        offerts.
+        {fraisDeMiseEnPlace
+          ? ` Frais de mise en place de ${enEuros(FRAIS_DE_MISE_EN_PLACE_HT)} € HT, facturés une fois avec la première échéance.`
+          : ''}
+      </p>
     </div>
   )
 }
 
-/** Le bouton plein est celui de la page de secours et de la bannière d'installation. */
-function Formule({
-  slug,
-  formule,
-  intitulé,
-  prix,
-  détail,
-}: {
-  slug: string
-  formule: 'mensuelle' | 'annuelle' | 'fondateur'
-  intitulé: string
-  prix: string
-  détail: string
-}) {
+function CaseDeForfait({ slug, forfait }: { slug: string; forfait: Forfait }) {
+  const définition = DÉFINITIONS_DES_FORFAITS[forfait]
   return (
     <form action={souscrire} className="flex flex-col gap-3 border-b border-r border-gris-ligne bg-blanc p-6">
       <input type="hidden" name="slug" value={slug} />
-      <input type="hidden" name="formule" value={formule} />
-      <p className="label-mono text-ardoise">{intitulé}</p>
-      <p className="font-titre text-h3 font-semibold text-encre">{prix}</p>
-      <p className="text-ardoise">{détail}</p>
-      <button
-        type="submit"
-        className="mt-auto self-start rounded-douce bg-encre px-4 py-2 text-corps font-medium text-blanc"
-      >
-        S’abonner
-      </button>
+      <input type="hidden" name="forfait" value={forfait} />
+      <p className="label-mono text-ardoise">{définition.libellé}</p>
+      <p className="font-titre text-h3 font-semibold text-encre">{enEuros(définition.prixMensuelHT)} € HT par mois</p>
+      <p className="text-ardoise">
+        Ou {enEuros(prixAnnuelDuForfaitHT(forfait))} € HT par an, soit {enEuros(équivalentMensuelDuForfait(forfait))} €
+        HT par mois.
+      </p>
+      <div className="mt-auto flex flex-wrap gap-3">
+        <BoutonDeSouscription formule="mensuelle">Mensuel</BoutonDeSouscription>
+        <BoutonDeSouscription formule="annuelle">Annuel</BoutonDeSouscription>
+      </div>
     </form>
+  )
+}
+
+/** Le bouton plein est celui de la page de secours et de la bannière d'installation. */
+function BoutonDeSouscription({ formule, children }: { formule: Formule; children: string }) {
+  return (
+    <button
+      type="submit"
+      name="formule"
+      value={formule}
+      className="self-start rounded-douce bg-encre px-4 py-2 text-corps font-medium text-blanc"
+    >
+      {children}
+    </button>
   )
 }
 
@@ -157,7 +173,9 @@ export function RetourDAbonnement({ motif }: { motif: string | undefined }) {
               ? 'Votre accès est offert : il n’y a rien à payer.'
               : motif === 'formule'
                 ? 'Cette formule n’est pas celle de votre organisation. Choisissez celle qui vous est proposée.'
-                : null
+                : motif === 'forfait'
+                  ? 'Ce forfait compte moins de lecteurs que votre organisation n’en a d’actifs. Choisissez un forfait plus grand, ou retirez d’abord des lecteurs.'
+                  : null
   if (!texte) return null
   return (
     <p role="status" className="border border-gris-ligne bg-fond-ardoise p-4 text-encre">
@@ -212,8 +230,8 @@ export function OffreDEssai({
             ? `Votre essai comprend ${parutions} parutions complètes ; il en reste ${restantes} après celle-ci.`
             : 'C’est la dernière parution complète de votre essai.'}{' '}
         La semaine suivante, sans abonnement, chaque lettre est réduite à sa rubrique
-        « L’essentiel ». L’abonnement couvre votre organisation, ses deux veilles et trois
-        lecteurs.
+        « L’essentiel ». L’abonnement couvre votre organisation et ses deux veilles, pour le
+        nombre de lecteurs de son forfait.
       </p>
       <ChoixDeFormule slug={slug} offre={offre} fraisDeMiseEnPlace={fraisDeMiseEnPlace} />
     </section>

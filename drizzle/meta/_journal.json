@@ -232,6 +232,13 @@
       "when": 1794999942904,
       "tag": "0032_noms_des_ecrans",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795066845590,
+      "tag": "0033_forfaits_de_lecteurs",
+      "breakpoints": true
     }
   ]
 }
