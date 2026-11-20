@@ -43,7 +43,9 @@ et niches » (8).
   L'étape 3bis du contrôle du soir passe par la même route : elle vérifie donc
   la lettre d'appels sans changement de code.
 - `POST /api/veille/faits` répond `famille-hors-outils` pour cette famille :
-  rien n'entre dans les outils stratégiques avant le lot 5.
+  rien n'entre dans les outils stratégiques avant le lot 5. Le contrôle du soir
+  ne la compte donc pas parmi les `étiquettes-manquantes` (20 novembre 2026 :
+  il signalait chaque soir la lettre n° 1 de la CCI du Cantal).
 - La lettre se regroupe par semaine et se tronque à « L'essentiel » comme les
   deux autres, sans code nouveau (tests dans `tests/lettre-appels.test.ts`).
 
