@@ -689,6 +689,25 @@ async function estÉtiquetable(pageId: string): Promise<boolean> {
   }
 }
 
+/**
+ * Une lettre que la route des étiquettes refuse par sa famille (`famille-hors-outils`,
+ * la lettre d'appels à projets avant son lot 5) n'attend aucune étiquette : la
+ * tâche passe l'étape, et le contrôle la signalait chaque soir à tort (CCI du
+ * Cantal, lettre du 18 novembre 2026). La famille est une propriété interne,
+ * que la liste des éditions publiées ne porte pas : elle est relue par la
+ * lecture cachée de la page. Dans le doute (page illisible), la lettre reste
+ * comptée.
+ */
+async function estHorsOutils(pageId: string): Promise<boolean> {
+  try {
+    const édition = await lireÉditionDeTravail(identifiantAvecTirets(pageId))
+    return édition !== null && estFamilleDAppels(édition.famille)
+  } catch (erreur) {
+    console.warn(`[étiquetage] propriétés de ${pageId} illisibles : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+    return false
+  }
+}
+
 export async function contrôlerLÉtiquetage(
   lettresParRegistre: ReadonlyMap<string, readonly { readonly pageId: string; readonly dateÉdition: string }[]>,
   db?: Base,
@@ -703,9 +722,10 @@ export async function contrôlerLÉtiquetage(
     // numérotés) n'est pas une étiquette manquante : l'étape 4ter la passe, et
     // le contrôle la signalait chaque soir à tort (31 octobre 2026). Seules les
     // lettres sans étiquettes sont relues, en lecture cachée ; un corps illisible
-    // reste signalé, le doute ne fait pas taire l'alerte.
+    // reste signalé, le doute ne fait pas taire l'alerte. Une lettre d'une famille
+    // hors des outils est écartée d'abord, sans lire son corps.
     const manquantes: typeof sansFait = []
-    for (const l of sansFait) if (await estÉtiquetable(l.pageId)) manquantes.push(l)
+    for (const l of sansFait) if (!(await estHorsOutils(l.pageId)) && (await estÉtiquetable(l.pageId))) manquantes.push(l)
     if (manquantes.length === 0) continue
     const dates = manquantes.map((l) => l.dateÉdition).sort()
     défauts.push({
@@ -714,7 +734,7 @@ export async function contrôlerLÉtiquetage(
       message:
         `${manquantes.length === 1 ? 'une édition publiée n’a pas d’étiquettes' : `${manquantes.length} éditions publiées n’ont pas d’étiquettes`} ` +
         `(du ${dates[0]} au ${dates.at(-1)}) : relancer l’étape 4ter, ou « pnpm tache etiquetage --organisation ${o.slug} ». ` +
-        'Les lettres sans aucun fait étiquetable (tout en RAS, archive sans axes numérotés) ne sont plus comptées.',
+        'Les lettres sans aucun fait étiquetable (tout en RAS, archive sans axes numérotés) et les lettres d’appels à projets ne sont pas comptées.',
     })
   }
   return défauts

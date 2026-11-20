@@ -290,8 +290,12 @@ dernière lettre publiée passée au validateur ; seules les ruptures de portée
 Depuis le 26 octobre 2026 (outils stratégiques, lot 4), `étiquettes-manquantes`,
 par organisation du pilote : les éditions publiées depuis la première étiquetée
 qui n'ont pas d'étiquettes. Avant la première, rien n'est dû. Une lettre dont
-tous les axes sont RAS n'a aucun fait à étiqueter et y figure à tort ; le
-message le dit.
+tous les axes sont RAS n'a aucun fait à étiqueter et n'y figure plus depuis le
+31 octobre 2026 (le corps des seules lettres sans étiquettes est relu). Depuis le
+20 novembre 2026, une lettre de la famille « Appels à projets » n'y figure pas
+non plus : `POST /api/veille/faits` la refuse (`famille-hors-outils`), elle
+n'attend donc aucune étiquette ; sa famille est relue par la lecture cachée de
+la page, et une page illisible reste comptée.
 
 ### `POST /api/veille/etat` : les écarts de statut avec le registre
 

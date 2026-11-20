@@ -210,6 +210,21 @@ describe('recevoirLesÉtiquettes et lireLesFaits', () => {
       expect(défauts[0]!.message).toMatch(/^une édition publiée n’a pas d’étiquettes \(du 2026-10-28 au 2026-10-28\)/)
       expect(défauts[0]!.message).toContain('pnpm tache etiquetage --organisation infralliance')
 
+      // Une lettre d'appels à projets est refusée par la route des étiquettes
+      // (`famille-hors-outils`) : elle n'en attend aucune, et son corps n'est pas lu.
+      const APPELS = 'aaaabbbbccccddddeeeeffff00000003'
+      const avecAppels = [lettre(APPELS, '2026-11-18'), lettre(PAGE_OCTOBRE, DATE_OCTOBRE)]
+      notion.lireBlocsDePage.mockClear()
+      notion.lireÉditionDeTravail.mockImplementation(async (id: string) =>
+        id === avecTirets(APPELS) ? { ...édition(), pageId: id, famille: 'Appels à projets', veille: 'Appels à projets' } : édition(),
+      )
+      expect(await contrôlerLÉtiquetage(new Map([[REGISTRE, avecAppels]]), db)).toEqual([])
+      expect(notion.lireBlocsDePage).not.toHaveBeenCalled()
+      // Une page dont les propriétés ne se lisent pas reste comptée : le doute ne fait pas taire l'alerte.
+      notion.lireÉditionDeTravail.mockRejectedValue(new Error('Notion indisponible'))
+      expect(await contrôlerLÉtiquetage(new Map([[REGISTRE, avecAppels]]), db)).toHaveLength(1)
+      notion.lireÉditionDeTravail.mockResolvedValue(édition())
+
       // Sans la liste de la route, les éditions sont lues par la clé de cloisonnement de l'organisation.
       notion.listerÉditionsPubliées.mockResolvedValue([lettre(PAGE_OCTOBRE, DATE_OCTOBRE)])
       expect(await contrôlerLÉtiquetage(new Map(), db)).toEqual([])
